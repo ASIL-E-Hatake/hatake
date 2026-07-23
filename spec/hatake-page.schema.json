@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ASIL-E-Hatake/hatake/spec/hatake-page.schema.json",
+  "title": "hatake page definition",
+  "description": "Schema for a hatake page definition document (DSL version 1.0). YAML and JSON documents share this shape; both are normalized to the same PageDefinition.",
+  "type": "object",
+  "required": ["page"],
+  "additionalProperties": false,
+  "properties": {
+    "dsl_version": {
+      "type": "string",
+      "description": "DSL version the document conforms to.",
+      "default": "1.0",
+      "examples": ["1.0"]
+    },
+    "page": {
+      "oneOf": [
+        { "$ref": "#/$defs/crudPage" },
+        { "$ref": "#/$defs/searchPage" }
+      ]
+    }
+  },
+  "$defs": {
+    "crudPage": {
+      "type": "object",
+      "description": "A create/read/update/delete page over a single repository.",
+      "required": ["type", "id", "title", "repository"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "description": "Page kind.",
+          "enum": ["crud"]
+        },
+        "id": { "type": "string", "description": "Stable page identifier." },
+        "title": { "type": "string", "description": "Page title." },
+        "repository": {
+          "type": "string",
+          "description": "Key resolving the user-provided Repository implementation."
+        },
+        "key": {
+          "type": "string",
+          "description": "Primary-key field name of a record.",
+          "default": "id"
+        },
+        "search": { "$ref": "#/$defs/search" },
+        "table": { "$ref": "#/$defs/table" },
+        "form": { "$ref": "#/$defs/form" },
+        "actions": {
+          "type": "array",
+          "description": "Page-level actions (buttons).",
+          "items": { "$ref": "#/$defs/action" }
+        }
+      }
+    },
+    "searchPage": {
+      "type": "object",
+      "description": "A read-only search/list page (照会). Search + table, no form.",
+      "required": ["type", "id", "title", "repository"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "description": "Page kind.", "enum": ["search"] },
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "repository": { "type": "string" },
+        "key": { "type": "string", "default": "id" },
+        "search": { "$ref": "#/$defs/search" },
+        "table": { "$ref": "#/$defs/table" },
+        "actions": {
+          "type": "array",
+          "description": "Page-level actions; also referenced by table.rowActions.",
+          "items": { "$ref": "#/$defs/action" }
+        }
+      }
+    },
+    "search": {
+      "type": "object",
+      "description": "The search area: filters plus their layout.",
+      "additionalProperties": false,
+      "properties": {
+        "layout": { "$ref": "#/$defs/layout" },
+        "filters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/filter" }
+        }
+      }
+    },
+    "filter": {
+      "type": "object",
+      "required": ["field", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string", "description": "Backing data key." },
+        "label": { "type": "string" },
+        "type": {
+          "type": "string",
+          "description": "Input type (open string). Built-ins: text, textarea, number, select, multiSelect, checkbox, radio, date, dateTime, time.",
+          "default": "text"
+        },
+        "operator": {
+          "type": "string",
+          "description": "Match operator (open string). Built-ins: equals, contains, startsWith, endsWith, gt, gte, lt, lte, between, in.",
+          "default": "contains"
+        },
+        "options": {
+          "type": "array",
+          "description": "Options for select-style filters.",
+          "items": { "$ref": "#/$defs/option" }
+        },
+        "config": { "$ref": "#/$defs/config" }
+      }
+    },
+    "table": {
+      "type": "object",
+      "description": "The results table.",
+      "additionalProperties": false,
+      "properties": {
+        "pagination": { "$ref": "#/$defs/pagination" },
+        "rowActions": {
+          "type": "array",
+          "description": "Per-row action ids. Built-ins: edit, delete.",
+          "items": { "type": "string" }
+        },
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/column" }
+        }
+      }
+    },
+    "column": {
+      "type": "object",
+      "required": ["field", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string" },
+        "label": { "type": "string" },
+        "type": {
+          "type": "string",
+          "description": "Render type (open string). Built-ins: text, number, badge, boolean, date, dateTime.",
+          "default": "text"
+        },
+        "width": {
+          "type": "number",
+          "description": "Fixed width in logical pixels; omit for flexible."
+        },
+        "sortable": { "type": "boolean", "default": false },
+        "format": {
+          "type": "string",
+          "description": "Display formatter name (open string). Built-ins: currency, percent, date, wareki, postal, mask."
+        },
+        "config": { "$ref": "#/$defs/config" }
+      }
+    },
+    "pagination": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pageSize": { "type": "integer", "minimum": 1, "default": 50 },
+        "enabled": { "type": "boolean", "default": true }
+      }
+    },
+    "form": {
+      "type": "object",
+      "description": "The create/edit form.",
+      "additionalProperties": false,
+      "properties": {
+        "sections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/section" }
+        }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string" },
+        "layout": { "$ref": "#/$defs/layout" },
+        "fields": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/field" }
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "required": ["field", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string" },
+        "label": { "type": "string" },
+        "type": {
+          "type": "string",
+          "description": "Field type (open string). Built-ins: text, textarea, number, select, multiSelect, checkbox, radio, date, dateTime, time.",
+          "default": "text"
+        },
+        "required": { "type": "boolean", "default": false },
+        "readOnly": { "type": "boolean", "default": false },
+        "defaultValue": {
+          "description": "Value applied when creating a new record.",
+          "type": ["string", "number", "boolean", "null"]
+        },
+        "validators": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/validator" }
+        },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/option" }
+        },
+        "format": {
+          "type": "string",
+          "description": "Display formatter name (open string). Built-ins: currency, percent, date, wareki, postal, mask."
+        },
+        "normalize": {
+          "type": "array",
+          "description": "Input converters applied before validation. Built-ins: toHankaku, toZenkaku, hiraToKata, kataToHira, trim, collapseSpaces, parseNumber.",
+          "items": { "type": "string" }
+        },
+        "config": { "$ref": "#/$defs/config" }
+      }
+    },
+    "validator": {
+      "type": "object",
+      "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters (e.g. maxLength uses 'value').",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Validator type (open string). Built-ins: required, maxLength, minLength, pattern, min, max, email."
+        },
+        "message": {
+          "type": "string",
+          "description": "Override message shown on failure."
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": ["id", "type", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": {
+          "type": "string",
+          "description": "Action type (open string). Built-ins: create, edit, delete, plugin."
+        },
+        "label": { "type": "string" },
+        "plugin": {
+          "type": "string",
+          "description": "Registered action plugin key (used when type is 'plugin')."
+        },
+        "config": { "$ref": "#/$defs/config" }
+      }
+    },
+    "option": {
+      "type": "object",
+      "required": ["label"],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "description": "Stored value (kept as-is).",
+          "type": ["string", "number", "boolean", "null"]
+        },
+        "label": { "type": "string" }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Items per row on wide layouts."
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "description": "Plugin / renderer specific extra settings.",
+      "additionalProperties": true
+    }
+  }
+}

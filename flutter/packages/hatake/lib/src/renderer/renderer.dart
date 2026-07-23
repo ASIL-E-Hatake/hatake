@@ -1,0 +1,29 @@
+import 'package:flutter/widgets.dart';
+import 'package:hatake_core/hatake_core.dart';
+
+import '../runtime/crud_controller.dart';
+import '../runtime/list_controller.dart';
+
+/// Converts a [PageDefinition] into Flutter widgets.
+///
+/// A renderer's sole responsibility is presentation. It must not contain
+/// business logic, hold a [Repository], or perform I/O — it reads the supplied
+/// controller's state and calls the controller's methods for interaction.
+///
+/// The set of pages is closed ([PageDefinition] is sealed), so a renderer
+/// exposes one build method per page kind.
+abstract interface class Renderer {
+  /// Builds the widget tree for a CRUD page.
+  Widget buildCrudPage(
+    BuildContext context,
+    CrudPageDefinition definition,
+    CrudController controller,
+  );
+
+  /// Builds the widget tree for a read-only search/list page.
+  Widget buildSearchPage(
+    BuildContext context,
+    SearchPageDefinition definition,
+    ListController controller,
+  );
+}

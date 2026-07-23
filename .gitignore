@@ -1,0 +1,27 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+.pub-cache/
+.pub/
+pubspec.lock
+
+# Melos
+.melos_tool/
+
+# Node / TypeScript
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Java / Gradle
+.gradle/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

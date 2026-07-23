@@ -1,0 +1,25 @@
+{
+  "name": "@hatake/core",
+  "version": "0.0.1",
+  "description": "Core definitions + parser + server-side validation for hatake (TypeScript edition). Consumes the language-agnostic hatake DSL.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ASIL-E-Hatake/hatake"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "yaml": "^2.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

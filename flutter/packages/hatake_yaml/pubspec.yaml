@@ -1,0 +1,30 @@
+name: hatake_yaml
+description: >-
+  YAML / JSON parser for hatake — converts definition documents into
+  hatake_core PageDefinitions. Pure Dart.
+version: 0.0.1
+repository: https://github.com/ASIL-E-Hatake/hatake
+homepage: https://github.com/ASIL-E-Hatake/hatake
+issue_tracker: https://github.com/ASIL-E-Hatake/hatake/issues
+topics:
+  - yaml
+  - parser
+  - declarative
+  - crud
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  hatake_core: ^0.0.1
+  yaml: ^3.1.2
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
+
+# During monorepo development, resolve hatake_core from the local path.
+# Ignored when publishing (pub.dev uses the hosted version constraint above).
+dependency_overrides:
+  hatake_core:
+    path: ../hatake_core

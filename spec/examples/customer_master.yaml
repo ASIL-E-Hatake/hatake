@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json
+# hatake — CrudPage definition example: 顧客マスタ (Customer master)
+#
+# This YAML is parsed (by hatake_yaml) into a CrudPageDefinition and rendered by
+# a Renderer (e.g. hatake_material). The framework itself contains no business
+# logic; `repository: customerRepository` resolves a user-provided Repository.
+
+dsl_version: "1.0"
+
+page:
+  type: crud
+  id: customer_master
+  title: 顧客マスタ
+  repository: customerRepository
+  key: id
+
+  # --- Search area -------------------------------------------------------
+  search:
+    layout: { columns: 3 }
+    filters:
+      - field: name
+        label: 顧客名
+        type: text
+        operator: contains
+      - field: status
+        label: ステータス
+        type: select
+        operator: equals
+        options:
+          - { value: active,   label: 有効 }
+          - { value: inactive, label: 無効 }
+      - field: updatedAt
+        label: 更新日
+        type: date
+        operator: gte
+
+  # --- Results table -----------------------------------------------------
+  table:
+    pagination: { pageSize: 50 }
+    rowActions: [edit, delete]
+    columns:
+      - { field: code,      label: コード,     width: 120, sortable: true }
+      - { field: name,      label: 顧客名,     sortable: true }
+      - { field: status,    label: ステータス, type: badge }
+      - { field: updatedAt, label: 更新日,     type: dateTime }
+
+  # --- Create / edit form ------------------------------------------------
+  form:
+    sections:
+      - title: 基本情報
+        layout: { columns: 2 }
+        fields:
+          - field: code
+            label: コード
+            type: text
+            required: true
+            validators:
+              - { type: maxLength, value: 20 }
+          - field: name
+            label: 顧客名
+            type: text
+            required: true
+          - field: status
+            label: ステータス
+            type: select
+            required: true
+            options:
+              - { value: active,   label: 有効 }
+              - { value: inactive, label: 無効 }
+          - field: note
+            label: 備考
+            type: textarea
+
+  # --- Page-level actions ------------------------------------------------
+  actions:
+    - { id: create, type: create, label: 新規登録 }
+    - { id: export, type: plugin, plugin: csvExport, label: CSV出力 }

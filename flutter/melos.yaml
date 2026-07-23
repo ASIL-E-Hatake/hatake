@@ -1,0 +1,19 @@
+name: hatake
+
+packages:
+  - packages/**
+
+scripts:
+  analyze:
+    description: Run dart analyze in all packages.
+    exec: dart analyze .
+
+  test:
+    description: Run dart test in all packages that have tests.
+    exec: dart test
+    packageFilters:
+      dirExists: test
+
+  format:
+    description: Format all Dart code.
+    run: dart format .

@@ -1,0 +1,33 @@
+name: hatake_material
+description: >-
+  Material 3 renderer for hatake — draws PageDefinitions as Material widgets.
+version: 0.0.1
+repository: https://github.com/ASIL-E-Hatake/hatake
+homepage: https://github.com/ASIL-E-Hatake/hatake
+issue_tracker: https://github.com/ASIL-E-Hatake/hatake/issues
+topics:
+  - ui
+  - material
+  - declarative
+  - crud
+  - renderer
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.16.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  hatake: ^0.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+dependency_overrides:
+  hatake:
+    path: ../hatake
+  hatake_core:
+    path: ../hatake_core

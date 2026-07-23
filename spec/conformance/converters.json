@@ -1,0 +1,10 @@
+[
+  { "name": "toHankaku", "value": "１２３ＡＢ　", "expected": "123AB " },
+  { "name": "toZenkaku", "value": "12 ", "expected": "１２　" },
+  { "name": "hiraToKata", "value": "あいう", "expected": "アイウ" },
+  { "name": "kataToHira", "value": "アイウ", "expected": "あいう" },
+  { "name": "trim", "value": "　 x 　", "expected": "x" },
+  { "name": "collapseSpaces", "value": "a　　b  c", "expected": "a b c" },
+  { "name": "parseNumber", "value": "１，２３４", "expected": 1234 },
+  { "name": "parseNumber", "value": "abc", "expected": "abc" }
+]

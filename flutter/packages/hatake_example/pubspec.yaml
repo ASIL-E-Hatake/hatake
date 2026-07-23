@@ -1,0 +1,35 @@
+name: hatake_example
+description: >-
+  Example app demonstrating hatake — a YAML-defined CrudPage rendered with
+  Material 3, backed by an in-memory repository.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.16.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  hatake_material: ^0.0.1
+  hatake_yaml: ^0.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+dependency_overrides:
+  hatake_core:
+    path: ../hatake_core
+  hatake:
+    path: ../hatake
+  hatake_material:
+    path: ../hatake_material
+  hatake_yaml:
+    path: ../hatake_yaml
+
+flutter:
+  assets:
+    - assets/customer_master.yaml

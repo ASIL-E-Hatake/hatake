@@ -1,0 +1,32 @@
+name: hatake
+description: >-
+  Flutter renderer runtime for hatake — renders PageDefinitions through a
+  pluggable Renderer, backed by user-provided Repositories. Contains no
+  business logic in the renderer layer.
+version: 0.0.1
+repository: https://github.com/ASIL-E-Hatake/hatake
+homepage: https://github.com/ASIL-E-Hatake/hatake
+issue_tracker: https://github.com/ASIL-E-Hatake/hatake/issues
+topics:
+  - ui
+  - declarative
+  - crud
+  - renderer
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.16.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  hatake_core: ^0.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+dependency_overrides:
+  hatake_core:
+    path: ../hatake_core

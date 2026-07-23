@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json
+# hatake — SearchPage definition example: 商品照会 (Product search, read-only)
+dsl_version: "1.0"
+
+page:
+  type: search
+  id: product_search
+  title: 商品照会
+  repository: productRepository
+  key: id
+
+  search:
+    layout: { columns: 3 }
+    filters:
+      - { field: name,     label: 商品名,     type: text,   operator: contains }
+      - field: category
+        label: カテゴリ
+        type: select
+        operator: equals
+        options:
+          - { value: food,    label: 食品 }
+          - { value: drink,   label: 飲料 }
+          - { value: daily,   label: 日用品 }
+
+  table:
+    pagination: { pageSize: 50 }
+    rowActions: [detail]
+    columns:
+      - { field: code,     label: コード,   width: 120, sortable: true }
+      - { field: name,     label: 商品名,   sortable: true }
+      - { field: category, label: カテゴリ, type: badge }
+      - { field: price,    label: 価格,     type: number, sortable: true, format: currency, config: { symbol: "¥" } }
+
+  actions:
+    - { id: detail, type: plugin, plugin: showDetail, label: 詳細 }
+    - { id: export, type: plugin, plugin: csvExport,  label: CSV出力 }

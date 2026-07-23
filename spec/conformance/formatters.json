@@ -1,0 +1,21 @@
+[
+  { "name": "currency", "value": 1234567, "expected": "1,234,567" },
+  { "name": "currency", "value": 1234, "options": { "symbol": "¥", "decimals": 2 }, "expected": "¥1,234.00" },
+  { "name": "currency", "value": -1234, "options": { "negative": "triangle" }, "expected": "△1,234" },
+  { "name": "currency", "value": -1234, "options": { "negative": "blackTriangle" }, "expected": "▲1,234" },
+  { "name": "currency", "value": -1234, "options": { "negative": "paren" }, "expected": "(1,234)" },
+  { "name": "currency", "value": -1234, "expected": "-1,234" },
+  { "name": "percent", "value": 12.34, "expected": "12.34%" },
+  { "name": "percent", "value": 12, "options": { "decimals": 0 }, "expected": "12%" },
+  { "name": "percent", "value": 0.1234, "options": { "ratio": true, "decimals": 2 }, "expected": "12.34%" },
+  { "name": "date", "value": "2026-07-22", "expected": "2026/07/22" },
+  { "name": "date", "value": "2026-07-22", "options": { "pattern": "yyyy-MM-dd" }, "expected": "2026-07-22" },
+  { "name": "date", "value": "2026-07-22", "options": { "pattern": "yyyy年M月d日" }, "expected": "2026年7月22日" },
+  { "name": "date", "value": "2026-07-22", "options": { "pattern": "yyyyMMdd" }, "expected": "20260722" },
+  { "name": "wareki", "value": "2026-07-22", "expected": "令和8年7月22日" },
+  { "name": "wareki", "value": "2026-07-22", "options": { "style": "short" }, "expected": "R8/07/22" },
+  { "name": "wareki", "value": "2019-05-01", "expected": "令和元年5月1日" },
+  { "name": "wareki", "value": "2019-04-30", "expected": "平成31年4月30日" },
+  { "name": "postal", "value": "1234567", "expected": "123-4567" },
+  { "name": "mask", "value": "000012341234", "expected": "********1234" }
+]

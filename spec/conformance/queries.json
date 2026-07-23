@@ -1,0 +1,43 @@
+[
+  {
+    "filters": [
+      { "field": "name", "type": "text", "operator": "contains" },
+      { "field": "price", "type": "number", "operator": "gte" },
+      { "field": "status", "type": "select", "operator": "equals" }
+    ],
+    "params": { "name": "りんご", "price": "100", "status": "active", "secret": "x" },
+    "expected": {
+      "conditions": [
+        { "field": "name", "operator": "contains", "value": "りんご" },
+        { "field": "price", "operator": "gte", "value": 100 },
+        { "field": "status", "operator": "equals", "value": "active" }
+      ],
+      "sortField": null,
+      "sortAscending": true,
+      "page": 0,
+      "pageSize": 50
+    }
+  },
+  {
+    "filters": [{ "field": "name", "type": "text", "operator": "contains" }],
+    "params": { "page": "2", "pageSize": "20", "sortField": "name" },
+    "expected": {
+      "conditions": [],
+      "sortField": "name",
+      "sortAscending": true,
+      "page": 2,
+      "pageSize": 20
+    }
+  },
+  {
+    "filters": [{ "field": "name", "type": "text", "operator": "contains" }],
+    "params": { "sortField": "evil", "order": "desc" },
+    "expected": {
+      "conditions": [],
+      "sortField": null,
+      "sortAscending": false,
+      "page": 0,
+      "pageSize": 50
+    }
+  }
+]

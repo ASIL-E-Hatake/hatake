@@ -1,0 +1,223 @@
+# hatake DSL 仕様書（v1.0）
+
+> 🌐 [English](dsl-spec.md) ・ 日本語版（このページ）
+
+hatake の定義 DSL の全仕様。定義は業務**ページ**を書くやつで、hatake がそれを
+`PageDefinition` に解析して Renderer が描く。YAML でも JSON でも書けて、どっちも同じ
+`PageDefinition` に正規化される。型安全な Dart ビルダー（`hatake_dsl`）でも結果は同じ。
+
+- 機械可読スキーマ: [`schema/hatake-page.schema.json`](hatake-page.schema.json)（JSON Schema 2020-12）
+- 定義の検証: `python spec/tools/validate_schema.py path/to/def.yaml`
+
+## ドキュメント構造
+
+基本形はバージョンと `page` の 2 つ:
+
+```yaml
+dsl_version: "1.0"
+page:
+  type: crud
+  # ...
+```
+
+`dsl_version` は省略可（既定 `1.0`）。`page` を直接トップレベルに置くこと（`page:` で包まない）
+もできるけど、包んどいた方が無難。
+
+### エディタ補完
+
+YAML Language Server 系のエディタなら、ファイル先頭にこの一行を置くだけで補完と検証が効く:
+
+```yaml
+# yaml-language-server: $schema=https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json
+```
+
+## 開いた型システム
+
+型識別子（フィールド型・フィルタ演算子・カラム描画型・バリデータ型・アクション型）は
+全部**開いた文字列**。組込値は下にまとめてあるけど、Plugin でスキーマを触らずに値を足せる。
+あと各要素は `config` っていう自由なマップを持てて、Renderer/Plugin 固有の設定はそこに突っ込める。
+
+## ページ種別
+
+`page.type` で業務コンポーネントを選ぶ:
+
+| `type` | コンポーネント | フォーム | 備考 |
+|---|---|---|---|
+| `crud` | 登録/参照/更新/削除 | ✅ | search + table + form + 行 edit/delete |
+| `search` | 読み取り専用の照会/一覧 | — | search + table + プラグインアクション（ページ・行） |
+
+`search` ページは `crud` と同じ `search` / `table` / `actions` を持つけど `form` は無い。
+`rowActions` はページレベルの `plugin` アクション（例: `detail`）を指して、対象行を context に
+乗せて呼ぶ。例: [`examples/product_search.yaml`](examples/product_search.yaml)。
+
+## `page`（type: crud）
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `type` | string | ✅ | — | ページ種別。現在は `crud`。 |
+| `id` | string | ✅ | — | 安定したページ識別子。 |
+| `title` | string | ✅ | — | ページタイトル。 |
+| `repository` | string | ✅ | — | 利用者が実装した `Repository` を解決するキー。 |
+| `key` | string | | `id` | レコードの主キー項目名。 |
+| `search` | [search](#search) | | — | 検索エリア。省略時は全件一覧。 |
+| `table` | [table](#table) | | 空 | 結果テーブル。 |
+| `form` | [form](#form) | | 空 | 新規/編集フォーム。 |
+| `actions` | [action](#action)[] | | `[]` | ページレベルのアクション。 |
+
+## search
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `layout` | [layout](#layout) | `{columns: 1}` | フィルタの配置。 |
+| `filters` | [filter](#filter)[] | `[]` | 検索入力。 |
+
+### filter
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `field` | string | ✅ | — | 対象のデータキー。 |
+| `label` | string | ✅ | — | 表示ラベル。 |
+| `type` | string | | `text` | 入力型（[フィールド型](#フィールド型)参照）。 |
+| `operator` | string | | `contains` | 突合演算子（[演算子](#フィルタ演算子)参照）。 |
+| `options` | [option](#option)[] | | `[]` | セレクト系フィルタ用。 |
+| `config` | map | | `{}` | 追加設定。 |
+
+## table
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `pagination` | [pagination](#pagination) | `{pageSize: 50}` | ページング設定。 |
+| `rowActions` | string[] | `[]` | 行ごとのアクションid。組込: `edit`, `delete`。 |
+| `columns` | [column](#column)[] | `[]` | テーブル列。 |
+
+### column
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `field` | string | ✅ | — | 対象のデータキー。 |
+| `label` | string | ✅ | — | ヘッダラベル。 |
+| `type` | string | | `text` | 描画型（[カラム型](#カラム型)参照）。 |
+| `width` | number | | 可変 | 固定幅（論理ピクセル）。 |
+| `sortable` | boolean | | `false` | ソート可能か。 |
+| `format` | string | | — | 表示フォーマッタ名（[フォーマッタ](#フォーマッタ)参照）。オプションは `config` から。 |
+| `config` | map | | `{}` | 追加設定（フォーマッタのオプション兼用）。 |
+
+### pagination
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `pageSize` | integer（≥1） | `50` | 1ページの行数。 |
+| `enabled` | boolean | `true` | ページングの有効/無効。 |
+
+## form
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `sections` | [section](#section)[] | `[]` | フィールドのグループ。 |
+
+### section
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `title` | string | — | 任意の見出し。 |
+| `layout` | [layout](#layout) | `{columns: 1}` | フィールド配置。 |
+| `fields` | [field](#field)[] | `[]` | 入力フィールド。 |
+
+### field
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `field` | string | ✅ | — | 対象のデータキー。 |
+| `label` | string | ✅ | — | 表示ラベル。 |
+| `type` | string | | `text` | フィールド型（[フィールド型](#フィールド型)参照）。 |
+| `required` | boolean | | `false` | `required` バリデータ + 必須マーカーを付与。 |
+| `readOnly` | boolean | | `false` | 読み取り専用か。 |
+| `defaultValue` | any | | — | 新規作成時の初期値。 |
+| `validators` | [validator](#validator)[] | | `[]` | バリデーション規則。 |
+| `options` | [option](#option)[] | | `[]` | select/radio/multiSelect 用。 |
+| `format` | string | | — | 表示フォーマッタ名（[フォーマッタ](#フォーマッタ)参照）。 |
+| `normalize` | string[] | | `[]` | 入力前に適用するコンバータ（[コンバータ](#コンバータ)参照）。 |
+| `config` | map | | `{}` | 追加設定。 |
+
+### validator
+
+`type` でバリデータを選ぶ。`message` 以外の残りのキーは、そのままパラメータとして渡る。
+
+```yaml
+- { type: maxLength, value: 20 }
+- { type: pattern, pattern: "^[A-Z]+$", message: 大文字のみ }
+```
+
+| 組込 `type` | パラメータ | 意味 |
+|---|---|---|
+| `required` | — | 空でないこと。 |
+| `maxLength` | `value`（int） | 文字数 ≤ value。 |
+| `minLength` | `value`（int） | 文字数 ≥ value。 |
+| `min` | `value`（num） | 数値 ≥ value。 |
+| `max` | `value`（num） | 数値 ≤ value。 |
+| `pattern` | `pattern`（正規表現） | 正規表現に一致すること。 |
+| `email` | — | メールアドレス形式であること。 |
+| `postalCode` | — | 郵便番号形式（`1234567` / `123-4567`）。 |
+
+`message` を書くと既定（日本語）メッセージを上書きできる。
+
+## action
+
+| キー | 型 | 必須 | 説明 |
+|---|---|---|---|
+| `id` | string | ✅ | 安定したid（`rowActions` から参照）。 |
+| `type` | string | ✅ | アクション型（[アクション型](#アクション型)参照）。 |
+| `label` | string | ✅ | ボタンラベル。 |
+| `plugin` | string | | Plugin キー（`type: plugin` のとき）。 |
+| `config` | map | | 追加設定。 |
+
+## option
+
+| キー | 型 | 必須 | 説明 |
+|---|---|---|---|
+| `value` | string/number/bool/null | | 格納値。 |
+| `label` | string | ✅ | 表示ラベル。 |
+
+## layout
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `columns` | integer（≥1） | `1` | 広い画面での1行あたりの項目数。 |
+
+## 組込ボキャブラリ
+
+### フィールド型
+`text`, `textarea`, `number`, `select`, `multiSelect`, `checkbox`, `radio`,
+`date`, `dateTime`, `time`
+
+### フィルタ演算子
+`equals`, `contains`, `startsWith`, `endsWith`, `gt`, `gte`, `lt`, `lte`,
+`between`, `in`
+
+### カラム型
+`text`, `number`, `badge`, `boolean`, `date`, `dateTime`
+
+### アクション型
+`create`, `edit`, `delete`, `plugin`
+
+### フォーマッタ
+（表示整形、`format` で指定）`currency`, `percent`, `date`, `wareki`, `postal`, `mask`。
+オプションはその要素の `config` から読む（例 `{ symbol: "¥", negative: "triangle" }`）。
+
+### コンバータ
+（入力正規化、`normalize` で指定）`toHankaku`, `toZenkaku`, `hiraToKata`,
+`kataToHira`, `trim`, `collapseSpaces`, `parseNumber`。
+
+## 完全な例
+
+[`examples/customer_master.yaml`](examples/customer_master.yaml) を見て。
+
+## 同一性の保証
+
+どんな定義でも、次は全部おなじ `PageDefinition` になる:
+
+```
+parsePageYaml(yaml) == parsePageJson(json) == <hatake_dsl ビルダー>
+```
+
+これは `hatake_yaml` と `hatake_dsl` のテストで担保してる。

@@ -1,0 +1,31 @@
+name: hatake_dsl
+description: >-
+  Type-safe Dart builder DSL for hatake — constructs hatake_core
+  PageDefinitions directly, with IDE completion. Pure Dart.
+version: 0.0.1
+repository: https://github.com/ASIL-E-Hatake/hatake
+homepage: https://github.com/ASIL-E-Hatake/hatake
+issue_tracker: https://github.com/ASIL-E-Hatake/hatake/issues
+topics:
+  - dsl
+  - builder
+  - declarative
+  - ui
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  hatake_core: ^0.0.1
+
+dev_dependencies:
+  hatake_yaml: ^0.0.1
+  lints: ^4.0.0
+  test: ^1.25.0
+
+# Local monorepo resolution; ignored when publishing.
+dependency_overrides:
+  hatake_core:
+    path: ../hatake_core
+  hatake_yaml:
+    path: ../hatake_yaml
