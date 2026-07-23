@@ -20,7 +20,7 @@ jobs:
           set -e
           for pkg in hatake_core hatake_yaml hatake_dsl; do
             echo "::group::$pkg"
-            (cd "flutter/packages/$pkg" && dart pub get && dart analyze && dart test)
+            (cd "flutter/packages/$pkg" && dart pub get && dart analyze && { if [ -d test ]; then dart test; fi; })
             echo "::endgroup::"
           done
 
@@ -37,7 +37,7 @@ jobs:
           set -e
           for pkg in hatake hatake_material hatake_example; do
             echo "::group::$pkg"
-            (cd "flutter/packages/$pkg" && flutter pub get && flutter analyze && flutter test)
+            (cd "flutter/packages/$pkg" && flutter pub get && flutter analyze && { if [ -d test ]; then flutter test; fi; })
             echo "::endgroup::"
           done
 
