@@ -70,7 +70,7 @@
 3. **収束テスト**（YAML↔JSON、あれば DSL）
 4. 用途に応じて **FormValidator**（バックエンド）／ **Renderer**（フロント）
 5. **コンフォーマンス・スイート**を通す
-6. パッケージ名を揃える（`hatake_core` / `@hatake/core` / `io.hatake:core` / `hatake-core`(py) / `hatake_core`(rust crate)）
+6. パッケージ名を揃える（`hatake_core` / `@hatake/core` / `io.github.asil-e-hatake:hatake-core` / `hatake-core`(py) / `hatake_core`(rust crate)）
 
 想定用途:
 - **Python** … バックエンド（FastAPI/Django 連携は opt-in アダプタ）、データ処理・バッチ。バリデーション + QuerySpec が主。
@@ -91,7 +91,7 @@
 - **Java**: モノレポの `java/` から publish。
   - 早期は **JitPack**（GitHub タグから即配布・publisher 設定ほぼゼロ。※モノレポの subdir 指定が要る）か **GitHub Packages (Maven)**（publisher は楽・consumer 側が認証設定を要する＝フリクションあり）。
   - 本格化で **Maven Central**（consumer フリクション最小だが、名前空間検証＋GPG 署名＋sources/javadoc jar が必要）。
-  - ⚠️ **groupId 注意**: 現状の `io.hatake` は `hatake.io` ドメイン所有の証明が要る。ドメインが無ければ **`io.github.asil-e-hatake`**（GitHub アカウントで自動検証）に変える。`java/build.gradle` の `group` を見直す。
+  - **groupId**: `io.github.asil-e-hatake`（GitHub アカウントで自動検証。`io.hatake` はドメイン所有証明が要るため不採用）。`java/build.gradle` 設定済み。※Java **ソースパッケージ**は `io.hatake.core` のまま（groupId とは別物）。
 - **共通**: 各 subdir から個別 publish。バージョンは当面各エディション自走 or 揃える方針を決める。pub.dev/npm は README を表示するが Maven 系は出ないので、Java は GitHub / Pages のドキュメントに誘導。
 
 ### ドキュメント配布 TODO

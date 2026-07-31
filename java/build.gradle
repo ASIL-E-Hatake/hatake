@@ -2,7 +2,7 @@ plugins {
     id 'java'
 }
 
-group = 'io.hatake'
+group = 'io.github.asil-e-hatake'
 version = '0.0.1'
 
 repositories {

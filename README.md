@@ -32,7 +32,7 @@ Business Definition (YAML / JSON / 各言語DSL)
 | [`typescript/`](typescript/README.md) | **TypeScript 版**（バックエンド：API ロジック） | ✅ scaffold（core + バリデーション + クエリ組み立て） |
 | [`docs/blog/`](docs/blog/introducing-hatake.md) | 紹介記事 | ✅ |
 
-全部の版が同じ `spec/` を共通ソースにして、同じ定義から各言語で画面を出す。パッケージ名も揃える（Dart `hatake_core` / npm `@hatake/core` / Maven `io.hatake:core` …）。どの言語から来ても「hatake ね」で通じるように。
+全部の版が同じ `spec/` を共通ソースにして、同じ定義から各言語で画面を出す。パッケージ名も揃える（Dart `hatake_core` / npm `@hatake/core` / Maven `io.github.asil-e-hatake:hatake-core` …）。どの言語から来ても「hatake ね」で通じるように。
 
 ## ざっとイメージ
 
