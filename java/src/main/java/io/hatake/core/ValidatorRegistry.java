@@ -19,12 +19,19 @@ public final class ValidatorRegistry {
     private final Map<String, Validator> validators = new HashMap<>();
 
     public ValidatorRegistry() {
-        validators.putAll(builtins());
+        this(null, new MessageResolver());
     }
 
     public ValidatorRegistry(Map<String, Validator> custom) {
-        validators.putAll(builtins());
-        validators.putAll(custom);
+        this(custom, new MessageResolver());
+    }
+
+    /** [custom] adds/overrides validators; [messages] localizes built-in messages. */
+    public ValidatorRegistry(Map<String, Validator> custom, MessageResolver messages) {
+        validators.putAll(builtins(messages));
+        if (custom != null) {
+            validators.putAll(custom);
+        }
     }
 
     public String run(Object value, ValidatorDefinition def) {
@@ -65,22 +72,26 @@ public final class ValidatorRegistry {
         return v instanceof Number n ? n.intValue() : null;
     }
 
-    private static Map<String, Validator> builtins() {
+    private static Map<String, Validator> builtins(MessageResolver msg) {
         Map<String, Validator> m = new HashMap<>();
-        m.put("required", (v, d) -> isEmpty(v) ? "必須項目です" : null);
+        m.put("required", (v, d) -> isEmpty(v) ? msg.resolve("required") : null);
         m.put("maxLength", (v, d) -> {
             Integer max = intParam(d);
             if (max == null || v == null) {
                 return null;
             }
-            return v.toString().length() > max ? max + "文字以内で入力してください" : null;
+            return v.toString().length() > max
+                    ? msg.resolve("maxLength", Map.of("value", max))
+                    : null;
         });
         m.put("minLength", (v, d) -> {
             Integer min = intParam(d);
             if (min == null || isEmpty(v)) {
                 return null;
             }
-            return v.toString().length() < min ? min + "文字以上で入力してください" : null;
+            return v.toString().length() < min
+                    ? msg.resolve("minLength", Map.of("value", min))
+                    : null;
         });
         m.put("min", (v, d) -> {
             Double min = toNum(d.params().get("value"));
@@ -88,7 +99,7 @@ public final class ValidatorRegistry {
             if (min == null || n == null) {
                 return null;
             }
-            return n < min ? formatNum(min) + "以上で入力してください" : null;
+            return n < min ? msg.resolve("min", Map.of("value", formatNum(min))) : null;
         });
         m.put("max", (v, d) -> {
             Double max = toNum(d.params().get("value"));
@@ -96,14 +107,14 @@ public final class ValidatorRegistry {
             if (max == null || n == null) {
                 return null;
             }
-            return n > max ? formatNum(max) + "以下で入力してください" : null;
+            return n > max ? msg.resolve("max", Map.of("value", formatNum(max))) : null;
         });
         m.put("pattern", (v, d) -> {
             Object src = d.params().get("pattern");
             if (!(src instanceof String p) || isEmpty(v)) {
                 return null;
             }
-            return Pattern.matches(p, v.toString()) ? null : "形式が正しくありません";
+            return Pattern.matches(p, v.toString()) ? null : msg.resolve("pattern");
         });
         m.put("email", (v, d) -> {
             if (isEmpty(v)) {
@@ -111,7 +122,7 @@ public final class ValidatorRegistry {
             }
             return Pattern.matches("^[\\w.+-]+@[\\w-]+\\.[\\w.-]+$", v.toString())
                     ? null
-                    : "メールアドレスの形式が正しくありません";
+                    : msg.resolve("email");
         });
         m.put("postalCode", (v, d) -> {
             if (isEmpty(v)) {
@@ -119,7 +130,7 @@ public final class ValidatorRegistry {
             }
             return Pattern.matches("^\\d{3}-?\\d{4}$", v.toString())
                     ? null
-                    : "郵便番号の形式が正しくありません";
+                    : msg.resolve("postalCode");
         });
         return m;
     }

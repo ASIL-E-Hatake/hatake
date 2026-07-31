@@ -4,6 +4,7 @@ export * from "./definition.js";
 export * from "./parse.js";
 export * from "./validators.js";
 export * from "./formValidator.js";
+export * from "./messageResolver.js";
 export * from "./query.js";
 export * from "./formatter.js";
 export * from "./converter.js";
