@@ -98,6 +98,54 @@ void main() {
     }
   });
 
+  group('conformance: era', () {
+    for (final raw in _load('era.json')) {
+      final c = raw as Map<String, dynamic>;
+      test('${c['date']}', () {
+        final ed = eraOf(c['date'] as String);
+        final e = c['expected'] as Map<String, dynamic>;
+        expect(ed?.name, e['name']);
+        expect(ed?.abbr, e['abbr']);
+        expect(ed?.year, e['year']);
+      });
+    }
+  });
+
+  group('conformance: invoice', () {
+    for (final raw in _load('invoice.json')) {
+      final c = raw as Map<String, dynamic>;
+      test('${(c['lines'] as List).length} lines'
+          '${c['included'] == true ? ' inc' : ''}', () {
+        final lines = [
+          for (final l in c['lines'] as List)
+            InvoiceLine(
+              amount: (l as Map)['amount'] as num,
+              rate: l['rate'] as num,
+            ),
+        ];
+        final inv = computeInvoice(
+          lines,
+          included: c['included'] == true,
+          rounding: c['rounding'] as String? ?? 'floor',
+        );
+        final e = c['expected'] as Map<String, dynamic>;
+        final eByRate = e['byRate'] as List;
+        expect(inv.byRate.length, eByRate.length);
+        for (var i = 0; i < eByRate.length; i++) {
+          final er = eByRate[i] as Map<String, dynamic>;
+          expect(inv.byRate[i].rate.toString(), er['rate'].toString());
+          expect(inv.byRate[i].net, er['net']);
+          expect(inv.byRate[i].tax, er['tax']);
+          expect(inv.byRate[i].gross, er['gross']);
+        }
+        final et = e['total'] as Map<String, dynamic>;
+        expect(inv.total.net, et['net']);
+        expect(inv.total.tax, et['tax']);
+        expect(inv.total.gross, et['gross']);
+      });
+    }
+  });
+
   group('conformance: business day', () {
     for (final raw in _load('businessday.json')) {
       final c = raw as Map<String, dynamic>;

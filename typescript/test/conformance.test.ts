@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   ageAt,
   buildQuery,
+  computeInvoice,
   computeTax,
   ConverterRegistry,
+  eraOf,
   fiscalHalf,
   fiscalQuarter,
   fiscalYear,
@@ -110,6 +112,41 @@ describe("conformance: age/tenure", () => {
     it(`${c.from} -> ${c.to}`, () => {
       expect(tenure(c.from, c.to)).toEqual({ years: c.years, months: c.months });
       expect(ageAt(c.from, c.to)).toBe(c.years);
+    });
+  }
+});
+
+describe("conformance: era", () => {
+  for (const c of load("era.json")) {
+    it(`${c.date}`, () => {
+      expect(eraOf(c.date)).toEqual({
+        name: c.expected.name,
+        abbr: c.expected.abbr,
+        year: c.expected.year,
+      });
+    });
+  }
+});
+
+describe("conformance: invoice", () => {
+  for (const c of load("invoice.json")) {
+    it(`${c.lines.length} lines${c.included ? " inc" : ""}`, () => {
+      const inv = computeInvoice(c.lines, {
+        included: c.included === true,
+        rounding: c.rounding ?? "floor",
+      });
+      expect(inv.byRate.length).toBe(c.expected.byRate.length);
+      c.expected.byRate.forEach((er: any, i: number) => {
+        expect(String(inv.byRate[i].rate)).toBe(String(er.rate));
+        expect(inv.byRate[i].net).toBe(er.net);
+        expect(inv.byRate[i].tax).toBe(er.tax);
+        expect(inv.byRate[i].gross).toBe(er.gross);
+      });
+      expect(inv.total).toEqual({
+        net: c.expected.total.net,
+        tax: c.expected.total.tax,
+        gross: c.expected.total.gross,
+      });
     });
   }
 });

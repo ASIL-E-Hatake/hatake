@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,16 +19,6 @@ public final class FormatterRegistry {
     public interface Formatter {
         String format(Object value, Map<String, Object> options);
     }
-
-    private record Era(String name, String abbr, int y, int m, int d) {
-    }
-
-    private static final List<Era> ERAS = List.of(
-            new Era("令和", "R", 2019, 5, 1),
-            new Era("平成", "H", 1989, 1, 8),
-            new Era("昭和", "S", 1926, 12, 25),
-            new Era("大正", "T", 1912, 7, 30),
-            new Era("明治", "M", 1868, 10, 23));
 
     private final Map<String, Formatter> formatters = new HashMap<>();
 
@@ -128,16 +117,6 @@ public final class FormatterRegistry {
                 .replace("d", String.valueOf(d));
     }
 
-    private static int cmp(int[] a, Era e) {
-        if (a[0] != e.y()) {
-            return a[0] - e.y();
-        }
-        if (a[1] != e.m()) {
-            return a[1] - e.m();
-        }
-        return a[2] - e.d();
-    }
-
     private static Map<String, Formatter> builtins() {
         Map<String, Formatter> m = new HashMap<>();
         m.put("currency", (value, o) -> {
@@ -178,22 +157,15 @@ public final class FormatterRegistry {
             if (d == null) {
                 return str(value);
             }
-            Era era = null;
-            for (Era e : ERAS) {
-                if (cmp(d, e) >= 0) {
-                    era = e;
-                    break;
-                }
-            }
-            if (era == null) {
+            Era.EraDate ed = Era.eraOfYmd(d[0], d[1], d[2]);
+            if (ed == null) {
                 return formatDatePattern(d[0], d[1], d[2], "yyyy/MM/dd");
             }
-            int year = d[0] - era.y() + 1;
             if ("short".equals(o.get("style"))) {
-                return era.abbr() + year + "/" + two(d[1]) + "/" + two(d[2]);
+                return ed.abbr() + ed.year() + "/" + two(d[1]) + "/" + two(d[2]);
             }
-            String y = year == 1 ? "元" : String.valueOf(year);
-            return era.name() + y + "年" + d[1] + "月" + d[2] + "日";
+            String y = ed.year() == 1 ? "元" : String.valueOf(ed.year());
+            return ed.name() + y + "年" + d[1] + "月" + d[2] + "日";
         });
         m.put("postal", (value, o) -> {
             String digits = str(value).replaceAll("[^0-9]", "");

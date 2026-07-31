@@ -14,6 +14,8 @@
 | `fiscal.json` | 年度/四半期/半期（3言語） | `{ date, startMonth?, expected: { year, quarter, half } }` |
 | `age.json` | 年齢/勤続 `ageAt`・`tenure`（3言語） | `{ from, to, years, months }` |
 | `businessday.json` | 営業日（3言語、祝日は注入） | `{ date, holidays, expected: { isBusinessDay, next, prev } }` |
+| `era.json` | 元号算出 `eraOf`（3言語） | `{ date, expected: { name, abbr, year } }` |
+| `invoice.json` | 税率別合計 `computeInvoice`（3言語） | `{ lines: [{amount, rate}], included?, rounding?, expected: { byRate: [{rate,net,tax,gross}], total } }`（byRate は税率昇順） |
 
 `value` の日付は ISO の日付文字列（`"2026-07-22"`）で渡す（各言語が同じ解釈をするため）。
 

@@ -1,0 +1,43 @@
+[
+  {
+    "lines": [
+      { "amount": 1000, "rate": 0.10 },
+      { "amount": 2000, "rate": 0.10 },
+      { "amount": 1000, "rate": 0.08 }
+    ],
+    "expected": {
+      "byRate": [
+        { "rate": 0.08, "net": 1000, "tax": 80, "gross": 1080 },
+        { "rate": 0.1, "net": 3000, "tax": 300, "gross": 3300 }
+      ],
+      "total": { "net": 4000, "tax": 380, "gross": 4380 }
+    }
+  },
+  {
+    "lines": [
+      { "amount": 105, "rate": 0.08 },
+      { "amount": 105, "rate": 0.08 },
+      { "amount": 105, "rate": 0.08 }
+    ],
+    "expected": {
+      "byRate": [
+        { "rate": 0.08, "net": 315, "tax": 25, "gross": 340 }
+      ],
+      "total": { "net": 315, "tax": 25, "gross": 340 }
+    }
+  },
+  {
+    "lines": [
+      { "amount": 1080, "rate": 0.08 },
+      { "amount": 1100, "rate": 0.10 }
+    ],
+    "included": true,
+    "expected": {
+      "byRate": [
+        { "rate": 0.08, "net": 1000, "tax": 80, "gross": 1080 },
+        { "rate": 0.1, "net": 1000, "tax": 100, "gross": 1100 }
+      ],
+      "total": { "net": 2000, "tax": 180, "gross": 2180 }
+    }
+  }
+]

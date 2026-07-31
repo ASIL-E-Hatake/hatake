@@ -147,6 +147,55 @@ class ConformanceTest {
     }
 
     @TestFactory
+    @SuppressWarnings("unchecked")
+    Stream<DynamicTest> era() throws IOException {
+        return load("era.json").stream().map(c -> DynamicTest.dynamicTest(
+                String.valueOf(c.get("date")),
+                () -> {
+                    Era.EraDate ed = Era.eraOf((String) c.get("date"));
+                    Map<String, Object> e = (Map<String, Object>) c.get("expected");
+                    assertEquals(e.get("name"), ed.name());
+                    assertEquals(e.get("abbr"), ed.abbr());
+                    assertEquals(((Number) e.get("year")).intValue(), ed.year());
+                }));
+    }
+
+    @TestFactory
+    @SuppressWarnings("unchecked")
+    Stream<DynamicTest> invoice() throws IOException {
+        return load("invoice.json").stream().map(c -> DynamicTest.dynamicTest(
+                ((List<?>) c.get("lines")).size() + " lines",
+                () -> {
+                    List<Map<String, Object>> rawLines = (List<Map<String, Object>>) c.get("lines");
+                    List<Tax.InvoiceLine> lines = rawLines.stream()
+                            .map(l -> new Tax.InvoiceLine(
+                                    ((Number) l.get("amount")).doubleValue(),
+                                    ((Number) l.get("rate")).doubleValue()))
+                            .toList();
+                    boolean included = Boolean.TRUE.equals(c.get("included"));
+                    String rounding = c.get("rounding") instanceof String s ? s : "floor";
+                    Tax.TaxInvoice inv = Tax.computeInvoice(lines, included, rounding);
+
+                    Map<String, Object> e = (Map<String, Object>) c.get("expected");
+                    List<Map<String, Object>> eByRate = (List<Map<String, Object>>) e.get("byRate");
+                    assertEquals(eByRate.size(), inv.byRate().size());
+                    for (int i = 0; i < eByRate.size(); i++) {
+                        Map<String, Object> er = eByRate.get(i);
+                        Tax.TaxRateSubtotal ar = inv.byRate().get(i);
+                        assertEquals(String.valueOf(((Number) er.get("rate")).doubleValue()),
+                                String.valueOf(ar.rate()));
+                        assertEquals(((Number) er.get("net")).longValue(), ar.net());
+                        assertEquals(((Number) er.get("tax")).longValue(), ar.tax());
+                        assertEquals(((Number) er.get("gross")).longValue(), ar.gross());
+                    }
+                    Map<String, Object> et = (Map<String, Object>) e.get("total");
+                    assertEquals(((Number) et.get("net")).longValue(), inv.total().net());
+                    assertEquals(((Number) et.get("tax")).longValue(), inv.total().tax());
+                    assertEquals(((Number) et.get("gross")).longValue(), inv.total().gross());
+                }));
+    }
+
+    @TestFactory
     Stream<DynamicTest> validators() throws IOException {
         ValidatorRegistry registry = new ValidatorRegistry();
         return load("validators.json").stream().map(c -> DynamicTest.dynamicTest(

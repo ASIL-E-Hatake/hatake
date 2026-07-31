@@ -108,10 +108,12 @@
 - **TS / Java 横展開 … ✅ 完了**: 3言語（Flutter/Dart・TypeScript・Java）で同名・同挙動の Formatter/Converter/postalCode バリデータを実装・テスト済み。
 - **入力 normalize の自動適用 … ✅ 完了**: Flutter は `CrudController.submitForm` が送信時に `FormNormalizer`（`normalize` チェーン）を自動適用してから validate/persist。TS は `normalizeRecord`、Java は `FormNormalizer`。
 - **3言語コンフォーマンス・スイート … ✅ 完了**（[spec/conformance](../spec/conformance/)）。formatters/converters/validators は3言語、queries は TS/Java。
-- **消費税 `computeTax` … ✅ 3言語実装＋conformance**（内税/外税・端数 floor/round/ceil）。`net/tax/gross` を返す。端数処理は事業者指定（ハードコードしない）。**税率別合計（適格請求書）は今後**。
+- **消費税 `computeTax` … ✅ 3言語実装＋conformance**（内税/外税・端数 floor/round/ceil）。`net/tax/gross` を返す。端数処理は事業者指定（ハードコードしない）。
+- **税率別合計 `computeInvoice` … ✅ 3言語＋conformance**（適格請求書向け）。明細を税率ごとに合算し、**税率ごとに一度だけ**端数処理（明細ごとに丸めない）。`byRate`（税率昇順）＋ `total` を返す。
 - **年度/四半期/半期 `fiscal*` … ✅ 3言語＋conformance**（開始月パラメータ）。
 - **年齢/勤続 `ageAt`・`tenure` … ✅ 3言語＋conformance**（満年・年月）。
 - **営業日 `isBusinessDay`/`nextBusinessDay`/`prevBusinessDay` … ✅ 3言語＋conformance**（土日＋**注入した祝日集合**。祝日カレンダーは外部データなので引数で渡す）。
-- **未**: 元号算出 `eraOf`（wareki と表を共有する小リファクタ要）、消費税の税率別合計、日付範囲バリデータ等。
+- **元号算出 `eraOf` … ✅ 3言語＋conformance**（改元境界日で切替、明治より前は null）。元号テーブルは `wareki` フォーマッタと共有（単一の真実）。将来の改元はこの表を差し替えれば対応。
+- **未**: 日付範囲バリデータ、法人番号/インボイス番号バリデータ、かな↔カナ以外の converter 追加分 等。
 
 全体の進め方は [開発ロードマップ](roadmap.ja.md) を参照。
