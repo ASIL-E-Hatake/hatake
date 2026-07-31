@@ -12,3 +12,4 @@ export * from "./tax.js";
 export * from "./fiscal.js";
 export * from "./age.js";
 export * from "./businessDay.js";
+export * from "./era.js";

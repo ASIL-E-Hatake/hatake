@@ -57,3 +57,95 @@ TaxBreakdown computeTax(
   final tax = _applyRounding(a * r, rounding);
   return TaxBreakdown(net: net, tax: tax, gross: net + tax);
 }
+
+/// 請求明細の1行（金額 [amount] と 税率 [rate]）。
+class InvoiceLine {
+  /// 金額（[TaxBreakdown] と同じく `included` の解釈に従う）。
+  final num amount;
+
+  /// 税率（分数。10% = `0.1`、軽減 8% = `0.08`）。
+  final num rate;
+
+  const InvoiceLine({required this.amount, required this.rate});
+}
+
+/// 税率ごとの小計（[computeInvoice] の内訳の1件）。
+class TaxRateSubtotal extends Equatable {
+  /// 税率。
+  final num rate;
+
+  /// 税抜合計。
+  final int net;
+
+  /// 税額合計。
+  final int tax;
+
+  /// 税込合計。
+  final int gross;
+
+  const TaxRateSubtotal({
+    required this.rate,
+    required this.net,
+    required this.tax,
+    required this.gross,
+  });
+
+  @override
+  List<Object?> get props => [rate, net, tax, gross];
+
+  @override
+  String toString() =>
+      'TaxRateSubtotal(rate: $rate, net: $net, tax: $tax, gross: $gross)';
+}
+
+/// 税率別合計（適格請求書向け）。[byRate] は税率の昇順、[total] は全体合計。
+class TaxInvoice extends Equatable {
+  /// 税率ごとの小計（税率の昇順）。
+  final List<TaxRateSubtotal> byRate;
+
+  /// 全体合計。
+  final TaxBreakdown total;
+
+  const TaxInvoice({required this.byRate, required this.total});
+
+  @override
+  List<Object?> get props => [byRate, total];
+
+  @override
+  String toString() => 'TaxInvoice(byRate: $byRate, total: $total)';
+}
+
+/// 適格請求書（インボイス）向けに、明細を税率ごとに合計して内訳を返す。
+///
+/// **税率ごとに一度だけ**端数処理する（明細ごとに丸めない）のが適格請求書の
+/// ルール。同一税率の金額を先に合算してから [computeTax] を1回適用する。
+///
+/// - [lines] … 明細（各行 [InvoiceLine]）。
+/// - [included] … 金額が税込かどうか（全行に適用）。
+/// - [rounding] … 端数処理。`floor`(既定) / `round` / `ceil`。
+TaxInvoice computeInvoice(
+  List<InvoiceLine> lines, {
+  bool included = false,
+  String rounding = 'floor',
+}) {
+  final sums = <num, num>{};
+  for (final l in lines) {
+    sums[l.rate] = (sums[l.rate] ?? 0) + l.amount;
+  }
+  final rates = sums.keys.toList()..sort((a, b) => a.compareTo(b));
+  final byRate = <TaxRateSubtotal>[];
+  var totalNet = 0, totalTax = 0, totalGross = 0;
+  for (final rate in rates) {
+    final b = computeTax(sums[rate]!,
+        rate: rate, included: included, rounding: rounding);
+    byRate.add(TaxRateSubtotal(
+        rate: rate, net: b.net, tax: b.tax, gross: b.gross));
+    totalNet += b.net;
+    totalTax += b.tax;
+    totalGross += b.gross;
+  }
+  return TaxInvoice(
+    byRate: byRate,
+    total: TaxBreakdown(net: totalNet, tax: totalTax, gross: totalGross),
+  );
+}

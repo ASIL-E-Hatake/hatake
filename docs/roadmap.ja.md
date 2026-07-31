@@ -101,7 +101,7 @@
 ## フェーズ感（ざっくり優先度）
 
 - **近い（P1）**: ~~Formatter/Converter を TS/Java へ横展開~~ ✅、~~コンフォーマンス・スイートの器~~ ✅、~~normalize 入力パイプの配線~~ ✅（Flutter は送信時に自動適用 / TS・Java は `normalizeRecord`・`FormNormalizer`）、~~QuerySpec の fixture 化~~ ✅ → 次は **utils P2**（消費税・年度・営業日）や **新ページ種別**、**DTO/レスポンス生成**あたり
-- **中（P2）**: ~~DetailPage / MasterPage~~ ✅、~~消費税・年度/四半期・年齢/勤続・営業日（utils P2）~~ ✅（3言語＋conformance）→ 残り：条件表示・計算項目、i18n、ORM アダプタ1個目、元号算出/税率別合計（utils 小follow-up）
+- **中（P2）**: ~~DetailPage / MasterPage~~ ✅、~~消費税・年度/四半期・年齢/勤続・営業日（utils P2）~~ ✅（3言語＋conformance）、~~元号算出/税率別合計（utils 小follow-up）~~ ✅（`eraOf` / `computeInvoice`、3言語＋conformance）→ 残り：条件表示・計算項目、i18n、ORM アダプタ1個目
 - **遠い（P3）**: DashboardPage、権限制御、Python/Rust エディション、帳票・全銀など重いやつ
 
 ## 依頼の仕方（メモ）

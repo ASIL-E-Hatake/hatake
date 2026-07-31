@@ -101,6 +101,13 @@ FormValidator().validate(form, record);                          // ValidationRe
 computeTax(1000, rate: 0.10);                     // net:1000 tax:100 gross:1100（外税）
 computeTax(1080, rate: 0.08, included: true);     // net:1000 tax:80  gross:1080（内税）
 computeTax(155,  rate: 0.10, rounding: 'round');  // tax:16（15.5→四捨五入）
+// 税率別合計（適格請求書。税率ごとに1回だけ丸める）
+computeInvoice([
+  InvoiceLine(amount: 3000, rate: 0.10),
+  InvoiceLine(amount: 1000, rate: 0.08),
+]); // byRate:[8%→net1000/tax80, 10%→net3000/tax300], total:net4000/tax380/gross4380
+// 元号算出（改元境界日で切替、明治より前は null）
+eraOf('2026-07-31');                               // EraDate(令和, R, 8)
 // 年度・四半期・半期（開始月は startMonth、既定4月）
 fiscalYear('2026-03-31');                          // 2025
 fiscalQuarter('2026-07-01');                       // 2
@@ -114,4 +121,4 @@ nextBusinessDay('2024-01-05', holidays: {'2024-01-08'}); // 2024-01-09
 拡張したいときは各レジストリに `register(name, fn)`、または `MaterialRenderer(fieldBuilders: {...})`。詳細は [Plugin ガイド](../flutter/docs/plugins.ja.md)。
 
 ## 他言語（バックエンド）
-TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `QueryBuilder` / `computeTax` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。
+TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `QueryBuilder` / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。

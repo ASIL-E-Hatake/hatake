@@ -1,3 +1,5 @@
+import '../domain/era.dart';
+
 /// A display formatter: turns a value into a display string using [options].
 typedef Formatter = String Function(Object? value, Map<String, Object?> options);
 
@@ -39,26 +41,6 @@ String _formatDatePattern(DateTime d, String pattern) {
       .replaceAll('d', d.day.toString());
 }
 
-/// A Japanese era for wareki formatting. The table is built-in for now; a
-/// future change may make it injectable to handle new eras (改元).
-class _Era {
-  final String name;
-  final String abbr;
-  final int year;
-  final int month;
-  final int day;
-  const _Era(this.name, this.abbr, this.year, this.month, this.day);
-  DateTime get start => DateTime(year, month, day);
-}
-
-const List<_Era> _eras = [
-  _Era('令和', 'R', 2019, 5, 1),
-  _Era('平成', 'H', 1989, 1, 8),
-  _Era('昭和', 'S', 1926, 12, 25),
-  _Era('大正', 'T', 1912, 7, 30),
-  _Era('明治', 'M', 1868, 10, 23),
-];
-
 /// Built-in formatters. Names are shared across language editions.
 final Map<String, Formatter> builtinFormatters = {
   // 金額: 1,234,567 / △1,234 / ▲1,234 / (1,234) / ¥1,234
@@ -96,24 +78,17 @@ final Map<String, Formatter> builtinFormatters = {
     return _formatDatePattern(d, o['pattern'] as String? ?? 'yyyy/MM/dd');
   },
 
-  // 和暦: 令和8年7月22日 (long) / R8/07/22 (short)
+  // 和暦: 令和8年7月22日 (long) / R8/07/22 (short)。元号は eraOf と共有。
   'wareki': (value, o) {
     final d = _toDate(value);
     if (d == null) return value?.toString() ?? '';
-    _Era? era;
-    for (final e in _eras) {
-      if (!d.isBefore(e.start)) {
-        era = e;
-        break;
-      }
-    }
-    if (era == null) return _formatDatePattern(d, 'yyyy/MM/dd');
-    final year = d.year - era.year + 1;
+    final ed = eraOf(d);
+    if (ed == null) return _formatDatePattern(d, 'yyyy/MM/dd');
     if ((o['style'] as String? ?? 'long') == 'short') {
-      return '${era.abbr}$year/${_two(d.month)}/${_two(d.day)}';
+      return '${ed.abbr}${ed.year}/${_two(d.month)}/${_two(d.day)}';
     }
-    final y = year == 1 ? '元' : year.toString();
-    return '${era.name}$y年${d.month}月${d.day}日';
+    final y = ed.year == 1 ? '元' : ed.year.toString();
+    return '${ed.name}$y年${d.month}月${d.day}日';
   },
 
   // 郵便番号: 1234567 → 123-4567

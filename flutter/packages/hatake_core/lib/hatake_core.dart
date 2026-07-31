@@ -50,3 +50,4 @@ export 'src/domain/tax.dart';
 export 'src/domain/fiscal.dart';
 export 'src/domain/age.dart';
 export 'src/domain/business_day.dart';
+export 'src/domain/era.dart';

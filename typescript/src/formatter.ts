@@ -1,3 +1,5 @@
+import { eraOfYmd } from "./era.js";
+
 /** A display formatter: turns a value into a display string using options. */
 export type Formatter = (
   value: unknown,
@@ -56,30 +58,6 @@ function formatDatePattern(
     .replace(/d/g, String(d.d));
 }
 
-interface Era {
-  name: string;
-  abbr: string;
-  y: number;
-  m: number;
-  d: number;
-}
-
-// Same era table as the Dart/Java editions.
-const ERAS: Era[] = [
-  { name: "令和", abbr: "R", y: 2019, m: 5, d: 1 },
-  { name: "平成", abbr: "H", y: 1989, m: 1, d: 8 },
-  { name: "昭和", abbr: "S", y: 1926, m: 12, d: 25 },
-  { name: "大正", abbr: "T", y: 1912, m: 7, d: 30 },
-  { name: "明治", abbr: "M", y: 1868, m: 10, d: 23 },
-];
-
-function cmp(
-  a: { y: number; m: number; d: number },
-  b: { y: number; m: number; d: number },
-): number {
-  return a.y - b.y || a.m - b.m || a.d - b.d;
-}
-
 const str = (v: unknown): string => (v == null ? "" : String(v));
 
 /** Built-in formatters. Names are shared across language editions. */
@@ -123,13 +101,12 @@ export const builtinFormatters: Record<string, Formatter> = {
   wareki: (value, o) => {
     const d = ymd(value);
     if (d === null) return str(value);
-    const era = ERAS.find((e) => cmp(d, e) >= 0);
-    if (!era) return formatDatePattern(d, "yyyy/MM/dd");
-    const year = d.y - era.y + 1;
+    const ed = eraOfYmd(d);
+    if (!ed) return formatDatePattern(d, "yyyy/MM/dd");
     if ((o.style as string) === "short") {
-      return `${era.abbr}${year}/${two(d.m)}/${two(d.d)}`;
+      return `${ed.abbr}${ed.year}/${two(d.m)}/${two(d.d)}`;
     }
-    return `${era.name}${year === 1 ? "元" : year}年${d.m}月${d.d}日`;
+    return `${ed.name}${ed.year === 1 ? "元" : ed.year}年${d.m}月${d.d}日`;
   },
 
   postal: (value, o) => {

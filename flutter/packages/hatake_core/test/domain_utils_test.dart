@@ -33,6 +33,45 @@ void main() {
     });
   });
 
+  group('era (元号算出)', () {
+    test('境界日で切り替わる', () {
+      expect(eraOf('2019-05-01'), const EraDate(name: '令和', abbr: 'R', year: 1));
+      expect(eraOf('2019-04-30'),
+          const EraDate(name: '平成', abbr: 'H', year: 31)); // 改元前日
+      expect(eraOf('2026-07-31'), const EraDate(name: '令和', abbr: 'R', year: 8));
+    });
+    test('明治より前は null', () {
+      expect(eraOf('1868-10-22'), isNull);
+    });
+    test('DateTime も受け取れる', () {
+      expect(eraOf(DateTime(1989, 1, 8)),
+          const EraDate(name: '平成', abbr: 'H', year: 1));
+    });
+  });
+
+  group('invoice (税率別合計)', () {
+    test('税率ごとに合計してから丸める（明細ごとではない）', () {
+      // 105×3 を先に合算(315)して 8% → floor(25.2)=25。明細ごとなら floor(8.4)×3=24。
+      final inv = computeInvoice(const [
+        InvoiceLine(amount: 105, rate: 0.08),
+        InvoiceLine(amount: 105, rate: 0.08),
+        InvoiceLine(amount: 105, rate: 0.08),
+      ]);
+      expect(inv.byRate.single,
+          const TaxRateSubtotal(rate: 0.08, net: 315, tax: 25, gross: 340));
+      expect(inv.total, const TaxBreakdown(net: 315, tax: 25, gross: 340));
+    });
+    test('複数税率は昇順で並ぶ', () {
+      final inv = computeInvoice(const [
+        InvoiceLine(amount: 1000, rate: 0.10),
+        InvoiceLine(amount: 1000, rate: 0.08),
+        InvoiceLine(amount: 2000, rate: 0.10),
+      ]);
+      expect(inv.byRate.map((r) => r.rate).toList(), [0.08, 0.10]);
+      expect(inv.total, const TaxBreakdown(net: 4000, tax: 380, gross: 4380));
+    });
+  });
+
   group('business day (2024-01-01 is Monday)', () {
     test('isBusinessDay', () {
       expect(isBusinessDay('2024-01-05'), isTrue); // 金
