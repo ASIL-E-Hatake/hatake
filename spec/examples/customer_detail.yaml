@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json
+# hatake — DetailPage example: 顧客詳細 (Customer detail, read-only)
+dsl_version: "1.0"
+
+page:
+  type: detail
+  id: customer_detail
+  title: 顧客詳細
+  repository: customerRepository
+  key: id
+
+  form:
+    sections:
+      - title: 基本情報
+        fields:
+          - { field: code,      label: コード }
+          - { field: name,      label: 顧客名 }
+          - { field: status,    label: ステータス }
+          - { field: sales,     label: 売上,   format: currency, config: { symbol: "¥" } }
+          - { field: updatedAt, label: 更新日, format: wareki }

@@ -45,6 +45,9 @@ YAML Language Server 系のエディタなら、ファイル先頭にこの一�
 |---|---|---|---|
 | `crud` | 登録/参照/更新/削除 | ✅ | search + table + form + 行 edit/delete |
 | `search` | 読み取り専用の照会/一覧 | — | search + table + プラグインアクション（ページ・行） |
+| `master` | マスタメンテ | ✅ | `crud` と同じ構造 |
+| `detail` | 読み取り専用の単一レコード | — | form のフィールドを表示。対象レコードは実行時に渡す |
+| `form` | 単票の作成/編集フォーム | ✅ | table 無し。record key を渡せば編集、無ければ新規作成 |
 
 `search` ページは `crud` と同じ `search` / `table` / `actions` を持つけど `form` は無い。
 `rowActions` はページレベルの `plugin` アクション（例: `detail`）を指して、対象行を context に

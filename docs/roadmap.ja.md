@@ -17,11 +17,11 @@
 |---|---|---|---|
 | ページ種別 | CrudPage | ✅ Flutter | |
 | | SearchPage（照会） | ✅ Flutter | |
-| | DetailPage（詳細・読取） | ⏳ | SearchPage の1件版 |
-| | MasterPage（マスタメンテ） | ⏳ | Crud の軽量版 or プリセット |
+| | DetailPage（詳細・読取） | ✅ Flutter | 単一レコードを読み取り表示（`DetailController`＋`format`）。record は実行時に渡す |
+| | MasterPage（マスタメンテ） | ✅ Flutter | Crud と同構造。`CrudLike` で Crud と描画/コントローラを共用 |
 | | DashboardPage | ⏳ | カード/集計/グラフ。設計重め |
 | | WizardPage（ステップ入力） | ⏳ | |
-| | FormPage（単票入力） | ⏳ | Crud からフォームだけ切り出し |
+| | FormPage（単票入力） | ✅ Flutter | 単票の作成/編集。フォーム描画を `_HatakeFormFields` に共通化しダイアログと共用。record key で編集/新規を切替 |
 | 入出力 | Formatter（金額/和暦…） | 🚧 P0+P1 Flutter | [utils](roadmap-utils.ja.md) |
 | | Converter（全半角…） | 🚧 P0+P1 Flutter | 同上。入力normalizeパイプ配線は未 |
 | | Validator 拡充 | 🚧 一部 | 郵便番号済。法人番号/相関等は未 |

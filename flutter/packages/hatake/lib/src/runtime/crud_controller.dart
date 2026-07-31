@@ -5,11 +5,11 @@ import 'list_controller.dart';
 /// Which surface the CRUD page is currently showing.
 enum CrudMode { list, create, edit }
 
-/// Runtime for a [CrudPageDefinition]. Extends [ListController] with the
-/// create/edit form workflow. Renderers read its state and call its methods —
-/// they hold no business logic and never touch a repository directly.
+/// Runtime for a [CrudLike] page (crud, master). Extends [ListController] with
+/// the create/edit form workflow. Renderers read its state and call its
+/// methods — they hold no business logic and never touch a repository directly.
 class CrudController extends ListController {
-  final CrudPageDefinition definition;
+  final CrudLike definition;
   final FormValidator _formValidator;
   final FormNormalizer _normalizer;
 

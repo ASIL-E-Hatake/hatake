@@ -4,11 +4,11 @@ import 'package:hatake_core/hatake_core.dart';
 import '../runtime/crud_controller.dart';
 import 'hatake_scope.dart';
 
-/// Renders a [CrudPageDefinition]: resolves its repository from the enclosing
-/// [HatakeScope], drives a [CrudController], and delegates all presentation to
-/// the scope's [Renderer].
+/// Renders a [CrudLike] page (crud, master): resolves its repository from the
+/// enclosing [HatakeScope], drives a [CrudController], and delegates all
+/// presentation to the scope's [Renderer].
 class HatakeCrudView extends StatefulWidget {
-  final CrudPageDefinition definition;
+  final CrudLike definition;
 
   const HatakeCrudView({super.key, required this.definition});
 

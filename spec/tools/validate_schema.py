@@ -17,6 +17,9 @@ SCHEMA_PATH = SPEC / "hatake-page.schema.json"
 DEFAULT_DOCS = [
     SPEC / "examples" / "customer_master.yaml",
     SPEC / "examples" / "product_search.yaml",
+    SPEC / "examples" / "dept_master.yaml",
+    SPEC / "examples" / "customer_detail.yaml",
+    SPEC / "examples" / "customer_form.yaml",
 ]
 
 

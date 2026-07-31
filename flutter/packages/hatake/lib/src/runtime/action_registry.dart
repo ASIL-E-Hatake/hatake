@@ -1,18 +1,16 @@
 import 'package:flutter/widgets.dart';
 import 'package:hatake_core/hatake_core.dart';
 
-import 'list_controller.dart';
-
 /// Context handed to a plugin action handler when it runs.
 class ActionContext {
   /// A build context valid at the moment the action fired (for dialogs,
   /// snackbars, navigation, ...).
   final BuildContext buildContext;
 
-  /// The controller of the page that triggered the action. Handlers can call
-  /// e.g. [ListController.load] to refresh after doing their work. For CRUD
-  /// pages this is a `CrudController` (cast if you need its form methods).
-  final ListController controller;
+  /// The controller of the page that triggered the action (a `CrudController`,
+  /// `ListController`, or `DetailController` — all are [ChangeNotifier]s).
+  /// Cast to the concrete type if you need its methods (e.g. `load()`).
+  final ChangeNotifier controller;
 
   /// The action definition that fired.
   final ActionDefinition action;

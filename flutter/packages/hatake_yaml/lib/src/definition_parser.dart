@@ -18,12 +18,72 @@ PageDefinition parsePageMap(Map<String, Object?> root) {
       return _parseCrud(page, dslVersion);
     case 'search':
       return _parseSearchPage(page, dslVersion);
+    case 'master':
+      return _parseMasterPage(page, dslVersion);
+    case 'detail':
+      return _parseDetailPage(page, dslVersion);
+    case 'form':
+      return _parseFormPage(page, dslVersion);
     default:
       throw DefinitionParseException(
-        'Unsupported page type "$type" (supported: crud, search)',
+        'Unsupported page type "$type" '
+        '(supported: crud, search, master, detail, form)',
         path: 'page.type',
       );
   }
+}
+
+FormPageDefinition _parseFormPage(Map<String, Object?> m, String? dslVersion) {
+  return FormPageDefinition(
+    id: m.reqString('id', at: 'page.id'),
+    title: m.reqString('title', at: 'page.title'),
+    dslVersion: dslVersion ?? kDslVersion,
+    repository: m.reqString('repository', at: 'page.repository'),
+    keyField: m.optString('key') ?? 'id',
+    form: _parseForm(m.optMap('form')),
+    actions: [
+      for (var i = 0; i < m.optList('actions').length; i++)
+        _parseAction(_asMap(m.optList('actions')[i], 'page.actions[$i]')),
+    ],
+  );
+}
+
+MasterPageDefinition _parseMasterPage(
+  Map<String, Object?> m,
+  String? dslVersion,
+) {
+  return MasterPageDefinition(
+    id: m.reqString('id', at: 'page.id'),
+    title: m.reqString('title', at: 'page.title'),
+    dslVersion: dslVersion ?? kDslVersion,
+    repository: m.reqString('repository', at: 'page.repository'),
+    keyField: m.optString('key') ?? 'id',
+    search: _parseSearch(m.optMap('search')),
+    table: _parseTable(m.optMap('table')),
+    form: _parseForm(m.optMap('form')),
+    actions: [
+      for (var i = 0; i < m.optList('actions').length; i++)
+        _parseAction(_asMap(m.optList('actions')[i], 'page.actions[$i]')),
+    ],
+  );
+}
+
+DetailPageDefinition _parseDetailPage(
+  Map<String, Object?> m,
+  String? dslVersion,
+) {
+  return DetailPageDefinition(
+    id: m.reqString('id', at: 'page.id'),
+    title: m.reqString('title', at: 'page.title'),
+    dslVersion: dslVersion ?? kDslVersion,
+    repository: m.reqString('repository', at: 'page.repository'),
+    keyField: m.optString('key') ?? 'id',
+    form: _parseForm(m.optMap('form')),
+    actions: [
+      for (var i = 0; i < m.optList('actions').length; i++)
+        _parseAction(_asMap(m.optList('actions')[i], 'page.actions[$i]')),
+    ],
+  );
 }
 
 SearchPageDefinition _parseSearchPage(

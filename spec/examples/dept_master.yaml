@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json
+# hatake — MasterPage example: 部門マスタ (Department master)
+dsl_version: "1.0"
+
+page:
+  type: master
+  id: dept_master
+  title: 部門マスタ
+  repository: deptRepository
+  key: code
+
+  table:
+    rowActions: [edit, delete]
+    columns:
+      - { field: code, label: 部門コード, sortable: true }
+      - { field: name, label: 部門名 }
+
+  form:
+    sections:
+      - title: 基本情報
+        fields:
+          - { field: code, label: 部門コード, type: text, required: true }
+          - { field: name, label: 部門名,     type: text, required: true }
+
+  actions:
+    - { id: create, type: create, label: 新規登録 }

@@ -44,7 +44,7 @@ class MaterialRenderer implements Renderer {
   @override
   Widget buildCrudPage(
     BuildContext context,
-    CrudPageDefinition definition,
+    CrudLike definition,
     CrudController controller,
   ) {
     return _MaterialCrudPage(
@@ -67,10 +67,36 @@ class MaterialRenderer implements Renderer {
       formatters: formatters,
     );
   }
+
+  @override
+  Widget buildDetailPage(
+    BuildContext context,
+    DetailPageDefinition definition,
+    DetailController controller,
+  ) {
+    return _MaterialDetailPage(
+      definition: definition,
+      controller: controller,
+      formatters: formatters ?? FormatterRegistry(),
+    );
+  }
+
+  @override
+  Widget buildFormPage(
+    BuildContext context,
+    FormPageDefinition definition,
+    FormController controller,
+  ) {
+    return _MaterialFormPage(
+      definition: definition,
+      controller: controller,
+      fieldBuilders: fieldBuilders,
+    );
+  }
 }
 
 class _MaterialCrudPage extends StatefulWidget {
-  final CrudPageDefinition definition;
+  final CrudLike definition;
   final CrudController controller;
   final Map<String, MaterialFieldBuilder> fieldBuilders;
   final FormatterRegistry? formatters;
@@ -92,7 +118,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
   late final FormatterRegistry _formatters =
       widget.formatters ?? FormatterRegistry();
 
-  CrudPageDefinition get _def => widget.definition;
+  CrudLike get _def => widget.definition;
   CrudController get _controller => widget.controller;
 
   @override
@@ -383,27 +409,30 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
 }
 
 /// The create/edit form, shown as a Material dialog.
-class _FormDialog extends StatefulWidget {
-  final CrudPageDefinition definition;
-  final CrudController controller;
+/// Shared, reusable form body: renders a form's fields (same field types and
+/// custom `fieldBuilders` as everywhere) and collects their current values.
+/// Used by both the CRUD edit dialog and the standalone form page.
+class _HatakeFormFields extends StatefulWidget {
+  final FormDefinition form;
+  final DataRecord initial;
+  final ValidationResult validation;
   final Map<String, MaterialFieldBuilder> fieldBuilders;
 
-  const _FormDialog({
-    required this.definition,
-    required this.controller,
+  const _HatakeFormFields({
+    super.key,
+    required this.form,
+    required this.initial,
+    required this.validation,
     required this.fieldBuilders,
   });
 
   @override
-  State<_FormDialog> createState() => _FormDialogState();
+  State<_HatakeFormFields> createState() => _HatakeFormFieldsState();
 }
 
-class _FormDialogState extends State<_FormDialog> {
+class _HatakeFormFieldsState extends State<_HatakeFormFields> {
   final Map<String, TextEditingController> _text = {};
   final Map<String, Object?> _values = {};
-
-  CrudPageDefinition get _def => widget.definition;
-  CrudController get _controller => widget.controller;
 
   bool _isTextField(String type) =>
       type == FieldTypes.text ||
@@ -414,9 +443,9 @@ class _FormDialogState extends State<_FormDialog> {
   @override
   void initState() {
     super.initState();
-    _values.addAll(_controller.draft);
-    for (final field in _def.form.fields) {
-      final initial = _controller.draft[field.field];
+    _values.addAll(widget.initial);
+    for (final field in widget.form.fields) {
+      final initial = widget.initial[field.field];
       if (_isTextField(field.type)) {
         _text[field.field] =
             TextEditingController(text: initial?.toString() ?? '');
@@ -434,9 +463,10 @@ class _FormDialogState extends State<_FormDialog> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  /// Gathers the current field values into a record.
+  DataRecord collect() {
     final values = <String, Object?>{..._values};
-    for (final field in _def.form.fields) {
+    for (final field in widget.form.fields) {
       final controller = _text[field.field];
       if (controller == null) continue;
       final text = controller.text.trim();
@@ -446,15 +476,7 @@ class _FormDialogState extends State<_FormDialog> {
         values[field.field] = text;
       }
     }
-    await _controller.submitForm(values);
-    if (_controller.mode == CrudMode.list && mounted) {
-      Navigator.of(context).pop();
-    }
-  }
-
-  void _cancel() {
-    _controller.cancelForm();
-    Navigator.of(context).pop();
+    return values;
   }
 
   static String _formatDate(DateTime d) {
@@ -477,45 +499,12 @@ class _FormDialogState extends State<_FormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isCreate = _controller.mode == CrudMode.create;
-    return ListenableBuilder(
-      listenable: _controller,
-      builder: (context, _) {
-        return AlertDialog(
-          title: Text(isCreate ? '新規登録' : '編集'),
-          content: SizedBox(
-            width: 420,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (final section in _def.form.sections)
-                    ..._buildSection(section),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              key: const Key('hatake.form.cancel'),
-              onPressed: _controller.submitting ? null : _cancel,
-              child: const Text('キャンセル'),
-            ),
-            FilledButton(
-              key: const Key('hatake.form.save'),
-              onPressed: _controller.submitting ? null : _submit,
-              child: _controller.submitting
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('保存'),
-            ),
-          ],
-        );
-      },
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final section in widget.form.sections) ..._buildSection(section),
+      ],
     );
   }
 
@@ -534,7 +523,7 @@ class _FormDialogState extends State<_FormDialog> {
   }
 
   Widget _buildField(FieldDefinition field) {
-    final errors = _controller.validation.forField(field.field);
+    final errors = widget.validation.forField(field.field);
     final errorText = errors.isEmpty ? null : errors.first.message;
     final label = field.required ? '${field.label} *' : field.label;
 
@@ -683,6 +672,83 @@ class _FormDialogState extends State<_FormDialog> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: input,
+    );
+  }
+}
+
+/// The create/edit form shown as a dialog (used by CRUD/master pages).
+class _FormDialog extends StatefulWidget {
+  final CrudLike definition;
+  final CrudController controller;
+  final Map<String, MaterialFieldBuilder> fieldBuilders;
+
+  const _FormDialog({
+    required this.definition,
+    required this.controller,
+    required this.fieldBuilders,
+  });
+
+  @override
+  State<_FormDialog> createState() => _FormDialogState();
+}
+
+class _FormDialogState extends State<_FormDialog> {
+  final GlobalKey<_HatakeFormFieldsState> _fields = GlobalKey();
+
+  Future<void> _submit() async {
+    final values = _fields.currentState!.collect();
+    await widget.controller.submitForm(values);
+    if (widget.controller.mode == CrudMode.list && mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  void _cancel() {
+    widget.controller.cancelForm();
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = widget.controller;
+    final isCreate = controller.mode == CrudMode.create;
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        return AlertDialog(
+          title: Text(isCreate ? '新規登録' : '編集'),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: _HatakeFormFields(
+                key: _fields,
+                form: widget.definition.form,
+                initial: controller.draft,
+                validation: controller.validation,
+                fieldBuilders: widget.fieldBuilders,
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              key: const Key('hatake.form.cancel'),
+              onPressed: controller.submitting ? null : _cancel,
+              child: const Text('キャンセル'),
+            ),
+            FilledButton(
+              key: const Key('hatake.form.save'),
+              onPressed: controller.submitting ? null : _submit,
+              child: controller.submitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('保存'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -966,6 +1032,212 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
               page < pageCount - 1 ? () => _controller.setPage(page + 1) : null,
         ),
       ],
+    );
+  }
+}
+
+/// Read-only single-record detail page renderer.
+class _MaterialDetailPage extends StatelessWidget {
+  final DetailPageDefinition definition;
+  final DetailController controller;
+  final FormatterRegistry formatters;
+
+  const _MaterialDetailPage({
+    required this.definition,
+    required this.controller,
+    required this.formatters,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child:
+                    Text(definition.title, style: theme.textTheme.headlineSmall),
+              ),
+              for (final action in definition.actions) ...[
+                FilledButton(
+                  key: Key('hatake.action.${action.id}'),
+                  onPressed: () => _runAction(context, action),
+                  child: Text(action.label),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Expanded(child: SingleChildScrollView(child: _buildBody(context))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (controller.loading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    if (controller.error != null) {
+      return Center(
+        child: Text(
+          'エラー: ${controller.error}',
+          key: const Key('hatake.error'),
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      );
+    }
+    final record = controller.record;
+    if (record == null) {
+      return const Center(child: Text('データがありません', key: Key('hatake.empty')));
+    }
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final section in definition.form.sections) ...[
+          if (section.title != null && section.title!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 4),
+              child: Text(section.title!, style: theme.textTheme.titleSmall),
+            ),
+          for (final field in section.fields)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 160,
+                    child: Text(
+                      field.label,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: theme.colorScheme.outline),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      _display(field, record[field.field]),
+                      key: Key('hatake.detail.${field.field}'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  String _display(FieldDefinition field, Object? value) {
+    if (field.format != null) {
+      return formatters.format(field.format!, value, field.config);
+    }
+    return value?.toString() ?? '';
+  }
+
+  Future<void> _runAction(BuildContext context, ActionDefinition action) async {
+    final registry = HatakeScope.of(context).actions;
+    final handler =
+        action.plugin == null ? null : registry.resolve(action.plugin!);
+    if (handler == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('アクション "${action.id}" のハンドラが未登録です')),
+      );
+      return;
+    }
+    await handler(ActionContext(
+      buildContext: context,
+      controller: controller,
+      action: action,
+      record: controller.record,
+    ));
+  }
+}
+
+/// Standalone create/edit form page renderer (inline form, no dialog).
+class _MaterialFormPage extends StatefulWidget {
+  final FormPageDefinition definition;
+  final FormController controller;
+  final Map<String, MaterialFieldBuilder> fieldBuilders;
+
+  const _MaterialFormPage({
+    required this.definition,
+    required this.controller,
+    required this.fieldBuilders,
+  });
+
+  @override
+  State<_MaterialFormPage> createState() => _MaterialFormPageState();
+}
+
+class _MaterialFormPageState extends State<_MaterialFormPage> {
+  final GlobalKey<_HatakeFormFieldsState> _fields = GlobalKey();
+
+  Future<void> _submit() async {
+    final values = _fields.currentState!.collect();
+    final saved = await widget.controller.submit(values);
+    if (saved != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('保存しました')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = widget.controller;
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(widget.definition.title, style: theme.textTheme.headlineSmall),
+          const SizedBox(height: 12),
+          Expanded(
+            child: controller.loading
+                ? const Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    child: _HatakeFormFields(
+                      key: _fields,
+                      form: widget.definition.form,
+                      initial: controller.draft,
+                      validation: controller.validation,
+                      fieldBuilders: widget.fieldBuilders,
+                    ),
+                  ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              FilledButton(
+                key: const Key('hatake.form.save'),
+                onPressed:
+                    controller.loading || controller.submitting ? null : _submit,
+                child: controller.submitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('保存'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
