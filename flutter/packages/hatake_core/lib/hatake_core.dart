@@ -44,3 +44,9 @@ export 'src/validation/form_validator.dart';
 export 'src/format/formatter_registry.dart';
 export 'src/format/converter_registry.dart';
 export 'src/format/form_normalizer.dart';
+
+// Domain utilities (Japanese business).
+export 'src/domain/tax.dart';
+export 'src/domain/fiscal.dart';
+export 'src/domain/age.dart';
+export 'src/domain/business_day.dart';

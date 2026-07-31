@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -77,6 +79,70 @@ class ConformanceTest {
                     assertEquals(e.get("sortAscending"), q.sortAscending());
                     assertEquals(((Number) e.get("page")).intValue(), q.page());
                     assertEquals(((Number) e.get("pageSize")).intValue(), q.pageSize());
+                }));
+    }
+
+    @TestFactory
+    @SuppressWarnings("unchecked")
+    Stream<DynamicTest> tax() throws IOException {
+        return load("tax.json").stream().map(c -> DynamicTest.dynamicTest(
+                c.get("amount") + "@" + c.get("rate"),
+                () -> {
+                    double amount = ((Number) c.get("amount")).doubleValue();
+                    double rate = ((Number) c.get("rate")).doubleValue();
+                    boolean included = Boolean.TRUE.equals(c.get("included"));
+                    String rounding = c.get("rounding") instanceof String s ? s : "floor";
+                    Tax.TaxBreakdown r = Tax.compute(amount, rate, included, rounding);
+                    Map<String, Object> e = (Map<String, Object>) c.get("expected");
+                    assertEquals(((Number) e.get("net")).longValue(), r.net());
+                    assertEquals(((Number) e.get("tax")).longValue(), r.tax());
+                    assertEquals(((Number) e.get("gross")).longValue(), r.gross());
+                }));
+    }
+
+    @TestFactory
+    @SuppressWarnings("unchecked")
+    Stream<DynamicTest> fiscal() throws IOException {
+        return load("fiscal.json").stream().map(c -> DynamicTest.dynamicTest(
+                String.valueOf(c.get("date")),
+                () -> {
+                    String date = (String) c.get("date");
+                    int sm = c.get("startMonth") instanceof Number n ? n.intValue() : 4;
+                    Map<String, Object> e = (Map<String, Object>) c.get("expected");
+                    assertEquals(((Number) e.get("year")).intValue(), Fiscal.fiscalYear(date, sm));
+                    assertEquals(((Number) e.get("quarter")).intValue(), Fiscal.fiscalQuarter(date, sm));
+                    assertEquals(((Number) e.get("half")).intValue(), Fiscal.fiscalHalf(date, sm));
+                }));
+    }
+
+    @TestFactory
+    Stream<DynamicTest> ageTenure() throws IOException {
+        return load("age.json").stream().map(c -> DynamicTest.dynamicTest(
+                c.get("from") + "->" + c.get("to"),
+                () -> {
+                    String from = (String) c.get("from");
+                    String to = (String) c.get("to");
+                    int years = ((Number) c.get("years")).intValue();
+                    int months = ((Number) c.get("months")).intValue();
+                    Age.Tenure t = Age.tenure(from, to);
+                    assertEquals(years, t.years());
+                    assertEquals(months, t.months());
+                    assertEquals(years, Age.ageAt(from, to));
+                }));
+    }
+
+    @TestFactory
+    @SuppressWarnings("unchecked")
+    Stream<DynamicTest> businessDay() throws IOException {
+        return load("businessday.json").stream().map(c -> DynamicTest.dynamicTest(
+                String.valueOf(c.get("date")),
+                () -> {
+                    String date = (String) c.get("date");
+                    Set<String> holidays = new HashSet<>((List<String>) c.get("holidays"));
+                    Map<String, Object> e = (Map<String, Object>) c.get("expected");
+                    assertEquals(e.get("isBusinessDay"), BusinessDay.isBusinessDay(date, holidays));
+                    assertEquals(e.get("next"), BusinessDay.nextBusinessDay(date, holidays));
+                    assertEquals(e.get("prev"), BusinessDay.prevBusinessDay(date, holidays));
                 }));
     }
 

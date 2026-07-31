@@ -53,4 +53,64 @@ void main() {
       });
     }
   });
+
+  group('conformance: tax', () {
+    for (final raw in _load('tax.json')) {
+      final c = raw as Map<String, dynamic>;
+      test('${c['amount']}@${c['rate']} ${c['rounding'] ?? 'floor'}'
+          '${c['included'] == true ? ' inc' : ''}', () {
+        final r = computeTax(
+          c['amount'] as num,
+          rate: c['rate'] as num,
+          included: c['included'] == true,
+          rounding: c['rounding'] as String? ?? 'floor',
+        );
+        final e = c['expected'] as Map<String, dynamic>;
+        expect(r.net, e['net']);
+        expect(r.tax, e['tax']);
+        expect(r.gross, e['gross']);
+      });
+    }
+  });
+
+  group('conformance: fiscal', () {
+    for (final raw in _load('fiscal.json')) {
+      final c = raw as Map<String, dynamic>;
+      test('${c['date']} sm=${c['startMonth'] ?? 4}', () {
+        final sm = (c['startMonth'] as int?) ?? 4;
+        final e = c['expected'] as Map<String, dynamic>;
+        expect(fiscalYear(c['date'] as String, startMonth: sm), e['year']);
+        expect(fiscalQuarter(c['date'] as String, startMonth: sm), e['quarter']);
+        expect(fiscalHalf(c['date'] as String, startMonth: sm), e['half']);
+      });
+    }
+  });
+
+  group('conformance: age/tenure', () {
+    for (final raw in _load('age.json')) {
+      final c = raw as Map<String, dynamic>;
+      test('${c['from']} -> ${c['to']}', () {
+        final t = tenure(c['from'] as String, c['to'] as String);
+        expect(t.years, c['years']);
+        expect(t.months, c['months']);
+        expect(ageAt(c['from'] as String, c['to'] as String), c['years']);
+      });
+    }
+  });
+
+  group('conformance: business day', () {
+    for (final raw in _load('businessday.json')) {
+      final c = raw as Map<String, dynamic>;
+      test('${c['date']} h=${(c['holidays'] as List).length}', () {
+        final holidays = {for (final h in c['holidays'] as List) h.toString()};
+        final e = c['expected'] as Map<String, dynamic>;
+        expect(isBusinessDay(c['date'] as String, holidays: holidays),
+            e['isBusinessDay']);
+        expect(nextBusinessDay(c['date'] as String, holidays: holidays),
+            e['next']);
+        expect(prevBusinessDay(c['date'] as String, holidays: holidays),
+            e['prev']);
+      });
+    }
+  });
 }

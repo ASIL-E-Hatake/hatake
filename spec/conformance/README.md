@@ -10,6 +10,10 @@
 | `converters.json` | ConverterRegistry | `{ name, value, expected }`（数値も文字列比較） |
 | `validators.json` | ValidatorRegistry | `{ type, params?, value, valid, message? }` |
 | `queries.json` | QueryBuilder（TS/Java のみ。Flutter は QueryBuilder 非対象） | `{ filters, params, expected: { conditions, sortField, sortAscending, page, pageSize } }` |
+| `tax.json` | 消費税 `computeTax`（3言語） | `{ amount, rate, included?, rounding?, expected: { net, tax, gross } }` |
+| `fiscal.json` | 年度/四半期/半期（3言語） | `{ date, startMonth?, expected: { year, quarter, half } }` |
+| `age.json` | 年齢/勤続 `ageAt`・`tenure`（3言語） | `{ from, to, years, months }` |
+| `businessday.json` | 営業日（3言語、祝日は注入） | `{ date, holidays, expected: { isBusinessDay, next, prev } }` |
 
 `value` の日付は ISO の日付文字列（`"2026-07-22"`）で渡す（各言語が同じ解釈をするため）。
 

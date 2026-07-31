@@ -1,9 +1,18 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  ageAt,
   buildQuery,
+  computeTax,
   ConverterRegistry,
+  fiscalHalf,
+  fiscalQuarter,
+  fiscalYear,
   FormatterRegistry,
+  isBusinessDay,
+  nextBusinessDay,
+  prevBusinessDay,
+  tenure,
   ValidatorRegistry,
 } from "../src/index.js";
 
@@ -68,6 +77,49 @@ describe("conformance: queries", () => {
       expect(q.sortAscending).toBe(e.sortAscending);
       expect(q.page).toBe(e.page);
       expect(q.pageSize).toBe(e.pageSize);
+    });
+  }
+});
+
+describe("conformance: tax", () => {
+  for (const c of load("tax.json")) {
+    it(`${c.amount}@${c.rate} ${c.rounding ?? "floor"}${c.included ? " inc" : ""}`, () => {
+      const r = computeTax(c.amount, {
+        rate: c.rate,
+        included: c.included === true,
+        rounding: c.rounding ?? "floor",
+      });
+      expect(r).toEqual({ net: c.expected.net, tax: c.expected.tax, gross: c.expected.gross });
+    });
+  }
+});
+
+describe("conformance: fiscal", () => {
+  for (const c of load("fiscal.json")) {
+    it(`${c.date} sm=${c.startMonth ?? 4}`, () => {
+      const sm = c.startMonth ?? 4;
+      expect(fiscalYear(c.date, sm)).toBe(c.expected.year);
+      expect(fiscalQuarter(c.date, sm)).toBe(c.expected.quarter);
+      expect(fiscalHalf(c.date, sm)).toBe(c.expected.half);
+    });
+  }
+});
+
+describe("conformance: age/tenure", () => {
+  for (const c of load("age.json")) {
+    it(`${c.from} -> ${c.to}`, () => {
+      expect(tenure(c.from, c.to)).toEqual({ years: c.years, months: c.months });
+      expect(ageAt(c.from, c.to)).toBe(c.years);
+    });
+  }
+});
+
+describe("conformance: business day", () => {
+  for (const c of load("businessday.json")) {
+    it(`${c.date} h=${c.holidays.length}`, () => {
+      expect(isBusinessDay(c.date, c.holidays)).toBe(c.expected.isBusinessDay);
+      expect(nextBusinessDay(c.date, c.holidays)).toBe(c.expected.next);
+      expect(prevBusinessDay(c.date, c.holidays)).toBe(c.expected.prev);
     });
   }
 });
