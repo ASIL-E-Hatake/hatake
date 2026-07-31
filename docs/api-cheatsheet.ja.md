@@ -1,0 +1,105 @@
+# hatake AI チートシート
+
+AI（や人）が hatake を使うための圧縮リファレンス。**実装（`src/` 配下）は読まなくていい**。基本は「定義（YAML/JSON）を書く」＋「フォーマッタ等は名前で参照する」だけ。Dart から直接使う場合もレジストリのメソッドを呼ぶだけでいい。
+
+- 全仕様: [DSL 仕様書](../spec/dsl-spec.ja.md) / 機械検証: [JSON Schema](../spec/hatake-page.schema.json)
+- 拡張: [Plugin ガイド](../flutter/docs/plugins.ja.md)
+
+## 最小の書き方（定義ファースト）
+
+```yaml
+dsl_version: "1.0"
+page:
+  type: crud                 # crud | search | master | detail | form
+  id: customer_master
+  title: 顧客マスタ
+  repository: customerRepository   # 利用者が実装する Repository をキーで解決
+  key: id
+  search:
+    filters:
+      - { field: name, label: 顧客名, type: text, operator: contains }
+  table:
+    rowActions: [edit, delete]
+    columns:
+      - { field: code, label: コード, sortable: true }
+      - { field: amount, label: 金額, format: currency, config: { symbol: "¥" } }
+  form:
+    sections:
+      - title: 基本情報
+        fields:
+          - { field: code, label: コード, type: text, required: true,
+              normalize: [toHankaku, trim], validators: [ { type: maxLength, value: 20 } ] }
+          - { field: name, label: 顧客名, type: text, required: true }
+  actions:
+    - { id: create, type: create, label: 新規登録 }
+```
+
+## ページ種別（`page.type`）
+
+| type | 何 | フォーム |
+|---|---|---|
+| `crud` | 検索+一覧+CRUD | あり |
+| `search` | 照会（読み取り一覧、行/ページのプラグインアクション） | なし |
+| `master` | マスタメンテ（crud と同構造） | あり |
+| `detail` | 単一レコードの読み取り表示（record は実行時に渡す） | 表示のみ |
+| `form` | 単票の作成/編集（record key あり=編集 / なし=新規） | あり |
+
+## フィールド型（`field.type` / `filter.type`）
+`text` `textarea` `number` `select` `multiSelect` `checkbox` `radio` `date` `dateTime` `time`
+（`select`/`radio`/`multiSelect` は `options: [{value,label}]` を付ける）
+
+## カラム型（`column.type`）
+`text` `number` `badge` `boolean` `date` `dateTime`
+
+## フィルタ演算子（`filter.operator`）
+`equals` `contains` `startsWith` `endsWith` `gt` `gte` `lt` `lte` `between` `in`
+
+## フォーマッタ（`format:` で指定。オプションは同じ要素の `config`）
+
+| name | 例 | 主なオプション |
+|---|---|---|
+| `currency` | `1234567 → 1,234,567` / `-1234 → △1,234` | `symbol`(例`¥`), `decimals`, `negative`(`minus`/`triangle`/`blackTriangle`/`paren`) |
+| `percent` | `12.34 → 12.34%` | `decimals`, `ratio`(true で×100) |
+| `date` | `2026-07-22 → 2026/07/22` | `pattern`(`yyyy/MM/dd` `yyyy-MM-dd` `yyyy年M月d日` `yyyyMMdd`) |
+| `wareki` | `2026-07-22 → 令和8年7月22日` | `style`(`long`/`short`=`R8/07/22`) |
+| `postal` | `1234567 → 123-4567` | — |
+| `mask` | `000012341234 → ********1234` | `keep`(残す桁), `char` |
+
+## コンバータ（`normalize: [...]` で入力前に適用）
+`toHankaku` `toZenkaku` `hiraToKata` `kataToHira` `trim` `collapseSpaces` `parseNumber`
+
+## バリデータ（`validators: [{ type, ...params, message? }]`）
+
+| type | params | 意味 |
+|---|---|---|
+| `required` | — | 必須（`field.required: true` でも可） |
+| `maxLength` / `minLength` | `value`(int) | 文字数 |
+| `min` / `max` | `value`(num) | 数値範囲 |
+| `pattern` | `pattern`(正規表現) | 形式 |
+| `email` | — | メール形式 |
+| `postalCode` | — | 郵便番号形式 |
+
+`message` を足すと既定（日本語）メッセージを上書き。
+
+## アクション（`actions: [...]` / `table.rowActions`）
+`type`: `create` `edit` `delete` `plugin`。`plugin` は `plugin: <key>` で登録ハンドラにディスパッチ。
+
+---
+
+## Dart から直接使う場合（実装は読まなくていい）
+
+```dart
+import 'package:hatake_material/hatake_material.dart';
+
+// 表示整形
+FormatterRegistry().format('currency', 1234567, {'symbol': '¥'}); // "¥1,234,567"
+// 入力正規化
+ConverterRegistry().convert('toHankaku', '１２３');                // "123"
+// サーバ/フォーム検証
+FormValidator().validate(form, record);                          // ValidationResult
+```
+
+拡張したいときは各レジストリに `register(name, fn)`、または `MaterialRenderer(fieldBuilders: {...})`。詳細は [Plugin ガイド](../flutter/docs/plugins.ja.md)。
+
+## 他言語（バックエンド）
+TypeScript(`@hatake/core`) と Java(`io.hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `QueryBuilder` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。

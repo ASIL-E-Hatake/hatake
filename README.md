@@ -62,6 +62,14 @@ page:
 python spec/tools/validate_schema.py path/to/def.yaml
 ```
 
+## AI で使う（実装は読まなくていい）
+
+hatake は「定義を書く」フレームワークなので、AI に使わせるときは**実装（`src/`）を読ませる必要はない**。ページ種別・フィールド型・フォーマッタ/コンバータ/バリデータの**名前と例**さえ渡せば書ける。渡す用の圧縮リファレンスを用意してある:
+
+- [AI チートシート](docs/api-cheatsheet.ja.md) — 名前一覧＋オプション＋最小例（これ1枚でだいたい書ける）
+- [`llms.txt`](llms.txt) — LLM 向けの入口（チートシート・仕様・Schema・例へのリンク集）
+- 公開後はデモと同じ GitHub Pages にも置くので、`https://asil-e-hatake.github.io/hatake/llms.txt` のように **URL 1本渡すだけ**でも使える。
+
 ## 各版
 
 `PageDefinition` は UI 専用じゃなくて、層ごとに消費者が違うだけ。フロントは描画、バックエンドは API ロジックに使う。

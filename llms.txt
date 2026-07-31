@@ -1,0 +1,21 @@
+# hatake
+
+> 業務定義（YAML / JSON / 各言語 DSL）から、業務画面（Flutter）とバックエンドの API ロジック（Java / TypeScript：バリデーション・クエリ組み立て）を生成する宣言型フレームワーク。AI は実装（src/）を読まず、「定義の書き方」と「使える名前（ページ種別・フィールド型・フォーマッタ／コンバータ／バリデータ）」だけ知れば使える。全言語で同じ定義に収束し、フォーマッタ等の出力はコンフォーマンステストで3言語一致を担保している。
+
+このファイルは LLM 向けの入口。まず「AI チートシート」を読めば、実装を読まずに定義を書ける。
+
+## はじめに（これだけで書ける）
+- [AI チートシート](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/api-cheatsheet.ja.md): ページ種別・フィールド型・フォーマッタ/コンバータ/バリデータの一覧＋オプション＋最小例
+- [DSL 仕様書](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/dsl-spec.ja.md): 定義の全仕様
+- [JSON Schema](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json): 定義の機械検証用（YAML に `# yaml-language-server: $schema=<この URL>` を書くと補完・検証が効く）
+
+## 例（そのまま真似られる）
+- [顧客マスタ / crud](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_master.yaml)
+- [商品照会 / search](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/product_search.yaml)
+- [部門マスタ / master](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/dept_master.yaml)
+- [顧客詳細 / detail](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_detail.yaml)
+- [顧客入力 / form](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_form.yaml)
+
+## 拡張・内部（必要なときだけ）
+- [Plugin ガイド](https://github.com/ASIL-E-Hatake/hatake/raw/main/flutter/docs/plugins.ja.md): 独自フォーマッタ/バリデータ/フィールド型/Renderer の登録
+- [開発ロードマップ](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/roadmap.ja.md): 対応状況と方針
