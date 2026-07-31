@@ -77,6 +77,27 @@
 - **Rust** … 高性能バックエンド / WASM。将来フロントにも回せる可能性。
 - どちらも**フレームワーク非依存のコア**からで、Web フレームワーク連携はアダプタ別パッケージ。
 
+## 配布・公開（Distribution）〔TODO〕
+
+各エディションの配り方。Dart が主。Java/TS は「まず入れられる状態」を先に、本格公開は必要時。実 publish は人間が実施（CI の tag 公開にする場合も secrets は畠山氏管理）。
+
+| エディション | レジストリ | パッケージ名（案） | 状態 |
+|---|---|---|---|
+| Dart/Flutter | pub.dev | `hatake_core` ほか | 準備済（未公開） |
+| TypeScript | npm | `@hatake/core`（スコープ確保が要る） | TODO |
+| Java | JitPack / GitHub Packages →（本格化で）Maven Central | `io.github.asil-e-hatake:hatake-core`（下記注意） | TODO |
+
+- **TS (npm)**: `tsc` で `dist/`（JS + `.d.ts`）を吐いて `npm publish --access public`。consumer は `npm i @hatake/core`。npm スコープ `@hatake` が取れなければ `@asil-e-hatake/*` か 無スコープ `hatake-core`。README は npmjs にそのまま出る。
+- **Java**: モノレポの `java/` から publish。
+  - 早期は **JitPack**（GitHub タグから即配布・publisher 設定ほぼゼロ。※モノレポの subdir 指定が要る）か **GitHub Packages (Maven)**（publisher は楽・consumer 側が認証設定を要する＝フリクションあり）。
+  - 本格化で **Maven Central**（consumer フリクション最小だが、名前空間検証＋GPG 署名＋sources/javadoc jar が必要）。
+  - ⚠️ **groupId 注意**: 現状の `io.hatake` は `hatake.io` ドメイン所有の証明が要る。ドメインが無ければ **`io.github.asil-e-hatake`**（GitHub アカウントで自動検証）に変える。`java/build.gradle` の `group` を見直す。
+- **共通**: 各 subdir から個別 publish。バージョンは当面各エディション自走 or 揃える方針を決める。pub.dev/npm は README を表示するが Maven 系は出ないので、Java は GitHub / Pages のドキュメントに誘導。
+
+### ドキュメント配布 TODO
+- **英語版チートシート**（`docs/api-cheatsheet.md`）: 日本企業向け優先のため後回し。需要が出たら追加（構成は日本語版 `api-cheatsheet.ja.md` を踏襲）。
+- 各パッケージ公開時、README にチートシート要約 or リンクを入れる。
+
 ## フェーズ感（ざっくり優先度）
 
 - **近い（P1）**: ~~Formatter/Converter を TS/Java へ横展開~~ ✅、~~コンフォーマンス・スイートの器~~ ✅、~~normalize 入力パイプの配線~~ ✅（Flutter は送信時に自動適用 / TS・Java は `normalizeRecord`・`FormNormalizer`）、~~QuerySpec の fixture 化~~ ✅ → 次は **utils P2**（消費税・年度・営業日）や **新ページ種別**、**DTO/レスポンス生成**あたり
