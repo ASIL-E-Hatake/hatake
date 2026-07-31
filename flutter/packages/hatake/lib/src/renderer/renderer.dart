@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:hatake_core/hatake_core.dart';
 
 import '../runtime/crud_controller.dart';
+import '../runtime/detail_controller.dart';
+import '../runtime/form_controller.dart';
 import '../runtime/list_controller.dart';
 
 /// Converts a [PageDefinition] into Flutter widgets.
@@ -13,10 +15,10 @@ import '../runtime/list_controller.dart';
 /// The set of pages is closed ([PageDefinition] is sealed), so a renderer
 /// exposes one build method per page kind.
 abstract interface class Renderer {
-  /// Builds the widget tree for a CRUD page.
+  /// Builds the widget tree for a CRUD-like page (crud, master).
   Widget buildCrudPage(
     BuildContext context,
-    CrudPageDefinition definition,
+    CrudLike definition,
     CrudController controller,
   );
 
@@ -25,5 +27,19 @@ abstract interface class Renderer {
     BuildContext context,
     SearchPageDefinition definition,
     ListController controller,
+  );
+
+  /// Builds the widget tree for a read-only single-record detail page.
+  Widget buildDetailPage(
+    BuildContext context,
+    DetailPageDefinition definition,
+    DetailController controller,
+  );
+
+  /// Builds the widget tree for a standalone create/edit form page.
+  Widget buildFormPage(
+    BuildContext context,
+    FormPageDefinition definition,
+    FormController controller,
   );
 }

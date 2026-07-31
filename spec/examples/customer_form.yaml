@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json
+# hatake — FormPage example: 顧客入力 (Customer form, create/edit)
+dsl_version: "1.0"
+
+page:
+  type: form
+  id: customer_form
+  title: 顧客入力
+  repository: customerRepository
+  key: id
+
+  form:
+    sections:
+      - title: 基本情報
+        fields:
+          - field: code
+            label: コード
+            type: text
+            required: true
+            normalize: [toHankaku, trim]
+            validators:
+              - { type: maxLength, value: 20 }
+          - { field: name,   label: 顧客名,     type: text,   required: true }
+          - { field: status, label: ステータス, type: select, required: true,
+              options: [ { value: active, label: 有効 }, { value: inactive, label: 無効 } ] }
+          - { field: note,   label: 備考,       type: textarea }

@@ -16,7 +16,10 @@
     "page": {
       "oneOf": [
         { "$ref": "#/$defs/crudPage" },
-        { "$ref": "#/$defs/searchPage" }
+        { "$ref": "#/$defs/searchPage" },
+        { "$ref": "#/$defs/masterPage" },
+        { "$ref": "#/$defs/detailPage" },
+        { "$ref": "#/$defs/formPage" }
       ]
     }
   },
@@ -70,6 +73,53 @@
           "description": "Page-level actions; also referenced by table.rowActions.",
           "items": { "$ref": "#/$defs/action" }
         }
+      }
+    },
+    "masterPage": {
+      "type": "object",
+      "description": "A master-maintenance page. Same shape as crud (search + table + form).",
+      "required": ["type", "id", "title", "repository"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "description": "Page kind.", "enum": ["master"] },
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "repository": { "type": "string" },
+        "key": { "type": "string", "default": "id" },
+        "search": { "$ref": "#/$defs/search" },
+        "table": { "$ref": "#/$defs/table" },
+        "form": { "$ref": "#/$defs/form" },
+        "actions": { "type": "array", "items": { "$ref": "#/$defs/action" } }
+      }
+    },
+    "detailPage": {
+      "type": "object",
+      "description": "A read-only single-record detail page. Displays the form's fields.",
+      "required": ["type", "id", "title", "repository"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "description": "Page kind.", "enum": ["detail"] },
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "repository": { "type": "string" },
+        "key": { "type": "string", "default": "id" },
+        "form": { "$ref": "#/$defs/form" },
+        "actions": { "type": "array", "items": { "$ref": "#/$defs/action" } }
+      }
+    },
+    "formPage": {
+      "type": "object",
+      "description": "A standalone create/edit form page (form only, no table).",
+      "required": ["type", "id", "title", "repository"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "description": "Page kind.", "enum": ["form"] },
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "repository": { "type": "string" },
+        "key": { "type": "string", "default": "id" },
+        "form": { "$ref": "#/$defs/form" },
+        "actions": { "type": "array", "items": { "$ref": "#/$defs/action" } }
       }
     },
     "search": {

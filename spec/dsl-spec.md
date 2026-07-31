@@ -51,6 +51,9 @@ settings.
 |---|---|---|---|
 | `crud` | Create/read/update/delete | ✅ | search + table + form + row edit/delete |
 | `search` | Read-only search/list (照会) | — | search + table + plugin actions (page & row) |
+| `master` | Master maintenance | ✅ | same shape as `crud` |
+| `detail` | Read-only single record | — | displays the form's fields; the record is supplied to the view at runtime |
+| `form` | Standalone create/edit form | ✅ | form only (no table); edits when a record key is supplied, else creates |
 
 A `search` page has the same `search`, `table`, and `actions` as `crud` but no
 `form`, and its `rowActions` reference page-level `plugin` actions (e.g. a
