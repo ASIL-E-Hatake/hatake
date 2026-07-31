@@ -36,6 +36,15 @@ jobs:
         run: |
           flutter pub get
           flutter build web --release --base-href /hatake/
+      # Publish LLM/AI docs alongside the demo at stable Pages URLs
+      # (e.g. https://<user>.github.io/hatake/llms.txt).
+      - name: Stage AI docs
+        run: |
+          out=flutter/packages/hatake_example/build/web
+          cp llms.txt "$out/llms.txt"
+          cp docs/api-cheatsheet.ja.md "$out/api-cheatsheet.ja.md"
+          cp spec/dsl-spec.ja.md "$out/dsl-spec.ja.md"
+          cp spec/hatake-page.schema.json "$out/hatake-page.schema.json"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: flutter/packages/hatake_example/build/web

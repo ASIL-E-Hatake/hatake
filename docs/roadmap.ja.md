@@ -70,12 +70,33 @@
 3. **収束テスト**（YAML↔JSON、あれば DSL）
 4. 用途に応じて **FormValidator**（バックエンド）／ **Renderer**（フロント）
 5. **コンフォーマンス・スイート**を通す
-6. パッケージ名を揃える（`hatake_core` / `@hatake/core` / `io.hatake:core` / `hatake-core`(py) / `hatake_core`(rust crate)）
+6. パッケージ名を揃える（`hatake_core` / `@hatake/core` / `io.github.asil-e-hatake:hatake-core` / `hatake-core`(py) / `hatake_core`(rust crate)）
 
 想定用途:
 - **Python** … バックエンド（FastAPI/Django 連携は opt-in アダプタ）、データ処理・バッチ。バリデーション + QuerySpec が主。
 - **Rust** … 高性能バックエンド / WASM。将来フロントにも回せる可能性。
 - どちらも**フレームワーク非依存のコア**からで、Web フレームワーク連携はアダプタ別パッケージ。
+
+## 配布・公開（Distribution）〔TODO〕
+
+各エディションの配り方。Dart が主。Java/TS は「まず入れられる状態」を先に、本格公開は必要時。実 publish は人間が実施（CI の tag 公開にする場合も secrets は畠山氏管理）。
+
+| エディション | レジストリ | パッケージ名（案） | 状態 |
+|---|---|---|---|
+| Dart/Flutter | pub.dev | `hatake_core` ほか | 準備済（未公開） |
+| TypeScript | npm | `@hatake/core`（スコープ確保が要る） | TODO |
+| Java | JitPack / GitHub Packages →（本格化で）Maven Central | `io.github.asil-e-hatake:hatake-core`（下記注意） | TODO |
+
+- **TS (npm)**: `tsc` で `dist/`（JS + `.d.ts`）を吐いて `npm publish --access public`。consumer は `npm i @hatake/core`。npm スコープ `@hatake` が取れなければ `@asil-e-hatake/*` か 無スコープ `hatake-core`。README は npmjs にそのまま出る。
+- **Java**: モノレポの `java/` から publish。
+  - 早期は **JitPack**（GitHub タグから即配布・publisher 設定ほぼゼロ。※モノレポの subdir 指定が要る）か **GitHub Packages (Maven)**（publisher は楽・consumer 側が認証設定を要する＝フリクションあり）。
+  - 本格化で **Maven Central**（consumer フリクション最小だが、名前空間検証＋GPG 署名＋sources/javadoc jar が必要）。
+  - **groupId**: `io.github.asil-e-hatake`（GitHub アカウントで自動検証。`io.hatake` はドメイン所有証明が要るため不採用）。`java/build.gradle` 設定済み。※Java **ソースパッケージ**は `io.hatake.core` のまま（groupId とは別物）。
+- **共通**: 各 subdir から個別 publish。バージョンは当面各エディション自走 or 揃える方針を決める。pub.dev/npm は README を表示するが Maven 系は出ないので、Java は GitHub / Pages のドキュメントに誘導。
+
+### ドキュメント配布 TODO
+- **英語版チートシート**（`docs/api-cheatsheet.md`）: 日本企業向け優先のため後回し。需要が出たら追加（構成は日本語版 `api-cheatsheet.ja.md` を踏襲）。
+- 各パッケージ公開時、README にチートシート要約 or リンクを入れる。
 
 ## フェーズ感（ざっくり優先度）
 

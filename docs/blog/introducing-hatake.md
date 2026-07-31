@@ -90,7 +90,7 @@ parse(YAML) == parse(JSON) == build(コードDSL)
 - **spec** … 言語に依存しない DSL 仕様（仕様書 + JSON Schema）。全言語の共通ソース。
 - **各言語版** … 同じ仕様を読んで、その言語で画面を実らせる。今は Flutter 版が動いてて、Java 版・TypeScript 版もこの上に乗せていく予定。
 
-パッケージ名も揃える（Dart なら `hatake_core`、npm なら `@hatake/core`、Maven なら `io.hatake:core` みたいに）。どの言語から入っても「あ、hatake ね」で通じるようにしたい。
+パッケージ名も揃える（Dart なら `hatake_core`、npm なら `@hatake/core`、Maven なら `io.github.asil-e-hatake:hatake-core` みたいに）。どの言語から入っても「あ、hatake ね」で通じるようにしたい。
 
 ## 設計として大事にしてること
 

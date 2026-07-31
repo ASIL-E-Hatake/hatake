@@ -32,7 +32,7 @@ Business Definition (YAML / JSON / 各言語DSL)
 | [`typescript/`](typescript/README.md) | **TypeScript 版**（バックエンド：API ロジック） | ✅ scaffold（core + バリデーション + クエリ組み立て） |
 | [`docs/blog/`](docs/blog/introducing-hatake.md) | 紹介記事 | ✅ |
 
-全部の版が同じ `spec/` を共通ソースにして、同じ定義から各言語で画面を出す。パッケージ名も揃える（Dart `hatake_core` / npm `@hatake/core` / Maven `io.hatake:core` …）。どの言語から来ても「hatake ね」で通じるように。
+全部の版が同じ `spec/` を共通ソースにして、同じ定義から各言語で画面を出す。パッケージ名も揃える（Dart `hatake_core` / npm `@hatake/core` / Maven `io.github.asil-e-hatake:hatake-core` …）。どの言語から来ても「hatake ね」で通じるように。
 
 ## ざっとイメージ
 
@@ -61,6 +61,14 @@ page:
 ```bash
 python spec/tools/validate_schema.py path/to/def.yaml
 ```
+
+## AI で使う（実装は読まなくていい）
+
+hatake は「定義を書く」フレームワークなので、AI に使わせるときは**実装（`src/`）を読ませる必要はない**。ページ種別・フィールド型・フォーマッタ/コンバータ/バリデータの**名前と例**さえ渡せば書ける。渡す用の圧縮リファレンスを用意してある:
+
+- [AI チートシート](docs/api-cheatsheet.ja.md) — 名前一覧＋オプション＋最小例（これ1枚でだいたい書ける）
+- [`llms.txt`](llms.txt) — LLM 向けの入口（チートシート・仕様・Schema・例へのリンク集）
+- 公開後はデモと同じ GitHub Pages にも置くので、`https://asil-e-hatake.github.io/hatake/llms.txt` のように **URL 1本渡すだけ**でも使える。
 
 ## 各版
 
