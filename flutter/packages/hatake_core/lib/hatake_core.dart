@@ -40,6 +40,9 @@ export 'src/validation/validation_result.dart';
 export 'src/validation/validators.dart';
 export 'src/validation/form_validator.dart';
 
+// i18n (message localization).
+export 'src/i18n/message_resolver.dart';
+
 // Formatting / conversion (P0 registries + P1 built-ins).
 export 'src/format/formatter_registry.dart';
 export 'src/format/converter_registry.dart';

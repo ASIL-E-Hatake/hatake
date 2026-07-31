@@ -25,7 +25,7 @@
 | 入出力 | Formatter（金額/和暦…） | 🚧 P0+P1 Flutter | [utils](roadmap-utils.ja.md) |
 | | Converter（全半角…） | 🚧 P0+P1 Flutter | 同上。入力normalizeパイプ配線は未 |
 | | Validator 拡充 | 🚧 一部 | 郵便番号済。法人番号/相関等は未 |
-| 表現 | i18n / メッセージ多言語化 | ⏳ | バリデータ日本語固定を差し替え可能に |
+| 表現 | i18n / メッセージ多言語化 | ✅ 3言語 | `MessageResolver`（ロケール＋開いたキー、既定 ja）でバリデータ固定文言を差し替え可能に。`ValidatorRegistry(custom, messages)` で注入。Dart/TS/Java で同名・同挙動 |
 | | テーマ / スタイル定義 | ⏳ | Renderer 側 |
 | | 条件表示・活性制御 | ⏳ | `visibleWhen` / `enabledWhen` |
 | | 計算項目・派生値 | ⏳ | `computed`（式 or フック） |
@@ -50,6 +50,7 @@
 | Validator 拡張レジストリ | ✅ | ✅ | ✅ | ✅ |
 | QueryBuilder（QuerySpec） | ✅ | — | ✅ | ✅ |
 | Formatter / Converter | ✅ | ✅ | ✅ | ✅ |
+| メッセージ i18n（`MessageResolver`） | — | ✅ | ✅ | ✅ |
 | Renderer（画面描画） | — | ✅(Material) | 対象外 | 対象外(※) |
 | table/action など画面寄りモデル | ✅ | ✅ | ⏳一部 | ✅ |
 
@@ -101,7 +102,7 @@
 ## フェーズ感（ざっくり優先度）
 
 - **近い（P1）**: ~~Formatter/Converter を TS/Java へ横展開~~ ✅、~~コンフォーマンス・スイートの器~~ ✅、~~normalize 入力パイプの配線~~ ✅（Flutter は送信時に自動適用 / TS・Java は `normalizeRecord`・`FormNormalizer`）、~~QuerySpec の fixture 化~~ ✅ → 次は **utils P2**（消費税・年度・営業日）や **新ページ種別**、**DTO/レスポンス生成**あたり
-- **中（P2）**: ~~DetailPage / MasterPage~~ ✅、~~消費税・年度/四半期・年齢/勤続・営業日（utils P2）~~ ✅（3言語＋conformance）、~~元号算出/税率別合計（utils 小follow-up）~~ ✅（`eraOf` / `computeInvoice`、3言語＋conformance）→ 残り：条件表示・計算項目、i18n、ORM アダプタ1個目
+- **中（P2）**: ~~DetailPage / MasterPage~~ ✅、~~消費税・年度/四半期・年齢/勤続・営業日（utils P2）~~ ✅（3言語＋conformance）、~~元号算出/税率別合計（utils 小follow-up）~~ ✅（`eraOf` / `computeInvoice`、3言語＋conformance）→ 残り：条件表示・計算項目、ORM アダプタ1個目（i18n は3言語✅）
 - **遠い（P3）**: DashboardPage、権限制御、Python/Rust エディション、帳票・全銀など重いやつ
 
 ## 依頼の仕方（メモ）
