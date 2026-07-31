@@ -1,0 +1,9 @@
+[
+  { "amount": 1000, "rate": 0.10, "expected": { "net": 1000, "tax": 100, "gross": 1100 } },
+  { "amount": 1080, "rate": 0.08, "expected": { "net": 1080, "tax": 86, "gross": 1166 } },
+  { "amount": 155, "rate": 0.10, "rounding": "floor", "expected": { "net": 155, "tax": 15, "gross": 170 } },
+  { "amount": 155, "rate": 0.10, "rounding": "round", "expected": { "net": 155, "tax": 16, "gross": 171 } },
+  { "amount": 155, "rate": 0.10, "rounding": "ceil", "expected": { "net": 155, "tax": 16, "gross": 171 } },
+  { "amount": 1080, "rate": 0.08, "included": true, "expected": { "net": 1000, "tax": 80, "gross": 1080 } },
+  { "amount": 1000, "rate": 0.10, "included": true, "expected": { "net": 909, "tax": 91, "gross": 1000 } }
+]

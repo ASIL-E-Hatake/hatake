@@ -97,9 +97,21 @@ FormatterRegistry().format('currency', 1234567, {'symbol': '¥'}); // "¥1,234,5
 ConverterRegistry().convert('toHankaku', '１２３');                // "123"
 // サーバ/フォーム検証
 FormValidator().validate(form, record);                          // ValidationResult
+// 消費税（内税/外税・端数処理 floor/round/ceil）
+computeTax(1000, rate: 0.10);                     // net:1000 tax:100 gross:1100（外税）
+computeTax(1080, rate: 0.08, included: true);     // net:1000 tax:80  gross:1080（内税）
+computeTax(155,  rate: 0.10, rounding: 'round');  // tax:16（15.5→四捨五入）
+// 年度・四半期・半期（開始月は startMonth、既定4月）
+fiscalYear('2026-03-31');                          // 2025
+fiscalQuarter('2026-07-01');                       // 2
+// 年齢・勤続
+ageAt('1990-06-15', '2026-06-14');                 // 35（誕生日未達）
+tenure('2020-04-01', '2026-07-15');                // years:6, months:3
+// 営業日（祝日は yyyy-MM-dd の集合を注入）
+nextBusinessDay('2024-01-05', holidays: {'2024-01-08'}); // 2024-01-09
 ```
 
 拡張したいときは各レジストリに `register(name, fn)`、または `MaterialRenderer(fieldBuilders: {...})`。詳細は [Plugin ガイド](../flutter/docs/plugins.ja.md)。
 
 ## 他言語（バックエンド）
-TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `QueryBuilder` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。
+TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `QueryBuilder` / `computeTax` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。

@@ -1,0 +1,6 @@
+[
+  { "date": "2026-04-01", "expected": { "year": 2026, "quarter": 1, "half": 1 } },
+  { "date": "2026-03-31", "expected": { "year": 2025, "quarter": 4, "half": 2 } },
+  { "date": "2026-12-31", "expected": { "year": 2026, "quarter": 3, "half": 2 } },
+  { "date": "2026-01-15", "startMonth": 1, "expected": { "year": 2026, "quarter": 1, "half": 1 } }
+]
