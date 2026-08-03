@@ -13,6 +13,7 @@ import {
   fiscalQuarter,
   fiscalYear,
   FormatterRegistry,
+  isAllowed,
   isBusinessDay,
   nextBusinessDay,
   prevBusinessDay,
@@ -166,6 +167,14 @@ describe("conformance: computed", () => {
   for (const c of load("computed.json")) {
     it(`${JSON.stringify(c.computed)} on ${JSON.stringify(c.record)}`, () => {
       expect(reg.compute(c.computed, c.record)).toBe(c.expected);
+    });
+  }
+});
+
+describe("conformance: access", () => {
+  for (const c of load("access.json")) {
+    it(`${JSON.stringify(c.roles)} / ${JSON.stringify(c.userRoles)}`, () => {
+      expect(isAllowed(c.roles, c.userRoles)).toBe(c.expected);
     });
   }
 });

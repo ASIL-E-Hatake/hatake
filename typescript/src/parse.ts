@@ -180,6 +180,7 @@ function parseColumn(m: Dict): ColumnDefinition {
     sortable: optBool(m, "sortable"),
     format: optString(m, "format"),
     config: optDict(m, "config") ?? {},
+    roles: optList(m, "roles").map(String),
   };
 }
 
@@ -227,6 +228,7 @@ function parseField(m: Dict): FieldDefinition {
     visibleWhen: optDict(m, "visibleWhen"),
     enabledWhen: optDict(m, "enabledWhen"),
     computed: optDict(m, "computed"),
+    roles: optList(m, "roles").map(String),
   };
 }
 
@@ -256,5 +258,6 @@ function parseAction(m: Dict): ActionDefinition {
     label: reqString(m, "label", "action.label"),
     plugin: optString(m, "plugin"),
     config: optDict(m, "config") ?? {},
+    roles: optList(m, "roles").map(String),
   };
 }

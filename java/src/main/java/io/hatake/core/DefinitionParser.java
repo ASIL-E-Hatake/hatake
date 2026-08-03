@@ -110,6 +110,12 @@ public final class DefinitionParser {
                 normalize.add(String.valueOf(n));
             }
         }
+        List<String> roles = new ArrayList<>();
+        if (m.get("roles") instanceof List<?> list) {
+            for (Object r : list) {
+                roles.add(String.valueOf(r));
+            }
+        }
         return new FieldDefinition(
                 reqStr(m, "field"),
                 reqStr(m, "label"),
@@ -121,7 +127,8 @@ public final class DefinitionParser {
                 normalize,
                 optMap(m.get("visibleWhen")),
                 optMap(m.get("enabledWhen")),
-                optMap(m.get("computed")));
+                optMap(m.get("computed")),
+                roles);
     }
 
     @SuppressWarnings("unchecked")

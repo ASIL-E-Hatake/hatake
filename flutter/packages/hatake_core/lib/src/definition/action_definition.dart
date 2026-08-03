@@ -19,14 +19,18 @@ class ActionDefinition extends Equatable {
   /// Plugin / renderer specific extra configuration.
   final Map<String, Object?> config;
 
+  /// Roles allowed to use this action (see `isAllowed`). Empty = everyone.
+  final List<String> roles;
+
   const ActionDefinition({
     required this.id,
     required this.type,
     required this.label,
     this.plugin,
     this.config = const {},
+    this.roles = const [],
   });
 
   @override
-  List<Object?> get props => [id, type, label, plugin, config];
+  List<Object?> get props => [id, type, label, plugin, config, roles];
 }

@@ -7,6 +7,7 @@ export * from "./formValidator.js";
 export * from "./messageResolver.js";
 export * from "./conditionEvaluator.js";
 export * from "./computed.js";
+export * from "./access.js";
 export * from "./query.js";
 export * from "./formatter.js";
 export * from "./converter.js";

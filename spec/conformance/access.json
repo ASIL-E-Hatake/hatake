@@ -1,0 +1,9 @@
+[
+  { "roles": [], "userRoles": [], "expected": true },
+  { "roles": [], "userRoles": ["admin"], "expected": true },
+  { "roles": ["admin"], "userRoles": ["admin"], "expected": true },
+  { "roles": ["admin"], "userRoles": ["user"], "expected": false },
+  { "roles": ["admin"], "userRoles": [], "expected": false },
+  { "roles": ["admin", "manager"], "userRoles": ["manager", "user"], "expected": true },
+  { "roles": ["admin", "manager"], "userRoles": ["staff"], "expected": false }
+]

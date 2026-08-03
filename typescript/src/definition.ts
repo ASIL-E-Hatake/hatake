@@ -35,6 +35,8 @@ export interface FieldDefinition {
   enabledWhen?: Record<string, unknown>;
   /** Derive the value from the record (see ComputedRegistry). */
   computed?: Record<string, unknown>;
+  /** Roles allowed to see this field (see isAllowed). Empty = everyone. */
+  roles: string[];
 }
 
 export interface FilterDefinition {
@@ -55,6 +57,8 @@ export interface ColumnDefinition {
   /** Display formatter name (see FormatterRegistry). Options from config. */
   format?: string;
   config: Record<string, unknown>;
+  /** Roles allowed to see this column (see isAllowed). Empty = everyone. */
+  roles: string[];
 }
 
 export interface SectionDefinition {
@@ -89,6 +93,8 @@ export interface ActionDefinition {
   label: string;
   plugin?: string;
   config: Record<string, unknown>;
+  /** Roles allowed to use this action (see isAllowed). Empty = everyone. */
+  roles: string[];
 }
 
 export interface CrudPageDefinition {

@@ -120,6 +120,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
 
   CrudLike get _def => widget.definition;
   CrudController get _controller => widget.controller;
+  Set<String> get _roles => HatakeScope.of(context).roles;
 
   @override
   void initState() {
@@ -161,6 +162,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
         definition: _def,
         controller: _controller,
         fieldBuilders: widget.fieldBuilders,
+        roles: _roles,
       ),
     );
   }
@@ -205,14 +207,15 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
               Expanded(
                 child: Text(_def.title, style: theme.textTheme.headlineSmall),
               ),
-              for (final action in _def.actions) ...[
-                FilledButton(
-                  key: Key('hatake.action.${action.id}'),
-                  onPressed: () => _onAction(action),
-                  child: Text(action.label),
-                ),
-                const SizedBox(width: 8),
-              ],
+              for (final action in _def.actions)
+                if (isAllowed(action.roles, _roles)) ...[
+                  FilledButton(
+                    key: Key('hatake.action.${action.id}'),
+                    onPressed: () => _onAction(action),
+                    child: Text(action.label),
+                  ),
+                  const SizedBox(width: 8),
+                ],
             ],
           ),
           const SizedBox(height: 12),
@@ -303,7 +306,8 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
   }
 
   Widget _buildTable() {
-    final columns = _def.table.columns;
+    final columns =
+        _def.table.columns.where((c) => isAllowed(c.roles, _roles)).toList();
     final rowActions = _def.table.rowActions;
     final hasRowActions = rowActions.contains(ActionTypes.edit) ||
         rowActions.contains(ActionTypes.delete);
@@ -417,6 +421,7 @@ class _HatakeFormFields extends StatefulWidget {
   final DataRecord initial;
   final ValidationResult validation;
   final Map<String, MaterialFieldBuilder> fieldBuilders;
+  final Set<String> roles;
 
   const _HatakeFormFields({
     super.key,
@@ -424,6 +429,7 @@ class _HatakeFormFields extends StatefulWidget {
     required this.initial,
     required this.validation,
     required this.fieldBuilders,
+    required this.roles,
   });
 
   @override
@@ -521,8 +527,9 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
   List<Widget> _buildSection(SectionDefinition section, DataRecord record) {
     final visible = [
       for (final field in section.fields)
-        if (field.visibleWhen == null ||
-            evaluateCondition(field.visibleWhen, record))
+        if (isAllowed(field.roles, widget.roles) &&
+            (field.visibleWhen == null ||
+                evaluateCondition(field.visibleWhen, record)))
           field,
     ];
     if (visible.isEmpty) return const [];
@@ -720,11 +727,13 @@ class _FormDialog extends StatefulWidget {
   final CrudLike definition;
   final CrudController controller;
   final Map<String, MaterialFieldBuilder> fieldBuilders;
+  final Set<String> roles;
 
   const _FormDialog({
     required this.definition,
     required this.controller,
     required this.fieldBuilders,
+    required this.roles,
   });
 
   @override
@@ -765,6 +774,7 @@ class _FormDialogState extends State<_FormDialog> {
                 initial: controller.draft,
                 validation: controller.validation,
                 fieldBuilders: widget.fieldBuilders,
+                roles: widget.roles,
               ),
             ),
           ),
@@ -816,6 +826,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
 
   SearchPageDefinition get _def => widget.definition;
   ListController get _controller => widget.controller;
+  Set<String> get _roles => HatakeScope.of(context).roles;
 
   @override
   void initState() {
@@ -878,8 +889,9 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final rowActionIds = _def.table.rowActions;
-    final pageActions =
-        _def.actions.where((a) => !rowActionIds.contains(a.id)).toList();
+    final pageActions = _def.actions
+        .where((a) => !rowActionIds.contains(a.id) && isAllowed(a.roles, _roles))
+        .toList();
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -985,9 +997,13 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
       );
     }
 
-    final columns = _def.table.columns;
-    final rowActions =
-        rowActionIds.map(_actionById).whereType<ActionDefinition>().toList();
+    final columns =
+        _def.table.columns.where((c) => isAllowed(c.roles, _roles)).toList();
+    final rowActions = rowActionIds
+        .map(_actionById)
+        .whereType<ActionDefinition>()
+        .where((a) => isAllowed(a.roles, _roles))
+        .toList();
 
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
@@ -1101,14 +1117,15 @@ class _MaterialDetailPage extends StatelessWidget {
                 child:
                     Text(definition.title, style: theme.textTheme.headlineSmall),
               ),
-              for (final action in definition.actions) ...[
-                FilledButton(
-                  key: Key('hatake.action.${action.id}'),
-                  onPressed: () => _runAction(context, action),
-                  child: Text(action.label),
-                ),
-                const SizedBox(width: 8),
-              ],
+              for (final action in definition.actions)
+                if (isAllowed(action.roles, HatakeScope.of(context).roles)) ...[
+                  FilledButton(
+                    key: Key('hatake.action.${action.id}'),
+                    onPressed: () => _runAction(context, action),
+                    child: Text(action.label),
+                  ),
+                  const SizedBox(width: 8),
+                ],
             ],
           ),
           const SizedBox(height: 12),
@@ -1151,6 +1168,7 @@ class _MaterialDetailPage extends StatelessWidget {
               child: Text(section.title!, style: theme.textTheme.titleSmall),
             ),
           for (final field in section.fields)
+            if (isAllowed(field.roles, HatakeScope.of(context).roles))
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
@@ -1254,6 +1272,7 @@ class _MaterialFormPageState extends State<_MaterialFormPage> {
                       initial: controller.draft,
                       validation: controller.validation,
                       fieldBuilders: widget.fieldBuilders,
+                      roles: HatakeScope.of(context).roles,
                     ),
                   ),
           ),

@@ -104,6 +104,7 @@ YAML Language Server 系のエディタなら、ファイル先頭にこの一�
 | `sortable` | boolean | | `false` | ソート可能か。 |
 | `format` | string | | — | 表示フォーマッタ名（[フォーマッタ](#フォーマッタ)参照）。オプションは `config` から。 |
 | `config` | map | | `{}` | 追加設定（フォーマッタのオプション兼用）。 |
+| `roles` | string[] | | `[]` | 表示を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
 
 ### pagination
 
@@ -144,6 +145,19 @@ YAML Language Server 系のエディタなら、ファイル先頭にこの一�
 | `visibleWhen` | [condition](#condition) | | — | 条件が真のときだけ表示。省略時は常に表示。 |
 | `enabledWhen` | [condition](#condition) | | — | 条件が真のときだけ活性。省略時は常に活性。 |
 | `computed` | [computed](#computed) | | — | 値をレコードから導出（読み取り専用表示）。 |
+| `roles` | string[] | | `[]` | 表示を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
+
+### 権限（roles）
+
+`field` / `column` / `action` に `roles`（許可ロールの配列）を付けると、**現在ユーザのロールに応じて表示/非表示を出し分け**られる。空 or 省略なら全員に表示。
+
+```yaml
+- { field: salary, label: 給与, type: number, roles: [hr, manager] }
+```
+
+判定は「`roles` が空なら誰でも可、そうでなければユーザのロールのいずれかが含まれれば可」（`isAllowed`）。
+
+**注意**: これは **UI レベルの表示制御**であって、認証・認可そのものではない（[スコープ](#スコープ)のとおり Framework の対象外）。現在ユーザのロール集合は実行時に与える（Flutter は `HatakeScope(roles: {...})`）。本当のアクセス制御（データの保護・改ざん防止）はバックエンド側で必ず行うこと。
 
 ### condition
 
@@ -210,6 +224,7 @@ computed: { op: sum, fields: [price, tax] }
 | `label` | string | ✅ | ボタンラベル。 |
 | `plugin` | string | | Plugin キー（`type: plugin` のとき）。 |
 | `config` | map | | 追加設定。 |
+| `roles` | string[] | | 実行を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
 
 ## option
 

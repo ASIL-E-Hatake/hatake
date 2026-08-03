@@ -169,6 +169,7 @@ ColumnDefinition _parseColumn(Map<String, Object?> m) {
     sortable: m.optBool('sortable'),
     format: m.optString('format'),
     config: m.optMap('config') ?? const {},
+    roles: [for (final r in m.optList('roles')) r.toString()],
   );
 }
 
@@ -224,6 +225,7 @@ FieldDefinition _parseField(Map<String, Object?> m) {
     visibleWhen: m.optMap('visibleWhen'),
     enabledWhen: m.optMap('enabledWhen'),
     computed: m.optMap('computed'),
+    roles: [for (final r in m.optList('roles')) r.toString()],
   );
 }
 
@@ -246,6 +248,7 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
     label: m.reqString('label', at: 'action.label'),
     plugin: m.optString('plugin'),
     config: m.optMap('config') ?? const {},
+    roles: [for (final r in m.optList('roles')) r.toString()],
   );
 }
 

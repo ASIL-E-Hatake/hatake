@@ -31,7 +31,7 @@
 | | 計算項目・派生値 | ✅ 3言語 | `computed`（`ComputedRegistry`：concat/sum/subtract/product ＋登録式。3言語＋conformance、Flutter は読み取り表示で自動再計算） |
 | 動き | Action / Workflow フック | 🚧 | plugin action 済。遷移や確認ダイアログ定義は未 |
 | | Navigation 定義 | ⏳ | 画面間遷移 |
-| | 権限・可視制御 | ⏳ | ロールで項目/アクション出し分け |
+| | 権限・可視制御 | ✅ 3言語 | `roles` を field/column/action に付与＋`isAllowed`（3言語＋conformance）。Flutter は現在ユーザのロール（`HatakeScope(roles:)`）で表示出し分け。※UI 表示制御のみ、認証・認可は対象外 |
 | 出力 | CSV / 帳票 / 印刷 | ⏳ | Formatter を共有して実装 |
 | バックエンド | サーバ側バリデーション | ✅ Java/TS | |
 | | QueryBuilder（QuerySpec） | ✅ Java/TS | |
@@ -52,6 +52,7 @@
 | Formatter / Converter | ✅ | ✅ | ✅ | ✅ |
 | メッセージ i18n（`MessageResolver`） | — | ✅ | ✅ | ✅ |
 | 条件表示 `evaluateCondition` / 計算 `computed` | ✅ | ✅ | ✅ | ✅ |
+| 権限 `roles` / `isAllowed` | ✅ | ✅ | ✅ | ✅(field) |
 | Renderer（画面描画） | — | ✅(Material) | 対象外 | 対象外(※) |
 | table/action など画面寄りモデル | ✅ | ✅ | ⏳一部 | ✅ |
 
@@ -104,7 +105,7 @@
 
 - **近い（P1）**: ~~Formatter/Converter を TS/Java へ横展開~~ ✅、~~コンフォーマンス・スイートの器~~ ✅、~~normalize 入力パイプの配線~~ ✅（Flutter は送信時に自動適用 / TS・Java は `normalizeRecord`・`FormNormalizer`）、~~QuerySpec の fixture 化~~ ✅ → 次は **utils P2**（消費税・年度・営業日）や **新ページ種別**、**DTO/レスポンス生成**あたり
 - **中（P2）**: ~~DetailPage / MasterPage~~ ✅、~~消費税・年度/四半期・年齢/勤続・営業日（utils P2）~~ ✅（3言語＋conformance）、~~元号算出/税率別合計（utils 小follow-up）~~ ✅（`eraOf` / `computeInvoice`、3言語＋conformance）→ ~~ORM アダプタ1個目~~ ✅（Java/JPA `JpaQueryTranslator`）。P2 はひと通り完了（i18n・条件表示・計算項目・ORM アダプタ1個目 すべて✅）
-- **遠い（P3）**: DashboardPage、権限制御、Python/Rust エディション、帳票・全銀など重いやつ
+- **遠い（P3）**: ~~権限制御~~ ✅（roles + `isAllowed`、3言語）、DashboardPage、Python/Rust エディション、帳票・全銀など重いやつ
 
 ## 依頼の仕方（メモ）
 

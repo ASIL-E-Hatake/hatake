@@ -54,6 +54,10 @@ class FieldDefinition extends Equatable {
   /// `ComputedRegistry`). Computed fields are shown read-only.
   final Map<String, Object?>? computed;
 
+  /// Roles allowed to see this field (see `isAllowed`). Empty = everyone.
+  /// UI-level display gating only — not access enforcement.
+  final List<String> roles;
+
   const FieldDefinition({
     required this.field,
     required this.label,
@@ -69,6 +73,7 @@ class FieldDefinition extends Equatable {
     this.visibleWhen,
     this.enabledWhen,
     this.computed,
+    this.roles = const [],
   });
 
   @override
@@ -87,5 +92,6 @@ class FieldDefinition extends Equatable {
         visibleWhen,
         enabledWhen,
         computed,
+        roles,
       ];
 }

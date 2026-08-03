@@ -227,6 +227,18 @@ class ConformanceTest {
     }
 
     @TestFactory
+    @SuppressWarnings("unchecked")
+    Stream<DynamicTest> access() throws IOException {
+        return load("access.json").stream().map(c -> DynamicTest.dynamicTest(
+                c.get("roles") + " / " + c.get("userRoles"),
+                () -> {
+                    List<String> roles = (List<String>) c.get("roles");
+                    Set<String> userRoles = new HashSet<>((List<String>) c.get("userRoles"));
+                    assertEquals(c.get("expected"), Access.isAllowed(roles, userRoles));
+                }));
+    }
+
+    @TestFactory
     Stream<DynamicTest> validators() throws IOException {
         ValidatorRegistry registry = new ValidatorRegistry();
         return load("validators.json").stream().map(c -> DynamicTest.dynamicTest(

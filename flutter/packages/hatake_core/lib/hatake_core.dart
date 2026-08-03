@@ -43,9 +43,10 @@ export 'src/validation/form_validator.dart';
 // i18n (message localization).
 export 'src/i18n/message_resolver.dart';
 
-// Logic (conditional display / computed fields).
+// Logic (conditional display / computed fields / role-based access).
 export 'src/logic/condition_evaluator.dart';
 export 'src/logic/computed_registry.dart';
+export 'src/logic/access.dart';
 
 // Formatting / conversion (P0 registries + P1 built-ins).
 export 'src/format/formatter_registry.dart';

@@ -175,6 +175,17 @@ void main() {
     }
   });
 
+  group('conformance: access', () {
+    for (final raw in _load('access.json')) {
+      final c = raw as Map<String, dynamic>;
+      test('${c['roles']} / ${c['userRoles']}', () {
+        final roles = [for (final r in c['roles'] as List) r.toString()];
+        final userRoles = {for (final r in c['userRoles'] as List) r.toString()};
+        expect(isAllowed(roles, userRoles), c['expected']);
+      });
+    }
+  });
+
   group('conformance: business day', () {
     for (final raw in _load('businessday.json')) {
       final c = raw as Map<String, dynamic>;

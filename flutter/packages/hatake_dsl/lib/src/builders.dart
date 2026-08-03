@@ -114,6 +114,7 @@ ColumnDefinition column(
   bool sortable = false,
   String? format,
   Map<String, Object?> config = const {},
+  List<String> roles = const [],
 }) {
   return ColumnDefinition(
     field: field,
@@ -123,6 +124,7 @@ ColumnDefinition column(
     sortable: sortable,
     format: format,
     config: config,
+    roles: roles,
   );
 }
 
@@ -157,6 +159,7 @@ FieldDefinition field(
   Map<String, Object?>? visibleWhen,
   Map<String, Object?>? enabledWhen,
   Map<String, Object?>? computed,
+  List<String> roles = const [],
 }) {
   return FieldDefinition(
     field: field,
@@ -173,6 +176,7 @@ FieldDefinition field(
     visibleWhen: visibleWhen,
     enabledWhen: enabledWhen,
     computed: computed,
+    roles: roles,
   );
 }
 
@@ -182,6 +186,7 @@ ActionDefinition action(
   required String label,
   String? plugin,
   Map<String, Object?> config = const {},
+  List<String> roles = const [],
 }) {
   return ActionDefinition(
     id: id,
@@ -189,6 +194,7 @@ ActionDefinition action(
     label: label,
     plugin: plugin,
     config: config,
+    roles: roles,
   );
 }
 
