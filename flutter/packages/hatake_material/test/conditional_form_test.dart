@@ -6,7 +6,7 @@ import 'package:hatake_material/hatake_material.dart';
 class _Repo implements Repository {
   @override
   Future<PageResult> search(RepositoryQuery query) async =>
-      PageResult(items: const [], totalCount: 0);
+      const PageResult(items: [], totalCount: 0);
 
   @override
   Future<DataRecord?> findByKey(Object key) async => null;
@@ -21,15 +21,15 @@ class _Repo implements Repository {
   Future<void> delete(Object key) async {}
 }
 
-final _definition = CrudPageDefinition(
+const _definition = CrudPageDefinition(
   id: 'p',
   title: 'テスト',
   repository: 'repo',
   keyField: 'id',
-  table: const TableDefinition(
+  table: TableDefinition(
     columns: [ColumnDefinition(field: 'last', label: '姓')],
   ),
-  form: const FormDefinition(
+  form: FormDefinition(
     sections: [
       SectionDefinition(
         fields: [
@@ -69,7 +69,7 @@ Widget _harness() {
       body: HatakeScope(
         repositories: RepositoryRegistry({'repo': _Repo()}),
         renderer: const MaterialRenderer(),
-        child: HatakeCrudView(definition: _definition),
+        child: const HatakeCrudView(definition: _definition),
       ),
     ),
   );
