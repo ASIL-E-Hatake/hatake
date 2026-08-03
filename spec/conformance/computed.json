@@ -1,0 +1,8 @@
+[
+  { "computed": { "op": "concat", "fields": ["last", "first"], "separator": " " }, "record": { "last": "山田", "first": "太郎" }, "expected": "山田 太郎" },
+  { "computed": { "op": "concat", "fields": ["a", "b"] }, "record": { "a": "x", "b": "y" }, "expected": "xy" },
+  { "computed": { "op": "sum", "fields": ["price", "tax"] }, "record": { "price": 1000, "tax": 80 }, "expected": 1080 },
+  { "computed": { "op": "sum", "fields": ["a", "b", "missing"] }, "record": { "a": 10, "b": 5 }, "expected": 15 },
+  { "computed": { "op": "subtract", "fields": ["total", "paid"] }, "record": { "total": 1000, "paid": 300 }, "expected": 700 },
+  { "computed": { "op": "product", "fields": ["qty", "unit"] }, "record": { "qty": 3, "unit": 150 }, "expected": 450 }
+]

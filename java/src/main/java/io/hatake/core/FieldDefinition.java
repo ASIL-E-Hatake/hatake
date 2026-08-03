@@ -1,6 +1,7 @@
 package io.hatake.core;
 
 import java.util.List;
+import java.util.Map;
 
 public record FieldDefinition(
         String field,
@@ -10,5 +11,8 @@ public record FieldDefinition(
         boolean readOnly,
         List<ValidatorDefinition> validators,
         String format,
-        List<String> normalize) {
+        List<String> normalize,
+        Map<String, Object> visibleWhen,
+        Map<String, Object> enabledWhen,
+        Map<String, Object> computed) {
 }

@@ -118,7 +118,15 @@ public final class DefinitionParser {
                 Boolean.TRUE.equals(m.get("readOnly")),
                 validators,
                 m.get("format") instanceof String f ? f : null,
-                normalize);
+                normalize,
+                optMap(m.get("visibleWhen")),
+                optMap(m.get("enabledWhen")),
+                optMap(m.get("computed")));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> optMap(Object o) {
+        return o instanceof Map ? (Map<String, Object>) o : null;
     }
 
     private static ValidatorDefinition parseValidator(Map<String, Object> m) {

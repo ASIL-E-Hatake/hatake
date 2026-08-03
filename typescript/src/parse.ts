@@ -224,6 +224,9 @@ function parseField(m: Dict): FieldDefinition {
     format: optString(m, "format"),
     normalize: optList(m, "normalize").map(String),
     config: optDict(m, "config") ?? {},
+    visibleWhen: optDict(m, "visibleWhen"),
+    enabledWhen: optDict(m, "enabledWhen"),
+    computed: optDict(m, "computed"),
   };
 }
 

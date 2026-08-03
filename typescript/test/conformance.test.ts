@@ -4,9 +4,11 @@ import {
   ageAt,
   buildQuery,
   computeInvoice,
+  ComputedRegistry,
   computeTax,
   ConverterRegistry,
   eraOf,
+  evaluateCondition,
   fiscalHalf,
   fiscalQuarter,
   fiscalYear,
@@ -147,6 +149,23 @@ describe("conformance: invoice", () => {
         tax: c.expected.total.tax,
         gross: c.expected.total.gross,
       });
+    });
+  }
+});
+
+describe("conformance: conditions", () => {
+  for (const c of load("conditions.json")) {
+    it(`${JSON.stringify(c.condition)} on ${JSON.stringify(c.record)}`, () => {
+      expect(evaluateCondition(c.condition, c.record)).toBe(c.expected);
+    });
+  }
+});
+
+describe("conformance: computed", () => {
+  const reg = new ComputedRegistry();
+  for (const c of load("computed.json")) {
+    it(`${JSON.stringify(c.computed)} on ${JSON.stringify(c.record)}`, () => {
+      expect(reg.compute(c.computed, c.record)).toBe(c.expected);
     });
   }
 });

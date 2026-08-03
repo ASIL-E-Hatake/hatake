@@ -221,6 +221,9 @@ FieldDefinition _parseField(Map<String, Object?> m) {
     format: m.optString('format'),
     normalize: [for (final n in m.optList('normalize')) n.toString()],
     config: m.optMap('config') ?? const {},
+    visibleWhen: m.optMap('visibleWhen'),
+    enabledWhen: m.optMap('enabledWhen'),
+    computed: m.optMap('computed'),
   );
 }
 

@@ -154,6 +154,9 @@ FieldDefinition field(
   String? format,
   List<String> normalize = const [],
   Map<String, Object?> config = const {},
+  Map<String, Object?>? visibleWhen,
+  Map<String, Object?>? enabledWhen,
+  Map<String, Object?>? computed,
 }) {
   return FieldDefinition(
     field: field,
@@ -167,6 +170,9 @@ FieldDefinition field(
     format: format,
     normalize: normalize,
     config: config,
+    visibleWhen: visibleWhen,
+    enabledWhen: enabledWhen,
+    computed: computed,
   );
 }
 

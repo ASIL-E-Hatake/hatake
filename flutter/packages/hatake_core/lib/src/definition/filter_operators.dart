@@ -3,6 +3,7 @@ abstract final class FilterOperators {
   const FilterOperators._();
 
   static const String equals = 'equals';
+  static const String notEquals = 'notEquals';
   static const String contains = 'contains';
   static const String startsWith = 'startsWith';
   static const String endsWith = 'endsWith';
@@ -12,4 +13,10 @@ abstract final class FilterOperators {
   static const String lessThanOrEqual = 'lte';
   static const String between = 'between';
   static const String inList = 'in';
+
+  /// Value is null / empty string / empty list. Used by conditions.
+  static const String isEmpty = 'isEmpty';
+
+  /// Inverse of [isEmpty].
+  static const String isNotEmpty = 'isNotEmpty';
 }

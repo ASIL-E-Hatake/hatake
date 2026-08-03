@@ -1,0 +1,23 @@
+[
+  { "condition": { "field": "type", "operator": "equals", "value": "corporate" }, "record": { "type": "corporate" }, "expected": true },
+  { "condition": { "field": "type", "operator": "equals", "value": "corporate" }, "record": { "type": "personal" }, "expected": false },
+  { "condition": { "field": "type", "operator": "notEquals", "value": "corporate" }, "record": { "type": "personal" }, "expected": true },
+  { "condition": { "field": "agreed", "operator": "equals", "value": true }, "record": { "agreed": true }, "expected": true },
+  { "condition": { "field": "agreed", "operator": "equals", "value": true }, "record": { "agreed": false }, "expected": false },
+  { "condition": { "field": "age", "operator": "gte", "value": 20 }, "record": { "age": 20 }, "expected": true },
+  { "condition": { "field": "age", "operator": "gte", "value": 20 }, "record": { "age": 19 }, "expected": false },
+  { "condition": { "field": "age", "operator": "lt", "value": 20 }, "record": { "age": 19 }, "expected": true },
+  { "condition": { "field": "date", "operator": "gte", "value": "2026-04-01" }, "record": { "date": "2026-04-01" }, "expected": true },
+  { "condition": { "field": "date", "operator": "lt", "value": "2026-04-01" }, "record": { "date": "2026-03-31" }, "expected": true },
+  { "condition": { "field": "tags", "operator": "contains", "value": "vip" }, "record": { "tags": ["vip", "new"] }, "expected": true },
+  { "condition": { "field": "name", "operator": "contains", "value": "山" }, "record": { "name": "山田" }, "expected": true },
+  { "condition": { "field": "status", "operator": "in", "value": ["a", "b"] }, "record": { "status": "b" }, "expected": true },
+  { "condition": { "field": "status", "operator": "in", "value": ["a", "b"] }, "record": { "status": "c" }, "expected": false },
+  { "condition": { "field": "note", "operator": "isEmpty" }, "record": {}, "expected": true },
+  { "condition": { "field": "note", "operator": "isNotEmpty" }, "record": { "note": "x" }, "expected": true },
+  { "condition": { "all": [ { "field": "type", "operator": "equals", "value": "corporate" }, { "field": "age", "operator": "gte", "value": 20 } ] }, "record": { "type": "corporate", "age": 30 }, "expected": true },
+  { "condition": { "all": [ { "field": "type", "operator": "equals", "value": "corporate" }, { "field": "age", "operator": "gte", "value": 20 } ] }, "record": { "type": "corporate", "age": 10 }, "expected": false },
+  { "condition": { "any": [ { "field": "a", "operator": "equals", "value": 1 }, { "field": "b", "operator": "equals", "value": 2 } ] }, "record": { "a": 9, "b": 2 }, "expected": true },
+  { "condition": { "not": { "field": "type", "operator": "equals", "value": "corporate" } }, "record": { "type": "personal" }, "expected": true },
+  { "condition": {}, "record": {}, "expected": true }
+]
