@@ -141,6 +141,43 @@ YAML Language Server 系のエディタなら、ファイル先頭にこの一�
 | `format` | string | | — | 表示フォーマッタ名（[フォーマッタ](#フォーマッタ)参照）。 |
 | `normalize` | string[] | | `[]` | 入力前に適用するコンバータ（[コンバータ](#コンバータ)参照）。 |
 | `config` | map | | `{}` | 追加設定。 |
+| `visibleWhen` | [condition](#condition) | | — | 条件が真のときだけ表示。省略時は常に表示。 |
+| `enabledWhen` | [condition](#condition) | | — | 条件が真のときだけ活性。省略時は常に活性。 |
+| `computed` | [computed](#computed) | | — | 値をレコードから導出（読み取り専用表示）。 |
+
+### condition
+
+`visibleWhen` / `enabledWhen` で使う宣言的な条件。レコードに対して評価する。
+**リーフ**か**結合**のいずれか:
+
+```yaml
+# リーフ（field / operator / value）
+visibleWhen: { field: type, operator: equals, value: corporate }
+
+# 結合（all=AND / any=OR / not）
+enabledWhen:
+  all:
+    - { field: type, operator: equals, value: corporate }
+    - { field: age,  operator: gte,    value: 20 }
+```
+
+演算子（`operator`）: `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty`。数値同士は数値比較、そうでなければ文字列比較。未知の演算子は false。
+
+### computed
+
+値をレコードから導出する計算項目。`op` で計算方法を選ぶ（組込み以外はプラグインで追加可）。
+
+```yaml
+computed: { op: concat, fields: [lastName, firstName], separator: " " }
+computed: { op: sum, fields: [price, tax] }
+```
+
+| 組込 `op` | 説明 |
+|---|---|
+| `concat` | `fields` を `separator`（既定 空）で連結。 |
+| `sum` | `fields` の数値和（欠損は 0）。 |
+| `subtract` | `fields[0]` − 残りの合計。 |
+| `product` | `fields` の数値積（欠損は 1）。 |
 
 ### validator
 

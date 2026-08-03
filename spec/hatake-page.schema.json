@@ -266,7 +266,40 @@
           "description": "Input converters applied before validation. Built-ins: toHankaku, toZenkaku, hiraToKata, kataToHira, trim, collapseSpaces, parseNumber.",
           "items": { "type": "string" }
         },
-        "config": { "$ref": "#/$defs/config" }
+        "config": { "$ref": "#/$defs/config" },
+        "visibleWhen": {
+          "$ref": "#/$defs/condition",
+          "description": "Show this field only when the condition matches the current record."
+        },
+        "enabledWhen": {
+          "$ref": "#/$defs/condition",
+          "description": "Enable this field only when the condition matches the current record."
+        },
+        "computed": {
+          "type": "object",
+          "description": "Derive the field value from the record. Built-in ops: concat, sum, subtract, product. Extensible via ComputedRegistry.",
+          "required": ["op"],
+          "properties": {
+            "op": { "type": "string" },
+            "fields": { "type": "array", "items": { "type": "string" } },
+            "separator": { "type": "string" }
+          }
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "description": "A conditional expression evaluated against a record. Either a leaf {field, operator, value} or a combinator {all|any: [..]} / {not: {..}}.",
+      "properties": {
+        "field": { "type": "string" },
+        "operator": {
+          "type": "string",
+          "description": "Built-ins: equals, notEquals, gt, gte, lt, lte, contains, in, isEmpty, isNotEmpty."
+        },
+        "value": {},
+        "all": { "type": "array", "items": { "$ref": "#/$defs/condition" } },
+        "any": { "type": "array", "items": { "$ref": "#/$defs/condition" } },
+        "not": { "$ref": "#/$defs/condition" }
       }
     },
     "validator": {

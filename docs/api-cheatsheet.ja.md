@@ -68,6 +68,23 @@ page:
 ## コンバータ（`normalize: [...]` で入力前に適用）
 `toHankaku` `toZenkaku` `hiraToKata` `kataToHira` `trim` `collapseSpaces` `parseNumber`
 
+## 条件表示・計算項目（field に付与）
+
+```yaml
+# 条件表示/活性: リーフ {field,operator,value} か 結合 {all|any:[...]} / {not:{...}}
+- { field: corpName, label: 法人名, type: text,
+    visibleWhen: { field: type, operator: equals, value: corporate } }
+- { field: memo, label: 備考, type: textarea,
+    enabledWhen: { any: [ { field: type, operator: equals, value: vip },
+                          { field: age, operator: gte, value: 65 } ] } }
+# 計算項目（読み取り表示、入力変化で自動再計算）
+- { field: fullName, label: 氏名, computed: { op: concat, fields: [last, first], separator: " " } }
+- { field: total, label: 合計, computed: { op: sum, fields: [price, tax] } }
+```
+
+演算子: `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty`。
+計算 `op`: `concat` `sum` `subtract` `product`（`ComputedRegistry` で追加可）。
+
 ## バリデータ（`validators: [{ type, ...params, message? }]`）
 
 | type | params | 意味 |
@@ -121,4 +138,4 @@ nextBusinessDay('2024-01-05', holidays: {'2024-01-08'}); // 2024-01-09
 拡張したいときは各レジストリに `register(name, fn)`、または `MaterialRenderer(fieldBuilders: {...})`。詳細は [Plugin ガイド](../flutter/docs/plugins.ja.md)。
 
 ## 他言語（バックエンド）
-TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。
+TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `evaluateCondition` / `ComputedRegistry` / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。

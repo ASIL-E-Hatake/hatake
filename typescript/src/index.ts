@@ -5,6 +5,8 @@ export * from "./parse.js";
 export * from "./validators.js";
 export * from "./formValidator.js";
 export * from "./messageResolver.js";
+export * from "./conditionEvaluator.js";
+export * from "./computed.js";
 export * from "./query.js";
 export * from "./formatter.js";
 export * from "./converter.js";

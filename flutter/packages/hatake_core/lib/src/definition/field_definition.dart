@@ -43,6 +43,17 @@ class FieldDefinition extends Equatable {
   /// plugins can carry arbitrary settings without changing the model.
   final Map<String, Object?> config;
 
+  /// Show this field only when the condition matches the current record
+  /// (structured map, see `evaluateCondition`). Null = always visible.
+  final Map<String, Object?>? visibleWhen;
+
+  /// Enable this field only when the condition matches. Null = always enabled.
+  final Map<String, Object?>? enabledWhen;
+
+  /// Derive this field's value from the record (structured map, see
+  /// `ComputedRegistry`). Computed fields are shown read-only.
+  final Map<String, Object?>? computed;
+
   const FieldDefinition({
     required this.field,
     required this.label,
@@ -55,6 +66,9 @@ class FieldDefinition extends Equatable {
     this.format,
     this.normalize = const [],
     this.config = const {},
+    this.visibleWhen,
+    this.enabledWhen,
+    this.computed,
   });
 
   @override
@@ -70,5 +84,8 @@ class FieldDefinition extends Equatable {
         format,
         normalize,
         config,
+        visibleWhen,
+        enabledWhen,
+        computed,
       ];
 }

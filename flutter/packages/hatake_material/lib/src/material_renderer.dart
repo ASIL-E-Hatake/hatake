@@ -433,6 +433,7 @@ class _HatakeFormFields extends StatefulWidget {
 class _HatakeFormFieldsState extends State<_HatakeFormFields> {
   final Map<String, TextEditingController> _text = {};
   final Map<String, Object?> _values = {};
+  final ComputedRegistry _computeds = ComputedRegistry();
 
   bool _isTextField(String type) =>
       type == FieldTypes.text ||
@@ -463,7 +464,8 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
     super.dispose();
   }
 
-  /// Gathers the current field values into a record.
+  /// Gathers the current field values into a record. Computed fields are
+  /// derived from the gathered inputs (single pass, applied last).
   DataRecord collect() {
     final values = <String, Object?>{..._values};
     for (final field in widget.form.fields) {
@@ -474,6 +476,11 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
         values[field.field] = text.isEmpty ? null : num.tryParse(text) ?? text;
       } else {
         values[field.field] = text;
+      }
+    }
+    for (final field in widget.form.fields) {
+      if (field.computed != null) {
+        values[field.field] = _computeds.compute(field.computed, values);
       }
     }
     return values;
@@ -499,16 +506,26 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
 
   @override
   Widget build(BuildContext context) {
+    // Live record (inputs + computed) drives visibleWhen / enabledWhen.
+    final record = collect();
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final section in widget.form.sections) ..._buildSection(section),
+        for (final section in widget.form.sections)
+          ..._buildSection(section, record),
       ],
     );
   }
 
-  List<Widget> _buildSection(SectionDefinition section) {
+  List<Widget> _buildSection(SectionDefinition section, DataRecord record) {
+    final visible = [
+      for (final field in section.fields)
+        if (field.visibleWhen == null ||
+            evaluateCondition(field.visibleWhen, record))
+          field,
+    ];
+    if (visible.isEmpty) return const [];
     return [
       if (section.title != null && section.title!.isNotEmpty)
         Padding(
@@ -518,11 +535,27 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
             style: Theme.of(context).textTheme.titleSmall,
           ),
         ),
-      for (final field in section.fields) _buildField(field),
+      for (final field in visible) _buildField(field, record),
     ];
   }
 
-  Widget _buildField(FieldDefinition field) {
+  Widget _buildField(FieldDefinition field, DataRecord record) {
+    // Computed fields are derived and shown read-only.
+    if (field.computed != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: field.label,
+            border: const OutlineInputBorder(),
+          ),
+          child: Text(
+            '${record[field.field] ?? ''}',
+            key: Key('hatake.form.${field.field}'),
+          ),
+        ),
+      );
+    }
     final errors = widget.validation.forField(field.field);
     final errorText = errors.isEmpty ? null : errors.first.message;
     final label = field.required ? '${field.label} *' : field.label;
@@ -542,6 +575,10 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
       );
     }
 
+    final enabled = field.enabledWhen == null ||
+        evaluateCondition(field.enabledWhen, record);
+    final readOnly = field.readOnly || !enabled;
+
     Widget input;
     switch (field.type) {
       case FieldTypes.select:
@@ -560,7 +597,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
                 child: Text(option.label),
               ),
           ],
-          onChanged: field.readOnly
+          onChanged: readOnly
               ? null
               : (value) => setState(() => _values[field.field] = value),
         );
@@ -575,7 +612,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
           value: _values[field.field] == true,
-          onChanged: field.readOnly
+          onChanged: readOnly
               ? null
               : (value) => setState(() => _values[field.field] = value),
         );
@@ -589,7 +626,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
           child: RadioGroup<Object?>(
             groupValue: _values[field.field],
             onChanged: (value) {
-              if (field.readOnly) return;
+              if (readOnly) return;
               setState(() => _values[field.field] = value);
             },
             child: Column(
@@ -623,7 +660,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
                   key: Key('hatake.form.${field.field}.${option.value}'),
                   label: Text(option.label),
                   selected: selected.contains(option.value),
-                  onSelected: field.readOnly
+                  onSelected: readOnly
                       ? null
                       : (on) => setState(() {
                             final next = [...selected];
@@ -642,7 +679,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
       case FieldTypes.dateTime:
         input = InkWell(
           key: Key('hatake.form.${field.field}'),
-          onTap: field.readOnly ? null : () => _pickDate(field),
+          onTap: readOnly ? null : () => _pickDate(field),
           child: InputDecorator(
             decoration: InputDecoration(
               labelText: label,
@@ -657,7 +694,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
         input = TextField(
           key: Key('hatake.form.${field.field}'),
           controller: _text[field.field],
-          readOnly: field.readOnly,
+          readOnly: readOnly,
           maxLines: field.type == FieldTypes.textarea ? 3 : 1,
           keyboardType:
               field.type == FieldTypes.number ? TextInputType.number : null,
@@ -666,6 +703,8 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
             border: const OutlineInputBorder(),
             errorText: errorText,
           ),
+          // Rebuild so visibleWhen / enabledWhen / computed react to typing.
+          onChanged: (_) => setState(() {}),
         );
     }
 

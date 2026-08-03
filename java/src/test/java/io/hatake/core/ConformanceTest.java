@@ -196,6 +196,37 @@ class ConformanceTest {
     }
 
     @TestFactory
+    @SuppressWarnings("unchecked")
+    Stream<DynamicTest> conditions() throws IOException {
+        return load("conditions.json").stream().map(c -> DynamicTest.dynamicTest(
+                String.valueOf(c.get("condition")),
+                () -> {
+                    Map<String, Object> condition = (Map<String, Object>) c.get("condition");
+                    Map<String, Object> record = (Map<String, Object>) c.get("record");
+                    assertEquals(c.get("expected"), ConditionEvaluator.evaluate(condition, record));
+                }));
+    }
+
+    @TestFactory
+    @SuppressWarnings("unchecked")
+    Stream<DynamicTest> computed() throws IOException {
+        Computed reg = new Computed();
+        return load("computed.json").stream().map(c -> DynamicTest.dynamicTest(
+                String.valueOf(c.get("computed")),
+                () -> {
+                    Map<String, Object> computed = (Map<String, Object>) c.get("computed");
+                    Map<String, Object> record = (Map<String, Object>) c.get("record");
+                    Object result = reg.compute(computed, record);
+                    Object expected = c.get("expected");
+                    if (expected instanceof Number en) {
+                        assertEquals(en.doubleValue(), ((Number) result).doubleValue());
+                    } else {
+                        assertEquals(expected, result);
+                    }
+                }));
+    }
+
+    @TestFactory
     Stream<DynamicTest> validators() throws IOException {
         ValidatorRegistry registry = new ValidatorRegistry();
         return load("validators.json").stream().map(c -> DynamicTest.dynamicTest(

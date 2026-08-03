@@ -29,6 +29,12 @@ export interface FieldDefinition {
   /** Input converters applied before validation (see ConverterRegistry). */
   normalize: string[];
   config: Record<string, unknown>;
+  /** Show only when this condition matches the record (see evaluateCondition). */
+  visibleWhen?: Record<string, unknown>;
+  /** Enable only when this condition matches (see evaluateCondition). */
+  enabledWhen?: Record<string, unknown>;
+  /** Derive the value from the record (see ComputedRegistry). */
+  computed?: Record<string, unknown>;
 }
 
 export interface FilterDefinition {

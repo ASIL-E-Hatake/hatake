@@ -146,6 +146,35 @@ void main() {
     }
   });
 
+  group('conformance: conditions', () {
+    for (final raw in _load('conditions.json')) {
+      final c = raw as Map<String, dynamic>;
+      test('${c['condition']} on ${c['record']}', () {
+        final cond = (c['condition'] as Map).cast<String, Object?>();
+        final record = (c['record'] as Map).cast<String, Object?>();
+        expect(evaluateCondition(cond, record), c['expected']);
+      });
+    }
+  });
+
+  group('conformance: computed', () {
+    final reg = ComputedRegistry();
+    for (final raw in _load('computed.json')) {
+      final c = raw as Map<String, dynamic>;
+      test('${c['computed']} on ${c['record']}', () {
+        final computed = (c['computed'] as Map).cast<String, Object?>();
+        final record = (c['record'] as Map).cast<String, Object?>();
+        final result = reg.compute(computed, record);
+        final expected = c['expected'];
+        if (expected is num) {
+          expect((result as num).toDouble(), expected.toDouble());
+        } else {
+          expect(result, expected);
+        }
+      });
+    }
+  });
+
   group('conformance: business day', () {
     for (final raw in _load('businessday.json')) {
       final c = raw as Map<String, dynamic>;
