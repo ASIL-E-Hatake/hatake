@@ -197,7 +197,8 @@
           "type": "string",
           "description": "Display formatter name (open string). Built-ins: currency, percent, date, wareki, postal, mask."
         },
-        "config": { "$ref": "#/$defs/config" }
+        "config": { "$ref": "#/$defs/config" },
+        "roles": { "$ref": "#/$defs/roles" }
       }
     },
     "pagination": {
@@ -284,8 +285,14 @@
             "fields": { "type": "array", "items": { "type": "string" } },
             "separator": { "type": "string" }
           }
-        }
+        },
+        "roles": { "$ref": "#/$defs/roles" }
       }
+    },
+    "roles": {
+      "type": "array",
+      "description": "Roles allowed to see this item/action. Empty or absent = everyone. UI-level display gating only, not access enforcement.",
+      "items": { "type": "string" }
     },
     "condition": {
       "type": "object",
@@ -333,7 +340,8 @@
           "type": "string",
           "description": "Registered action plugin key (used when type is 'plugin')."
         },
-        "config": { "$ref": "#/$defs/config" }
+        "config": { "$ref": "#/$defs/config" },
+        "roles": { "$ref": "#/$defs/roles" }
       }
     },
     "option": {

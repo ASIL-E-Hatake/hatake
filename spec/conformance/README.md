@@ -18,6 +18,7 @@
 | `invoice.json` | 税率別合計 `computeInvoice`（3言語） | `{ lines: [{amount, rate}], included?, rounding?, expected: { byRate: [{rate,net,tax,gross}], total } }`（byRate は税率昇順） |
 | `conditions.json` | 条件表示 `evaluateCondition`（3言語） | `{ condition, record, expected: bool }` |
 | `computed.json` | 計算項目 `ComputedRegistry.compute`（3言語） | `{ computed, record, expected }`（数値は数値比較） |
+| `access.json` | 権限制御 `isAllowed`（3言語） | `{ roles, userRoles, expected: bool }` |
 
 `value` の日付は ISO の日付文字列（`"2026-07-22"`）で渡す（各言語が同じ解釈をするため）。
 

@@ -14,5 +14,6 @@ public record FieldDefinition(
         List<String> normalize,
         Map<String, Object> visibleWhen,
         Map<String, Object> enabledWhen,
-        Map<String, Object> computed) {
+        Map<String, Object> computed,
+        List<String> roles) {
 }

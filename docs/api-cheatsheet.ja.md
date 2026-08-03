@@ -85,6 +85,18 @@ page:
 演算子: `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty`。
 計算 `op`: `concat` `sum` `subtract` `product`（`ComputedRegistry` で追加可）。
 
+## 権限（ロールで表示出し分け）
+
+`field` / `column` / `action` に `roles: [..]`（許可ロール、空=全員）を付ける。現在ユーザのロールは Flutter は `HatakeScope(roles: {'admin'})` で注入。
+
+```yaml
+- { field: salary, label: 給与, roles: [hr, manager] }   # hr か manager だけ表示
+actions:
+  - { id: export, type: plugin, plugin: exportCsv, label: CSV出力, roles: [admin] }
+```
+
+※ **表示制御のみ**。実際のアクセス制御（データ保護）はバックエンドで行う（Framework は認証・認可を持たない）。
+
 ## バリデータ（`validators: [{ type, ...params, message? }]`）
 
 | type | params | 意味 |
@@ -138,4 +150,4 @@ nextBusinessDay('2024-01-05', holidays: {'2024-01-08'}); // 2024-01-09
 拡張したいときは各レジストリに `register(name, fn)`、または `MaterialRenderer(fieldBuilders: {...})`。詳細は [Plugin ガイド](../flutter/docs/plugins.ja.md)。
 
 ## 他言語（バックエンド）
-TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `evaluateCondition` / `ComputedRegistry` / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。
+TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `evaluateCondition` / `ComputedRegistry` / `isAllowed` / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。

@@ -23,6 +23,12 @@ class HatakeScope extends InheritedWidget {
   /// Handlers for `type: plugin` actions.
   final ActionRegistry actions;
 
+  /// Roles of the current user, used to gate fields/columns/actions declared
+  /// with `roles` (see `isAllowed`). Empty = the user has no roles, so anything
+  /// with a non-empty `roles` is hidden. UI-level display gating only — real
+  /// authorization stays outside the framework.
+  final Set<String> roles;
+
   HatakeScope({
     super.key,
     required this.repositories,
@@ -30,10 +36,12 @@ class HatakeScope extends InheritedWidget {
     ValidatorRegistry? validators,
     ConverterRegistry? converters,
     ActionRegistry? actions,
+    Set<String>? roles,
     required super.child,
   })  : validators = validators ?? ValidatorRegistry(),
         converters = converters ?? ConverterRegistry(),
-        actions = actions ?? ActionRegistry();
+        actions = actions ?? ActionRegistry(),
+        roles = roles ?? const {};
 
   static HatakeScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<HatakeScope>();
@@ -47,6 +55,7 @@ class HatakeScope extends InheritedWidget {
         oldWidget.renderer != renderer ||
         oldWidget.validators != validators ||
         oldWidget.converters != converters ||
-        oldWidget.actions != actions;
+        oldWidget.actions != actions ||
+        oldWidget.roles != roles;
   }
 }

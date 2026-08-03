@@ -26,6 +26,9 @@ class ColumnDefinition extends Equatable {
   /// Plugin / renderer specific extra configuration (also formatter options).
   final Map<String, Object?> config;
 
+  /// Roles allowed to see this column (see `isAllowed`). Empty = everyone.
+  final List<String> roles;
+
   const ColumnDefinition({
     required this.field,
     required this.label,
@@ -34,9 +37,10 @@ class ColumnDefinition extends Equatable {
     this.sortable = false,
     this.format,
     this.config = const {},
+    this.roles = const [],
   });
 
   @override
   List<Object?> get props =>
-      [field, label, type, width, sortable, format, config];
+      [field, label, type, width, sortable, format, config, roles];
 }

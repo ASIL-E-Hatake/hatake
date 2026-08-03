@@ -85,7 +85,7 @@ class HatakeCoreTest {
         FormDefinition form = new FormDefinition(List.of(new SectionDefinition(null,
                 List.of(new FieldDefinition("n", "N", "number", false, false,
                         List.of(new ValidatorDefinition("even", Map.of(), null)),
-                        null, List.of(), null, null, null)))));
+                        null, List.of(), null, null, null, List.of())))));
         FormValidator validator = new FormValidator(registry);
         assertEquals("偶数を入力してください",
                 validator.validate(form, Map.of("n", 3)).errors().get(0).message());

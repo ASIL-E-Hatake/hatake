@@ -69,7 +69,7 @@ class FormatTest {
         FormDefinition form = new FormDefinition(List.of(new SectionDefinition(null,
                 List.of(new FieldDefinition("zip", "郵便番号", "text", false, false,
                         List.of(new ValidatorDefinition("postalCode", Map.of(), null)),
-                        null, List.of(), null, null, null)))));
+                        null, List.of(), null, null, null, List.of())))));
         FormValidator v = new FormValidator();
         assertEquals(true, v.validate(form, Map.of("zip", "123-4567")).valid());
         assertEquals(true, v.validate(form, Map.of("zip", "1234567")).valid());
