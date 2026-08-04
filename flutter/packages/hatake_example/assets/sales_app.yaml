@@ -1,3 +1,5 @@
+# hatake デモ用の定義。spec/examples/sales_app.yaml と同じ内容に、デモ限定の
+# 「定義を見る」プラグインアクション（plugin: showDefinition）を各ページへ追加したもの。
 dsl_version: "1.0"
 app:
   id: sales_admin
@@ -31,6 +33,7 @@ app:
               - { field: name, label: 顧客名, type: text, required: true }
       actions:
         - { id: create, type: create, label: 新規登録 }
+        - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: customer_master } }
 
     - type: master
       id: product_master
@@ -47,6 +50,7 @@ app:
               - { field: name, label: 商品名, required: true }
       actions:
         - { id: create, type: create, label: 新規登録 }
+        - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: product_master } }
 
     - type: search
       id: order_search
@@ -65,6 +69,7 @@ app:
       actions:
         # 行から詳細へ遷移。$row.no を詳細ページの key に渡す。
         - { id: detail, type: navigate, label: 詳細, page: order_detail, params: { id: "$row.orderNo" } }
+        - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: order_search } }
 
     - type: detail
       id: order_detail
@@ -78,3 +83,5 @@ app:
               - { field: orderNo, label: 受注番号 }
               - { field: customer, label: 顧客 }
               - { field: amount, label: 金額, format: currency, config: { symbol: "¥" } }
+      actions:
+        - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: order_detail } }
