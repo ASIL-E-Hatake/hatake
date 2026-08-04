@@ -13,4 +13,8 @@ abstract final class ActionTypes {
 
   /// Delegate to a registered action plugin (see [ActionDefinition.plugin]).
   static const String plugin = 'plugin';
+
+  /// Navigate to another page (see `AppDefinition`). Target page id and route
+  /// params are carried in `ActionDefinition.config` as `page` / `params`.
+  static const String navigate = 'navigate';
 }

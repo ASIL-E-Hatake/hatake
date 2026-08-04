@@ -247,7 +247,13 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
     type: m.reqString('type', at: 'action.type'),
     label: m.reqString('label', at: 'action.label'),
     plugin: m.optString('plugin'),
-    config: m.optMap('config') ?? const {},
+    // Lift top-level `page` / `params` (navigate actions) into config so the
+    // ActionDefinition model stays unchanged.
+    config: {
+      ...?m.optMap('config'),
+      if (m['page'] != null) 'page': m['page'],
+      if (m['params'] != null) 'params': m['params'],
+    },
     roles: [for (final r in m.optList('roles')) r.toString()],
   );
 }

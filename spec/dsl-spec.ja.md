@@ -53,6 +53,56 @@ YAML Language Server 系のエディタなら、ファイル先頭にこの一�
 `rowActions` はページレベルの `plugin` アクション（例: `detail`）を指して、対象行を context に
 乗せて呼ぶ。例: [`examples/product_search.yaml`](examples/product_search.yaml)。
 
+## app（アプリ定義・ナビゲーション）
+
+複数ページを **1本のアプリ**として束ねるトップレベル定義。ドキュメントのルートを `page:` の代わりに `app:` にする。描画（シェル＋ルーティング）は Renderer の責務。
+
+```yaml
+dsl_version: "1.0"
+app:
+  id: sales_admin
+  title: 販売管理
+  home: customers                 # 初期ルート（menu の id / 省略時は先頭の葉）
+  menu:
+    - { id: customers, label: 顧客, icon: people, page: customer_master }
+    - group: マスタ                # 子を持つとグループ
+      roles: [admin]              # roles で出し分け（isAllowed）
+      items:
+        - { label: 商品, page: product_master }
+  pages:
+    - { type: crud, id: customer_master, ... }   # 既存のページ定義をそのまま列挙
+    - { type: detail, id: customer_detail, ... }
+```
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `id` | string | ✅ | — | アプリ識別子。 |
+| `title` | string | ✅ | — | アプリタイトル（シェル表示）。 |
+| `home` | string | | 先頭の葉 | 初期ルート（[menu-item](#menu-item) の id）。 |
+| `menu` | [menu-item](#menu-item)[] | | `[]` | ナビゲーションメニュー（葉とグループの木）。 |
+| `pages` | page[] | | `[]` | このアプリを構成するページ定義。id で `menu` / `navigate` から参照。 |
+
+### menu-item
+
+葉（`page` を開く）かグループ（`items` を持つ）のどちらか。
+
+| キー | 型 | 説明 |
+|---|---|---|
+| `id` | string | 葉のルートキー（省略時は `page` を流用）。 |
+| `label` / `group` | string | ラベル。グループは `group:` に見出しを書く。 |
+| `icon` | string | アイコン名（Renderer が実アイコンに対応付け）。 |
+| `page` | string | 葉が開くページ id。 |
+| `items` | menu-item[] | グループの子。 |
+| `roles` | string[] | 表示を許可するロール（[権限](#権限roles)）。 |
+
+### navigate アクション
+
+画面遷移は `action` の型 `navigate`。`page`（遷移先 id）と `params`（ルートに渡す値。`$row.id` / `$record.id` で現在行・レコードを埋め込み）を持つ。
+
+```yaml
+- { id: detail, type: navigate, label: 詳細, page: customer_detail, params: { id: "$row.id" } }
+```
+
 ## `page`（type: crud）
 
 | キー | 型 | 必須 | 既定 | 説明 |
