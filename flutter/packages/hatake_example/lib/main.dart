@@ -4,31 +4,24 @@ import 'package:hatake_material/hatake_material.dart';
 import 'package:hatake_yaml/hatake_yaml.dart';
 
 import 'customer_repository.dart';
+import 'order_repository.dart';
+import 'product_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final yaml = await rootBundle.loadString('assets/customer_master.yaml');
-  final definition = parsePageYaml(yaml) as CrudPageDefinition;
-  runApp(
-    HatakeExampleApp(
-      definition: definition,
-      repository: CustomerRepository.seeded(),
-    ),
-  );
+  final yaml = await rootBundle.loadString('assets/sales_app.yaml');
+  final definition = parseAppYaml(yaml);
+  runApp(HatakeExampleApp(definition: definition));
 }
 
-/// Wires a [CrudPageDefinition] to the Material renderer and an in-memory
-/// repository. The UI is produced entirely from the definition — there is no
-/// screen-specific widget code here.
+/// Renders a whole app — menu shell plus every page — from a single
+/// [AppDefinition]. The UI is produced entirely from the definition; there is
+/// no screen-specific widget code here. In-memory repositories stand in for a
+/// real backend.
 class HatakeExampleApp extends StatelessWidget {
-  final CrudPageDefinition definition;
-  final Repository repository;
+  final AppDefinition definition;
 
-  const HatakeExampleApp({
-    super.key,
-    required this.definition,
-    required this.repository,
-  });
+  const HatakeExampleApp({super.key, required this.definition});
 
   @override
   Widget build(BuildContext context) {
@@ -40,19 +33,13 @@ class HatakeExampleApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: HatakeScope(
-        repositories: RepositoryRegistry({'customerRepository': repository}),
-        renderer: const MaterialRenderer(),
-        // Plugin action: the definition's `csvExport` action dispatches here.
-        actions: ActionRegistry({
-          'csvExport': (ctx) async {
-            ScaffoldMessenger.of(ctx.buildContext).showSnackBar(
-              const SnackBar(content: Text('CSVを出力しました（デモ）')),
-            );
-          },
+        repositories: RepositoryRegistry({
+          'customerRepository': CustomerRepository.seeded(),
+          'productRepository': ProductRepository.seeded(),
+          'orderRepository': OrderRepository.seeded(),
         }),
-        child: Scaffold(
-          body: SafeArea(child: HatakeCrudView(definition: definition)),
-        ),
+        renderer: const MaterialRenderer(),
+        child: HatakeApp(app: definition),
       ),
     );
   }

@@ -53,6 +53,7 @@
 | メッセージ i18n（`MessageResolver`） | — | ✅ | ✅ | ✅ |
 | 条件表示 `evaluateCondition` / 計算 `computed` | ✅ | ✅ | ✅ | ✅ |
 | 権限 `roles` / `isAllowed` | ✅ | ✅ | ✅ | ✅(field) |
+| ナビ定義（app/menu）パーサ | ✅ | ✅（＋描画） | ✅（目録 PageRef） | ✅（目録 PageRef） |
 | Renderer（画面描画） | — | ✅(Material) | 対象外 | 対象外(※) |
 | table/action など画面寄りモデル | ✅ | ✅ | ⏳一部 | ✅ |
 

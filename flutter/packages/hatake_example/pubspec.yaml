@@ -33,3 +33,4 @@ dependency_overrides:
 flutter:
   assets:
     - assets/customer_master.yaml
+    - assets/sales_app.yaml

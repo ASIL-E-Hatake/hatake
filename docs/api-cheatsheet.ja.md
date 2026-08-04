@@ -169,4 +169,4 @@ nextBusinessDay('2024-01-05', holidays: {'2024-01-08'}); // 2024-01-09
 拡張したいときは各レジストリに `register(name, fn)`、または `MaterialRenderer(fieldBuilders: {...})`。詳細は [Plugin ガイド](../flutter/docs/plugins.ja.md)。
 
 ## 他言語（バックエンド）
-TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `evaluateCondition` / `ComputedRegistry` / `isAllowed` / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。
+TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `evaluateCondition` / `ComputedRegistry` / `isAllowed` / `parseApp*`（app定義パーサ＝menu/ページ目録） / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。
