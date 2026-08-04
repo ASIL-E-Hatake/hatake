@@ -30,9 +30,20 @@ Business Definition (YAML / JSON / 各言語DSL)
 | [`flutter/`](flutter/README.md) | **Flutter / Dart 版**（フロント：画面を描く） | ✅ 動いてる |
 | [`java/`](java/README.md) | **Java 版**（バックエンド：API ロジック） | ✅ scaffold（core + バリデーション + クエリ組み立て） |
 | [`typescript/`](typescript/README.md) | **TypeScript 版**（バックエンド：API ロジック） | ✅ scaffold（core + バリデーション + クエリ組み立て） |
-| [`docs/blog/`](docs/blog/introducing-hatake.md) | 紹介記事 | ✅ |
+| [`docs/`](docs/index.ja.md) | **ドキュメント**（[目次](docs/index.ja.md) / [導入](docs/getting-started.ja.md) / [レシピ集](docs/cookbook/) / [AIチートシート](docs/api-cheatsheet.ja.md) / 紹介記事） | ✅ |
 
 全部の版が同じ `spec/` を共通ソースにして、同じ定義から各言語で画面を出す。パッケージ名も揃える（Dart `hatake_core` / npm `@hatake/core` / Maven `io.github.asil-e-hatake:hatake-core` …）。どの言語から来ても「hatake ね」で通じるように。
+
+## ドキュメント
+
+**[📖 ドキュメント目次](docs/index.ja.md)** から入るのが早い（「やりたいこと → 読むファイル」の索引）。よく使うのはこの3つ:
+
+| | |
+|---|---|
+| [導入](docs/getting-started.ja.md) | インストール〜最小コードで1画面出すまで |
+| [レシピ集](docs/cookbook/) | [マスタメンテ](docs/cookbook/master-maintenance.ja.md) / [一覧→詳細](docs/cookbook/search-list-detail.ja.md) / [消費税・インボイス](docs/cookbook/invoice-tax.ja.md) |
+| [ガイド](docs/guide/) | [仕組みと責務分担](docs/guide/concepts.ja.md) / [ページ種別の選び方](docs/guide/page-types.ja.md) / [入力検証](docs/guide/validation.ja.md) / [バックエンド連携](docs/guide/backend.ja.md) |
+| [AI チートシート](docs/api-cheatsheet.ja.md) | 定義の書き方を1枚に圧縮（AI に渡すならこれ） |
 
 ## ざっとイメージ
 

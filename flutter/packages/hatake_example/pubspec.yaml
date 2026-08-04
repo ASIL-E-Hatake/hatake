@@ -31,6 +31,9 @@ dependency_overrides:
     path: ../hatake_yaml
 
 flutter:
+  # Required to bundle the MaterialIcons font. Without it FontManifest.json is
+  # empty and every Icon renders as a tofu box on web.
+  uses-material-design: true
   assets:
     - assets/customer_master.yaml
     - assets/sales_app.yaml

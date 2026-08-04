@@ -21,8 +21,8 @@ app:
       table:
         rowActions: [edit, delete]
         columns:
-          - { field: code, label: コード, sortable: true }
-          - { field: name, label: 顧客名 }
+          - { field: code, label: コード, sortable: true, width: 140 }
+          - { field: name, label: 顧客名, width: 220 }
       form:
         sections:
           - title: 基本情報
@@ -38,8 +38,8 @@ app:
       repository: productRepository
       table:
         columns:
-          - { field: code, label: コード }
-          - { field: name, label: 商品名 }
+          - { field: code, label: コード, width: 140 }
+          - { field: name, label: 商品名, width: 220 }
       form:
         sections:
           - fields:
@@ -59,9 +59,9 @@ app:
       table:
         rowActions: [detail]
         columns:
-          - { field: orderNo, label: 受注番号, sortable: true }
-          - { field: customer, label: 顧客 }
-          - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+          - { field: orderNo, label: 受注番号, sortable: true, width: 160 }
+          - { field: customer, label: 顧客, width: 200 }
+          - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" }, width: 140 }
       actions:
         # 行から詳細へ遷移。$row.no を詳細ページの key に渡す。
         - { id: detail, type: navigate, label: 詳細, page: order_detail, params: { id: "$row.orderNo" } }

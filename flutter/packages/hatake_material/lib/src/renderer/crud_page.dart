@@ -227,7 +227,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
           columns: [
             for (final column in columns)
               DataColumn(
-                label: Text(column.label),
+                label: _sizedColumn(column, Text(column.label)),
                 onSort: column.sortable
                     ? (index, ascending) =>
                         _controller.sortBy(column.field, ascending: ascending)
@@ -240,7 +240,8 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
               DataRow(
                 cells: [
                   for (final column in columns)
-                    DataCell(_buildCell(column, record[column.field])),
+                    DataCell(_sizedColumn(
+                        column, _buildCell(column, record[column.field]))),
                   if (hasRowActions) DataCell(_buildRowActions(record)),
                 ],
               ),
