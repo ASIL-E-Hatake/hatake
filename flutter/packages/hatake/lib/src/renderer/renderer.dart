@@ -4,6 +4,7 @@ import 'package:hatake_core/hatake_core.dart';
 import '../runtime/crud_controller.dart';
 import '../runtime/detail_controller.dart';
 import '../runtime/form_controller.dart';
+import '../runtime/hatake_router.dart';
 import '../runtime/list_controller.dart';
 
 /// Converts a [PageDefinition] into Flutter widgets.
@@ -41,5 +42,13 @@ abstract interface class Renderer {
     BuildContext context,
     FormPageDefinition definition,
     FormController controller,
+  );
+
+  /// Builds the app shell (navigation menu + current page) for an
+  /// [AppDefinition], driven by [router].
+  Widget buildApp(
+    BuildContext context,
+    AppDefinition definition,
+    HatakeRouter router,
   );
 }

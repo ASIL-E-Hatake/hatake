@@ -34,6 +34,25 @@ page:
     - { id: create, type: create, label: 新規登録 }
 ```
 
+## アプリ（ナビゲーション）
+
+複数ページを束ねてアプリにするときはルートを `page:` でなく `app:` にする。Flutter は `HatakeApp(app: ...)` で描画（シェル＋ルータ）。
+
+```yaml
+app:
+  id: sales_admin
+  title: 販売管理
+  home: customers                       # 初期ルート（menu の id）
+  menu:
+    - { id: customers, label: 顧客, icon: people, page: customer_master }
+    - group: マスタ                      # items を持つとグループ
+      roles: [admin]                    # roles で出し分け
+      items: [ { label: 商品, page: product_master } ]
+  pages: [ { type: crud, id: customer_master, ... }, { type: detail, id: customer_detail, ... } ]
+```
+
+画面遷移は `navigate` アクション：`{ type: navigate, page: <id>, params: { id: "$row.id" } }`（`$row.id`/`$record.id` で現在行・レコードを埋める）。
+
 ## ページ種別（`page.type`）
 
 | type | 何 | フォーム |
@@ -150,4 +169,4 @@ nextBusinessDay('2024-01-05', holidays: {'2024-01-08'}); // 2024-01-09
 拡張したいときは各レジストリに `register(name, fn)`、または `MaterialRenderer(fieldBuilders: {...})`。詳細は [Plugin ガイド](../flutter/docs/plugins.ja.md)。
 
 ## 他言語（バックエンド）
-TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `evaluateCondition` / `ComputedRegistry` / `isAllowed` / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。
+TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `evaluateCondition` / `ComputedRegistry` / `isAllowed` / `parseApp*`（app定義パーサ＝menu/ページ目録） / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。

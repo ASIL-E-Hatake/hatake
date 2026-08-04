@@ -4,8 +4,12 @@
   "title": "hatake page definition",
   "description": "Schema for a hatake page definition document (DSL version 1.0). YAML and JSON documents share this shape; both are normalized to the same PageDefinition.",
   "type": "object",
-  "required": ["page"],
+  "description": "A hatake document: either a single `page` or an `app` (pages + navigation).",
   "additionalProperties": false,
+  "oneOf": [
+    { "required": ["page"] },
+    { "required": ["app"] }
+  ],
   "properties": {
     "dsl_version": {
       "type": "string",
@@ -21,9 +25,55 @@
         { "$ref": "#/$defs/detailPage" },
         { "$ref": "#/$defs/formPage" }
       ]
-    }
+    },
+    "app": { "$ref": "#/$defs/app" }
   },
   "$defs": {
+    "app": {
+      "type": "object",
+      "description": "An application: pages composed by a navigation menu.",
+      "required": ["id", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "home": {
+          "type": "string",
+          "description": "Initial route: a menu item id (or page id)."
+        },
+        "menu": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/menuItem" }
+        },
+        "pages": {
+          "type": "array",
+          "description": "Pages composing the app, referenced by id.",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/crudPage" },
+              { "$ref": "#/$defs/searchPage" },
+              { "$ref": "#/$defs/masterPage" },
+              { "$ref": "#/$defs/detailPage" },
+              { "$ref": "#/$defs/formPage" }
+            ]
+          }
+        }
+      }
+    },
+    "menuItem": {
+      "type": "object",
+      "description": "A navigation menu node: a leaf (opens `page`) or a group (has `items`).",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "description": "Route key for a leaf (defaults to `page`)." },
+        "label": { "type": "string" },
+        "group": { "type": "string", "description": "Group heading (marks this node as a group)." },
+        "icon": { "type": "string" },
+        "page": { "type": "string", "description": "Page id this leaf opens." },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/menuItem" } },
+        "roles": { "$ref": "#/$defs/roles" }
+      }
+    },
     "crudPage": {
       "type": "object",
       "description": "A create/read/update/delete page over a single repository.",
@@ -339,6 +389,14 @@
         "plugin": {
           "type": "string",
           "description": "Registered action plugin key (used when type is 'plugin')."
+        },
+        "page": {
+          "type": "string",
+          "description": "Target page id (used when type is 'navigate')."
+        },
+        "params": {
+          "type": "object",
+          "description": "Route params for a navigate action; $row.id / $record.id template against the current row/record."
         },
         "config": { "$ref": "#/$defs/config" },
         "roles": { "$ref": "#/$defs/roles" }

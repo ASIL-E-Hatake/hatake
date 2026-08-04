@@ -1,11 +1,11 @@
-/// 計算項目（`computed`）を、レコードから導出する。
-///
-/// `computed` は構造化マップ:
-/// `{ op, fields: [..], separator? }`。`op` は組込み（`concat` / `sum` /
-/// `subtract` / `product`）またはプラグインで登録したキー。
-///
-/// 他レジストリと同じく「開いた文字列キー + 差し替え可能」。Dart / TS / Java
-/// の3版で同じ結果になるよう実装をそろえること（conformance のため）。
+// 計算項目（`computed`）を、レコードから導出する。
+//
+// `computed` は構造化マップ:
+// `{ op, fields: [..], separator? }`。`op` は組込み（`concat` / `sum` /
+// `subtract` / `product`）またはプラグインで登録したキー。
+//
+// 他レジストリと同じく「開いた文字列キー + 差し替え可能」。Dart / TS / Java
+// の3版で同じ結果になるよう実装をそろえること（conformance のため）。
 
 /// 1つの計算項目の実装。[computed] の設定と [record] から値を導出する。
 typedef ComputedFn = Object? Function(

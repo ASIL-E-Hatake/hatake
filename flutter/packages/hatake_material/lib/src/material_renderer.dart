@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hatake/hatake.dart';
 
+part 'renderer/app_shell.dart';
+part 'renderer/app_menu.dart';
+part 'renderer/app_breadcrumb.dart';
+
 /// Context handed to a custom [MaterialFieldBuilder] for a form field.
 class MaterialFieldContext {
   final BuildContext buildContext;
@@ -93,6 +97,15 @@ class MaterialRenderer implements Renderer {
       fieldBuilders: fieldBuilders,
     );
   }
+
+  @override
+  Widget buildApp(
+    BuildContext context,
+    AppDefinition definition,
+    HatakeRouter router,
+  ) {
+    return _MaterialAppShell(app: definition, router: router);
+  }
 }
 
 class _MaterialCrudPage extends StatefulWidget {
@@ -172,6 +185,8 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
       case ActionTypes.create:
         _controller.startCreate();
         await _openForm();
+      case ActionTypes.navigate:
+        _navigateAction(context, action);
       case ActionTypes.plugin:
         final registry = HatakeScope.of(context).actions;
         final handler =
@@ -868,6 +883,10 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
   }
 
   Future<void> _runAction(ActionDefinition action, {DataRecord? record}) async {
+    if (action.type == ActionTypes.navigate) {
+      _navigateAction(context, action, record: record);
+      return;
+    }
     final registry = HatakeScope.of(context).actions;
     final handler =
         action.plugin == null ? null : registry.resolve(action.plugin!);
@@ -1204,6 +1223,10 @@ class _MaterialDetailPage extends StatelessWidget {
   }
 
   Future<void> _runAction(BuildContext context, ActionDefinition action) async {
+    if (action.type == ActionTypes.navigate) {
+      _navigateAction(context, action, record: controller.record);
+      return;
+    }
     final registry = HatakeScope.of(context).actions;
     final handler =
         action.plugin == null ? null : registry.resolve(action.plugin!);

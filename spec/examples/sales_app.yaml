@@ -1,0 +1,80 @@
+dsl_version: "1.0"
+app:
+  id: sales_admin
+  title: 販売管理
+  home: customers
+  menu:
+    - { id: customers, label: 顧客, icon: people, page: customer_master }
+    - group: マスタ
+      items:
+        - { label: 商品, icon: inventory, page: product_master }
+    - { id: orders, label: 受注照会, icon: list, page: order_search }
+  pages:
+    - type: master
+      id: customer_master
+      title: 顧客マスタ
+      repository: customerRepository
+      key: id
+      search:
+        filters:
+          - { field: name, label: 顧客名, type: text, operator: contains }
+      table:
+        rowActions: [edit, delete]
+        columns:
+          - { field: code, label: コード, sortable: true }
+          - { field: name, label: 顧客名 }
+      form:
+        sections:
+          - title: 基本情報
+            fields:
+              - { field: code, label: コード, type: text, required: true, normalize: [toHankaku, trim] }
+              - { field: name, label: 顧客名, type: text, required: true }
+      actions:
+        - { id: create, type: create, label: 新規登録 }
+
+    - type: master
+      id: product_master
+      title: 商品マスタ
+      repository: productRepository
+      table:
+        columns:
+          - { field: code, label: コード }
+          - { field: name, label: 商品名 }
+      form:
+        sections:
+          - fields:
+              - { field: code, label: コード, required: true }
+              - { field: name, label: 商品名, required: true }
+      actions:
+        - { id: create, type: create, label: 新規登録 }
+
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      key: orderNo
+      search:
+        filters:
+          - { field: customer, label: 顧客名, type: text, operator: contains }
+      table:
+        rowActions: [detail]
+        columns:
+          - { field: orderNo, label: 受注番号, sortable: true }
+          - { field: customer, label: 顧客 }
+          - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+      actions:
+        # 行から詳細へ遷移。$row.no を詳細ページの key に渡す。
+        - { id: detail, type: navigate, label: 詳細, page: order_detail, params: { id: "$row.orderNo" } }
+
+    - type: detail
+      id: order_detail
+      title: 受注詳細
+      repository: orderRepository
+      key: orderNo
+      form:
+        sections:
+          - title: 受注情報
+            fields:
+              - { field: orderNo, label: 受注番号 }
+              - { field: customer, label: 顧客 }
+              - { field: amount, label: 金額, format: currency, config: { symbol: "¥" } }

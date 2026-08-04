@@ -124,6 +124,47 @@ export interface SearchPageDefinition {
 
 export type PageDefinition = CrudPageDefinition | SearchPageDefinition;
 
+/** A node in an app's navigation menu. Either a leaf (opens `page`) or a group
+ * (has `children`). `isGroup` distinguishes them (see menuIsGroup). */
+export interface MenuItem {
+  /** Route key for a leaf (defaults to `page` when omitted). Undefined for groups. */
+  id?: string;
+  /** Display label. For a group this is the group heading. */
+  label: string;
+  /** Optional icon name; the renderer maps it to an actual icon. */
+  icon?: string;
+  /** Page id this leaf opens. Undefined for groups. */
+  page?: string;
+  /** Child items when this is a group. */
+  children: MenuItem[];
+  /** Roles allowed to see this item (see isAllowed). Empty = everyone. */
+  roles: string[];
+}
+
+/** True when this node groups `children` rather than opening a `page`. */
+export const menuIsGroup = (item: MenuItem): boolean => item.children.length > 0;
+
+/** Shallow page inventory entry (backends do not parse full page models). */
+export interface PageRef {
+  id: string;
+  type: string;
+  title: string;
+  repository: string;
+}
+
+/** An application: a set of pages composed by a navigation menu. Backends read
+ * navigation metadata + a shallow page inventory; rendering/routing is a
+ * frontend concern. */
+export interface AppDefinition {
+  id: string;
+  title: string;
+  dslVersion: string;
+  /** Initial route (menu item id or page id). Undefined = the first leaf. */
+  home?: string;
+  menu: MenuItem[];
+  pages: PageRef[];
+}
+
 /** All fields across all sections of a form, in declaration order. */
 export function formFields(form: FormDefinition): FieldDefinition[] {
   return form.sections.flatMap((s) => s.fields);

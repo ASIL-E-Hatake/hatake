@@ -32,6 +32,10 @@ export 'src/definition/action_definition.dart';
 // Pages.
 export 'src/definition/page_definition.dart';
 
+// App (navigation shell).
+export 'src/definition/menu_item.dart';
+export 'src/definition/app_definition.dart';
+
 // Repository contract.
 export 'src/repository/repository.dart';
 
