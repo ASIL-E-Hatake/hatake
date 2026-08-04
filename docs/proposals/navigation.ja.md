@@ -70,8 +70,9 @@ hatake_material/lib/src/renderer/
 4. 初回スコープ = シェル＋メニュー＋ルートスタック＋`navigate`＋一覧→詳細配線＋roles＋example＋テスト（Dartのみ）
 
 ## 段階
-- **今回**: spec(`AppDefinition`＋JSON Schema) → Dart モデル/パーサ/DSLビルダー → `Renderer.buildApp`＋`HatakeApp`＋`HatakeRouter`＋`navigate`＋detail配線＋roles → example＋テスト（すべて小ファイル）
-- **次段**: TS/Java モデル＋パーサ（menu/権限のAPI化用）、ブレッドクラム、タブ、Web URL 同期、Wizard 連携
+- **実装済み ✅**: spec(`AppDefinition`＋JSON Schema)／Dart モデル・パーサ／`Renderer.buildApp`＋`HatakeApp`＋`HatakeRouter`＋`navigate`＋detail配線＋roles／spec例 `sales_app.yaml`／ランナブルデモ(`hatake_example`)／TS・Java の app パーサ（ナビ情報＋浅い `PageRef` 目録）
+- **磨き込み済み ✅**: メニューの**グループ見出し**描画（定義の再現漏れを解消）、**レスポンシブ**（≥600px は常設サイドバー／未満は Drawer）、**ブレッドクラム**（`popTo` で祖先へ一気に戻る）
+- **次段**: タブ、Web URL 同期、Wizard 連携、Dart の app DSL ビルダー（YAML/JSON は対応済み）
 - **別タスク**: `material_renderer.dart` の part 分割
 
 ## 非目標（このFrameworkの範囲外）

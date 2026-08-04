@@ -23,6 +23,10 @@ class HatakeRouter extends ChangeNotifier {
   bool get canPop => _stack.length > 1;
   int get depth => _stack.length;
 
+  /// The current stack, oldest first. Read-only; use it to render a trail
+  /// (breadcrumb) of where the user came from.
+  List<AppRoute> get stack => List.unmodifiable(_stack);
+
   /// Pushes [pageId] with [params]; back will return to the previous route.
   void push(String pageId, {Map<String, Object?> params = const {}}) {
     _stack.add(AppRoute(pageId, params: params));
@@ -43,6 +47,14 @@ class HatakeRouter extends ChangeNotifier {
       _stack.removeLast();
       notifyListeners();
     }
+  }
+
+  /// Drops every route above [index], making it the top (breadcrumb jump).
+  /// No-op when [index] is out of range or already the top.
+  void popTo(int index) {
+    if (index < 0 || index >= _stack.length - 1) return;
+    _stack.removeRange(index + 1, _stack.length);
+    notifyListeners();
   }
 }
 

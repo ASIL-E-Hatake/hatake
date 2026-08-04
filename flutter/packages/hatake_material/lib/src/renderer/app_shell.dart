@@ -1,12 +1,18 @@
 part of '../material_renderer.dart';
 
-/// Material app shell: a NavigationRail of the visible menu leaves plus the
-/// current page. Rebuilds on route change; menu/pages are role-gated.
+/// Material app shell: navigation menu + the current page.
+///
+/// Responsive: a permanent sidebar from [_wideBreakpoint] up, a Drawer below it
+/// (Material's compact breakpoint). Rebuilds on route change; menu and pages are
+/// role-gated, and pushed routes get a breadcrumb.
 class _MaterialAppShell extends StatelessWidget {
   final AppDefinition app;
   final HatakeRouter router;
 
   const _MaterialAppShell({required this.app, required this.router});
+
+  /// Material's compact/medium boundary: below this the menu collapses.
+  static const double _wideBreakpoint = 600;
 
   @override
   Widget build(BuildContext context) {
@@ -14,14 +20,38 @@ class _MaterialAppShell extends StatelessWidget {
     return ListenableBuilder(
       listenable: router,
       builder: (context, _) {
-        final leaves = _visibleLeaves(app.menu, roles);
         final route = router.current;
-        final selected = leaves.indexWhere((l) => l.page == route.pageId);
         final page = app.pageById(route.pageId);
+        // A menu is only worth showing when there is somewhere else to go.
+        final hasMenu = _visibleLeaves(app.menu, roles).length >= 2;
+        final wide = MediaQuery.sizeOf(context).width >= _wideBreakpoint;
+
+        final content = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (router.canPop) _AppBreadcrumb(app: app, router: router),
+            Expanded(
+              child: page == null
+                  ? Center(
+                      child: Text(
+                        'ページ "${route.pageId}" が見つかりません',
+                        key: const Key('hatake.app.notfound'),
+                      ),
+                    )
+                  : HatakePageView(
+                      // Fresh state per route so controllers re-init.
+                      key: ValueKey('${route.pageId}#${router.depth}'),
+                      definition: page,
+                      recordKey: route.params['id'],
+                    ),
+            ),
+          ],
+        );
 
         return Scaffold(
           appBar: AppBar(
             title: Text(app.title),
+            // Back wins over the drawer handle while inside a pushed route.
             leading: router.canPop
                 ? IconButton(
                     key: const Key('hatake.app.back'),
@@ -30,57 +60,53 @@ class _MaterialAppShell extends StatelessWidget {
                   )
                 : null,
           ),
-          body: Row(
-            children: [
-              if (leaves.length >= 2)
-                NavigationRail(
-                  selectedIndex: selected < 0 ? null : selected,
-                  labelType: NavigationRailLabelType.all,
-                  onDestinationSelected: (i) => router.go(leaves[i].page!),
-                  destinations: [
-                    for (final leaf in leaves)
-                      NavigationRailDestination(
-                        icon: Icon(_iconFor(leaf.icon)),
-                        label: Text(leaf.label),
+          drawer: hasMenu && !wide
+              ? Drawer(
+                  child: SafeArea(
+                    // Builder gives a context under Scaffold so the drawer can
+                    // close itself on selection.
+                    child: Builder(
+                      builder: (inner) => _buildMenu(
+                        roles,
+                        route.pageId,
+                        onSelected: () => Scaffold.of(inner).closeDrawer(),
                       ),
+                    ),
+                  ),
+                )
+              : null,
+          body: hasMenu && wide
+              ? Row(
+                  children: [
+                    SizedBox(
+                      width: 220,
+                      child: _buildMenu(roles, route.pageId),
+                    ),
+                    const VerticalDivider(width: 1),
+                    Expanded(child: content),
                   ],
-                ),
-              if (leaves.length >= 2) const VerticalDivider(width: 1),
-              Expanded(
-                child: page == null
-                    ? Center(
-                        child: Text(
-                          'ページ "${route.pageId}" が見つかりません',
-                          key: const Key('hatake.app.notfound'),
-                        ),
-                      )
-                    : HatakePageView(
-                        // Fresh state per route so controllers re-init.
-                        key: ValueKey('${route.pageId}#${router.depth}'),
-                        definition: page,
-                        recordKey: route.params['id'],
-                      ),
-              ),
-            ],
-          ),
+                )
+              : content,
         );
       },
     );
   }
-}
 
-/// Flattens the menu tree to the leaves the current roles may see.
-List<MenuItem> _visibleLeaves(List<MenuItem> menu, Set<String> roles) {
-  final out = <MenuItem>[];
-  for (final item in menu) {
-    if (!isAllowed(item.roles, roles)) continue;
-    if (item.isGroup) {
-      out.addAll(_visibleLeaves(item.children, roles));
-    } else if (item.page != null) {
-      out.add(item);
-    }
+  Widget _buildMenu(
+    Set<String> roles,
+    String currentPageId, {
+    VoidCallback? onSelected,
+  }) {
+    return _AppMenu(
+      menu: app.menu,
+      roles: roles,
+      currentPageId: currentPageId,
+      onSelect: (pageId) {
+        onSelected?.call();
+        router.go(pageId);
+      },
+    );
   }
-  return out;
 }
 
 /// Handles a `navigate` action: pushes the target route, resolving params
@@ -103,22 +129,4 @@ void _navigateAction(
     record,
   );
   router.push(page, params: params);
-}
-
-/// Maps a menu icon name to a Material icon (small built-in set; default box).
-IconData _iconFor(String? name) {
-  switch (name) {
-    case 'people':
-      return Icons.people;
-    case 'settings':
-      return Icons.settings;
-    case 'dashboard':
-      return Icons.dashboard;
-    case 'list':
-      return Icons.list;
-    case 'inventory':
-      return Icons.inventory_2;
-    default:
-      return Icons.folder_outlined;
-  }
 }

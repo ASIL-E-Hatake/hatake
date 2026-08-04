@@ -1,14 +1,14 @@
-/// 宣言的な条件（`visibleWhen` / `enabledWhen`）を、レコードに対して評価する。
-///
-/// 条件は構造化マップ（`config` と同じく開いた形）で表す:
-/// - リーフ: `{ field, operator, value }`
-/// - 結合:   `{ all: [条件...] }`（AND） / `{ any: [条件...] }`（OR） / `{ not: 条件 }`
-///
-/// `operator` は [FilterOperators] の値（`equals` `notEquals` `gt` `gte` `lt`
-/// `lte` `contains` `in` `isEmpty` `isNotEmpty`）。未知の演算子は false。
-///
-/// Dart / TypeScript / Java の3版で同じ判定になるよう実装をそろえること
-/// （conformance のため）。
+// 宣言的な条件（`visibleWhen` / `enabledWhen`）を、レコードに対して評価する。
+//
+// 条件は構造化マップ（`config` と同じく開いた形）で表す:
+// - リーフ: `{ field, operator, value }`
+// - 結合:   `{ all: [条件...] }`（AND） / `{ any: [条件...] }`（OR） / `{ not: 条件 }`
+//
+// `operator` は FilterOperators の値（`equals` `notEquals` `gt` `gte` `lt`
+// `lte` `contains` `in` `isEmpty` `isNotEmpty`）。未知の演算子は false。
+//
+// Dart / TypeScript / Java の3版で同じ判定になるよう実装をそろえること
+// （conformance のため）。
 
 /// 数値化できれば num、できなければ null（bool は数値扱いしない）。
 num? _toNum(Object? v) {

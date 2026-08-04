@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:hatake/hatake.dart';
 
 part 'renderer/app_shell.dart';
+part 'renderer/app_menu.dart';
+part 'renderer/app_breadcrumb.dart';
 
 /// Context handed to a custom [MaterialFieldBuilder] for a form field.
 class MaterialFieldContext {
