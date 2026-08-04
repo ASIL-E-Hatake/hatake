@@ -34,6 +34,25 @@ page:
     - { id: create, type: create, label: 新規登録 }
 ```
 
+## アプリ（ナビゲーション）
+
+複数ページを束ねてアプリにするときはルートを `page:` でなく `app:` にする。Flutter は `HatakeApp(app: ...)` で描画（シェル＋ルータ）。
+
+```yaml
+app:
+  id: sales_admin
+  title: 販売管理
+  home: customers                       # 初期ルート（menu の id）
+  menu:
+    - { id: customers, label: 顧客, icon: people, page: customer_master }
+    - group: マスタ                      # items を持つとグループ
+      roles: [admin]                    # roles で出し分け
+      items: [ { label: 商品, page: product_master } ]
+  pages: [ { type: crud, id: customer_master, ... }, { type: detail, id: customer_detail, ... } ]
+```
+
+画面遷移は `navigate` アクション：`{ type: navigate, page: <id>, params: { id: "$row.id" } }`（`$row.id`/`$record.id` で現在行・レコードを埋める）。
+
 ## ページ種別（`page.type`）
 
 | type | 何 | フォーム |
