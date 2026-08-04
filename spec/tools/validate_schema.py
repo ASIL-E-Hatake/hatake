@@ -20,6 +20,7 @@ DEFAULT_DOCS = [
     SPEC / "examples" / "dept_master.yaml",
     SPEC / "examples" / "customer_detail.yaml",
     SPEC / "examples" / "customer_form.yaml",
+    SPEC / "examples" / "sales_app.yaml",
 ]
 
 

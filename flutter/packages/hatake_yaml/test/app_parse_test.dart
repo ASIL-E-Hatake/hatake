@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:hatake_core/hatake_core.dart';
 import 'package:hatake_yaml/hatake_yaml.dart';
 import 'package:test/test.dart';
@@ -99,5 +101,19 @@ void main() {
 
   test('YAML and JSON converge on an identical AppDefinition', () {
     expect(parseAppYaml(_yaml), parseAppJson(_json));
+  });
+
+  test('the shipped example (spec/examples/sales_app.yaml) parses', () {
+    final source =
+        File('../../../spec/examples/sales_app.yaml').readAsStringSync();
+    final app = parseAppYaml(source);
+    expect(app.id, 'sales_admin');
+    expect(app.pages.length, 4);
+    // The order_search list has a navigate row action into the detail page.
+    final search = app.pageById('order_search') as SearchPageDefinition;
+    final navigate = search.actions.firstWhere((a) => a.id == 'detail');
+    expect(navigate.type, ActionTypes.navigate);
+    expect(navigate.config['page'], 'order_detail');
+    expect(app.pageById('order_detail'), isA<DetailPageDefinition>());
   });
 }
