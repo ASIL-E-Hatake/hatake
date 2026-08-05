@@ -22,8 +22,8 @@
 | | DashboardPage | ⏳ | カード/集計/グラフ。設計重め |
 | | WizardPage（ステップ入力） | ⏳ | |
 | | FormPage（単票入力） | ✅ Flutter | 単票の作成/編集。フォーム描画を `_HatakeFormFields` に共通化しダイアログと共用。record key で編集/新規を切替 |
-| | 親子・明細（master-detail） | ✅ Flutter（3言語検証） | `type: subTable` でヘッダ＋明細行を1画面編集し**まとめて保存**（子行は親レコードの1項目）。行内 `validators`/`computed` が効く。サーバ側も同じ定義で子行を検証（エラー項目名 `lines[0].qty`）。設計は [提案書](proposals/master-detail.ja.md)。子Repository方式・行の並べ替えは今後 |
-| 検索 | 検索条件の拡充（**TODO**） | ⏳ | 現状フィルタ描画は text と select のみ（checkbox / date / number は TextField にフォールバック）。**やること**: ①checkbox・date・number 専用入力 ②`between` の範囲入力（期間指定）③`search.layout.columns` の反映 ④複数条件のデモ（select＋checkbox＋期間を含む照会画面）。DSL 側（filter.type / operator）は既に定義済みなので Renderer とデモが主 |
+| | 親子・明細（master-detail） | ✅ Flutter（3言語検証） | `type: subTable` でヘッダ＋明細行を1画面編集し**まとめて保存**（子行は親レコードの1項目）。行内 `validators`/`computed`、**行の並べ替え**（既定ON／`config: { reorderable: false }` で無効）が効く。サーバ側も同じ定義で子行を検証（エラー項目名 `lines[0].qty`）。設計は [提案書](proposals/master-detail.ja.md)。**残り: 子Repository方式**（大量明細のページング。別設計ラウンドが必要） |
+| 検索 | 検索条件の拡充 | ✅ Flutter | `filter.type` ごとの入力（text/number/select/**checkbox=3状態**/date=カレンダー）、**`operator: between` の範囲入力**（`[開始,終了]` で送信・片側指定可）、**`search.layout.columns`** の反映（狭い画面は1列に退避）。フィルタ描画は `filter_input.dart` に一本化（crud/search の重複実装を解消）。デモの受注照会が複数条件のショーケース |
 | 入出力 | Formatter（金額/和暦…） | 🚧 P0+P1 Flutter | [utils](roadmap-utils.ja.md) |
 | | Converter（全半角…） | 🚧 P0+P1 Flutter | 同上。入力normalizeパイプ配線は未 |
 | | Validator 拡充 | 🚧 一部 | 郵便番号済。法人番号/相関等は未 |

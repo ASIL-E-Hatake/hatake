@@ -78,11 +78,24 @@ class _SubTableField extends StatelessWidget {
     onChanged(next);
   }
 
+  /// Swaps the row with its neighbour: 明細 order matters in business documents.
+  void _moveRow(int index, int to) {
+    final next = [...rows];
+    final moved = next[index];
+    next[index] = next[to];
+    next[to] = moved;
+    onChanged(next);
+  }
+
+  /// Row reordering is on by default; `config: { reorderable: false }` opts out.
+  bool get _reorderable => field.config['reorderable'] != false;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final columns =
         field.columns.where((c) => isAllowed(c.roles, roles)).toList();
+    final reorderable = !readOnly && _reorderable;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,6 +158,22 @@ class _SubTableField extends StatelessWidget {
                         DataCell(Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            if (reorderable) ...[
+                              IconButton(
+                                key: Key('hatake.subtable.${field.field}.up.$i'),
+                                icon: const Icon(Icons.arrow_upward, size: 18),
+                                tooltip: '上へ',
+                                onPressed: i == 0 ? null : () => _moveRow(i, i - 1),
+                              ),
+                              IconButton(
+                                key: Key('hatake.subtable.${field.field}.down.$i'),
+                                icon: const Icon(Icons.arrow_downward, size: 18),
+                                tooltip: '下へ',
+                                onPressed: i == rows.length - 1
+                                    ? null
+                                    : () => _moveRow(i, i + 1),
+                              ),
+                            ],
                             IconButton(
                               key: Key('hatake.subtable.${field.field}.edit.$i'),
                               icon: const Icon(Icons.edit_outlined, size: 18),

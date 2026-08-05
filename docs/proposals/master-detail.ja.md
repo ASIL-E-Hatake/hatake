@@ -62,7 +62,8 @@ form:
 | **1** | spec（dsl-spec＋JSON Schema）／Dart モデル（`FieldTypes.subTable`＋`FieldDefinition.columns`・`rowFields`）／パーサ／DSLビルダー／テスト | ← 今回 |
 | 2 | Flutter 描画（明細グリッド＋行追加/編集/削除、行内 computed の再計算）／デモに受注入力画面 | 次 |
 | 3 | サーバ側（TS/Java）：モデル＋パーサ＋**明細行のバリデーション**（`FormValidator` を子行に適用） | その後 |
-| 4 | 子Repository方式（大量明細のページング）、行の並べ替え | 将来 |
+| 4a | **行の並べ替え** … ✅ 完了。行ごとの上へ/下へ（端は無効化）。既定ONで `config: { reorderable: false }` によりオプトアウト（モデル変更なし） | ✅ |
+| 4b | 子Repository方式（大量明細のページング） | 未着手 |
 
 Phase 1 は**描画なし**（定義が読めるところまで）。ナビゲーション機能と同じ刻み方で、各段階を緑にしてから進む。
 

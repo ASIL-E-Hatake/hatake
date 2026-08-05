@@ -135,6 +135,24 @@ app:
 | `options` | [option](#option)[] | | `[]` | セレクト系フィルタ用。 |
 | `config` | map | | `{}` | 追加設定。 |
 
+**入力の出方**（Renderer が `type` で決める）:
+
+| `type` | 入力 | 送られる値 |
+|---|---|---|
+| `text` / `textarea` | テキスト | 文字列（空なら送らない） |
+| `number` | 数値キーボード | 数値（解釈できないときは文字列） |
+| `select` | ドロップダウン（`—`＝指定なし付き） | `option.value` |
+| `checkbox` | **3状態**ドロップダウン（指定なし / はい / いいえ） | `true` / `false`（指定なしは送らない） |
+| `date` / `dateTime` | カレンダー選択 | `yyyy-MM-dd` |
+
+`operator: between` を付けると**開始／終了の2入力**になり、値は `[開始, 終了]` の2要素で渡る（片側だけの指定も可＝もう片方は `null`）。期間絞り込みはこれで書く:
+
+```yaml
+- { field: orderDate, label: 受注日, type: date, operator: between }
+```
+
+複数条件を並べるときは `search.layout.columns` で列数を指定できる（狭い画面では自動的に1列へ退避）。**空の入力は送信されない**ので、未入力の条件で絞り込まれることはない。
+
 ## table
 
 | キー | 型 | 既定 | 説明 |
@@ -219,6 +237,12 @@ app:
 ```
 
 保存は**ヘッダと明細をまとめて1回**（`Repository.update(key, {...ヘッダ, lines: [...]})`）。子行を別 Repository から引く方式は将来対応。
+
+行は**並べ替え**できる（行ごとの上へ/下へ。明細の順序が意味を持つ帳票向け）。既定で有効、`config: { reorderable: false }` で無効化:
+
+```yaml
+- { field: lines, label: 明細, type: subTable, config: { reorderable: false }, columns: [...] }
+```
 
 **サーバ側でも同じ定義で子行を検証できる**。`FormValidator`（Dart / TypeScript / Java）は `subTable` の各行を `fields` の規則で検証し、エラー項目名を **`<項目>[<行番号>].<行項目>`**（例 `lines[0].qty`）で返す。フロントの行編集と同じルールがサーバでも効くので、明細のチェック漏れが起きない（[コンフォーマンス](conformance/)の `subtable_validation.json` で3言語一致を担保）。
 
