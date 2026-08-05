@@ -10,6 +10,15 @@ class _HatakeFormFields extends StatefulWidget {
   final Map<String, MaterialFieldBuilder> fieldBuilders;
   final Set<String> roles;
 
+  /// Formatters used by `subTable` grids (`format:` on a child column).
+  /// Defaults to the built-ins when the caller has none.
+  final FormatterRegistry? formatters;
+
+  /// Validators used for `subTable` row editing. Passed in (not read from the
+  /// scope) because this widget also runs inside a dialog route, which sits
+  /// outside the `HatakeScope` subtree.
+  final ValidatorRegistry? validators;
+
   const _HatakeFormFields({
     super.key,
     required this.form,
@@ -17,6 +26,8 @@ class _HatakeFormFields extends StatefulWidget {
     required this.validation,
     required this.fieldBuilders,
     required this.roles,
+    this.formatters,
+    this.validators,
   });
 
   @override
@@ -27,6 +38,10 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
   final Map<String, TextEditingController> _text = {};
   final Map<String, Object?> _values = {};
   final ComputedRegistry _computeds = ComputedRegistry();
+  late final FormatterRegistry _formatters =
+      widget.formatters ?? FormatterRegistry();
+  late final ValidatorRegistry _validators =
+      widget.validators ?? ValidatorRegistry();
 
   bool _isTextField(String type) =>
       type == FieldTypes.text ||
@@ -175,6 +190,19 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
 
     Widget input;
     switch (field.type) {
+      // Child-row grid (master-detail): the value is a list of rows.
+      case FieldTypes.subTable:
+        input = _SubTableField(
+          field: field,
+          rows: _subTableRows(_values[field.field]),
+          formatters: _formatters,
+          validators: _validators,
+          fieldBuilders: widget.fieldBuilders,
+          roles: widget.roles,
+          readOnly: readOnly,
+          errorText: errorText,
+          onChanged: (next) => setState(() => _values[field.field] = next),
+        );
       case FieldTypes.select:
         input = DropdownButtonFormField<Object?>(
           key: Key('hatake.form.${field.field}'),

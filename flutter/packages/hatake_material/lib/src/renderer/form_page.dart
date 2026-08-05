@@ -5,11 +5,13 @@ class _MaterialFormPage extends StatefulWidget {
   final FormPageDefinition definition;
   final FormController controller;
   final Map<String, MaterialFieldBuilder> fieldBuilders;
+  final FormatterRegistry? formatters;
 
   const _MaterialFormPage({
     required this.definition,
     required this.controller,
     required this.fieldBuilders,
+    required this.formatters,
   });
 
   @override
@@ -51,6 +53,8 @@ class _MaterialFormPageState extends State<_MaterialFormPage> {
                       validation: controller.validation,
                       fieldBuilders: widget.fieldBuilders,
                       roles: HatakeScope.of(context).roles,
+                      formatters: widget.formatters,
+                      validators: HatakeScope.of(context).validators,
                     ),
                   ),
           ),
