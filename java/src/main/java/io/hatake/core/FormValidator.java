@@ -7,6 +7,10 @@ import java.util.Map;
 /**
  * Validates a data record against a form's rules — the backend counterpart to
  * the Flutter form validation, driven by the same definition.
+ *
+ * <p>明細（{@code type: subTable}）の子行も検証する。各行は項目の {@code rowFields}
+ * から組み立てたフォームで検証し、エラーは添字付きパス（{@code lines[0].qty}）で報告する。
+ * 入れ子の明細も同じ規約で再帰する。
  */
 public final class FormValidator {
 
@@ -44,7 +48,34 @@ public final class FormValidator {
                     break; // one error per field
                 }
             }
+
+            // 明細（master-detail）: 各行を rowFields で検証する。
+            if (field.isSubTable() && !field.rowFields().isEmpty()) {
+                errors.addAll(validateRows(field, value));
+            }
         }
         return new ValidationResult(errors.isEmpty(), errors);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<ValidationError> validateRows(FieldDefinition field, Object value) {
+        List<ValidationError> errors = new ArrayList<>();
+        if (!(value instanceof Iterable<?> rows)) {
+            return errors;
+        }
+        FormDefinition rowForm = new FormDefinition(
+                List.of(new SectionDefinition(null, field.rowFields())));
+        int index = 0;
+        for (Object row : rows) {
+            if (row instanceof Map<?, ?> map) {
+                for (ValidationError e : validate(rowForm, (Map<String, Object>) map).errors()) {
+                    errors.add(new ValidationError(
+                            field.field() + "[" + index + "]." + e.field(),
+                            e.message()));
+                }
+            }
+            index++;
+        }
+        return errors;
     }
 }

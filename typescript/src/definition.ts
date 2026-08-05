@@ -37,6 +37,12 @@ export interface FieldDefinition {
   computed?: Record<string, unknown>;
   /** Roles allowed to see this field (see isAllowed). Empty = everyone. */
   roles: string[];
+  /** Child-row grid columns, for `type: subTable` (master-detail). The field's
+   * value is then a list of records, one per row. DSL key: `columns`. */
+  columns: ColumnDefinition[];
+  /** Editor fields for one child row, for `type: subTable`. When empty the
+   * renderer derives inputs from `columns`. DSL key: `fields`. */
+  rowFields: FieldDefinition[];
 }
 
 export interface FilterDefinition {
@@ -122,7 +128,21 @@ export interface SearchPageDefinition {
   actions: ActionDefinition[];
 }
 
-export type PageDefinition = CrudPageDefinition | SearchPageDefinition;
+export interface FormPageDefinition {
+  kind: "form";
+  id: string;
+  title: string;
+  dslVersion: string;
+  repository: string;
+  keyField: string;
+  form: FormDefinition;
+  actions: ActionDefinition[];
+}
+
+export type PageDefinition =
+  | CrudPageDefinition
+  | SearchPageDefinition
+  | FormPageDefinition;
 
 /** A node in an app's navigation menu. Either a leaf (opens `page`) or a group
  * (has `children`). `isGroup` distinguishes them (see menuIsGroup). */
@@ -181,6 +201,8 @@ export const FieldTypes = {
   date: "date",
   dateTime: "dateTime",
   time: "time",
+  /** Master-detail child rows. The value is a list of records (see rowFields). */
+  subTable: "subTable",
 } as const;
 
 export const ValidatorTypes = {

@@ -22,7 +22,7 @@
 | | DashboardPage | ⏳ | カード/集計/グラフ。設計重め |
 | | WizardPage（ステップ入力） | ⏳ | |
 | | FormPage（単票入力） | ✅ Flutter | 単票の作成/編集。フォーム描画を `_HatakeFormFields` に共通化しダイアログと共用。record key で編集/新規を切替 |
-| | 親子・明細（master-detail） | 🚧 着手中 | ヘッダ＋明細行（受注＋明細など）。`type: subTable` で子行グリッドを定義。設計は [提案書](proposals/master-detail.ja.md) |
+| | 親子・明細（master-detail） | ✅ Flutter（3言語検証） | `type: subTable` でヘッダ＋明細行を1画面編集し**まとめて保存**（子行は親レコードの1項目）。行内 `validators`/`computed` が効く。サーバ側も同じ定義で子行を検証（エラー項目名 `lines[0].qty`）。設計は [提案書](proposals/master-detail.ja.md)。子Repository方式・行の並べ替えは今後 |
 | 検索 | 検索条件の拡充（**TODO**） | ⏳ | 現状フィルタ描画は text と select のみ（checkbox / date / number は TextField にフォールバック）。**やること**: ①checkbox・date・number 専用入力 ②`between` の範囲入力（期間指定）③`search.layout.columns` の反映 ④複数条件のデモ（select＋checkbox＋期間を含む照会画面）。DSL 側（filter.type / operator）は既に定義済みなので Renderer とデモが主 |
 | 入出力 | Formatter（金額/和暦…） | 🚧 P0+P1 Flutter | [utils](roadmap-utils.ja.md) |
 | | Converter（全半角…） | 🚧 P0+P1 Flutter | 同上。入力normalizeパイプ配線は未 |
@@ -56,10 +56,12 @@
 | 条件表示 `evaluateCondition` / 計算 `computed` | ✅ | ✅ | ✅ | ✅ |
 | 権限 `roles` / `isAllowed` | ✅ | ✅ | ✅ | ✅(field) |
 | ナビ定義（app/menu）パーサ | ✅ | ✅（＋描画） | ✅（目録 PageRef） | ✅（目録 PageRef） |
+| 親子・明細 `subTable`（モデル＋パーサ） | ✅ | ✅（＋描画） | ✅ | ✅ |
+| 明細行のサーバ側検証（`lines[0].qty`） | ✅ | ✅ | ✅ | ✅ |
 | Renderer（画面描画） | — | ✅(Material) | 対象外 | 対象外(※) |
 | table/action など画面寄りモデル | ✅ | ✅ | ⏳一部 | ✅ |
 
-※ Java の定義モデルは page 識別子 + search + form まで（table/action 未）。TS は画面寄りモデルも持つがバックエンド用途で描画はしない。
+※ Java の定義モデルは page 識別子 + search + form まで（table/action 未）。子グリッド用の `ColumnDefinition` は検証に必要な最小形（field/label/type/format）で、`width`/`sortable`/`roles` 等の描画専用キーは持たない。TS は画面寄りモデルも持つがバックエンド用途で描画はしない。対応ページ種別は TS が `crud`/`search`/`form`（`master`/`detail` は未）、Java は種別を文字列として保持。
 
 ### パリティの進め方
 

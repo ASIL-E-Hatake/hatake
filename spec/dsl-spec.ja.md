@@ -220,6 +220,8 @@ app:
 
 保存は**ヘッダと明細をまとめて1回**（`Repository.update(key, {...ヘッダ, lines: [...]})`）。子行を別 Repository から引く方式は将来対応。
 
+**サーバ側でも同じ定義で子行を検証できる**。`FormValidator`（Dart / TypeScript / Java）は `subTable` の各行を `fields` の規則で検証し、エラー項目名を **`<項目>[<行番号>].<行項目>`**（例 `lines[0].qty`）で返す。フロントの行編集と同じルールがサーバでも効くので、明細のチェック漏れが起きない（[コンフォーマンス](conformance/)の `subtable_validation.json` で3言語一致を担保）。
+
 ### 権限（roles）
 
 `field` / `column` / `action` に `roles`（許可ロールの配列）を付けると、**現在ユーザのロールに応じて表示/非表示を出し分け**られる。空 or 省略なら全員に表示。

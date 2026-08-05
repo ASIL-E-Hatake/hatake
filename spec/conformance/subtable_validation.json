@@ -1,0 +1,88 @@
+{
+  "_comment": "Server-side validation of master-detail child rows. Each language parses `page`, then validates every case's `record` against the page's form. Child-row errors use the path <field>[<index>].<rowField>. Errors are compared as an unordered set of {field,message}.",
+  "page": {
+    "dsl_version": "1.0",
+    "page": {
+      "type": "form",
+      "id": "order_entry",
+      "title": "受注入力",
+      "repository": "orderRepository",
+      "key": "orderNo",
+      "form": {
+        "sections": [
+          {
+            "fields": [
+              { "field": "orderNo", "label": "受注番号", "required": true },
+              {
+                "field": "lines",
+                "label": "明細",
+                "type": "subTable",
+                "required": true,
+                "columns": [
+                  { "field": "item", "label": "品名" },
+                  { "field": "qty", "label": "数量", "type": "number" }
+                ],
+                "fields": [
+                  { "field": "item", "label": "品名", "required": true,
+                    "validators": [ { "type": "maxLength", "value": 10 } ] },
+                  { "field": "qty", "label": "数量", "type": "number",
+                    "validators": [ { "type": "min", "value": 1 } ] }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "valid header and rows",
+      "record": {
+        "orderNo": "SO-1",
+        "lines": [
+          { "item": "鉛筆", "qty": 2 },
+          { "item": "ノート", "qty": 1 }
+        ]
+      },
+      "expected": []
+    },
+    {
+      "name": "row required and row range are reported with an indexed path",
+      "record": {
+        "orderNo": "SO-1",
+        "lines": [
+          { "item": "鉛筆", "qty": 2 },
+          { "item": "", "qty": 0 }
+        ]
+      },
+      "expected": [
+        { "field": "lines[1].item", "message": "必須項目です" },
+        { "field": "lines[1].qty", "message": "1以上で入力してください" }
+      ]
+    },
+    {
+      "name": "row maxLength applies per row",
+      "record": {
+        "orderNo": "SO-1",
+        "lines": [ { "item": "あいうえおかきくけこさ", "qty": 1 } ]
+      },
+      "expected": [
+        { "field": "lines[0].item", "message": "10文字以内で入力してください" }
+      ]
+    },
+    {
+      "name": "an empty child list fails the field's own required",
+      "record": { "orderNo": "SO-1", "lines": [] },
+      "expected": [ { "field": "lines", "message": "必須項目です" } ]
+    },
+    {
+      "name": "header errors and row errors are reported together",
+      "record": { "lines": [ { "item": "鉛筆", "qty": 0 } ] },
+      "expected": [
+        { "field": "orderNo", "message": "必須項目です" },
+        { "field": "lines[0].qty", "message": "1以上で入力してください" }
+      ]
+    }
+  ]
+}

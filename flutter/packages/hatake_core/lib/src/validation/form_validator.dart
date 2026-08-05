@@ -1,4 +1,6 @@
+import '../definition/field_types.dart';
 import '../definition/form_definition.dart';
+import '../definition/section_definition.dart';
 import '../definition/validator_definition.dart';
 import '../definition/validator_types.dart';
 import '../repository/repository.dart';
@@ -7,6 +9,10 @@ import 'validators.dart';
 
 /// Validates a [DataRecord] against a [FormDefinition] using a
 /// [ValidatorRegistry]. Reports at most one error per field.
+///
+/// Child rows of a `subTable` field are validated too: each row is checked
+/// against the field's `rowFields`, and errors are reported with an indexed
+/// path — `lines[0].qty`. Nested sub-tables recurse with the same convention.
 class FormValidator {
   final ValidatorRegistry registry;
 
@@ -29,6 +35,26 @@ class FormValidator {
             ValidationError(field: field.field, message: rule.message ?? message),
           );
           break; // one error per field
+        }
+      }
+
+      // Child rows (master-detail): validate each row against rowFields.
+      if (field.type == FieldTypes.subTable && field.rowFields.isNotEmpty) {
+        final rowForm =
+            FormDefinition(sections: [SectionDefinition(fields: field.rowFields)]);
+        var index = 0;
+        for (final row in (value is Iterable ? value : const [])) {
+          if (row is Map) {
+            final rowErrors =
+                validate(rowForm, row.cast<String, Object?>()).errors;
+            for (final error in rowErrors) {
+              errors.add(ValidationError(
+                field: '${field.field}[$index].${error.field}',
+                message: error.message,
+              ));
+            }
+          }
+          index++;
         }
       }
     }

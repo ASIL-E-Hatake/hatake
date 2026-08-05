@@ -24,6 +24,14 @@ public final class DefinitionParser {
         return fromDecoded(new Yaml().load(source));
     }
 
+    /**
+     * すでにデコード済みのマップから解析する（Dart 版 {@code parsePageMap} と同じ）。
+     * ドキュメント全体（{@code {dsl_version, page: {...}}}）でも page マップ直接でもよい。
+     */
+    public static PageDefinition parsePageMap(Map<String, Object> root) {
+        return fromDecoded(root);
+    }
+
     @SuppressWarnings("unchecked")
     private static PageDefinition fromDecoded(Object decoded) {
         if (!(decoded instanceof Map)) {
@@ -116,6 +124,19 @@ public final class DefinitionParser {
                 roles.add(String.valueOf(r));
             }
         }
+        // 明細（type: subTable）。columns はグリッド形状、入れ子の fields は行の入力項目。
+        List<ColumnDefinition> columns = new ArrayList<>();
+        if (m.get("columns") instanceof List<?> list) {
+            for (Object c : list) {
+                columns.add(parseColumn((Map<String, Object>) c));
+            }
+        }
+        List<FieldDefinition> rowFields = new ArrayList<>();
+        if (m.get("fields") instanceof List<?> list) {
+            for (Object f : list) {
+                rowFields.add(parseField((Map<String, Object>) f));
+            }
+        }
         return new FieldDefinition(
                 reqStr(m, "field"),
                 reqStr(m, "label"),
@@ -128,7 +149,17 @@ public final class DefinitionParser {
                 optMap(m.get("visibleWhen")),
                 optMap(m.get("enabledWhen")),
                 optMap(m.get("computed")),
-                roles);
+                roles,
+                columns,
+                rowFields);
+    }
+
+    private static ColumnDefinition parseColumn(Map<String, Object> m) {
+        return new ColumnDefinition(
+                reqStr(m, "field"),
+                reqStr(m, "label"),
+                m.get("type") instanceof String t ? t : "text",
+                m.get("format") instanceof String f ? f : null);
     }
 
     @SuppressWarnings("unchecked")

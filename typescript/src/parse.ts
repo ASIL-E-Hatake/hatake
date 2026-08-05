@@ -115,9 +115,16 @@ export function parsePageMap(root: Dict): PageDefinition {
         table: parseTable(optDict(page, "table")),
         actions: parseActions(page),
       };
+    case "form":
+      return {
+        kind: "form",
+        ...common(page, dslVersion),
+        form: parseForm(optDict(page, "form")),
+        actions: parseActions(page),
+      };
     default:
       throw new DefinitionParseError(
-        `Unsupported page type "${type}" (supported: crud, search)`,
+        `Unsupported page type "${type}" (supported: crud, search, form)`,
         "page.type",
       );
   }
@@ -229,6 +236,14 @@ function parseField(m: Dict): FieldDefinition {
     enabledWhen: optDict(m, "enabledWhen"),
     computed: optDict(m, "computed"),
     roles: optList(m, "roles").map(String),
+    // Child-row grid (type: subTable). `columns` describes the grid, the
+    // nested `fields` the row editor — both reuse the existing shapes.
+    columns: optList(m, "columns").map((c, i) =>
+      parseColumn(asDict(c, `field.columns[${i}]`)),
+    ),
+    rowFields: optList(m, "fields").map((f, i) =>
+      parseField(asDict(f, `field.fields[${i}]`)),
+    ),
   };
 }
 
