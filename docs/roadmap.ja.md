@@ -22,6 +22,8 @@
 | | DashboardPage | ⏳ | カード/集計/グラフ。設計重め |
 | | WizardPage（ステップ入力） | ⏳ | |
 | | FormPage（単票入力） | ✅ Flutter | 単票の作成/編集。フォーム描画を `_HatakeFormFields` に共通化しダイアログと共用。record key で編集/新規を切替 |
+| | 親子・明細（master-detail） | 🚧 着手中 | ヘッダ＋明細行（受注＋明細など）。`type: subTable` で子行グリッドを定義。設計は [提案書](proposals/master-detail.ja.md) |
+| 検索 | 検索条件の拡充（**TODO**） | ⏳ | 現状フィルタ描画は text と select のみ（checkbox / date / number は TextField にフォールバック）。**やること**: ①checkbox・date・number 専用入力 ②`between` の範囲入力（期間指定）③`search.layout.columns` の反映 ④複数条件のデモ（select＋checkbox＋期間を含む照会画面）。DSL 側（filter.type / operator）は既に定義済みなので Renderer とデモが主 |
 | 入出力 | Formatter（金額/和暦…） | 🚧 P0+P1 Flutter | [utils](roadmap-utils.ja.md) |
 | | Converter（全半角…） | 🚧 P0+P1 Flutter | 同上。入力normalizeパイプ配線は未 |
 | | Validator 拡充 | 🚧 一部 | 郵便番号済。法人番号/相関等は未 |

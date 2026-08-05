@@ -196,6 +196,29 @@ app:
 | `enabledWhen` | [condition](#condition) | | — | 条件が真のときだけ活性。省略時は常に活性。 |
 | `computed` | [computed](#computed) | | — | 値をレコードから導出（読み取り専用表示）。 |
 | `roles` | string[] | | `[]` | 表示を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
+| `columns` | [column](#column)[] | | `[]` | 子行グリッドの表示列（`type: subTable` のとき。[明細](#明細subtable)参照）。 |
+| `fields` | field[] | | `[]` | 子行の編集項目（`type: subTable` のとき。省略時は `columns` から導出）。 |
+
+### 明細（subTable）
+
+受注ヘッダ＋明細行のような**親子（master-detail）**を1画面で扱うための組込フィールド型。`type: subTable` を指定すると、**その項目の値がレコードの配列**（子行）になり、`columns` でグリッド表示、`fields` で行の編集項目を定義する。
+
+```yaml
+- field: lines                # 親レコードの lines が [{...}, {...}]
+  label: 明細
+  type: subTable
+  columns:                    # 表示（column と同じ形＝format/width/roles が効く）
+    - { field: item,  label: 品名 }
+    - { field: qty,   label: 数量, type: number, width: 100 }
+    - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+  fields:                     # 行の編集（field と同じ形＝required/validators/computed が効く）
+    - { field: item, label: 品名, required: true }
+    - { field: qty,  label: 数量, type: number, required: true, validators: [ { type: min, value: 1 } ] }
+    - { field: price, label: 単価, type: number, required: true }
+    - { field: amount, label: 金額, computed: { op: product, fields: [qty, price] } }
+```
+
+保存は**ヘッダと明細をまとめて1回**（`Repository.update(key, {...ヘッダ, lines: [...]})`）。子行を別 Repository から引く方式は将来対応。
 
 ### 権限（roles）
 

@@ -160,6 +160,8 @@ FieldDefinition field(
   Map<String, Object?>? enabledWhen,
   Map<String, Object?>? computed,
   List<String> roles = const [],
+  List<ColumnDefinition> columns = const [],
+  List<FieldDefinition> rowFields = const [],
 }) {
   return FieldDefinition(
     field: field,
@@ -177,6 +179,8 @@ FieldDefinition field(
     enabledWhen: enabledWhen,
     computed: computed,
     roles: roles,
+    columns: columns,
+    rowFields: rowFields,
   );
 }
 
