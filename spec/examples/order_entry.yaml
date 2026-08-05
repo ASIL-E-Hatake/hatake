@@ -1,0 +1,40 @@
+dsl_version: "1.0"
+# 親子・明細（master-detail）の例: 受注ヘッダ＋明細行を1画面で入力し、まとめて保存する。
+page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - title: 受注情報
+        fields:
+          - { field: orderNo, label: 受注番号, type: text, required: true, normalize: [toHankaku, trim] }
+          - { field: customer, label: 顧客, type: text, required: true }
+          - { field: orderDate, label: 受注日, type: date, required: true, format: date }
+
+      - title: 明細
+        fields:
+          # この項目の値が子行の配列になる。
+          - field: lines
+            label: 明細
+            type: subTable
+            columns:
+              - { field: item, label: 品名, width: 220 }
+              - { field: qty, label: 数量, type: number, width: 100 }
+              - { field: price, label: 単価, type: number, width: 140, format: currency, config: { symbol: "¥" } }
+              - { field: amount, label: 金額, type: number, width: 140, format: currency, config: { symbol: "¥" } }
+            fields:
+              - { field: item, label: 品名, type: text, required: true }
+              - { field: qty, label: 数量, type: number, required: true, validators: [ { type: min, value: 1 } ] }
+              - { field: price, label: 単価, type: number, required: true, validators: [ { type: min, value: 0 } ] }
+              # 行内の計算項目: 金額 = 数量 × 単価
+              - { field: amount, label: 金額, computed: { op: product, fields: [qty, price] } }
+
+      - title: 合計
+        fields:
+          - { field: total, label: 合計金額, format: currency, config: { symbol: "¥" },
+              computed: { op: sum, fields: [subtotal, tax] } }
+  actions:
+    - { id: save, type: plugin, plugin: saveOrder, label: 保存 }

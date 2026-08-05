@@ -226,6 +226,16 @@ FieldDefinition _parseField(Map<String, Object?> m) {
     enabledWhen: m.optMap('enabledWhen'),
     computed: m.optMap('computed'),
     roles: [for (final r in m.optList('roles')) r.toString()],
+    // Child-row grid (type: subTable). `columns` describes the grid, the
+    // nested `fields` the row editor — both reuse the existing shapes.
+    columns: [
+      for (var i = 0; i < m.optList('columns').length; i++)
+        _parseColumn(_asMap(m.optList('columns')[i], 'field.columns[$i]')),
+    ],
+    rowFields: [
+      for (var i = 0; i < m.optList('fields').length; i++)
+        _parseField(_asMap(m.optList('fields')[i], 'field.fields[$i]')),
+    ],
   );
 }
 

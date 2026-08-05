@@ -336,7 +336,17 @@
             "separator": { "type": "string" }
           }
         },
-        "roles": { "$ref": "#/$defs/roles" }
+        "roles": { "$ref": "#/$defs/roles" },
+        "columns": {
+          "type": "array",
+          "description": "Child-row grid columns, for type: subTable (master-detail). The field's value is then a list of records.",
+          "items": { "$ref": "#/$defs/column" }
+        },
+        "fields": {
+          "type": "array",
+          "description": "Editor fields for one child row, for type: subTable. Omit to derive inputs from `columns`.",
+          "items": { "$ref": "#/$defs/field" }
+        }
       }
     },
     "roles": {

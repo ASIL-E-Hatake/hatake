@@ -19,6 +19,7 @@
 | `conditions.json` | 条件表示 `evaluateCondition`（3言語） | `{ condition, record, expected: bool }` |
 | `computed.json` | 計算項目 `ComputedRegistry.compute`（3言語） | `{ computed, record, expected }`（数値は数値比較） |
 | `access.json` | 権限制御 `isAllowed`（3言語） | `{ roles, userRoles, expected: bool }` |
+| `subtable_validation.json` | 親子・明細の**子行バリデーション**（3言語） | 配列ではなくオブジェクト: `{ page, cases: [{ name, record, expected: [{field,message}] }] }`。`page` を各言語のパーサで読み、`record` を検証して**エラー集合**（順不同）を比較。子行のエラーは `<field>[<index>].<rowField>` 形式（例 `lines[0].qty`） |
 
 `value` の日付は ISO の日付文字列（`"2026-07-22"`）で渡す（各言語が同じ解釈をするため）。
 
@@ -27,6 +28,7 @@
 | 版 | テスト | fixture への相対パス（テスト実行 CWD 基準） |
 |---|---|---|
 | Flutter/Dart | `flutter/packages/hatake_core/test/conformance_test.dart` | `../../../spec/conformance` |
+| Flutter/Dart（`subtable_validation` のみ。ページ解析が必要なため `hatake_yaml` 側） | `flutter/packages/hatake_yaml/test/conformance_subtable_test.dart` | `../../../spec/conformance` |
 | TypeScript | `typescript/test/conformance.test.ts` | `../spec/conformance` |
 | Java | `java/src/test/java/io/hatake/core/ConformanceTest.java` | `../spec/conformance` |
 

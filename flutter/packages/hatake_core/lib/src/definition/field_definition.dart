@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'column_definition.dart';
 import 'field_types.dart';
 import 'option_item.dart';
 import 'validator_definition.dart';
@@ -58,6 +59,14 @@ class FieldDefinition extends Equatable {
   /// UI-level display gating only — not access enforcement.
   final List<String> roles;
 
+  /// Child-row grid columns, for `type: subTable` (master-detail). The field's
+  /// value is then a list of records, one per row. DSL key: `columns`.
+  final List<ColumnDefinition> columns;
+
+  /// Editor fields for one child row, for `type: subTable`. When empty the
+  /// renderer derives inputs from [columns]. DSL key: `fields`.
+  final List<FieldDefinition> rowFields;
+
   const FieldDefinition({
     required this.field,
     required this.label,
@@ -74,6 +83,8 @@ class FieldDefinition extends Equatable {
     this.enabledWhen,
     this.computed,
     this.roles = const [],
+    this.columns = const [],
+    this.rowFields = const [],
   });
 
   @override
@@ -93,5 +104,7 @@ class FieldDefinition extends Equatable {
         enabledWhen,
         computed,
         roles,
+        columns,
+        rowFields,
       ];
 }

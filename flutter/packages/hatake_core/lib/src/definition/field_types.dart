@@ -16,4 +16,8 @@ abstract final class FieldTypes {
   static const String date = 'date';
   static const String dateTime = 'dateTime';
   static const String time = 'time';
+
+  /// A child-row grid (master-detail). The field's value is a list of records;
+  /// `FieldDefinition.columns` describes the grid and `rowFields` the row editor.
+  static const String subTable = 'subTable';
 }

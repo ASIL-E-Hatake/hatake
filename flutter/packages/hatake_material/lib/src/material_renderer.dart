@@ -5,8 +5,10 @@ part 'renderer/app_shell.dart';
 part 'renderer/app_menu.dart';
 part 'renderer/app_breadcrumb.dart';
 part 'renderer/table_support.dart';
+part 'renderer/filter_input.dart';
 part 'renderer/crud_page.dart';
 part 'renderer/form_fields.dart';
+part 'renderer/sub_table_field.dart';
 part 'renderer/search_page.dart';
 part 'renderer/detail_page.dart';
 part 'renderer/form_page.dart';
@@ -101,6 +103,7 @@ class MaterialRenderer implements Renderer {
       definition: definition,
       controller: controller,
       fieldBuilders: fieldBuilders,
+      formatters: formatters,
     );
   }
 

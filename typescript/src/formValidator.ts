@@ -1,4 +1,5 @@
 import {
+  FieldTypes,
   formFields,
   ValidatorTypes,
   type FormDefinition,
@@ -16,9 +17,17 @@ export interface ValidationResult {
   errors: ValidationError[];
 }
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
 /**
  * Validates a data record against a form's rules — the backend counterpart to
- * the Flutter form validation, driven by the same definition.
+ * the Flutter form validation, driven by the same definition. Reports at most
+ * one error per field.
+ *
+ * Child rows of a `subTable` field are validated too: each row is checked
+ * against the field's `rowFields`, and errors are reported with an indexed
+ * path — `lines[0].qty`. Nested sub-tables recurse with the same convention.
  */
 export class FormValidator {
   constructor(private readonly registry: ValidatorRegistry = new ValidatorRegistry()) {}
@@ -39,6 +48,23 @@ export class FormValidator {
           errors.push({ field: field.field, message: rule.message ?? message });
           break; // one error per field
         }
+      }
+
+      // Child rows (master-detail): validate each row against rowFields.
+      if (field.type === FieldTypes.subTable && field.rowFields.length > 0) {
+        const rowForm: FormDefinition = {
+          sections: [{ columns: 1, fields: field.rowFields }],
+        };
+        const rows = Array.isArray(value) ? value : [];
+        rows.forEach((row, index) => {
+          if (!isRecord(row)) return;
+          for (const error of this.validate(rowForm, row).errors) {
+            errors.push({
+              field: `${field.field}[${index}].${error.field}`,
+              message: error.message,
+            });
+          }
+        });
       }
     }
     return { valid: errors.length === 0, errors };

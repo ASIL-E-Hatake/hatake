@@ -21,6 +21,7 @@ DEFAULT_DOCS = [
     SPEC / "examples" / "customer_detail.yaml",
     SPEC / "examples" / "customer_form.yaml",
     SPEC / "examples" / "sales_app.yaml",
+    SPEC / "examples" / "order_entry.yaml",
     # The public demo's own definition (same app plus a demo-only viewer action)
     # — keep it schema-valid too, since it is what visitors actually see.
     SPEC.parent / "flutter" / "packages" / "hatake_example" / "assets" / "sales_app.yaml",

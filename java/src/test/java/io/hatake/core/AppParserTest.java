@@ -34,7 +34,7 @@ class AppParserTest {
     @Test
     void parsesMenuAsLeafGroupLeaf() throws IOException {
         List<MenuItem> menu = shippedExample().menu();
-        assertEquals(3, menu.size());
+        assertEquals(4, menu.size());
 
         MenuItem customers = menu.get(0);
         assertFalse(customers.isGroup());
@@ -53,17 +53,24 @@ class AppParserTest {
         assertFalse(orders.isGroup());
         assertEquals("orders", orders.id());
         assertEquals("order_search", orders.page());
+
+        // 親子・明細の入力画面もメニューから開ける。
+        MenuItem orderEntry = menu.get(3);
+        assertFalse(orderEntry.isGroup());
+        assertEquals("orderEntry", orderEntry.id());
+        assertEquals("order_entry", orderEntry.page());
     }
 
     @Test
     void parsesShallowPageInventory() throws IOException {
         List<PageRef> pages = shippedExample().pages();
-        assertEquals(4, pages.size());
+        assertEquals(5, pages.size());
         assertEquals(
-                List.of("customer_master", "product_master", "order_search", "order_detail"),
+                List.of("customer_master", "product_master", "order_search", "order_detail",
+                        "order_entry"),
                 pages.stream().map(PageRef::id).toList());
         assertEquals(
-                List.of("master", "master", "search", "detail"),
+                List.of("master", "master", "search", "detail", "form"),
                 pages.stream().map(PageRef::type).toList());
         assertEquals("顧客マスタ", pages.get(0).title());
         assertEquals("customerRepository", pages.get(0).repository());
