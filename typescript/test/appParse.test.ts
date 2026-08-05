@@ -12,10 +12,10 @@ describe("parseAppYaml: shipped example", () => {
     expect(app.home).toBe("customers");
   });
 
-  it("parses the menu as leaf + group(with child) + leaf", () => {
-    expect(app.menu).toHaveLength(3);
+  it("parses the menu as leaf + group(with child) + leaves", () => {
+    expect(app.menu).toHaveLength(4);
 
-    const [customers, master, orders] = app.menu;
+    const [customers, master, orders, orderEntry] = app.menu;
     expect(menuIsGroup(customers)).toBe(false);
     expect(customers.id).toBe("customers");
     expect(customers.page).toBe("customer_master");
@@ -30,21 +30,28 @@ describe("parseAppYaml: shipped example", () => {
     expect(menuIsGroup(orders)).toBe(false);
     expect(orders.id).toBe("orders");
     expect(orders.page).toBe("order_search");
+
+    // The master-detail entry screen is reachable from the menu too.
+    expect(menuIsGroup(orderEntry)).toBe(false);
+    expect(orderEntry.id).toBe("orderEntry");
+    expect(orderEntry.page).toBe("order_entry");
   });
 
-  it("parses the shallow page inventory (4 pages)", () => {
-    expect(app.pages).toHaveLength(4);
+  it("parses the shallow page inventory (5 pages)", () => {
+    expect(app.pages).toHaveLength(5);
     expect(app.pages.map((p) => p.id)).toEqual([
       "customer_master",
       "product_master",
       "order_search",
       "order_detail",
+      "order_entry",
     ]);
     expect(app.pages.map((p) => p.type)).toEqual([
       "master",
       "master",
       "search",
       "detail",
+      "form",
     ]);
     expect(app.pages[0].title).toBe("顧客マスタ");
     expect(app.pages[0].repository).toBe("customerRepository");
