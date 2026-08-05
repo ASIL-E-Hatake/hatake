@@ -108,12 +108,17 @@ void main() {
         File('../../../spec/examples/sales_app.yaml').readAsStringSync();
     final app = parseAppYaml(source);
     expect(app.id, 'sales_admin');
-    expect(app.pages.length, 4);
+    expect(app.pages.length, 5);
     // The order_search list has a navigate row action into the detail page.
     final search = app.pageById('order_search') as SearchPageDefinition;
     final navigate = search.actions.firstWhere((a) => a.id == 'detail');
     expect(navigate.type, ActionTypes.navigate);
     expect(navigate.config['page'], 'order_detail');
     expect(app.pageById('order_detail'), isA<DetailPageDefinition>());
+    // The example also showcases master-detail: an entry page with a subTable.
+    final entry = app.pageById('order_entry') as FormPageDefinition;
+    final lines = entry.form.fields.firstWhere((f) => f.field == 'lines');
+    expect(lines.type, FieldTypes.subTable);
+    expect(lines.rowFields, isNotEmpty);
   });
 }

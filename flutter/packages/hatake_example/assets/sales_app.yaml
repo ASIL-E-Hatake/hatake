@@ -1,5 +1,6 @@
-# hatake デモ用の定義。spec/examples/sales_app.yaml と同じ内容に、デモ限定の
-# 「定義を見る」プラグインアクション（plugin: showDefinition）を各ページへ追加したもの。
+# hatake デモ用の定義。spec/examples/sales_app.yaml をベースに、デモ限定の
+# 「定義を見る」プラグインアクション（plugin: showDefinition）を各ページへ追加し、
+# 受注照会（order_search）を複数条件検索のショーケースに拡張したもの。
 dsl_version: "1.0"
 app:
   id: sales_admin
@@ -58,14 +59,28 @@ app:
       title: 受注照会
       repository: orderRepository
       key: orderNo
+      # 複数条件の検索。layout.columns で入力欄を2列に並べる。
       search:
+        layout: { columns: 2 }
         filters:
           - { field: customer, label: 顧客名, type: text, operator: contains }
+          - field: status
+            label: 状態
+            type: select
+            operator: equals
+            options:
+              - { value: 未出荷, label: 未出荷 }
+              - { value: 出荷済, label: 出荷済 }
+          - { field: shipped, label: 出荷済, type: checkbox, operator: equals }
+          # between は開始／終了の2入力になり、[開始, 終了] で渡る。
+          - { field: orderDate, label: 受注日, type: date, operator: between }
       table:
         rowActions: [detail, openEntry]
         columns:
           - { field: orderNo, label: 受注番号, sortable: true, width: 160 }
           - { field: customer, label: 顧客, width: 200 }
+          - { field: orderDate, label: 受注日, width: 140 }
+          - { field: status, label: 状態, type: badge, width: 120 }
           - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" }, width: 140 }
       actions:
         # 行から詳細へ遷移。$row.no を詳細ページの key に渡す。
@@ -85,6 +100,8 @@ app:
             fields:
               - { field: orderNo, label: 受注番号 }
               - { field: customer, label: 顧客 }
+              - { field: orderDate, label: 受注日 }
+              - { field: status, label: 状態 }
               - { field: amount, label: 金額, format: currency, config: { symbol: "¥" } }
       actions:
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: order_detail } }

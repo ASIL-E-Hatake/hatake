@@ -1,3 +1,5 @@
+# 複数ページを束ねたアプリ定義の例（メニュー＋画面遷移）。
+# 受注照会は複数条件検索、受注入力は親子・明細（type: subTable）のショーケース。
 dsl_version: "1.0"
 app:
   id: sales_admin
@@ -9,6 +11,7 @@ app:
       items:
         - { label: 商品, icon: inventory, page: product_master }
     - { id: orders, label: 受注照会, icon: list, page: order_search }
+    - { id: orderEntry, label: 受注入力, icon: dashboard, page: order_entry }
   pages:
     - type: master
       id: customer_master
@@ -53,18 +56,34 @@ app:
       title: 受注照会
       repository: orderRepository
       key: orderNo
+      # 複数条件の検索。layout.columns で入力欄を2列に並べる。
       search:
+        layout: { columns: 2 }
         filters:
           - { field: customer, label: 顧客名, type: text, operator: contains }
+          - field: status
+            label: 状態
+            type: select
+            operator: equals
+            options:
+              - { value: 未出荷, label: 未出荷 }
+              - { value: 出荷済, label: 出荷済 }
+          - { field: shipped, label: 出荷済, type: checkbox, operator: equals }
+          # between は開始／終了の2入力になり、[開始, 終了] で渡る。
+          - { field: orderDate, label: 受注日, type: date, operator: between }
       table:
-        rowActions: [detail]
+        rowActions: [detail, openEntry]
         columns:
           - { field: orderNo, label: 受注番号, sortable: true, width: 160 }
           - { field: customer, label: 顧客, width: 200 }
+          - { field: orderDate, label: 受注日, width: 140 }
+          - { field: status, label: 状態, type: badge, width: 120 }
           - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" }, width: 140 }
       actions:
         # 行から詳細へ遷移。$row.no を詳細ページの key に渡す。
         - { id: detail, type: navigate, label: 詳細, page: order_detail, params: { id: "$row.orderNo" } }
+        # 行から親子（ヘッダ＋明細）編集へ。
+        - { id: openEntry, type: navigate, label: 明細編集, page: order_entry, params: { id: "$row.orderNo" } }
 
     - type: detail
       id: order_detail
@@ -77,4 +96,36 @@ app:
             fields:
               - { field: orderNo, label: 受注番号 }
               - { field: customer, label: 顧客 }
+              - { field: orderDate, label: 受注日 }
+              - { field: status, label: 状態 }
               - { field: amount, label: 金額, format: currency, config: { symbol: "¥" } }
+
+    # 親子・明細（master-detail）: ヘッダ＋明細行を1画面で入力し、まとめて保存する。
+    - type: form
+      id: order_entry
+      title: 受注入力
+      repository: orderRepository
+      key: orderNo
+      form:
+        sections:
+          - title: 受注情報
+            fields:
+              - { field: orderNo, label: 受注番号, type: text, required: true, normalize: [toHankaku, trim] }
+              - { field: customer, label: 顧客, type: text, required: true }
+          - title: 明細
+            fields:
+              # この項目の値が子行の配列になる（type: subTable）。
+              - field: lines
+                label: 明細
+                type: subTable
+                columns:
+                  - { field: item, label: 品名, width: 220 }
+                  - { field: qty, label: 数量, type: number, width: 90 }
+                  - { field: price, label: 単価, type: number, width: 130, format: currency, config: { symbol: "¥" } }
+                  - { field: amount, label: 金額, type: number, width: 130, format: currency, config: { symbol: "¥" } }
+                fields:
+                  - { field: item, label: 品名, type: text, required: true }
+                  - { field: qty, label: 数量, type: number, required: true, validators: [ { type: min, value: 1 } ] }
+                  - { field: price, label: 単価, type: number, required: true, validators: [ { type: min, value: 0 } ] }
+                  # 行内の計算項目: 金額 = 数量 × 単価
+                  - { field: amount, label: 金額, computed: { op: product, fields: [qty, price] } }
