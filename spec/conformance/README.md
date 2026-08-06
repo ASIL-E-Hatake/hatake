@@ -22,6 +22,7 @@
 | `subtable_validation.json` | 親子・明細の**子行バリデーション**（3言語） | 配列ではなくオブジェクト: `{ page, cases: [{ name, record, expected: [{field,message}] }] }`。`page` を各言語のパーサで読み、`record` を検証して**エラー集合**（順不同）を比較。子行のエラーは `<field>[<index>].<rowField>` 形式（例 `lines[0].qty`） |
 | `subtable_source_validation.json` | `source` 付き（子Repository方式）の `subTable` を親の検証が**まるごと飛ばす**こと（3言語） | `subtable_validation.json` と同じ形 |
 | `wizard_validation.json` | ステップ入力の**ステップ単位検証**（3言語） | `{ page, cases: [{ name, step, record, expected }] }`。`step` が id ならそのステップのフォームだけ、`null` なら全ステップを畳んだフォームを検証 |
+| `dto_spec.json` | `deriveDto`（API の形の導出。**TS/Java のみ**、Flutter は非対象） | `{ cases: [{ name, page, expected: { page, shapes } }] }`。形は順序どおり比較。制約値は文字列比較で言語差を吸収 |
 
 `value` の日付は ISO の日付文字列（`"2026-07-22"`）で渡す（各言語が同じ解釈をするため）。
 
