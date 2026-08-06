@@ -21,7 +21,8 @@ page:
 ```
 
 `dsl_version` は省略可（既定 `1.0`）。`page` を直接トップレベルに置くこと（`page:` で包まない）
-もできるけど、包んどいた方が無難。
+もできるけど、包んどいた方が無難。複数ページを1本のアプリとして束ねたいときはルートを
+`app:` にする（→ [app](#appアプリ定義ナビゲーション)）。
 
 ### エディタ補完
 
@@ -294,7 +295,7 @@ app:
 
 判定は「`roles` が空なら誰でも可、そうでなければユーザのロールのいずれかが含まれれば可」（`isAllowed`）。
 
-**注意**: これは **UI レベルの表示制御**であって、認証・認可そのものではない（[スコープ](#スコープ)のとおり Framework の対象外）。現在ユーザのロール集合は実行時に与える（Flutter は `HatakeScope(roles: {...})`）。本当のアクセス制御（データの保護・改ざん防止）はバックエンド側で必ず行うこと。
+**注意**: これは **UI レベルの表示制御**であって、認証・認可そのものではない（Framework の対象外）。現在ユーザのロール集合は実行時に与える（Flutter は `HatakeScope(roles: {...})`）。本当のアクセス制御（データの保護・改ざん防止）はバックエンド側で必ず行うこと。
 
 ### condition
 
@@ -350,7 +351,8 @@ computed: { op: sum, fields: [price, tax] }
 | `email` | — | メールアドレス形式であること。 |
 | `postalCode` | — | 郵便番号形式（`1234567` / `123-4567`）。 |
 
-`message` を書くと既定（日本語）メッセージを上書きできる。
+`message` を書くと既定（日本語）メッセージを上書きできる。既定文言をまるごと差し替えたい
+（別ロケールにしたい）ときは `ValidatorRegistry` に `MessageResolver` を注入する。
 
 ## action
 
@@ -380,7 +382,7 @@ computed: { op: sum, fields: [price, tax] }
 
 ### フィールド型
 `text`, `textarea`, `number`, `select`, `multiSelect`, `checkbox`, `radio`,
-`date`, `dateTime`, `time`
+`date`, `dateTime`, `time`, `subTable`
 
 ### フィルタ演算子
 `equals`, `contains`, `startsWith`, `endsWith`, `gt`, `gte`, `lt`, `lte`,
@@ -390,7 +392,7 @@ computed: { op: sum, fields: [price, tax] }
 `text`, `number`, `badge`, `boolean`, `date`, `dateTime`
 
 ### アクション型
-`create`, `edit`, `delete`, `plugin`
+`create`, `edit`, `delete`, `navigate`, `plugin`
 
 ### フォーマッタ
 （表示整形、`format` で指定）`currency`, `percent`, `date`, `wareki`, `postal`, `mask`。
@@ -403,6 +405,9 @@ computed: { op: sum, fields: [price, tax] }
 ## 完全な例
 
 [`examples/customer_master.yaml`](examples/customer_master.yaml) を見て。
+アプリ丸ごと（メニュー＋複数ページ）は [`examples/sales_app.yaml`](examples/sales_app.yaml)、
+親子・明細は [`examples/order_entry.yaml`](examples/order_entry.yaml)（埋め込み）と
+[`examples/order_entry_paged.yaml`](examples/order_entry_paged.yaml)（子Repository）。
 
 ## 同一性の保証
 
