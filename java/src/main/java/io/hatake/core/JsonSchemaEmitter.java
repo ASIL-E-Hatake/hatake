@@ -39,18 +39,27 @@ public final class JsonSchemaEmitter {
      * （形どうしが {@code $ref} で参照できるように）。
      */
     public static Map<String, Object> toJsonSchema(DtoSpec spec) {
-        Map<String, Object> defs = new LinkedHashMap<>();
-        for (DtoSpec.Shape shape : spec.shapes()) {
-            defs.put(shape.name(), shapeSchema(shape));
-        }
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("$schema", DIALECT);
         out.put("title", spec.page());
-        out.put("$defs", defs);
+        out.put("$defs", schemasOf(spec, "#/$defs/"));
         return out;
     }
 
-    private static Map<String, Object> shapeSchema(DtoSpec.Shape shape) {
+    /**
+     * すべての形を「名前 → スキーマ」にする。{@code $ref} の根は {@code refBase}。
+     * JSON Schema 版と OpenAPI 版で共有する（違いはスキーマの置き場所だけ:
+     * {@code #/$defs/} と {@code #/components/schemas/}）。
+     */
+    public static Map<String, Object> schemasOf(DtoSpec spec, String refBase) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        for (DtoSpec.Shape shape : spec.shapes()) {
+            out.put(shape.name(), shapeSchema(shape, refBase));
+        }
+        return out;
+    }
+
+    private static Map<String, Object> shapeSchema(DtoSpec.Shape shape, String refBase) {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("type", "object");
         if (STRICT_ROLES.contains(shape.role())) {
@@ -69,19 +78,19 @@ public final class JsonSchemaEmitter {
 
         Map<String, Object> properties = new LinkedHashMap<>();
         for (DtoSpec.Member m : shape.members()) {
-            properties.put(m.name(), memberSchema(m));
+            properties.put(m.name(), memberSchema(m, refBase));
         }
         out.put("properties", properties);
         return out;
     }
 
-    private static Map<String, Object> memberSchema(DtoSpec.Member member) {
+    private static Map<String, Object> memberSchema(DtoSpec.Member member, String refBase) {
         if ("array".equals(member.type())) {
             // 配列の制約は要素側に載る（配列そのものではない）。
             Map<String, Object> items;
             if ("object".equals(member.itemType()) && member.shape() != null) {
                 items = new LinkedHashMap<>();
-                items.put("$ref", "#/$defs/" + member.shape());
+                items.put("$ref", refBase + member.shape());
             } else {
                 items = new LinkedHashMap<>();
                 items.put("type", member.itemType() == null ? "string" : member.itemType());
@@ -94,7 +103,7 @@ public final class JsonSchemaEmitter {
         }
         if ("object".equals(member.type()) && member.shape() != null) {
             Map<String, Object> out = new LinkedHashMap<>();
-            out.put("$ref", "#/$defs/" + member.shape());
+            out.put("$ref", refBase + member.shape());
             return out;
         }
         Map<String, Object> out = new LinkedHashMap<>();

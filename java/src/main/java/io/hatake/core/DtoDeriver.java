@@ -19,7 +19,7 @@ public final class DtoDeriver {
 
     /**
      * 形の並び順は固定（言語間で比較できるようにするため）:
-     * request → row → listResponse → queryParams → pathParams →
+     * request → response → row → listResponse → queryParams → pathParams →
      * 子（{@code subTable}）の形（項目の宣言順、名前で重複排除）。
      */
     public static DtoSpec deriveDto(PageDefinition page) {
@@ -39,6 +39,16 @@ public final class DtoDeriver {
         if (!requestMembers.isEmpty()) {
             shapes.add(new DtoSpec.Shape(name + "Request", "request",
                     List.copyOf(requestMembers)));
+            // 1件取得が返す形。項目は同じで「必ず入っている」の約束だけが違う。
+            List<DtoSpec.Member> responseMembers = new ArrayList<>();
+            for (FieldDefinition field : fields) {
+                DtoSpec.Member member = responseMember(page.id(), field);
+                if (member != null) {
+                    responseMembers.add(member);
+                }
+            }
+            shapes.add(new DtoSpec.Shape(name + "Response", "response",
+                    List.copyOf(responseMembers)));
         }
         for (FieldDefinition field : fields) {
             if (!field.isSubTable()) {
@@ -106,15 +116,21 @@ public final class DtoDeriver {
         return page.form().fields();
     }
 
+    /**
+     * サーバが<b>受け取る</b>ペイロードのメンバ。
+     *
+     * <p>{@code readOnly} / {@code computed} も<b>含める</b>が常に optional にする。
+     * framework 自身のクライアントはこれらを送る（{@code collect()} はドラフト全体を
+     * 運び、computed 値を足す）ので、除外した閉じたスキーマは hatake 自身のペイロードを
+     * 弾いてしまう。optional にすることで「あってもよい・必須ではない」と表現でき、
+     * サーバは無視も再計算も自由にできる。
+     */
     private static DtoSpec.Member requestMember(String pageId, FieldDefinition field) {
-        // 導出値・読み取り専用はサーバが受け取るものではない。
-        if (field.computed() != null || field.readOnly()) {
-            return null;
-        }
         // 子Repository方式の明細は別エンドポイントで動く。
         if (field.isSubTable() && field.hasSubTableSource()) {
             return null;
         }
+        boolean derived = field.computed() != null || field.readOnly();
         String type = memberType(field.type());
         String itemType = null;
         String shape = null;
@@ -124,8 +140,23 @@ public final class DtoDeriver {
         } else if (FieldTypesRef.MULTI_SELECT.equals(field.type())) {
             itemType = "string";
         }
-        return new DtoSpec.Member(field.field(), type, !field.required(),
+        return new DtoSpec.Member(field.field(), type, derived || !field.required(),
                 itemType, shape, constraintsOf(field));
+    }
+
+    /**
+     * サーバが<b>返す</b>ペイロードのメンバ。{@code required} はフォームの
+     * {@code required} に一致させる（保存済みレコードなら必ず入っている項目）。
+     * {@code computed} は Renderer が導出するのでサーバは送らなくてよい。
+     */
+    private static DtoSpec.Member responseMember(String pageId, FieldDefinition field) {
+        DtoSpec.Member member = requestMember(pageId, field);
+        if (member == null) {
+            return null;
+        }
+        boolean optional = field.computed() != null || !field.required();
+        return new DtoSpec.Member(member.name(), member.type(), optional,
+                member.itemType(), member.shape(), member.constraints());
     }
 
     private static DtoSpec.Member queryMember(FilterDefinition filter) {

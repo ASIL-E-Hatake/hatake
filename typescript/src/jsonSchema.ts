@@ -34,23 +34,29 @@ function withConstraints(
   return out;
 }
 
-/** The schema for one member's value. */
-function memberSchema(member: DtoMember): Record<string, unknown> {
+/** The schema for one member's value. [refBase] prefixes `$ref` pointers. */
+function memberSchema(
+  member: DtoMember,
+  refBase: string,
+): Record<string, unknown> {
   if (member.type === "array") {
     // An array's constraints describe its elements, not the array itself.
     const items: Record<string, unknown> =
       member.itemType === "object" && member.shape
-        ? { $ref: `#/$defs/${member.shape}` }
+        ? { $ref: `${refBase}${member.shape}` }
         : withConstraints({ type: member.itemType ?? "string" }, member);
     return { type: "array", items };
   }
   if (member.type === "object" && member.shape) {
-    return { $ref: `#/$defs/${member.shape}` };
+    return { $ref: `${refBase}${member.shape}` };
   }
   return withConstraints({ type: member.type }, member);
 }
 
-function shapeSchema(shape: DtoShape): Record<string, unknown> {
+function shapeSchema(
+  shape: DtoShape,
+  refBase: string,
+): Record<string, unknown> {
   const out: Record<string, unknown> = { type: "object" };
   if (STRICT_ROLES.has(shape.role)) out.additionalProperties = false;
 
@@ -59,9 +65,25 @@ function shapeSchema(shape: DtoShape): Record<string, unknown> {
 
   const properties: Record<string, unknown> = {};
   for (const member of shape.members) {
-    properties[member.name] = memberSchema(member);
+    properties[member.name] = memberSchema(member, refBase);
   }
   out.properties = properties;
+  return out;
+}
+
+/**
+ * Every shape as a name → schema map, with `$ref` pointers rooted at [refBase].
+ * Shared by the JSON Schema and OpenAPI emitters, which differ only in where
+ * schemas live in the document (`#/$defs/` vs `#/components/schemas/`).
+ */
+export function schemasOf(
+  spec: DtoSpec,
+  refBase: string,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const shape of spec.shapes) {
+    out[shape.name] = shapeSchema(shape, refBase);
+  }
   return out;
 }
 
@@ -74,13 +96,9 @@ function shapeSchema(shape: DtoShape): Record<string, unknown> {
  * stays dependency-free (same arrangement as `QuerySpec` → adapters).
  */
 export function toJsonSchema(spec: DtoSpec): Record<string, unknown> {
-  const defs: Record<string, unknown> = {};
-  for (const shape of spec.shapes) {
-    defs[shape.name] = shapeSchema(shape);
-  }
   return {
     $schema: kJsonSchemaDialect,
     title: spec.page,
-    $defs: defs,
+    $defs: schemasOf(spec, "#/$defs/"),
   };
 }

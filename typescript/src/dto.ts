@@ -121,19 +121,27 @@ function childShapeName(page: string, field: string): string {
   return `${pascal(page)}${pascal(field)}Row`;
 }
 
+/**
+ * A member of a payload the server **accepts**.
+ *
+ * `readOnly` and `computed` fields are included but always optional: the
+ * framework's own client sends them (`collect()` carries the whole draft and
+ * appends computed values), so a closed schema that omitted them would reject
+ * hatake's own payload. Marking them optional says "may be present, not
+ * required" — the server is free to ignore or recompute them.
+ */
 function requestMember(
   pageId: string,
   field: FieldDefinition,
 ): DtoMember | undefined {
-  // Derived and read-only values are not something the server accepts.
-  if (field.computed || field.readOnly) return undefined;
   // Repository-backed child rows travel on their own endpoint.
   if (field.type === FieldTypes.subTable && field.source) return undefined;
 
+  const derived = Boolean(field.computed) || field.readOnly;
   const member: DtoMember = {
     name: field.field,
     type: memberType(field.type),
-    optional: !field.required,
+    optional: derived || !field.required,
     constraints: constraintsOf(field),
   };
   if (field.type === FieldTypes.subTable) {
@@ -143,6 +151,20 @@ function requestMember(
     member.itemType = "string";
   }
   return member;
+}
+
+/**
+ * A member of a payload the server **returns**. `required` mirrors the form's
+ * `required` — that is what a stored record always has. `computed` values are
+ * derived by the renderer, so the server need not send them.
+ */
+function responseMember(
+  pageId: string,
+  field: FieldDefinition,
+): DtoMember | undefined {
+  const member = requestMember(pageId, field);
+  if (!member) return undefined;
+  return { ...member, optional: Boolean(field.computed) || !field.required };
 }
 
 function queryMember(filter: FilterDefinition): DtoMember {
@@ -175,8 +197,8 @@ function requestFields(page: PageDefinition): FieldDefinition[] {
  * Derives the API payload shapes a page implies.
  *
  * Shape order is fixed so the output is comparable across languages: request,
- * row, listResponse, queryParams, pathParams, then child (`subTable`) shapes in
- * field-declaration order, deduped by name.
+ * response, row, listResponse, queryParams, pathParams, then child (`subTable`)
+ * shapes in field-declaration order, deduped by name.
  */
 export function deriveDto(page: PageDefinition): DtoSpec {
   const name = pascal(page.id);
@@ -205,6 +227,14 @@ export function deriveDto(page: PageDefinition): DtoSpec {
       .filter((m): m is DtoMember => m !== undefined);
     if (members.length > 0) {
       shapes.push({ name: `${name}Request`, role: "request", members });
+      // What a single-record GET returns — the same fields, promised differently.
+      shapes.push({
+        name: `${name}Response`,
+        role: "response",
+        members: fields
+          .map((f) => responseMember(page.id, f))
+          .filter((m): m is DtoMember => m !== undefined),
+      });
     }
   }
   for (const field of fields) collectChild(field);
