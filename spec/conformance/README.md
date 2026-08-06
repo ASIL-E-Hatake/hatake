@@ -21,6 +21,7 @@
 | `access.json` | 権限制御 `isAllowed`（3言語） | `{ roles, userRoles, expected: bool }` |
 | `subtable_validation.json` | 親子・明細の**子行バリデーション**（3言語） | 配列ではなくオブジェクト: `{ page, cases: [{ name, record, expected: [{field,message}] }] }`。`page` を各言語のパーサで読み、`record` を検証して**エラー集合**（順不同）を比較。子行のエラーは `<field>[<index>].<rowField>` 形式（例 `lines[0].qty`） |
 | `subtable_source_validation.json` | `source` 付き（子Repository方式）の `subTable` を親の検証が**まるごと飛ばす**こと（3言語） | `subtable_validation.json` と同じ形 |
+| `wizard_validation.json` | ステップ入力の**ステップ単位検証**（3言語） | `{ page, cases: [{ name, step, record, expected }] }`。`step` が id ならそのステップのフォームだけ、`null` なら全ステップを畳んだフォームを検証 |
 
 `value` の日付は ISO の日付文字列（`"2026-07-22"`）で渡す（各言語が同じ解釈をするため）。
 
@@ -29,7 +30,7 @@
 | 版 | テスト | fixture への相対パス（テスト実行 CWD 基準） |
 |---|---|---|
 | Flutter/Dart | `flutter/packages/hatake_core/test/conformance_test.dart` | `../../../spec/conformance` |
-| Flutter/Dart（`subtable_*` のみ。ページ解析が必要なため `hatake_yaml` 側） | `flutter/packages/hatake_yaml/test/conformance_subtable_test.dart` | `../../../spec/conformance` |
+| Flutter/Dart（`subtable_*` / `wizard_*` のみ。ページ解析が必要なため `hatake_yaml` 側） | `flutter/packages/hatake_yaml/test/conformance_subtable_test.dart`・`conformance_wizard_test.dart` | `../../../spec/conformance` |
 | TypeScript | `typescript/test/conformance.test.ts` | `../spec/conformance` |
 | Java | `java/src/test/java/io/hatake/core/ConformanceTest.java` | `../spec/conformance` |
 

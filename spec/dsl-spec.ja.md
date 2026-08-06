@@ -49,6 +49,7 @@ YAML Language Server 系のエディタなら、ファイル先頭にこの一�
 | `master` | マスタメンテ | ✅ | `crud` と同じ構造 |
 | `detail` | 読み取り専用の単一レコード | — | form のフィールドを表示。対象レコードは実行時に渡す |
 | `form` | 単票の作成/編集フォーム | ✅ | table 無し。record key を渡せば編集、無ければ新規作成 |
+| `wizard` | ステップ入力 | ✅ | `steps` に分割したフォーム。**ステップ単位で検証**して次へ進み、最後にまとめて保存（→ [wizard](#wizardtype-wizard)） |
 
 `search` ページは `crud` と同じ `search` / `table` / `actions` を持つけど `form` は無い。
 `rowActions` はページレベルの `plugin` アクション（例: `detail`）を指して、対象行を context に
@@ -117,6 +118,79 @@ app:
 | `table` | [table](#table) | | 空 | 結果テーブル。 |
 | `form` | [form](#form) | | 空 | 新規/編集フォーム。 |
 | `actions` | [action](#action)[] | | `[]` | ページレベルのアクション。 |
+
+## wizard（type: wizard）
+
+長い入力を**ステップに分けて**進める単票ページ。1ステップぶんの項目だけを見せ、
+**そのステップの項目だけを検証**して次に進む。最後のステップで初めて Repository に保存する
+（途中の状態はどこにも書かない）。
+
+`form` の代わりに `steps` を持つ。それ以外は [`form` ページ](#pagetype-crud) と同じ
+（`repository` / `key` を持ち、record key を渡せば編集・無ければ新規作成）。
+
+```yaml
+dsl_version: "1.0"
+page:
+  type: wizard
+  id: customer_onboarding
+  title: 顧客登録
+  repository: customerRepository
+  key: id
+  steps:
+    - id: basic
+      title: 基本情報
+      description: まず会社の基本情報を入力してください   # 任意の補足
+      layout: { columns: 2 }
+      fields:
+        - { field: code, label: コード, required: true, normalize: [toHankaku, trim] }
+        - { field: name, label: 会社名, required: true }
+    - id: contact
+      title: 連絡先
+      fields:
+        - { field: zip, label: 郵便番号, validators: [ { type: postalCode } ] }
+        - { field: email, label: メール, validators: [ { type: email } ] }
+    - id: confirm
+      title: 確認
+      fields:
+        # 前のステップの入力を computed で見せる（読み取り表示）
+        - { field: summary, label: 内容, computed: { op: concat, fields: [code, name], separator: " / " } }
+  actions:
+    - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る }
+```
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `type` | string | ✅ | — | `wizard`。 |
+| `id` | string | ✅ | — | 安定したページ識別子。 |
+| `title` | string | ✅ | — | ページタイトル。 |
+| `repository` | string | ✅ | — | 利用者が実装した `Repository` を解決するキー。 |
+| `key` | string | | `id` | レコードの主キー項目名。 |
+| `steps` | [step](#step)[] | ✅ | — | ステップ（1つ以上）。宣言順に進む。 |
+| `actions` | [action](#action)[] | | `[]` | ページレベルのアクション。 |
+
+### step
+
+**`id` と見出しを持つ [section](#section)**、と思えばいい（`fields` / `layout` は section と同じ形）。
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `id` | string | ✅ | — | ステップ識別子（安定した参照用）。 |
+| `title` | string | ✅ | — | ステップ見出し。 |
+| `description` | string | | — | 任意の補足文。 |
+| `layout` | [layout](#layout) | | `{columns: 1}` | 項目の配置。 |
+| `fields` | [field](#field)[] | | `[]` | そのステップの入力項目。 |
+
+**検証の効き方**:
+
+- **次へ** … そのステップの `fields` だけを検証する。他のステップの未入力では止まらない。
+- **保存** … 最後のステップを検証したうえで、**全ステップを1つのフォームとして**もう一度検証する。
+  ここで前のステップの項目が落ちた場合は、**その項目を含むステップまで自動的に戻って**エラーを出す
+  （黙って保存に失敗させない）。
+- 保存は1回。`normalize` は保存時に全項目へ適用される（[コンバータ](#コンバータ)）。
+
+同じ定義でサーバ側も検証できる。`FormValidator`（Dart / TypeScript / Java）に
+**ステップ単位のフォーム**を渡せばそのステップだけ、**全体のフォーム**を渡せば全項目を検証する
+（[コンフォーマンス](conformance/)の `wizard_validation.json` で3言語一致を担保）。
 
 ## search
 
@@ -408,6 +482,7 @@ computed: { op: sum, fields: [price, tax] }
 アプリ丸ごと（メニュー＋複数ページ）は [`examples/sales_app.yaml`](examples/sales_app.yaml)、
 親子・明細は [`examples/order_entry.yaml`](examples/order_entry.yaml)（埋め込み）と
 [`examples/order_entry_paged.yaml`](examples/order_entry_paged.yaml)（子Repository）。
+ステップ入力は [`examples/customer_wizard.yaml`](examples/customer_wizard.yaml)。
 
 ## 同一性の保証
 

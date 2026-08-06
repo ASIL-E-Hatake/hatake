@@ -2,59 +2,105 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/ASIL-E-Hatake/hatake/spec/hatake-page.schema.json",
   "title": "hatake page definition",
-  "description": "Schema for a hatake page definition document (DSL version 1.0). YAML and JSON documents share this shape; both are normalized to the same PageDefinition.",
-  "type": "object",
   "description": "A hatake document: either a single `page` or an `app` (pages + navigation).",
+  "type": "object",
   "additionalProperties": false,
   "oneOf": [
-    { "required": ["page"] },
-    { "required": ["app"] }
+    {
+      "required": [
+        "page"
+      ]
+    },
+    {
+      "required": [
+        "app"
+      ]
+    }
   ],
   "properties": {
     "dsl_version": {
       "type": "string",
       "description": "DSL version the document conforms to.",
       "default": "1.0",
-      "examples": ["1.0"]
+      "examples": [
+        "1.0"
+      ]
     },
     "page": {
       "oneOf": [
-        { "$ref": "#/$defs/crudPage" },
-        { "$ref": "#/$defs/searchPage" },
-        { "$ref": "#/$defs/masterPage" },
-        { "$ref": "#/$defs/detailPage" },
-        { "$ref": "#/$defs/formPage" }
+        {
+          "$ref": "#/$defs/crudPage"
+        },
+        {
+          "$ref": "#/$defs/searchPage"
+        },
+        {
+          "$ref": "#/$defs/masterPage"
+        },
+        {
+          "$ref": "#/$defs/detailPage"
+        },
+        {
+          "$ref": "#/$defs/formPage"
+        },
+        {
+          "$ref": "#/$defs/wizardPage"
+        }
       ]
     },
-    "app": { "$ref": "#/$defs/app" }
+    "app": {
+      "$ref": "#/$defs/app"
+    }
   },
   "$defs": {
     "app": {
       "type": "object",
       "description": "An application: pages composed by a navigation menu.",
-      "required": ["id", "title"],
+      "required": [
+        "id",
+        "title"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string" },
-        "title": { "type": "string" },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
         "home": {
           "type": "string",
           "description": "Initial route: a menu item id (or page id)."
         },
         "menu": {
           "type": "array",
-          "items": { "$ref": "#/$defs/menuItem" }
+          "items": {
+            "$ref": "#/$defs/menuItem"
+          }
         },
         "pages": {
           "type": "array",
           "description": "Pages composing the app, referenced by id.",
           "items": {
             "oneOf": [
-              { "$ref": "#/$defs/crudPage" },
-              { "$ref": "#/$defs/searchPage" },
-              { "$ref": "#/$defs/masterPage" },
-              { "$ref": "#/$defs/detailPage" },
-              { "$ref": "#/$defs/formPage" }
+              {
+                "$ref": "#/$defs/crudPage"
+              },
+              {
+                "$ref": "#/$defs/searchPage"
+              },
+              {
+                "$ref": "#/$defs/masterPage"
+              },
+              {
+                "$ref": "#/$defs/detailPage"
+              },
+              {
+                "$ref": "#/$defs/formPage"
+              },
+              {
+                "$ref": "#/$defs/wizardPage"
+              }
             ]
           }
         }
@@ -65,27 +111,60 @@
       "description": "A navigation menu node: a leaf (opens `page`) or a group (has `items`).",
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "description": "Route key for a leaf (defaults to `page`)." },
-        "label": { "type": "string" },
-        "group": { "type": "string", "description": "Group heading (marks this node as a group)." },
-        "icon": { "type": "string" },
-        "page": { "type": "string", "description": "Page id this leaf opens." },
-        "items": { "type": "array", "items": { "$ref": "#/$defs/menuItem" } },
-        "roles": { "$ref": "#/$defs/roles" }
+        "id": {
+          "type": "string",
+          "description": "Route key for a leaf (defaults to `page`)."
+        },
+        "label": {
+          "type": "string"
+        },
+        "group": {
+          "type": "string",
+          "description": "Group heading (marks this node as a group)."
+        },
+        "icon": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string",
+          "description": "Page id this leaf opens."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/menuItem"
+          }
+        },
+        "roles": {
+          "$ref": "#/$defs/roles"
+        }
       }
     },
     "crudPage": {
       "type": "object",
       "description": "A create/read/update/delete page over a single repository.",
-      "required": ["type", "id", "title", "repository"],
+      "required": [
+        "type",
+        "id",
+        "title",
+        "repository"
+      ],
       "additionalProperties": false,
       "properties": {
         "type": {
           "description": "Page kind.",
-          "enum": ["crud"]
+          "enum": [
+            "crud"
+          ]
         },
-        "id": { "type": "string", "description": "Stable page identifier." },
-        "title": { "type": "string", "description": "Page title." },
+        "id": {
+          "type": "string",
+          "description": "Stable page identifier."
+        },
+        "title": {
+          "type": "string",
+          "description": "Page title."
+        },
         "repository": {
           "type": "string",
           "description": "Key resolving the user-provided Repository implementation."
@@ -95,81 +174,275 @@
           "description": "Primary-key field name of a record.",
           "default": "id"
         },
-        "search": { "$ref": "#/$defs/search" },
-        "table": { "$ref": "#/$defs/table" },
-        "form": { "$ref": "#/$defs/form" },
+        "search": {
+          "$ref": "#/$defs/search"
+        },
+        "table": {
+          "$ref": "#/$defs/table"
+        },
+        "form": {
+          "$ref": "#/$defs/form"
+        },
         "actions": {
           "type": "array",
           "description": "Page-level actions (buttons).",
-          "items": { "$ref": "#/$defs/action" }
+          "items": {
+            "$ref": "#/$defs/action"
+          }
         }
       }
     },
     "searchPage": {
       "type": "object",
       "description": "A read-only search/list page (照会). Search + table, no form.",
-      "required": ["type", "id", "title", "repository"],
+      "required": [
+        "type",
+        "id",
+        "title",
+        "repository"
+      ],
       "additionalProperties": false,
       "properties": {
-        "type": { "description": "Page kind.", "enum": ["search"] },
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "repository": { "type": "string" },
-        "key": { "type": "string", "default": "id" },
-        "search": { "$ref": "#/$defs/search" },
-        "table": { "$ref": "#/$defs/table" },
+        "type": {
+          "description": "Page kind.",
+          "enum": [
+            "search"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string",
+          "default": "id"
+        },
+        "search": {
+          "$ref": "#/$defs/search"
+        },
+        "table": {
+          "$ref": "#/$defs/table"
+        },
         "actions": {
           "type": "array",
           "description": "Page-level actions; also referenced by table.rowActions.",
-          "items": { "$ref": "#/$defs/action" }
+          "items": {
+            "$ref": "#/$defs/action"
+          }
         }
       }
     },
     "masterPage": {
       "type": "object",
       "description": "A master-maintenance page. Same shape as crud (search + table + form).",
-      "required": ["type", "id", "title", "repository"],
+      "required": [
+        "type",
+        "id",
+        "title",
+        "repository"
+      ],
       "additionalProperties": false,
       "properties": {
-        "type": { "description": "Page kind.", "enum": ["master"] },
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "repository": { "type": "string" },
-        "key": { "type": "string", "default": "id" },
-        "search": { "$ref": "#/$defs/search" },
-        "table": { "$ref": "#/$defs/table" },
-        "form": { "$ref": "#/$defs/form" },
-        "actions": { "type": "array", "items": { "$ref": "#/$defs/action" } }
+        "type": {
+          "description": "Page kind.",
+          "enum": [
+            "master"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string",
+          "default": "id"
+        },
+        "search": {
+          "$ref": "#/$defs/search"
+        },
+        "table": {
+          "$ref": "#/$defs/table"
+        },
+        "form": {
+          "$ref": "#/$defs/form"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/action"
+          }
+        }
       }
     },
     "detailPage": {
       "type": "object",
       "description": "A read-only single-record detail page. Displays the form's fields.",
-      "required": ["type", "id", "title", "repository"],
+      "required": [
+        "type",
+        "id",
+        "title",
+        "repository"
+      ],
       "additionalProperties": false,
       "properties": {
-        "type": { "description": "Page kind.", "enum": ["detail"] },
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "repository": { "type": "string" },
-        "key": { "type": "string", "default": "id" },
-        "form": { "$ref": "#/$defs/form" },
-        "actions": { "type": "array", "items": { "$ref": "#/$defs/action" } }
+        "type": {
+          "description": "Page kind.",
+          "enum": [
+            "detail"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string",
+          "default": "id"
+        },
+        "form": {
+          "$ref": "#/$defs/form"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/action"
+          }
+        }
       }
     },
     "formPage": {
       "type": "object",
       "description": "A standalone create/edit form page (form only, no table).",
-      "required": ["type", "id", "title", "repository"],
+      "required": [
+        "type",
+        "id",
+        "title",
+        "repository"
+      ],
       "additionalProperties": false,
       "properties": {
-        "type": { "description": "Page kind.", "enum": ["form"] },
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "repository": { "type": "string" },
-        "key": { "type": "string", "default": "id" },
-        "form": { "$ref": "#/$defs/form" },
-        "actions": { "type": "array", "items": { "$ref": "#/$defs/action" } }
+        "type": {
+          "description": "Page kind.",
+          "enum": [
+            "form"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string",
+          "default": "id"
+        },
+        "form": {
+          "$ref": "#/$defs/form"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/action"
+          }
+        }
+      }
+    },
+    "wizardPage": {
+      "type": "object",
+      "description": "A stepped-input page: the form is split into steps, each validated on its own before advancing. Persisted once, on the final step.",
+      "required": [
+        "type",
+        "id",
+        "title",
+        "repository",
+        "steps"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "description": "Page kind.",
+          "enum": [
+            "wizard"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string",
+          "default": "id"
+        },
+        "steps": {
+          "type": "array",
+          "description": "Steps, walked in declaration order.",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/wizardStep"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/action"
+          }
+        }
+      }
+    },
+    "wizardStep": {
+      "type": "object",
+      "description": "One wizard step — a section with an id and a heading. Only this step's fields are validated when advancing.",
+      "required": [
+        "id",
+        "title"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Step identifier."
+        },
+        "title": {
+          "type": "string",
+          "description": "Step heading."
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional explanatory text."
+        },
+        "layout": {
+          "$ref": "#/$defs/layout"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
+        }
       }
     },
     "search": {
@@ -177,20 +450,32 @@
       "description": "The search area: filters plus their layout.",
       "additionalProperties": false,
       "properties": {
-        "layout": { "$ref": "#/$defs/layout" },
+        "layout": {
+          "$ref": "#/$defs/layout"
+        },
         "filters": {
           "type": "array",
-          "items": { "$ref": "#/$defs/filter" }
+          "items": {
+            "$ref": "#/$defs/filter"
+          }
         }
       }
     },
     "filter": {
       "type": "object",
-      "required": ["field", "label"],
+      "required": [
+        "field",
+        "label"
+      ],
       "additionalProperties": false,
       "properties": {
-        "field": { "type": "string", "description": "Backing data key." },
-        "label": { "type": "string" },
+        "field": {
+          "type": "string",
+          "description": "Backing data key."
+        },
+        "label": {
+          "type": "string"
+        },
         "type": {
           "type": "string",
           "description": "Input type (open string). Built-ins: text, textarea, number, select, multiSelect, checkbox, radio, date, dateTime, time.",
@@ -204,9 +489,13 @@
         "options": {
           "type": "array",
           "description": "Options for select-style filters.",
-          "items": { "$ref": "#/$defs/option" }
+          "items": {
+            "$ref": "#/$defs/option"
+          }
         },
-        "config": { "$ref": "#/$defs/config" }
+        "config": {
+          "$ref": "#/$defs/config"
+        }
       }
     },
     "table": {
@@ -214,25 +503,38 @@
       "description": "The results table.",
       "additionalProperties": false,
       "properties": {
-        "pagination": { "$ref": "#/$defs/pagination" },
+        "pagination": {
+          "$ref": "#/$defs/pagination"
+        },
         "rowActions": {
           "type": "array",
           "description": "Per-row action ids. Built-ins: edit, delete.",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "columns": {
           "type": "array",
-          "items": { "$ref": "#/$defs/column" }
+          "items": {
+            "$ref": "#/$defs/column"
+          }
         }
       }
     },
     "column": {
       "type": "object",
-      "required": ["field", "label"],
+      "required": [
+        "field",
+        "label"
+      ],
       "additionalProperties": false,
       "properties": {
-        "field": { "type": "string" },
-        "label": { "type": "string" },
+        "field": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
         "type": {
           "type": "string",
           "description": "Render type (open string). Built-ins: text, number, badge, boolean, date, dateTime.",
@@ -242,21 +544,35 @@
           "type": "number",
           "description": "Fixed width in logical pixels; omit for flexible."
         },
-        "sortable": { "type": "boolean", "default": false },
+        "sortable": {
+          "type": "boolean",
+          "default": false
+        },
         "format": {
           "type": "string",
           "description": "Display formatter name (open string). Built-ins: currency, percent, date, wareki, postal, mask."
         },
-        "config": { "$ref": "#/$defs/config" },
-        "roles": { "$ref": "#/$defs/roles" }
+        "config": {
+          "$ref": "#/$defs/config"
+        },
+        "roles": {
+          "$ref": "#/$defs/roles"
+        }
       }
     },
     "pagination": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "pageSize": { "type": "integer", "minimum": 1, "default": 50 },
-        "enabled": { "type": "boolean", "default": true }
+        "pageSize": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        }
       }
     },
     "form": {
@@ -266,7 +582,9 @@
       "properties": {
         "sections": {
           "type": "array",
-          "items": { "$ref": "#/$defs/section" }
+          "items": {
+            "$ref": "#/$defs/section"
+          }
         }
       }
     },
@@ -274,39 +592,67 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "title": { "type": "string" },
-        "layout": { "$ref": "#/$defs/layout" },
+        "title": {
+          "type": "string"
+        },
+        "layout": {
+          "$ref": "#/$defs/layout"
+        },
         "fields": {
           "type": "array",
-          "items": { "$ref": "#/$defs/field" }
+          "items": {
+            "$ref": "#/$defs/field"
+          }
         }
       }
     },
     "field": {
       "type": "object",
-      "required": ["field", "label"],
+      "required": [
+        "field",
+        "label"
+      ],
       "additionalProperties": false,
       "properties": {
-        "field": { "type": "string" },
-        "label": { "type": "string" },
+        "field": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
         "type": {
           "type": "string",
           "description": "Field type (open string). Built-ins: text, textarea, number, select, multiSelect, checkbox, radio, date, dateTime, time.",
           "default": "text"
         },
-        "required": { "type": "boolean", "default": false },
-        "readOnly": { "type": "boolean", "default": false },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "readOnly": {
+          "type": "boolean",
+          "default": false
+        },
         "defaultValue": {
           "description": "Value applied when creating a new record.",
-          "type": ["string", "number", "boolean", "null"]
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
         },
         "validators": {
           "type": "array",
-          "items": { "$ref": "#/$defs/validator" }
+          "items": {
+            "$ref": "#/$defs/validator"
+          }
         },
         "options": {
           "type": "array",
-          "items": { "$ref": "#/$defs/option" }
+          "items": {
+            "$ref": "#/$defs/option"
+          }
         },
         "format": {
           "type": "string",
@@ -315,9 +661,13 @@
         "normalize": {
           "type": "array",
           "description": "Input converters applied before validation. Built-ins: toHankaku, toZenkaku, hiraToKata, kataToHira, trim, collapseSpaces, parseNumber.",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "config": { "$ref": "#/$defs/config" },
+        "config": {
+          "$ref": "#/$defs/config"
+        },
         "visibleWhen": {
           "$ref": "#/$defs/condition",
           "description": "Show this field only when the condition matches the current record."
@@ -329,31 +679,53 @@
         "computed": {
           "type": "object",
           "description": "Derive the field value from the record. Built-in ops: concat, sum, subtract, product. Extensible via ComputedRegistry.",
-          "required": ["op"],
+          "required": [
+            "op"
+          ],
           "properties": {
-            "op": { "type": "string" },
-            "fields": { "type": "array", "items": { "type": "string" } },
-            "separator": { "type": "string" }
+            "op": {
+              "type": "string"
+            },
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "separator": {
+              "type": "string"
+            }
           }
         },
-        "roles": { "$ref": "#/$defs/roles" },
+        "roles": {
+          "$ref": "#/$defs/roles"
+        },
         "columns": {
           "type": "array",
           "description": "Child-row grid columns, for type: subTable (master-detail). The field's value is then a list of records.",
-          "items": { "$ref": "#/$defs/column" }
+          "items": {
+            "$ref": "#/$defs/column"
+          }
         },
         "fields": {
           "type": "array",
           "description": "Editor fields for one child row, for type: subTable. Omit to derive inputs from `columns`.",
-          "items": { "$ref": "#/$defs/field" }
+          "items": {
+            "$ref": "#/$defs/field"
+          }
         },
-        "source": { "$ref": "#/$defs/subTableSource" }
+        "source": {
+          "$ref": "#/$defs/subTableSource"
+        }
       }
     },
     "subTableSource": {
       "type": "object",
       "description": "Fetch a subTable's child rows from their own repository, paged and linked by a foreign key, instead of embedding them in the parent record. Rows are then saved per row (create/update/delete) and require the parent to already have a key.",
-      "required": ["repository", "parentKey"],
+      "required": [
+        "repository",
+        "parentKey"
+      ],
       "additionalProperties": false,
       "properties": {
         "repository": {
@@ -380,27 +752,45 @@
     "roles": {
       "type": "array",
       "description": "Roles allowed to see this item/action. Empty or absent = everyone. UI-level display gating only, not access enforcement.",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "condition": {
       "type": "object",
       "description": "A conditional expression evaluated against a record. Either a leaf {field, operator, value} or a combinator {all|any: [..]} / {not: {..}}.",
       "properties": {
-        "field": { "type": "string" },
+        "field": {
+          "type": "string"
+        },
         "operator": {
           "type": "string",
           "description": "Built-ins: equals, notEquals, gt, gte, lt, lte, contains, in, isEmpty, isNotEmpty."
         },
         "value": {},
-        "all": { "type": "array", "items": { "$ref": "#/$defs/condition" } },
-        "any": { "type": "array", "items": { "$ref": "#/$defs/condition" } },
-        "not": { "$ref": "#/$defs/condition" }
+        "all": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "any": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "not": {
+          "$ref": "#/$defs/condition"
+        }
       }
     },
     "validator": {
       "type": "object",
       "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters (e.g. maxLength uses 'value').",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "additionalProperties": true,
       "properties": {
         "type": {
@@ -415,15 +805,23 @@
     },
     "action": {
       "type": "object",
-      "required": ["id", "type", "label"],
+      "required": [
+        "id",
+        "type",
+        "label"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string" },
+        "id": {
+          "type": "string"
+        },
         "type": {
           "type": "string",
           "description": "Action type (open string). Built-ins: create, edit, delete, plugin."
         },
-        "label": { "type": "string" },
+        "label": {
+          "type": "string"
+        },
         "plugin": {
           "type": "string",
           "description": "Registered action plugin key (used when type is 'plugin')."
@@ -436,20 +834,33 @@
           "type": "object",
           "description": "Route params for a navigate action; $row.id / $record.id template against the current row/record."
         },
-        "config": { "$ref": "#/$defs/config" },
-        "roles": { "$ref": "#/$defs/roles" }
+        "config": {
+          "$ref": "#/$defs/config"
+        },
+        "roles": {
+          "$ref": "#/$defs/roles"
+        }
       }
     },
     "option": {
       "type": "object",
-      "required": ["label"],
+      "required": [
+        "label"
+      ],
       "additionalProperties": false,
       "properties": {
         "value": {
           "description": "Stored value (kept as-is).",
-          "type": ["string", "number", "boolean", "null"]
+          "type": [
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
         },
-        "label": { "type": "string" }
+        "label": {
+          "type": "string"
+        }
       }
     },
     "layout": {

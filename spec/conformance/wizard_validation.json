@@ -1,0 +1,99 @@
+{
+  "_comment": "Wizard step-scoped validation. Each language parses `page` (a wizard), then validates every case's `record` against either one step's form (`step`: the step id) or the whole page's form (`step`: null). Errors are compared as an unordered set of {field,message}. This pins down the rule that advancing checks only the current step, while saving checks everything.",
+  "page": {
+    "dsl_version": "1.0",
+    "page": {
+      "type": "wizard",
+      "id": "customer_onboarding",
+      "title": "顧客登録",
+      "repository": "customerRepository",
+      "key": "id",
+      "steps": [
+        {
+          "id": "basic",
+          "title": "基本情報",
+          "fields": [
+            { "field": "code", "label": "コード", "required": true,
+              "validators": [ { "type": "maxLength", "value": 6 } ] },
+            { "field": "name", "label": "会社名", "required": true }
+          ]
+        },
+        {
+          "id": "contact",
+          "title": "連絡先",
+          "fields": [
+            { "field": "zip", "label": "郵便番号",
+              "validators": [ { "type": "postalCode" } ] },
+            { "field": "email", "label": "メール", "required": true,
+              "validators": [ { "type": "email" } ] }
+          ]
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "step basic passes on its own fields, ignoring later steps",
+      "step": "basic",
+      "record": { "code": "C001", "name": "山田商事" },
+      "expected": []
+    },
+    {
+      "name": "step basic reports only its own errors",
+      "step": "basic",
+      "record": { "code": "", "name": "" },
+      "expected": [
+        { "field": "code", "message": "必須項目です" },
+        { "field": "name", "message": "必須項目です" }
+      ]
+    },
+    {
+      "name": "step basic applies its own validators",
+      "step": "basic",
+      "record": { "code": "C0000001", "name": "山田商事" },
+      "expected": [
+        { "field": "code", "message": "6文字以内で入力してください" }
+      ]
+    },
+    {
+      "name": "step contact is unaffected by a broken earlier step",
+      "step": "contact",
+      "record": { "code": "", "zip": "123-4567", "email": "a@example.com" },
+      "expected": []
+    },
+    {
+      "name": "step contact reports its own errors",
+      "step": "contact",
+      "record": { "zip": "12-34", "email": "nope" },
+      "expected": [
+        { "field": "zip", "message": "郵便番号の形式が正しくありません" },
+        { "field": "email", "message": "メールアドレスの形式が正しくありません" }
+      ]
+    },
+    {
+      "name": "the whole form checks every step at once",
+      "step": null,
+      "record": { "code": "C001", "name": "山田商事", "email": "a@example.com" },
+      "expected": []
+    },
+    {
+      "name": "the whole form surfaces an earlier step's error",
+      "step": null,
+      "record": { "code": "C001", "email": "a@example.com" },
+      "expected": [
+        { "field": "name", "message": "必須項目です" }
+      ]
+    },
+    {
+      "name": "the whole form reports errors from every step together",
+      "step": null,
+      "record": { "zip": "12-34" },
+      "expected": [
+        { "field": "code", "message": "必須項目です" },
+        { "field": "name", "message": "必須項目です" },
+        { "field": "zip", "message": "郵便番号の形式が正しくありません" },
+        { "field": "email", "message": "必須項目です" }
+      ]
+    }
+  ]
+}

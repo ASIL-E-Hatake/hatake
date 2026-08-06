@@ -104,7 +104,7 @@
 ## ステータス
 
 - **P0（受け皿）… ✅ Flutter/Dart 実装済み**: `FormatterRegistry` / `ConverterRegistry`（`hatake_core`）、DSL に `format` / `normalize` キー（parser・DSLビルダー対応）。
-- **P1（スターター）… 🚧 Flutter/Dart 実装済み**: formatter（currency / percent / date / wareki / postal / mask）、converter（toHankaku / toZenkaku / hiraToKata / kataToHira / trim / collapseSpaces / parseNumber）、validator（postalCode）。Material の表描画に `format` を配線済み（`format: currency` で `¥1,234,567` 等）。
+- **P1（スターター）… ✅ 3言語完了**: formatter（currency / percent / date / wareki / postal / mask）、converter（toHankaku / toZenkaku / hiraToKata / kataToHira / trim / collapseSpaces / parseNumber）、validator（postalCode）。Material の表描画に `format` を配線済み（`format: currency` で `¥1,234,567` 等）。下の「TS / Java 横展開」「入力 normalize の自動適用」まで含めて P1 は完了。
 - **TS / Java 横展開 … ✅ 完了**: 3言語（Flutter/Dart・TypeScript・Java）で同名・同挙動の Formatter/Converter/postalCode バリデータを実装・テスト済み。
 - **入力 normalize の自動適用 … ✅ 完了**: Flutter は `CrudController.submitForm` が送信時に `FormNormalizer`（`normalize` チェーン）を自動適用してから validate/persist。TS は `normalizeRecord`、Java は `FormNormalizer`。
 - **3言語コンフォーマンス・スイート … ✅ 完了**（[spec/conformance](../spec/conformance/)）。formatters/converters/validators は3言語、queries は TS/Java。
