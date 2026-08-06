@@ -24,10 +24,12 @@ PageDefinition parsePageMap(Map<String, Object?> root) {
       return _parseDetailPage(page, dslVersion);
     case 'form':
       return _parseFormPage(page, dslVersion);
+    case 'wizard':
+      return _parseWizardPage(page, dslVersion);
     default:
       throw DefinitionParseException(
         'Unsupported page type "$type" '
-        '(supported: crud, search, master, detail, form)',
+        '(supported: crud, search, master, detail, form, wizard)',
         path: 'page.type',
       );
   }
@@ -44,6 +46,49 @@ FormPageDefinition _parseFormPage(Map<String, Object?> m, String? dslVersion) {
     actions: [
       for (var i = 0; i < m.optList('actions').length; i++)
         _parseAction(_asMap(m.optList('actions')[i], 'page.actions[$i]')),
+    ],
+  );
+}
+
+WizardPageDefinition _parseWizardPage(
+  Map<String, Object?> m,
+  String? dslVersion,
+) {
+  final steps = m.optList('steps');
+  if (steps.isEmpty) {
+    throw DefinitionParseException(
+      'A wizard page needs at least one step',
+      path: 'page.steps',
+    );
+  }
+  return WizardPageDefinition(
+    id: m.reqString('id', at: 'page.id'),
+    title: m.reqString('title', at: 'page.title'),
+    dslVersion: dslVersion ?? kDslVersion,
+    repository: m.reqString('repository', at: 'page.repository'),
+    keyField: m.optString('key') ?? 'id',
+    steps: [
+      for (var i = 0; i < steps.length; i++)
+        _parseWizardStep(_asMap(steps[i], 'page.steps[$i]'), i),
+    ],
+    actions: [
+      for (var i = 0; i < m.optList('actions').length; i++)
+        _parseAction(_asMap(m.optList('actions')[i], 'page.actions[$i]')),
+    ],
+  );
+}
+
+/// A step reuses the section shape (`layout` / `fields`) plus an id and title.
+WizardStepDefinition _parseWizardStep(Map<String, Object?> m, int index) {
+  final fields = m.optList('fields');
+  return WizardStepDefinition(
+    id: m.reqString('id', at: 'page.steps[$index].id'),
+    title: m.reqString('title', at: 'page.steps[$index].title'),
+    description: m.optString('description'),
+    layout: _parseLayout(m.optMap('layout')),
+    fields: [
+      for (var i = 0; i < fields.length; i++)
+        _parseField(_asMap(fields[i], 'page.steps[$index].fields[$i]')),
     ],
   );
 }

@@ -13,6 +13,7 @@ part 'renderer/sub_table_paged.dart';
 part 'renderer/search_page.dart';
 part 'renderer/detail_page.dart';
 part 'renderer/form_page.dart';
+part 'renderer/wizard_page.dart';
 
 /// Context handed to a custom [MaterialFieldBuilder] for a form field.
 class MaterialFieldContext {
@@ -101,6 +102,20 @@ class MaterialRenderer implements Renderer {
     FormController controller,
   ) {
     return _MaterialFormPage(
+      definition: definition,
+      controller: controller,
+      fieldBuilders: fieldBuilders,
+      formatters: formatters,
+    );
+  }
+
+  @override
+  Widget buildWizardPage(
+    BuildContext context,
+    WizardPageDefinition definition,
+    WizardController controller,
+  ) {
+    return _MaterialWizardPage(
       definition: definition,
       controller: controller,
       fieldBuilders: fieldBuilders,
