@@ -160,10 +160,55 @@ export interface FormPageDefinition {
   actions: ActionDefinition[];
 }
 
+/** One step of a wizard page — a section with an id and a heading. */
+export interface WizardStepDefinition {
+  id: string;
+  title: string;
+  description?: string;
+  /** Fields per row on wide layouts (DSL: `layout.columns`). */
+  columns: number;
+  fields: FieldDefinition[];
+}
+
+/**
+ * A stepped-input page. The form arrives pre-sliced into `steps`; advancing
+ * validates one step, saving validates them all (see `wizardStepForm` /
+ * `wizardForm`).
+ */
+export interface WizardPageDefinition {
+  kind: "wizard";
+  id: string;
+  title: string;
+  dslVersion: string;
+  repository: string;
+  keyField: string;
+  steps: WizardStepDefinition[];
+  actions: ActionDefinition[];
+}
+
+/** One step as a standalone form, so `FormValidator` can check just that step. */
+export function wizardStepForm(step: WizardStepDefinition): FormDefinition {
+  return {
+    sections: [{ title: step.title, columns: step.columns, fields: step.fields }],
+  };
+}
+
+/** Every step as one form (a section per step) — what a save must satisfy. */
+export function wizardForm(page: WizardPageDefinition): FormDefinition {
+  return {
+    sections: page.steps.map((s) => ({
+      title: s.title,
+      columns: s.columns,
+      fields: s.fields,
+    })),
+  };
+}
+
 export type PageDefinition =
   | CrudPageDefinition
   | SearchPageDefinition
-  | FormPageDefinition;
+  | FormPageDefinition
+  | WizardPageDefinition;
 
 /** A node in an app's navigation menu. Either a leaf (opens `page`) or a group
  * (has `children`). `isGroup` distinguishes them (see menuIsGroup). */

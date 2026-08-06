@@ -13,6 +13,7 @@ import {
   type SectionDefinition,
   type SubTableSource,
   type TableDefinition,
+  type WizardStepDefinition,
   type ValidatorDefinition,
 } from "./definition.js";
 
@@ -123,12 +124,42 @@ export function parsePageMap(root: Dict): PageDefinition {
         form: parseForm(optDict(page, "form")),
         actions: parseActions(page),
       };
+    case "wizard":
+      return {
+        kind: "wizard",
+        ...common(page, dslVersion),
+        steps: parseWizardSteps(page),
+        actions: parseActions(page),
+      };
     default:
       throw new DefinitionParseError(
-        `Unsupported page type "${type}" (supported: crud, search, form)`,
+        `Unsupported page type "${type}" (supported: crud, search, form, wizard)`,
         "page.type",
       );
   }
+}
+
+/** Wizard steps reuse the section shape (`layout` / `fields`) plus id + title. */
+function parseWizardSteps(page: Dict): WizardStepDefinition[] {
+  const steps = optList(page, "steps");
+  if (steps.length === 0) {
+    throw new DefinitionParseError(
+      "A wizard page needs at least one step",
+      "page.steps",
+    );
+  }
+  return steps.map((raw, i) => {
+    const m = asDict(raw, `page.steps[${i}]`);
+    return {
+      id: reqString(m, "id", `page.steps[${i}].id`),
+      title: reqString(m, "title", `page.steps[${i}].title`),
+      description: optString(m, "description"),
+      columns: optNumber(optDict(m, "layout") ?? {}, "columns") ?? 1,
+      fields: optList(m, "fields").map((f, j) =>
+        parseField(asDict(f, `page.steps[${i}].fields[${j}]`)),
+      ),
+    };
+  });
 }
 
 function common(page: Dict, dslVersion: string) {

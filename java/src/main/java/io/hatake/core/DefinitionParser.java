@@ -43,15 +43,50 @@ public final class DefinitionParser {
                 ? (Map<String, Object>) root.get("page")
                 : root;
 
+        String type = reqStr(page, "type");
+        List<WizardStepDefinition> steps = parseWizardSteps(page, type);
+        // ウィザードは form を持たないので、全ステップを畳んだものを form とする。
+        FormDefinition form = steps.isEmpty()
+                ? parseForm(page.get("form"))
+                : new FormDefinition(steps.stream()
+                        .map(s -> new SectionDefinition(s.title(), s.fields()))
+                        .toList());
+
         return new PageDefinition(
                 reqStr(page, "id"),
                 reqStr(page, "title"),
                 dslVersion,
-                reqStr(page, "type"),
+                type,
                 reqStr(page, "repository"),
                 page.get("key") instanceof String k ? k : "id",
                 parseSearch(page.get("search")),
-                parseForm(page.get("form")));
+                form,
+                steps);
+    }
+
+    /** ステップは section の形（{@code fields}）＋ id / title。 */
+    @SuppressWarnings("unchecked")
+    private static List<WizardStepDefinition> parseWizardSteps(
+            Map<String, Object> page, String type) {
+        if (!PageDefinition.WIZARD.equals(type)) {
+            return List.of();
+        }
+        if (!(page.get("steps") instanceof List<?> raw) || raw.isEmpty()) {
+            throw new IllegalArgumentException("A wizard page needs at least one step");
+        }
+        List<WizardStepDefinition> steps = new ArrayList<>();
+        for (Object o : raw) {
+            Map<String, Object> m = (Map<String, Object>) o;
+            List<FieldDefinition> fields = new ArrayList<>();
+            if (m.get("fields") instanceof List<?> list) {
+                for (Object f : list) {
+                    fields.add(parseField((Map<String, Object>) f));
+                }
+            }
+            steps.add(new WizardStepDefinition(
+                    reqStr(m, "id"), reqStr(m, "title"), List.copyOf(fields)));
+        }
+        return List.copyOf(steps);
     }
 
     @SuppressWarnings("unchecked")
