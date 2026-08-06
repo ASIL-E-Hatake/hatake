@@ -83,13 +83,18 @@ Member {
 
 ## 導出ルール（ページ種別ごと）
 
-| ページ種別 | 出す Shape |
-|---|---|
-| `crud` / `master` | request（`form.fields`）、listResponse（`table.columns`）、queryParams（`search.filters`）、pathParams（`key`） |
-| `search` | listResponse、queryParams |
-| `detail` | response（`form.fields`）、pathParams |
-| `form` | request、pathParams |
-| `wizard` | request（**全ステップを畳んだフォーム**）、pathParams。ステップ単位の形も出す（`<Page><Step>Request`） |
+| ページ種別 | 出す Shape | 状態 |
+|---|---|---|
+| `crud` | request（`form.fields`）、row＋listResponse（`table.columns`）、queryParams（`search.filters`）、pathParams（`key`） | ✅ |
+| `search` | row＋listResponse、queryParams、pathParams | ✅ |
+| `form` | request、pathParams | ✅ |
+| `wizard` | request（**全ステップを畳んだフォーム**）、pathParams | ✅ |
+| `master` / `detail` | `crud` / 読み取り相当 | ⏳ **未対応**。TS 版パーサが `master`/`detail` を未サポートなため（[ロードマップ](../roadmap.ja.md)既知）。TS が対応したら足す |
+
+**ステップ単位の Shape は出さない**（当初案では `<Page><Step>Request` も出すとしていた）。
+ウィザードの保存は最後に1回で、ステップごとに API を叩く設計ではないため、
+ステップ単位の形には対応する endpoint が存在しない。ステップ単位の**検証**は
+`FormValidator` にステップのフォームを渡せば済む（[DSL 仕様](../../spec/dsl-spec.ja.md)の step 参照）。
 
 - **listResponse** は `Repository` の契約に合わせて `{ items: Row[], totalCount: number }`。
   Framework が `PageResult` を返すと決めているので、ここは導出できる。
@@ -136,13 +141,19 @@ Member {
 
 | Phase | 内容 | 状態 |
 |---|---|---|
-| **1** | spec（`DtoSpec` の形＋導出ルール＋型マッピング表）／conformance fixture（`dto_spec.json`）／TS・Java に `deriveDto(page)` | ← 今回 |
-| 2 | **JSON Schema emitter**（TS・Java、conformance で同一出力）。`spec/tools/validate_schema.py` と同じ土俵に乗る | 次 |
+| **1** | spec（`DtoSpec` の形＋導出ルール＋型マッピング表）／conformance fixture（`dto_spec.json`）／TS・Java に `deriveDto(page)` … ✅ 完了 | ✅ |
+| **2** | **JSON Schema emitter** … ✅ 完了。`toJsonSchema(spec)` が 2020-12 のドキュメント1本（全形を `$defs` に置いて `$ref` で相互参照）。受け取る形は閉じ（`additionalProperties: false`）・返す形は開ける／配列の制約は `items` 側／`required` は空なら出さない。`spec/tools/check_dto_schema.py` が「妥当なスキーマか」「実際に通す/弾くか」を独立検証（CI 込み） | ✅ |
 | 3 | OpenAPI 断片 emitter（`paths` + `components.schemas`）。opt-in アダプタ（別クラス） | その後 |
 | 4 | ネイティブ型出力（TS `interface` / Java `record`）。CLI として。**整形の議論はここまで遅らせる** | 将来 |
 
-Phase 1 は**出力なし**（`DtoSpec` が正しく導出できるところまで）。ナビゲーションや明細と同じ刻み方で、
+Phase 1 は**出力なし**（`DtoSpec` が正しく導出できるところまで）だった。ナビゲーションや明細と同じ刻み方で、
 各段階を緑にしてから進む。
+
+**Phase 2 で足した独立検証**: コンフォーマンスは「TS と Java が一致する」ことしか言えず、
+**両方が同じ間違いをしている**場合を捕まえられない。そこで `spec/tools/check_dto_schema.py` が
+出力を実際の JSON Schema バリデータに食わせ、(a) 妥当なスキーマであること (b) 期待どおり
+ペイロードを通す/弾くこと（必須漏れ・maxLength・minimum・format・未知キー・`$ref` 解決・`between` の配列・
+明細行の制約）を確認する。CI にも入れた。
 
 ## 命名の注意
 

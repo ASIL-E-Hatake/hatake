@@ -1,0 +1,241 @@
+{
+  "_comment": "JSON Schema emitter: each language parses `page`, calls deriveDto(page) then toJsonSchema(spec), and must produce exactly `expected`. Scalars are compared as strings to absorb numeric type differences. Rules pinned here: one document with every shape under $defs so shapes can $ref each other; `required` lists members with optional=false and is omitted when empty; input-ish roles (request / queryParams / pathParams / child) get additionalProperties:false while output-ish roles (row / listResponse) stay lenient; for an array member the constraints apply to `items`.",
+  "cases": [
+    {
+      "name": "crud page: strict request, lenient response, array query param",
+      "page": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "crud",
+          "id": "customer_master",
+          "title": "顧客マスタ",
+          "repository": "customerRepository",
+          "key": "id",
+          "search": {
+            "filters": [
+              { "field": "name", "label": "顧客名", "type": "text", "operator": "contains" },
+              { "field": "openedAt", "label": "開設日", "type": "date", "operator": "between" }
+            ]
+          },
+          "table": {
+            "columns": [
+              { "field": "id", "label": "ID" },
+              { "field": "name", "label": "顧客名" },
+              { "field": "credit", "label": "与信", "type": "number" }
+            ]
+          },
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  { "field": "code", "label": "コード", "required": true,
+                    "validators": [ { "type": "maxLength", "value": 6 } ] },
+                  { "field": "name", "label": "顧客名", "required": true },
+                  { "field": "credit", "label": "与信", "type": "number",
+                    "validators": [ { "type": "min", "value": 0 }, { "type": "max", "value": 1000000 } ] },
+                  { "field": "active", "label": "有効", "type": "checkbox" },
+                  { "field": "openedAt", "label": "開設日", "type": "date" },
+                  { "field": "email", "label": "メール",
+                    "validators": [ { "type": "email" } ] },
+                  { "field": "id", "label": "ID", "readOnly": true },
+                  { "field": "label", "label": "表示名",
+                    "computed": { "op": "concat", "fields": ["code", "name"] } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "customer_master",
+        "$defs": {
+          "CustomerMasterRequest": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "name"],
+            "properties": {
+              "code": { "type": "string", "maxLength": 6 },
+              "name": { "type": "string" },
+              "credit": { "type": "number", "minimum": 0, "maximum": 1000000 },
+              "active": { "type": "boolean" },
+              "openedAt": { "type": "string", "format": "date" },
+              "email": { "type": "string", "format": "email" }
+            }
+          },
+          "CustomerMasterRow": {
+            "type": "object",
+            "required": ["id", "name", "credit"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "credit": { "type": "number" }
+            }
+          },
+          "CustomerMasterListResponse": {
+            "type": "object",
+            "required": ["items", "totalCount"],
+            "properties": {
+              "items": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/CustomerMasterRow" }
+              },
+              "totalCount": { "type": "number" }
+            }
+          },
+          "CustomerMasterQuery": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "openedAt": {
+                "type": "array",
+                "items": { "type": "string", "format": "date" }
+              }
+            }
+          },
+          "CustomerMasterKey": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id"],
+            "properties": {
+              "id": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "embedded subTable: the parent request $refs the child shape",
+      "page": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "form",
+          "id": "order_entry",
+          "title": "受注入力",
+          "repository": "orderRepository",
+          "key": "orderNo",
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  { "field": "orderNo", "label": "受注番号", "required": true },
+                  {
+                    "field": "lines",
+                    "label": "明細",
+                    "type": "subTable",
+                    "required": true,
+                    "fields": [
+                      { "field": "item", "label": "品名", "required": true },
+                      { "field": "qty", "label": "数量", "type": "number", "required": true,
+                        "validators": [ { "type": "min", "value": 1 } ] }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "order_entry",
+        "$defs": {
+          "OrderEntryRequest": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["orderNo", "lines"],
+            "properties": {
+              "orderNo": { "type": "string" },
+              "lines": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/OrderEntryLinesRow" }
+              }
+            }
+          },
+          "OrderEntryKey": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["orderNo"],
+            "properties": {
+              "orderNo": { "type": "string" }
+            }
+          },
+          "OrderEntryLinesRow": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["item", "qty"],
+            "properties": {
+              "item": { "type": "string" },
+              "qty": { "type": "number", "minimum": 1 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "a subTable with a source emits the child shape standalone",
+      "page": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "form",
+          "id": "order_entry_paged",
+          "title": "受注入力",
+          "repository": "orderRepository",
+          "key": "orderNo",
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  { "field": "orderNo", "label": "受注番号", "required": true },
+                  {
+                    "field": "lines",
+                    "label": "明細",
+                    "type": "subTable",
+                    "source": { "repository": "orderLineRepository", "parentKey": "orderNo" },
+                    "fields": [
+                      { "field": "item", "label": "品名", "required": true },
+                      { "field": "zip", "label": "郵便番号",
+                        "validators": [ { "type": "postalCode" } ] }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "order_entry_paged",
+        "$defs": {
+          "OrderEntryPagedRequest": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["orderNo"],
+            "properties": {
+              "orderNo": { "type": "string" }
+            }
+          },
+          "OrderEntryPagedKey": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["orderNo"],
+            "properties": {
+              "orderNo": { "type": "string" }
+            }
+          },
+          "OrderEntryPagedLinesRow": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["item"],
+            "properties": {
+              "item": { "type": "string" },
+              "zip": { "type": "string", "pattern": "^[0-9]{3}-?[0-9]{4}$" }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

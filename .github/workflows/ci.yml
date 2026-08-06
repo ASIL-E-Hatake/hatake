@@ -80,8 +80,10 @@ jobs:
           python-version: "3.x"
       - name: Validate example definitions against the schema
         run: |
-          pip install --quiet jsonschema pyyaml
+          pip install --quiet 'jsonschema[format]' pyyaml
           python spec/tools/validate_schema.py
+      - name: Check the DTO emitter's JSON Schema output
+        run: python spec/tools/check_dto_schema.py
 
   publish-dry-run:
     name: pub publish (dry run)

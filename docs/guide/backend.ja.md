@@ -12,6 +12,7 @@
 | **クエリ組み立て** | 検索フィルタ定義＋リクエストparams → フレームワーク非依存の `QuerySpec` | `QueryBuilder` |
 | **ORM への変換** | `QuerySpec` → JPQL（＋バインドパラメータ・ページング） | `JpaQueryTranslator`（Java・opt-in） |
 | **API の形の導出** | 画面定義 → リクエスト/レスポンス/クエリの形（`DtoSpec`） | `deriveDto` |
+| **スキーマ出力** | `DtoSpec` → JSON Schema 2020-12（1ドキュメント） | `toJsonSchema` |
 
 補助として、画面整形と同じ `FormatterRegistry` / `ConverterRegistry`（帳票・CSV出力の整形、入力正規化）、日本企業util（`computeTax` / `fiscal*` / `eraOf` …）、ナビ定義パーサ（`parseApp*`）も同名で使えます。
 
@@ -41,6 +42,7 @@ const page = parsePageYaml(yamlText);
 const result = new FormValidator().validate(page.form, requestBody);
 const spec = buildQuery(page.search, requestParams);   // → QuerySpec
 const dto = deriveDto(page);                           // → DtoSpec
+const schema = toJsonSchema(dto);                      // → JSON Schema 2020-12
 ```
 
 ## DtoSpec（API の形の導出）
@@ -67,16 +69,43 @@ JSON Schema / OpenAPI / 型定義を吐くのは emitter の役目で、本体�
 `DataRecord`＝Map で、framework 内に DTO を詰める場所がありません）。詳細と段階は
 [提案書](../proposals/dto-generation.ja.md)。
 
-> **Phase 1 の範囲**: `DtoSpec` の導出まで。JSON Schema / OpenAPI / ネイティブ型の出力
-> （emitter）は次段です。`options` → enum も未対応（Java の定義モデルに `options` が
-> 無いため。提案書に記録済み）。
+### JSON Schema を吐く（`toJsonSchema`）
+
+`DtoSpec` を **JSON Schema 2020-12 のドキュメント1本**にします。全部の形が `$defs` に入るので、
+形どうしが `$ref` で参照できます（一覧レスポンス→行、リクエスト→明細の行）。
+
+```java
+var schema = JsonSchemaEmitter.toJsonSchema(DtoDeriver.deriveDto(page));  // Map<String,Object>
+```
+
+戻りは素の Map / オブジェクトです。JSON 文字列化は呼び出し側の責務にしてあるので、
+**hatake 本体は JSON ライブラリに依存しません**（`QuerySpec` → アダプタと同じ流儀）。
+
+決めごと:
+
+| ルール | 内容 |
+|---|---|
+| `required` | `optional: false` のメンバを列挙。空のときはキー自体を出さない |
+| **受け取る形は閉じる** | `request` / `queryParams` / `pathParams` / `child` は `additionalProperties: false`。想定外のキーはエラー |
+| **返す形は開けておく** | `row` / `listResponse` は制限しない。バックエンドが項目を増やしても読み手が壊れない |
+| 配列の制約 | `maxLength` / `format` 等は**要素側（`items`）**に載る。配列そのものには載らない |
+
+出力が本当に妥当なスキーマか、そして実際に期待どおり通す/弾くかは
+`spec/tools/check_dto_schema.py` が独立に検証しています（2言語のコンフォーマンスだけでは
+「両方が同じ間違いをしている」を検出できないため）。CI でも走ります。
+
+> **ここまでの範囲**: `DtoSpec` の導出（Phase 1）＋ JSON Schema 出力（Phase 2）。
+> OpenAPI 断片は Phase 3、ネイティブ型出力（TS `interface` / Java `record`）は Phase 4 です。
+> `options` → enum は未対応（Java の定義モデルに `options` が無いため。提案書に記録済み）。
+> `operator: between` の配列は要素数を縛っていません（`DtoSpec` が「between 由来」を
+> 保持しないため。必要になれば `minItems`/`maxItems` を足せます）。
 
 ## 押さえておくこと
 
 - **`QuerySpec` はフレームワーク中立**。SQL/ORM への変換はアダプタの領分（Java の JPA が1個目。MyBatis / Prisma 等は今後）
 - **許可リスト方式**：`search.filters` に宣言されていない項目は無視されるので、クライアントが任意カラムで検索することはできない
 - **描画寄りのキーはバックエンドは無視**（`format` の一部・レイアウト等）。同じ定義でも層ごとに使う部分が違うだけ
-- **3言語で同名・同出力**を [コンフォーマンステスト](../../spec/conformance/) で機械担保（`formatters` / `converters` / `validators` / `queries` / `dto_spec` / 各util）
+- **3言語で同名・同出力**を [コンフォーマンステスト](../../spec/conformance/) で機械担保（`formatters` / `converters` / `validators` / `queries` / `dto_spec` / `dto_json_schema` / 各util）
 - Java 版の定義モデルは**目録レベル**（page 識別子＋search＋table＋form、`app:` は menu＋`PageRef`）。フル描画モデルは Flutter 側だけ
 
 ## 対応状況
@@ -87,6 +116,7 @@ JSON Schema / OpenAPI / 型定義を吐くのは emitter の役目で、本体�
 | FormValidator（＋独自ルール登録・メッセージ i18n） | ✅ | ✅ |
 | QueryBuilder（`QuerySpec`） | ✅ | ✅ |
 | `deriveDto`（`DtoSpec`） | ✅ | ✅ |
+| `toJsonSchema`（JSON Schema 出力） | ✅ | ✅ |
 | Formatter / Converter / 日本企業util | ✅ | ✅ |
 | `app:` パーサ（menu＋PageRef） | ✅ | ✅ |
 | ORM アダプタ | ✅ JPA | ⏳ |
