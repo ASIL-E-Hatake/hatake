@@ -15,6 +15,7 @@ export 'src/runtime/form_controller.dart';
 export 'src/runtime/hatake_router.dart';
 export 'src/runtime/list_controller.dart';
 export 'src/runtime/repository_registry.dart';
+export 'src/runtime/sub_table_controller.dart';
 export 'src/widgets/hatake_app.dart';
 export 'src/widgets/hatake_router_scope.dart';
 export 'src/widgets/hatake_scope.dart';

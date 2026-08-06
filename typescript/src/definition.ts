@@ -43,6 +43,27 @@ export interface FieldDefinition {
   /** Editor fields for one child row, for `type: subTable`. When empty the
    * renderer derives inputs from `columns`. DSL key: `fields`. */
   rowFields: FieldDefinition[];
+  /** Where child rows come from, for `type: subTable`. Undefined (the default)
+   * keeps them embedded in the parent record. DSL key: `source`. */
+  source?: SubTableSource;
+}
+
+/**
+ * Where a `subTable`'s child rows come from when they are not embedded in the
+ * parent record: their own repository, paged and linked by a foreign key.
+ *
+ * On the backend this mainly means one thing: the parent record does not carry
+ * the rows, so `FormValidator` skips the field entirely.
+ */
+export interface SubTableSource {
+  /** Repository key for the child rows. */
+  repository: string;
+  /** Child field holding the parent key. */
+  parentKey: string;
+  /** Primary-key field of a child row. DSL key: `key`. */
+  keyField: string;
+  /** Rows per page. */
+  pageSize: number;
 }
 
 export interface FilterDefinition {

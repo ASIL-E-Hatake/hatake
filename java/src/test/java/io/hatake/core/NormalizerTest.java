@@ -12,11 +12,9 @@ class NormalizerTest {
     void appliesConverterChainsPerField() {
         FormDefinition form = new FormDefinition(List.of(new SectionDefinition(null, List.of(
                 new FieldDefinition("code", "コード", "text", false, false, List.of(), null,
-                        List.of("toHankaku", "trim"), null, null, null, List.of(),
-                        List.of(), List.of()),
+                        List.of("toHankaku", "trim")),
                 new FieldDefinition("name", "名前", "text", false, false, List.of(), null,
-                        List.of(), null, null, null, List.of(),
-                        List.of(), List.of())))));
+                        List.of())))));
 
         Map<String, Object> out = new FormNormalizer()
                 .normalize(form, Map.of("code", "　ＡＢ１２　", "name", "　x　"));

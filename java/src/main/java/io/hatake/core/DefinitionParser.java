@@ -151,7 +151,20 @@ public final class DefinitionParser {
                 optMap(m.get("computed")),
                 roles,
                 columns,
-                rowFields);
+                rowFields,
+                parseSubTableSource(optMap(m.get("source"))));
+    }
+
+    /** 明細の {@code source}。無ければ null（＝子行は親レコード埋め込み）。 */
+    private static SubTableSource parseSubTableSource(Map<String, Object> m) {
+        if (m == null || m.isEmpty()) {
+            return null;
+        }
+        return new SubTableSource(
+                reqStr(m, "repository"),
+                reqStr(m, "parentKey"),
+                m.get("key") instanceof String k ? k : "id",
+                m.get("pageSize") instanceof Number n ? n.intValue() : 20);
     }
 
     private static ColumnDefinition parseColumn(Map<String, Object> m) {

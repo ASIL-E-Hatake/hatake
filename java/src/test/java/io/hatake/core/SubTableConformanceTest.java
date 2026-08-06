@@ -16,15 +16,26 @@ import org.yaml.snakeyaml.Yaml;
 
 /**
  * 明細（master-detail）のサーバ側検証を、共有フィクスチャ
- * {@code spec/conformance/subtable_validation.json} で確認する。
+ * {@code spec/conformance/subtable_validation.json} と
+ * {@code subtable_source_validation.json} で確認する。
  * Dart / TypeScript 版と同じ契約。エラーは順不同の集合として比較する。
  */
 class SubTableConformanceTest {
 
     @TestFactory
-    @SuppressWarnings("unchecked")
     Stream<DynamicTest> subTableValidation() throws IOException {
-        String content = Files.readString(Path.of("../spec/conformance/subtable_validation.json"));
+        return runFixture("subtable_validation.json");
+    }
+
+    /** {@code source} 付きの明細は親の検証がまるごと飛ばす。 */
+    @TestFactory
+    Stream<DynamicTest> subTableSourceIsSkipped() throws IOException {
+        return runFixture("subtable_source_validation.json");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Stream<DynamicTest> runFixture(String file) throws IOException {
+        String content = Files.readString(Path.of("../spec/conformance/" + file));
         Map<String, Object> fixture = (Map<String, Object>) new Yaml().load(content);
 
         Map<String, Object> page = (Map<String, Object>) fixture.get("page");

@@ -108,7 +108,7 @@ void main() {
         File('../../../spec/examples/sales_app.yaml').readAsStringSync();
     final app = parseAppYaml(source);
     expect(app.id, 'sales_admin');
-    expect(app.pages.length, 5);
+    expect(app.pages.length, 6);
     // The order_search list has a navigate row action into the detail page.
     final search = app.pageById('order_search') as SearchPageDefinition;
     final navigate = search.actions.firstWhere((a) => a.id == 'detail');
@@ -120,5 +120,11 @@ void main() {
     final lines = entry.form.fields.firstWhere((f) => f.field == 'lines');
     expect(lines.type, FieldTypes.subTable);
     expect(lines.rowFields, isNotEmpty);
+    expect(lines.source, isNull); // embedded rows
+    // …and the same screen with the rows in their own repository.
+    final paged = app.pageById('order_entry_paged') as FormPageDefinition;
+    final pagedLines = paged.form.fields.firstWhere((f) => f.field == 'lines');
+    expect(pagedLines.source?.repository, 'orderLineRepository');
+    expect(pagedLines.source?.parentKey, 'orderNo');
   });
 }

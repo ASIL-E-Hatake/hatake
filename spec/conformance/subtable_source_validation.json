@@ -1,0 +1,64 @@
+{
+  "_comment": "A subTable with `source` is repository-backed: its rows live in their own repository, not in the parent record. The parent's FormValidator therefore skips the field entirely — its own rules and its rows. Same file shape as subtable_validation.json.",
+  "page": {
+    "dsl_version": "1.0",
+    "page": {
+      "type": "form",
+      "id": "order_entry_paged",
+      "title": "受注入力（明細別テーブル）",
+      "repository": "orderRepository",
+      "key": "orderNo",
+      "form": {
+        "sections": [
+          {
+            "fields": [
+              { "field": "orderNo", "label": "受注番号", "required": true },
+              {
+                "field": "lines",
+                "label": "明細",
+                "type": "subTable",
+                "required": true,
+                "source": {
+                  "repository": "orderLineRepository",
+                  "parentKey": "orderNo",
+                  "key": "lineNo",
+                  "pageSize": 20
+                },
+                "columns": [
+                  { "field": "item", "label": "品名" },
+                  { "field": "qty", "label": "数量", "type": "number" }
+                ],
+                "fields": [
+                  { "field": "item", "label": "品名", "required": true,
+                    "validators": [ { "type": "maxLength", "value": 10 } ] },
+                  { "field": "qty", "label": "数量", "type": "number",
+                    "validators": [ { "type": "min", "value": 1 } ] }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "the field's own required is skipped because rows are not in the record",
+      "record": { "orderNo": "SO-1" },
+      "expected": []
+    },
+    {
+      "name": "rows that happen to be in the record are not validated either",
+      "record": {
+        "orderNo": "SO-1",
+        "lines": [ { "item": "", "qty": 0 } ]
+      },
+      "expected": []
+    },
+    {
+      "name": "header fields are still validated as usual",
+      "record": { "lines": [ { "item": "", "qty": 0 } ] },
+      "expected": [ { "field": "orderNo", "message": "必須項目です" } ]
+    }
+  ]
+}

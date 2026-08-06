@@ -11,6 +11,10 @@ import java.util.Map;
  * <p>明細（{@code type: subTable}）の子行も検証する。各行は項目の {@code rowFields}
  * から組み立てたフォームで検証し、エラーは添字付きパス（{@code lines[0].qty}）で報告する。
  * 入れ子の明細も同じ規約で再帰する。
+ *
+ * <p>ただし {@code source} 付きの明細（子行が別 Repository にある）は
+ * <b>項目まるごと検証対象外</b>。値がこのレコードに無いので、項目自身の
+ * {@code required} も含めて検証しても意味が無い。
  */
 public final class FormValidator {
 
@@ -33,6 +37,10 @@ public final class FormValidator {
     public ValidationResult validate(FormDefinition form, Map<String, Object> record) {
         List<ValidationError> errors = new ArrayList<>();
         for (FieldDefinition field : form.fields()) {
+            // 子行が別 Repository にある明細は、このレコードの一部ではない。
+            if (field.isSubTable() && field.hasSubTableSource()) {
+                continue;
+            }
             Object value = record.get(field.field());
             List<ValidatorDefinition> rules = new ArrayList<>();
             if (field.required()) {

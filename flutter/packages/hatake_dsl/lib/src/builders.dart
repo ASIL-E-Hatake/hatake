@@ -162,6 +162,7 @@ FieldDefinition field(
   List<String> roles = const [],
   List<ColumnDefinition> columns = const [],
   List<FieldDefinition> rowFields = const [],
+  SubTableSource? source,
 }) {
   return FieldDefinition(
     field: field,
@@ -181,6 +182,7 @@ FieldDefinition field(
     roles: roles,
     columns: columns,
     rowFields: rowFields,
+    source: source,
   );
 }
 
