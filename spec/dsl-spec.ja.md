@@ -216,6 +216,7 @@ app:
 | `roles` | string[] | | `[]` | 表示を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
 | `columns` | [column](#column)[] | | `[]` | 子行グリッドの表示列（`type: subTable` のとき。[明細](#明細subtable)参照）。 |
 | `fields` | field[] | | `[]` | 子行の編集項目（`type: subTable` のとき。省略時は `columns` から導出）。 |
+| `source` | [subTableSource](#subtablesource) | | — | 子行を別 Repository から取る（`type: subTable` のとき。省略時は親レコード埋め込み）。 |
 
 ### 明細（subTable）
 
@@ -236,7 +237,7 @@ app:
     - { field: amount, label: 金額, computed: { op: product, fields: [qty, price] } }
 ```
 
-保存は**ヘッダと明細をまとめて1回**（`Repository.update(key, {...ヘッダ, lines: [...]})`）。子行を別 Repository から引く方式は将来対応。
+保存は**ヘッダと明細をまとめて1回**（`Repository.update(key, {...ヘッダ, lines: [...]})`）。明細が大量でページングが要るなら [subTableSource](#subtablesource) を使う。
 
 行は**並べ替え**できる（行ごとの上へ/下へ。明細の順序が意味を持つ帳票向け）。既定で有効、`config: { reorderable: false }` で無効化:
 
@@ -245,6 +246,43 @@ app:
 ```
 
 **サーバ側でも同じ定義で子行を検証できる**。`FormValidator`（Dart / TypeScript / Java）は `subTable` の各行を `fields` の規則で検証し、エラー項目名を **`<項目>[<行番号>].<行項目>`**（例 `lines[0].qty`）で返す。フロントの行編集と同じルールがサーバでも効くので、明細のチェック漏れが起きない（[コンフォーマンス](conformance/)の `subtable_validation.json` で3言語一致を担保）。
+
+### subTableSource
+
+`subTable` に `source` を付けると、子行を**親レコードの中ではなく別 Repository から**外部キーで引いてくる。明細が数千行あってページングが要る場合向け（数十行なら `source` 無しの埋め込みで十分）。
+
+```yaml
+- field: lines
+  label: 明細
+  type: subTable
+  source:
+    repository: orderLineRepository   # 子側の Repository キー
+    parentKey: orderNo                # 子行が持つ親キーの項目名
+    key: lineNo                       # 子行の主キー項目名（既定 id）
+    pageSize: 20                      # 1ページの行数（既定 20）
+  columns: [...]
+  fields: [...]
+```
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `repository` | string | ✓ | — | 子行の Repository キー。 |
+| `parentKey` | string | ✓ | — | 子行が持つ親キーの項目名。検索フィルタ `{ parentKey: 親キー値 }` として渡る。 |
+| `key` | string | | `id` | 子行の主キー項目名（行の更新/削除に使う）。 |
+| `pageSize` | integer | | `20` | 1ページの行数。 |
+
+**埋め込みとの違い**（挙動が変わるので理解して選ぶこと）:
+
+| | 埋め込み（`source` なし） | 子Repository（`source` あり） |
+|---|---|---|
+| 行の在り処 | 親レコードの項目（`lines: [...]`） | 別 Repository。親レコードに `lines` は入らない |
+| 読み込み | 親の `findByKey` で一緒に来る | `search({ filters: { parentKey: 親キー }, page, pageSize })` |
+| 行の保存 | 親の保存時にまとめて1回 | **行ごとに即時**（`create` / `update` / `delete`） |
+| 親が未保存のとき | そのまま編集できる | **編集不可**（親キーが無いと外部キーを張れない）。先に親を保存する |
+| 並べ替え | ✓（`reorderable`） | ✗（順序は Repository 側の責務。並び順を持ちたいなら項目にして `sort` で扱う） |
+| 親の `FormValidator` | 項目自身の規則＋各行を `fields` で検証 | **項目まるごと検証対象外**（値がレコードに無いので `required` を付けても無意味）。行の検証は行の保存時に同じ `fields` で行う |
+
+`source` を使うと「1回で原子的に保存」ではなくなる。**ヘッダと明細を必ず同時にコミットしたい業務なら埋め込みを選ぶ**。
 
 ### 権限（roles）
 

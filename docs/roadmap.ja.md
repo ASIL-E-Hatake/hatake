@@ -22,7 +22,7 @@
 | | DashboardPage | ⏳ | カード/集計/グラフ。設計重め |
 | | WizardPage（ステップ入力） | ⏳ | |
 | | FormPage（単票入力） | ✅ Flutter | 単票の作成/編集。フォーム描画を `_HatakeFormFields` に共通化しダイアログと共用。record key で編集/新規を切替 |
-| | 親子・明細（master-detail） | ✅ Flutter（3言語検証） | `type: subTable` でヘッダ＋明細行を1画面編集し**まとめて保存**（子行は親レコードの1項目）。行内 `validators`/`computed`、**行の並べ替え**（既定ON／`config: { reorderable: false }` で無効）が効く。サーバ側も同じ定義で子行を検証（エラー項目名 `lines[0].qty`）。設計は [提案書](proposals/master-detail.ja.md)。**残り: 子Repository方式**（大量明細のページング。別設計ラウンドが必要） |
+| | 親子・明細（master-detail） | ✅ Flutter（3言語検証） | `type: subTable` でヘッダ＋明細行を1画面編集し**まとめて保存**（子行は親レコードの1項目）。行内 `validators`/`computed`、**行の並べ替え**（既定ON／`config: { reorderable: false }` で無効）が効く。サーバ側も同じ定義で子行を検証（エラー項目名 `lines[0].qty`）。設計は [提案書](proposals/master-detail.ja.md)。**大量明細は `source`（子Repository方式）**＝子行を別 Repository から外部キーでページング取得し、行ごとに即時保存（親が未保存なら明細は編集不可、並べ替えなし、親の検証は当該項目を飛ばす）。埋め込みとの併存で使い分ける |
 | 検索 | 検索条件の拡充 | ✅ Flutter | `filter.type` ごとの入力（text/number/select/**checkbox=3状態**/date=カレンダー）、**`operator: between` の範囲入力**（`[開始,終了]` で送信・片側指定可）、**`search.layout.columns`** の反映（狭い画面は1列に退避）。フィルタ描画は `filter_input.dart` に一本化（crud/search の重複実装を解消）。デモの受注照会が複数条件のショーケース |
 | 入出力 | Formatter（金額/和暦…） | 🚧 P0+P1 Flutter | [utils](roadmap-utils.ja.md) |
 | | Converter（全半角…） | 🚧 P0+P1 Flutter | 同上。入力normalizeパイプ配線は未 |
@@ -58,6 +58,7 @@
 | ナビ定義（app/menu）パーサ | ✅ | ✅（＋描画） | ✅（目録 PageRef） | ✅（目録 PageRef） |
 | 親子・明細 `subTable`（モデル＋パーサ） | ✅ | ✅（＋描画） | ✅ | ✅ |
 | 明細行のサーバ側検証（`lines[0].qty`） | ✅ | ✅ | ✅ | ✅ |
+| 明細の `source`（子Repository方式） | ✅ | ✅（＋描画・ページング） | ✅（検証で当該項目を飛ばす） | ✅（同左） |
 | Renderer（画面描画） | — | ✅(Material) | 対象外 | 対象外(※) |
 | table/action など画面寄りモデル | ✅ | ✅ | ⏳一部 | ✅ |
 

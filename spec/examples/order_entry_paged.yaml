@@ -1,0 +1,42 @@
+dsl_version: "1.0"
+# 明細が大量にあるときの例: 子行を別 Repository から外部キーで引き、ページングする。
+# 埋め込み版（order_entry.yaml）との違いは subTable の `source` だけ。
+# 行は1件ずつ即時保存されるので、親（ヘッダ）が保存済みでないと明細は入力できない。
+page:
+  type: form
+  id: order_entry_paged
+  title: 受注入力（明細別テーブル）
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - title: 受注情報
+        fields:
+          - { field: orderNo, label: 受注番号, type: text, required: true, normalize: [toHankaku, trim] }
+          - { field: customer, label: 顧客, type: text, required: true }
+          - { field: orderDate, label: 受注日, type: date, required: true, format: date }
+
+      - title: 明細
+        fields:
+          # 値は親レコードに入らない。行は orderLineRepository が持つ。
+          - field: lines
+            label: 明細
+            type: subTable
+            source:
+              repository: orderLineRepository
+              parentKey: orderNo   # 子行が持つ親キーの項目名
+              key: lineNo          # 子行の主キー項目名
+              pageSize: 20
+            columns:
+              - { field: item, label: 品名, width: 220 }
+              - { field: qty, label: 数量, type: number, width: 100 }
+              - { field: price, label: 単価, type: number, width: 140, format: currency, config: { symbol: "¥" } }
+              - { field: amount, label: 金額, type: number, width: 140, format: currency, config: { symbol: "¥" } }
+            fields:
+              - { field: item, label: 品名, type: text, required: true }
+              - { field: qty, label: 数量, type: number, required: true, validators: [ { type: min, value: 1 } ] }
+              - { field: price, label: 単価, type: number, required: true, validators: [ { type: min, value: 0 } ] }
+              # 行内の計算項目: 金額 = 数量 × 単価
+              - { field: amount, label: 金額, computed: { op: product, fields: [qty, price] } }
+  actions:
+    - { id: save, type: plugin, plugin: saveOrder, label: 保存 }

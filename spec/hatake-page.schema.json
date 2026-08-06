@@ -346,6 +346,34 @@
           "type": "array",
           "description": "Editor fields for one child row, for type: subTable. Omit to derive inputs from `columns`.",
           "items": { "$ref": "#/$defs/field" }
+        },
+        "source": { "$ref": "#/$defs/subTableSource" }
+      }
+    },
+    "subTableSource": {
+      "type": "object",
+      "description": "Fetch a subTable's child rows from their own repository, paged and linked by a foreign key, instead of embedding them in the parent record. Rows are then saved per row (create/update/delete) and require the parent to already have a key.",
+      "required": ["repository", "parentKey"],
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "Repository key for the child rows."
+        },
+        "parentKey": {
+          "type": "string",
+          "description": "Child field holding the parent key; passed as the search filter { parentKey: <parent key value> }."
+        },
+        "key": {
+          "type": "string",
+          "description": "Primary-key field of a child row, used to update/delete it.",
+          "default": "id"
+        },
+        "pageSize": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Rows per page.",
+          "default": 20
         }
       }
     },

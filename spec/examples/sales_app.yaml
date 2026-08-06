@@ -1,5 +1,6 @@
 # 複数ページを束ねたアプリ定義の例（メニュー＋画面遷移）。
 # 受注照会は複数条件検索、受注入力は親子・明細（type: subTable）のショーケース。
+# 受注入力は2種類あり、明細を親レコードに埋め込む版と別 Repository から引く版（source）。
 dsl_version: "1.0"
 app:
   id: sales_admin
@@ -12,6 +13,7 @@ app:
         - { label: 商品, icon: inventory, page: product_master }
     - { id: orders, label: 受注照会, icon: list, page: order_search }
     - { id: orderEntry, label: 受注入力, icon: dashboard, page: order_entry }
+    - { id: orderEntryPaged, label: 受注入力（明細別テーブル）, icon: table_rows, page: order_entry_paged }
   pages:
     - type: master
       id: customer_master
@@ -118,6 +120,42 @@ app:
               - field: lines
                 label: 明細
                 type: subTable
+                columns:
+                  - { field: item, label: 品名, width: 220 }
+                  - { field: qty, label: 数量, type: number, width: 90 }
+                  - { field: price, label: 単価, type: number, width: 130, format: currency, config: { symbol: "¥" } }
+                  - { field: amount, label: 金額, type: number, width: 130, format: currency, config: { symbol: "¥" } }
+                fields:
+                  - { field: item, label: 品名, type: text, required: true }
+                  - { field: qty, label: 数量, type: number, required: true, validators: [ { type: min, value: 1 } ] }
+                  - { field: price, label: 単価, type: number, required: true, validators: [ { type: min, value: 0 } ] }
+                  # 行内の計算項目: 金額 = 数量 × 単価
+                  - { field: amount, label: 金額, computed: { op: product, fields: [qty, price] } }
+
+    # 明細が大量にあるとき: 子行を別 Repository から外部キーで引き、ページングする
+    # （subTable の source）。行は1件ずつ即時保存されるため、ヘッダの保存が先。
+    - type: form
+      id: order_entry_paged
+      title: 受注入力（明細別テーブル）
+      repository: orderRepository
+      key: orderNo
+      form:
+        sections:
+          - title: 受注情報
+            fields:
+              - { field: orderNo, label: 受注番号, type: text, required: true, normalize: [toHankaku, trim] }
+              - { field: customer, label: 顧客, type: text, required: true }
+          - title: 明細
+            fields:
+              # 値は親レコードに入らない。行は orderLineRepository が持つ。
+              - field: lines
+                label: 明細
+                type: subTable
+                source:
+                  repository: orderLineRepository
+                  parentKey: orderNo   # 子行が持つ親キーの項目名
+                  key: lineNo          # 子行の主キー項目名
+                  pageSize: 10
                 columns:
                   - { field: item, label: 品名, width: 220 }
                   - { field: qty, label: 数量, type: number, width: 90 }
