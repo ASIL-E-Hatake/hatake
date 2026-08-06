@@ -40,7 +40,22 @@ class _MaterialFormPageState extends State<_MaterialFormPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(widget.definition.title, style: theme.textTheme.headlineSmall),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.definition.title,
+                  style: theme.textTheme.headlineSmall,
+                ),
+              ),
+              ..._pageActionButtons(
+                context,
+                widget.definition.actions,
+                controller,
+                record: controller.draft,
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Expanded(
             child: controller.loading
@@ -56,7 +71,9 @@ class _MaterialFormPageState extends State<_MaterialFormPage> {
                       formatters: widget.formatters,
                       validators: HatakeScope.of(context).validators,
                       subTables: HatakeScope.of(context).subTableController,
-                      recordKey: controller.recordKey,
+                      // Not `recordKey`: after a create the record exists, and
+                      // repository-backed child rows need that new key.
+                      recordKey: controller.effectiveKey,
                     ),
                   ),
           ),

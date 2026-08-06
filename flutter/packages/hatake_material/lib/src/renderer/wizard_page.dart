@@ -51,32 +51,6 @@ class _MaterialWizardPageState extends State<_MaterialWizardPage> {
     }
   }
 
-  Future<void> _onAction(ActionDefinition action) async {
-    switch (action.type) {
-      case ActionTypes.navigate:
-        _navigateAction(context, action);
-      case ActionTypes.plugin:
-        final registry = HatakeScope.of(context).actions;
-        final handler =
-            action.plugin == null ? null : registry.resolve(action.plugin!);
-        if (handler == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('アクション "${action.id}" のハンドラが未登録です')),
-          );
-          return;
-        }
-        await handler(ActionContext(
-          buildContext: context,
-          controller: _controller,
-          action: action,
-        ));
-      default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('アクション "${action.id}" は未実装です')),
-        );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -96,15 +70,12 @@ class _MaterialWizardPageState extends State<_MaterialWizardPage> {
                   style: theme.textTheme.headlineSmall,
                 ),
               ),
-              for (final action in widget.definition.actions)
-                if (isAllowed(action.roles, roles)) ...[
-                  FilledButton(
-                    key: Key('hatake.action.${action.id}'),
-                    onPressed: () => _onAction(action),
-                    child: Text(action.label),
-                  ),
-                  const SizedBox(width: 8),
-                ],
+              ..._pageActionButtons(
+                context,
+                widget.definition.actions,
+                _controller,
+                record: _controller.draft,
+              ),
             ],
           ),
           const SizedBox(height: 12),
