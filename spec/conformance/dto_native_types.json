@@ -1,0 +1,455 @@
+{
+  "_comment": "Native type emitter: each language parses `page`, calls deriveDto(page), then toTypeScript(spec) and toJavaRecords(spec, javaOptions), and must produce exactly these lines (join with \n and append a trailing newline). Both targets are emitted from BOTH editions on purpose, so the suite can prove the two produce byte-identical source. Rules pinned here: constraints ride in doc comments, not validation annotations (runtime checking is already covered by FormValidator and the JSON Schema, and annotations would drag jakarta.validation / Zod into generated code); Java maps `number` to BigDecimal (the DSL does not distinguish integer from decimal and these are business amounts); dates stay String / string because JSON has no date type; packageName is caller-supplied like OpenAPI's basePath, and omitting it emits no package statement; imports are emitted only when used.",
+  "cases": [
+    {
+      "name": "crud page: every member kind, doc comments carry the constraints",
+      "page": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "crud",
+          "id": "customer_master",
+          "title": "顧客マスタ",
+          "repository": "customerRepository",
+          "key": "id",
+          "search": {
+            "filters": [
+              {
+                "field": "name",
+                "label": "顧客名",
+                "type": "text",
+                "operator": "contains"
+              },
+              {
+                "field": "openedAt",
+                "label": "開設日",
+                "type": "date",
+                "operator": "between"
+              }
+            ]
+          },
+          "table": {
+            "columns": [
+              {
+                "field": "id",
+                "label": "ID"
+              },
+              {
+                "field": "name",
+                "label": "顧客名"
+              },
+              {
+                "field": "credit",
+                "label": "与信",
+                "type": "number"
+              }
+            ]
+          },
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  {
+                    "field": "code",
+                    "label": "コード",
+                    "required": true,
+                    "validators": [
+                      {
+                        "type": "maxLength",
+                        "value": 6
+                      }
+                    ]
+                  },
+                  {
+                    "field": "name",
+                    "label": "顧客名",
+                    "required": true
+                  },
+                  {
+                    "field": "credit",
+                    "label": "与信",
+                    "type": "number",
+                    "validators": [
+                      {
+                        "type": "min",
+                        "value": 0
+                      },
+                      {
+                        "type": "max",
+                        "value": 1000000
+                      }
+                    ]
+                  },
+                  {
+                    "field": "active",
+                    "label": "有効",
+                    "type": "checkbox"
+                  },
+                  {
+                    "field": "openedAt",
+                    "label": "開設日",
+                    "type": "date"
+                  },
+                  {
+                    "field": "email",
+                    "label": "メール",
+                    "validators": [
+                      {
+                        "type": "email"
+                      }
+                    ]
+                  },
+                  {
+                    "field": "id",
+                    "label": "ID",
+                    "readOnly": true
+                  },
+                  {
+                    "field": "label",
+                    "label": "表示名",
+                    "computed": {
+                      "op": "concat",
+                      "fields": [
+                        "code",
+                        "name"
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "javaOptions": {
+        "packageName": "com.example.dto"
+      },
+      "typescript": [
+        "// Generated from the hatake definition \"customer_master\". Do not edit by hand.",
+        "",
+        "/** customer_master — サーバが受け取る形 */",
+        "export interface CustomerMasterRequest {",
+        "  /** コード — 必須、6文字以内 */",
+        "  code: string;",
+        "  /** 顧客名 — 必須 */",
+        "  name: string;",
+        "  /** 与信 — 0〜1000000 */",
+        "  credit?: number;",
+        "  /** 有効 */",
+        "  active?: boolean;",
+        "  /** 開設日 — date (yyyy-MM-dd) */",
+        "  openedAt?: string;",
+        "  /** メール — email 形式 */",
+        "  email?: string;",
+        "  /** ID — readOnly（送ってもサーバは無視） */",
+        "  id?: string;",
+        "  /** 表示名 — computed（Renderer が導出） */",
+        "  label?: string;",
+        "}",
+        "",
+        "/** customer_master — サーバが返す形 */",
+        "export interface CustomerMasterResponse {",
+        "  /** コード — 必須、6文字以内 */",
+        "  code: string;",
+        "  /** 顧客名 — 必須 */",
+        "  name: string;",
+        "  /** 与信 — 0〜1000000 */",
+        "  credit?: number;",
+        "  /** 有効 */",
+        "  active?: boolean;",
+        "  /** 開設日 — date (yyyy-MM-dd) */",
+        "  openedAt?: string;",
+        "  /** メール — email 形式 */",
+        "  email?: string;",
+        "  /** ID — readOnly（送ってもサーバは無視） */",
+        "  id?: string;",
+        "  /** 表示名 — computed（Renderer が導出） */",
+        "  label?: string;",
+        "}",
+        "",
+        "/** customer_master — 一覧の1行 */",
+        "export interface CustomerMasterRow {",
+        "  /** ID — 必須 */",
+        "  id: string;",
+        "  /** 顧客名 — 必須 */",
+        "  name: string;",
+        "  /** 与信 — 必須 */",
+        "  credit: number;",
+        "}",
+        "",
+        "/** customer_master — 一覧のレスポンス */",
+        "export interface CustomerMasterListResponse {",
+        "  /** items — 必須 */",
+        "  items: CustomerMasterRow[];",
+        "  /** totalCount — 必須 */",
+        "  totalCount: number;",
+        "}",
+        "",
+        "/** customer_master — 検索クエリ */",
+        "export interface CustomerMasterQuery {",
+        "  /** 顧客名 */",
+        "  name?: string;",
+        "  /** 開設日 — date (yyyy-MM-dd) */",
+        "  openedAt?: string[];",
+        "}",
+        "",
+        "/** customer_master — パスパラメータ */",
+        "export interface CustomerMasterKey {",
+        "  /** id — 必須 */",
+        "  id: string;",
+        "}",
+        ""
+      ],
+      "java": {
+        "CustomerMasterRequest.java": [
+          "package com.example.dto;",
+          "",
+          "import java.math.BigDecimal;",
+          "",
+          "// Generated from the hatake definition \"customer_master\". Do not edit by hand.",
+          "/** customer_master — サーバが受け取る形。 */",
+          "public record CustomerMasterRequest(",
+          "        /** コード — 必須、6文字以内 */",
+          "        String code,",
+          "        /** 顧客名 — 必須 */",
+          "        String name,",
+          "        /** 与信 — 0〜1000000 */",
+          "        BigDecimal credit,",
+          "        /** 有効 */",
+          "        Boolean active,",
+          "        /** 開設日 — date (yyyy-MM-dd) */",
+          "        String openedAt,",
+          "        /** メール — email 形式 */",
+          "        String email,",
+          "        /** ID — readOnly（送ってもサーバは無視） */",
+          "        String id,",
+          "        /** 表示名 — computed（Renderer が導出） */",
+          "        String label) {",
+          "}",
+          ""
+        ],
+        "CustomerMasterResponse.java": [
+          "package com.example.dto;",
+          "",
+          "import java.math.BigDecimal;",
+          "",
+          "// Generated from the hatake definition \"customer_master\". Do not edit by hand.",
+          "/** customer_master — サーバが返す形。 */",
+          "public record CustomerMasterResponse(",
+          "        /** コード — 必須、6文字以内 */",
+          "        String code,",
+          "        /** 顧客名 — 必須 */",
+          "        String name,",
+          "        /** 与信 — 0〜1000000 */",
+          "        BigDecimal credit,",
+          "        /** 有効 */",
+          "        Boolean active,",
+          "        /** 開設日 — date (yyyy-MM-dd) */",
+          "        String openedAt,",
+          "        /** メール — email 形式 */",
+          "        String email,",
+          "        /** ID — readOnly（送ってもサーバは無視） */",
+          "        String id,",
+          "        /** 表示名 — computed（Renderer が導出） */",
+          "        String label) {",
+          "}",
+          ""
+        ],
+        "CustomerMasterRow.java": [
+          "package com.example.dto;",
+          "",
+          "import java.math.BigDecimal;",
+          "",
+          "// Generated from the hatake definition \"customer_master\". Do not edit by hand.",
+          "/** customer_master — 一覧の1行。 */",
+          "public record CustomerMasterRow(",
+          "        /** ID — 必須 */",
+          "        String id,",
+          "        /** 顧客名 — 必須 */",
+          "        String name,",
+          "        /** 与信 — 必須 */",
+          "        BigDecimal credit) {",
+          "}",
+          ""
+        ],
+        "CustomerMasterListResponse.java": [
+          "package com.example.dto;",
+          "",
+          "import java.math.BigDecimal;",
+          "import java.util.List;",
+          "",
+          "// Generated from the hatake definition \"customer_master\". Do not edit by hand.",
+          "/** customer_master — 一覧のレスポンス。 */",
+          "public record CustomerMasterListResponse(",
+          "        /** items — 必須 */",
+          "        List<CustomerMasterRow> items,",
+          "        /** totalCount — 必須 */",
+          "        BigDecimal totalCount) {",
+          "}",
+          ""
+        ],
+        "CustomerMasterQuery.java": [
+          "package com.example.dto;",
+          "",
+          "import java.util.List;",
+          "",
+          "// Generated from the hatake definition \"customer_master\". Do not edit by hand.",
+          "/** customer_master — 検索クエリ。 */",
+          "public record CustomerMasterQuery(",
+          "        /** 顧客名 */",
+          "        String name,",
+          "        /** 開設日 — date (yyyy-MM-dd) */",
+          "        List<String> openedAt) {",
+          "}",
+          ""
+        ],
+        "CustomerMasterKey.java": [
+          "package com.example.dto;",
+          "",
+          "// Generated from the hatake definition \"customer_master\". Do not edit by hand.",
+          "/** customer_master — パスパラメータ。 */",
+          "public record CustomerMasterKey(",
+          "        /** id — 必須 */",
+          "        String id) {",
+          "}",
+          ""
+        ]
+      }
+    },
+    {
+      "name": "embedded subTable becomes a List of the child record",
+      "page": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "form",
+          "id": "order_entry",
+          "title": "受注入力",
+          "repository": "orderRepository",
+          "key": "orderNo",
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  {
+                    "field": "orderNo",
+                    "label": "受注番号",
+                    "required": true
+                  },
+                  {
+                    "field": "lines",
+                    "label": "明細",
+                    "type": "subTable",
+                    "required": true,
+                    "fields": [
+                      {
+                        "field": "item",
+                        "label": "品名",
+                        "required": true
+                      },
+                      {
+                        "field": "qty",
+                        "label": "数量",
+                        "type": "number",
+                        "required": true,
+                        "validators": [
+                          {
+                            "type": "min",
+                            "value": 1
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "javaOptions": {},
+      "typescript": [
+        "// Generated from the hatake definition \"order_entry\". Do not edit by hand.",
+        "",
+        "/** order_entry — サーバが受け取る形 */",
+        "export interface OrderEntryRequest {",
+        "  /** 受注番号 — 必須 */",
+        "  orderNo: string;",
+        "  /** 明細 — 必須 */",
+        "  lines: OrderEntryLinesRow[];",
+        "}",
+        "",
+        "/** order_entry — サーバが返す形 */",
+        "export interface OrderEntryResponse {",
+        "  /** 受注番号 — 必須 */",
+        "  orderNo: string;",
+        "  /** 明細 — 必須 */",
+        "  lines: OrderEntryLinesRow[];",
+        "}",
+        "",
+        "/** order_entry — パスパラメータ */",
+        "export interface OrderEntryKey {",
+        "  /** orderNo — 必須 */",
+        "  orderNo: string;",
+        "}",
+        "",
+        "/** order_entry — 明細の1行 */",
+        "export interface OrderEntryLinesRow {",
+        "  /** 品名 — 必須 */",
+        "  item: string;",
+        "  /** 数量 — 必須、1以上 */",
+        "  qty: number;",
+        "}",
+        ""
+      ],
+      "java": {
+        "OrderEntryRequest.java": [
+          "import java.util.List;",
+          "",
+          "// Generated from the hatake definition \"order_entry\". Do not edit by hand.",
+          "/** order_entry — サーバが受け取る形。 */",
+          "public record OrderEntryRequest(",
+          "        /** 受注番号 — 必須 */",
+          "        String orderNo,",
+          "        /** 明細 — 必須 */",
+          "        List<OrderEntryLinesRow> lines) {",
+          "}",
+          ""
+        ],
+        "OrderEntryResponse.java": [
+          "import java.util.List;",
+          "",
+          "// Generated from the hatake definition \"order_entry\". Do not edit by hand.",
+          "/** order_entry — サーバが返す形。 */",
+          "public record OrderEntryResponse(",
+          "        /** 受注番号 — 必須 */",
+          "        String orderNo,",
+          "        /** 明細 — 必須 */",
+          "        List<OrderEntryLinesRow> lines) {",
+          "}",
+          ""
+        ],
+        "OrderEntryKey.java": [
+          "// Generated from the hatake definition \"order_entry\". Do not edit by hand.",
+          "/** order_entry — パスパラメータ。 */",
+          "public record OrderEntryKey(",
+          "        /** orderNo — 必須 */",
+          "        String orderNo) {",
+          "}",
+          ""
+        ],
+        "OrderEntryLinesRow.java": [
+          "import java.math.BigDecimal;",
+          "",
+          "// Generated from the hatake definition \"order_entry\". Do not edit by hand.",
+          "/** order_entry — 明細の1行。 */",
+          "public record OrderEntryLinesRow(",
+          "        /** 品名 — 必須 */",
+          "        String item,",
+          "        /** 数量 — 必須、1以上 */",
+          "        BigDecimal qty) {",
+          "}",
+          ""
+        ]
+      }
+    }
+  ]
+}

@@ -159,7 +159,7 @@ Phase 1 で `request` から `readOnly` / `computed` を**除外**し、Phase 2 
 | **1** | spec（`DtoSpec` の形＋導出ルール＋型マッピング表）／conformance fixture（`dto_spec.json`）／TS・Java に `deriveDto(page)` … ✅ 完了 | ✅ |
 | **2** | **JSON Schema emitter** … ✅ 完了。`toJsonSchema(spec)` が 2020-12 のドキュメント1本（全形を `$defs` に置いて `$ref` で相互参照）。受け取る形は閉じ（`additionalProperties: false`）・返す形は開ける／配列の制約は `items` 側／`required` は空なら出さない。`spec/tools/check_dto_schema.py` が「妥当なスキーマか」「実際に通す/弾くか」を独立検証（CI 込み） | ✅ |
 | **3** | **OpenAPI emitter** … ✅ 完了。`toOpenApi(spec, options)` が **OpenAPI 3.1**（Schema Object が JSON Schema 2020-12 そのものなので Phase 2 の出力をそのまま埋められる）。`basePath` は**呼び出し側が渡す**＝DSL に URL を持ち込まない。渡さなければ `components.schemas` だけ。操作は必要な形があるときだけ出す（読み取り専用ページは一覧のみ）。一覧のクエリは絞り込み条件＋`RepositoryQuery` の契約。400 は `ValidationResult` 準拠。`spec/tools/check_openapi.py` が妥当性と約束を独立検証（CI 込み） | ✅ |
-| 4 | ネイティブ型出力（TS `interface` / Java `record`）。CLI として。**整形の議論はここまで遅らせる** | 将来 |
+| **4** | **ネイティブ型出力** … ✅ 完了。`toTypeScript(spec)` は 1 本の文字列、`toJavaRecords(spec, options)` は **ファイル名→ソースの Map**（1ファイルに public トップレベル型は1つしか置けないため）。制約は **doc コメント**に載せ、注釈にはしない（実行時検証は既に解けており、注釈は `jakarta.validation` / Zod 依存を持ち込む）。Java の `number` は `BigDecimal`、日付は文字列。`packageName` は呼び出し側が渡す。**両ターゲットを両エディションから出せる**ので生成ソースのバイト一致を機械確認でき、さらに javac / tsc に通すテストで生成物の妥当性も担保（実際にバグ1件を検出）。ファイル書き出しの CLI は利用者側のビルドに任せる | ✅ |
 
 Phase 1 は**出力なし**（`DtoSpec` が正しく導出できるところまで）だった。ナビゲーションや明細と同じ刻み方で、
 各段階を緑にしてから進む。
@@ -169,6 +169,18 @@ Phase 1 は**出力なし**（`DtoSpec` が正しく導出できるところま�
 出力を実際の JSON Schema バリデータに食わせ、(a) 妥当なスキーマであること (b) 期待どおり
 ペイロードを通す/弾くこと（必須漏れ・maxLength・minimum・format・未知キー・`$ref` 解決・`between` の配列・
 明細行の制約）を確認する。CI にも入れた。
+
+## Phase 4 で見つかったバグ（修正済み）
+
+Java の全レコードを**1ファイルにまとめて**出していた。Java は 1 ファイルに public な
+トップレベル型を 1 つしか置けないので、書き出すと `javac` が
+「class X is public, should be declared in a file named X.java」で 6 件エラーになる。
+コンフォーマンス（TS と Java の一致）では**両方が同じ壊れたソースを吐いている**ため検出不可だった。
+
+**修正**: `toJavaRecords` は **ファイル名 → ソースの Map** を返す（1レコード＝1ファイル、
+import もそのファイルで使う分だけ）。あわせて `GeneratedJavaCompilesTest`（JDK の
+`JavaCompiler` で javac に通す）と `generatedTypesCompile.test.ts`（`tsc --strict`）を追加し、
+同種のバグを機械的に捕まえるようにした。
 
 ## 命名の注意
 

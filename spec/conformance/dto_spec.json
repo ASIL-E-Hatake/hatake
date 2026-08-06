@@ -129,22 +129,31 @@
             "members": [
               {
                 "name": "code",
+                "label": "コード",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {
                   "maxLength": "6"
                 }
               },
               {
                 "name": "name",
+                "label": "顧客名",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "credit",
+                "label": "与信",
                 "type": "number",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {
                   "minimum": "0",
                   "maximum": "1000000"
@@ -152,36 +161,51 @@
               },
               {
                 "name": "active",
+                "label": "有効",
                 "type": "boolean",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "openedAt",
+                "label": "開設日",
                 "type": "string",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {
                   "format": "date"
                 }
               },
               {
                 "name": "email",
+                "label": "メール",
                 "type": "string",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {
                   "format": "email"
                 }
               },
               {
                 "name": "id",
+                "label": "ID",
                 "type": "string",
                 "optional": true,
+                "readOnly": true,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "label",
+                "label": "表示名",
                 "type": "string",
                 "optional": true,
+                "readOnly": false,
+                "computed": true,
                 "constraints": {}
               }
             ]
@@ -192,22 +216,31 @@
             "members": [
               {
                 "name": "code",
+                "label": "コード",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {
                   "maxLength": "6"
                 }
               },
               {
                 "name": "name",
+                "label": "顧客名",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "credit",
+                "label": "与信",
                 "type": "number",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {
                   "minimum": "0",
                   "maximum": "1000000"
@@ -215,36 +248,51 @@
               },
               {
                 "name": "active",
+                "label": "有効",
                 "type": "boolean",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "openedAt",
+                "label": "開設日",
                 "type": "string",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {
                   "format": "date"
                 }
               },
               {
                 "name": "email",
+                "label": "メール",
                 "type": "string",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {
                   "format": "email"
                 }
               },
               {
                 "name": "id",
+                "label": "ID",
                 "type": "string",
                 "optional": true,
+                "readOnly": true,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "label",
+                "label": "表示名",
                 "type": "string",
                 "optional": true,
+                "readOnly": false,
+                "computed": true,
                 "constraints": {}
               }
             ]
@@ -255,20 +303,29 @@
             "members": [
               {
                 "name": "id",
+                "label": "ID",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "name",
+                "label": "顧客名",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "credit",
+                "label": "与信",
                 "type": "number",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -279,16 +336,22 @@
             "members": [
               {
                 "name": "items",
+                "label": "",
                 "type": "array",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "itemType": "object",
                 "shape": "CustomerMasterRow",
                 "constraints": {}
               },
               {
                 "name": "totalCount",
+                "label": "",
                 "type": "number",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -299,14 +362,20 @@
             "members": [
               {
                 "name": "name",
+                "label": "顧客名",
                 "type": "string",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "openedAt",
+                "label": "開設日",
                 "type": "array",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "itemType": "string",
                 "constraints": {
                   "format": "date"
@@ -320,8 +389,11 @@
             "members": [
               {
                 "name": "id",
+                "label": "",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -373,14 +445,20 @@
             "members": [
               {
                 "name": "orderNo",
+                "label": "受注番号",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "amount",
+                "label": "金額",
                 "type": "number",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -391,16 +469,22 @@
             "members": [
               {
                 "name": "items",
+                "label": "",
                 "type": "array",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "itemType": "object",
                 "shape": "OrderSearchRow",
                 "constraints": {}
               },
               {
                 "name": "totalCount",
+                "label": "",
                 "type": "number",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -411,8 +495,11 @@
             "members": [
               {
                 "name": "status",
+                "label": "状態",
                 "type": "string",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -423,8 +510,11 @@
             "members": [
               {
                 "name": "orderNo",
+                "label": "",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -497,14 +587,20 @@
             "members": [
               {
                 "name": "orderNo",
+                "label": "受注番号",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "lines",
+                "label": "明細",
                 "type": "array",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "itemType": "object",
                 "shape": "OrderEntryLinesRow",
                 "constraints": {}
@@ -517,14 +613,20 @@
             "members": [
               {
                 "name": "orderNo",
+                "label": "受注番号",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "lines",
+                "label": "明細",
                 "type": "array",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "itemType": "object",
                 "shape": "OrderEntryLinesRow",
                 "constraints": {}
@@ -537,8 +639,11 @@
             "members": [
               {
                 "name": "orderNo",
+                "label": "",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -549,14 +654,20 @@
             "members": [
               {
                 "name": "item",
+                "label": "品名",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "qty",
+                "label": "数量",
                 "type": "number",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {
                   "minimum": "1"
                 }
@@ -616,8 +727,11 @@
             "members": [
               {
                 "name": "orderNo",
+                "label": "受注番号",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -628,8 +742,11 @@
             "members": [
               {
                 "name": "orderNo",
+                "label": "受注番号",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -640,8 +757,11 @@
             "members": [
               {
                 "name": "orderNo",
+                "label": "",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -652,8 +772,11 @@
             "members": [
               {
                 "name": "item",
+                "label": "品名",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
@@ -710,14 +833,20 @@
             "members": [
               {
                 "name": "code",
+                "label": "コード",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "email",
+                "label": "メール",
                 "type": "string",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {
                   "format": "email"
                 }
@@ -730,14 +859,20 @@
             "members": [
               {
                 "name": "code",
+                "label": "コード",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               },
               {
                 "name": "email",
+                "label": "メール",
                 "type": "string",
                 "optional": true,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {
                   "format": "email"
                 }
@@ -750,8 +885,11 @@
             "members": [
               {
                 "name": "id",
+                "label": "",
                 "type": "string",
                 "optional": false,
+                "readOnly": false,
+                "computed": false,
                 "constraints": {}
               }
             ]
