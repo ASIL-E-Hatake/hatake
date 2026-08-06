@@ -12,8 +12,23 @@ const _dir = '../../../spec/conformance';
 List<dynamic> _load(String file) =>
     jsonDecode(File('$_dir/$file').readAsStringSync()) as List<dynamic>;
 
+Map<String, dynamic> _loadMap(String file) =>
+    jsonDecode(File('$_dir/$file').readAsStringSync()) as Map<String, dynamic>;
+
 Map<String, Object?> _opts(Map<String, dynamic> c) =>
     (c['options'] as Map?)?.cast<String, Object?>() ?? const {};
+
+List<Map<String, Object?>> _rows(Object? raw) => [
+      for (final row in raw as List) (row as Map).cast<String, Object?>(),
+    ];
+
+/// Numbers are compared as normalized strings so `200` and `200.0` match across
+/// languages.
+String _num(Object? value) {
+  if (value == null) return 'null';
+  final n = value as num;
+  return n == n.roundToDouble() ? n.toInt().toString() : n.toString();
+}
 
 void main() {
   group('conformance: formatters', () {
@@ -182,6 +197,41 @@ void main() {
         final roles = [for (final r in c['roles'] as List) r.toString()];
         final userRoles = {for (final r in c['userRoles'] as List) r.toString()};
         expect(isAllowed(roles, userRoles), c['expected']);
+      });
+    }
+  });
+
+  group('conformance: dashboard aggregate', () {
+    final registry = AggregateRegistry();
+    final fixture = _loadMap('dashboard_aggregate.json');
+    for (final raw in fixture['aggregate'] as List) {
+      final c = raw as Map<String, dynamic>;
+      test(c['name'], () {
+        final result = registry.aggregate(
+          c['op'] as String,
+          _rows(c['rows']),
+          field: c['field'] as String?,
+        );
+        expect(_num(result), _num(c['expected']));
+      });
+    }
+
+    for (final raw in fixture['groupBy'] as List) {
+      final c = raw as Map<String, dynamic>;
+      test('groupBy: ${c['name']}', () {
+        final actual = registry.aggregateBy(
+          c['op'] as String,
+          _rows(c['rows']),
+          labelField: c['labelField'] as String,
+          valueField: c['valueField'] as String?,
+        );
+        expect(
+          [for (final b in actual) '${b.label}=${_num(b.value)}'],
+          [
+            for (final e in c['expected'] as List)
+              '${(e as Map)['label']}=${_num(e['value'])}',
+          ],
+        );
       });
     }
   });

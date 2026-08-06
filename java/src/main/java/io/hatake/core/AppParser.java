@@ -86,11 +86,16 @@ public final class AppParser {
     }
 
     private static PageRef parsePageRef(Map<String, Object> m) {
+        String type = reqStr(m, "type");
+        // ダッシュボードはカードごとに Repository を持つので、ページ側は任意。
+        String repository = PageDefinition.DASHBOARD.equals(type)
+                ? (m.get("repository") instanceof String r ? r : null)
+                : reqStr(m, "repository");
         return new PageRef(
                 reqStr(m, "id"),
-                reqStr(m, "type"),
+                type,
                 reqStr(m, "title"),
-                reqStr(m, "repository"));
+                repository);
     }
 
     private static List<String> strList(Object o) {

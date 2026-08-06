@@ -204,11 +204,81 @@ export function wizardForm(page: WizardPageDefinition): FormDefinition {
   };
 }
 
+/** How a `metric` card reduces the rows it fetched to one number. */
+export interface DashboardValueDefinition {
+  /** Aggregate operation name (see AggregateOps / AggregateRegistry). */
+  aggregate: string;
+  /** Field to reduce. Not needed by `count`. */
+  field?: string;
+}
+
+/** How a `chart` card plots the rows it fetched. */
+export interface ChartDefinition {
+  /** Chart kind: bar / line / pie, or a plugin's. */
+  kind: string;
+  /** Field holding each point's label. */
+  labelField: string;
+  /** Field holding each point's value. */
+  valueField?: string;
+  /** Aggregate applied per label, or undefined to plot rows as they are. */
+  aggregate?: string;
+}
+
+/** One dashboard card: a small read-only query plus how to display it. */
+export interface DashboardItemDefinition {
+  id: string;
+  /** Item kind: metric / table / chart, or a plugin's. */
+  type: string;
+  title: string;
+  /** Repository key, or undefined to use the page's default. */
+  repository?: string;
+  /** Grid columns this card occupies. */
+  span: number;
+  /** Fixed filters merged into the query. */
+  filters: Record<string, unknown>;
+  /** Rows to fetch (the query's pageSize). */
+  limit: number;
+  sortField?: string;
+  sortAscending: boolean;
+  /** Reduction for a `metric` card. Undefined means `count`. */
+  value?: DashboardValueDefinition;
+  /** Display formatter for a `metric` value. */
+  format?: string;
+  config: Record<string, unknown>;
+  /** Columns for a `table` card. */
+  columns: ColumnDefinition[];
+  /** Plot for a `chart` card. */
+  chart?: ChartDefinition;
+  /** Id of a page action to run when the card is tapped. */
+  action?: string;
+  /** Roles allowed to see this card (see isAllowed). Empty = everyone. */
+  roles: string[];
+}
+
+/**
+ * A dashboard page: a grid of read-only cards. It has no single record and no
+ * single repository — `repository` is only the default for items that omit one,
+ * and there is no `keyField`. An optional `search` applies to every card.
+ */
+export interface DashboardPageDefinition {
+  kind: "dashboard";
+  id: string;
+  title: string;
+  dslVersion: string;
+  repository?: string;
+  items: DashboardItemDefinition[];
+  /** Card grid width (DSL: `layout.columns`). */
+  columns: number;
+  search?: SearchDefinition;
+  actions: ActionDefinition[];
+}
+
 export type PageDefinition =
   | CrudPageDefinition
   | SearchPageDefinition
   | FormPageDefinition
-  | WizardPageDefinition;
+  | WizardPageDefinition
+  | DashboardPageDefinition;
 
 /** A node in an app's navigation menu. Either a leaf (opens `page`) or a group
  * (has `children`). `isGroup` distinguishes them (see menuIsGroup). */
@@ -235,7 +305,8 @@ export interface PageRef {
   id: string;
   type: string;
   title: string;
-  repository: string;
+  /** Undefined only for a `dashboard`, whose cards each name their own. */
+  repository?: string;
 }
 
 /** An application: a set of pages composed by a navigation menu. Backends read
@@ -269,6 +340,33 @@ export const FieldTypes = {
   time: "time",
   /** Master-detail child rows. The value is a list of records (see rowFields). */
   subTable: "subTable",
+} as const;
+
+/** Built-in dashboard card kinds. Open strings — extensible via plugins. */
+export const DashboardItemTypes = {
+  /** A single aggregated number (KPI card). */
+  metric: "metric",
+  /** A short list of rows. */
+  table: "table",
+  /** A chart (see ChartDefinition). */
+  chart: "chart",
+} as const;
+
+/** Built-in chart kinds. Open strings — extensible via plugins. */
+export const ChartKinds = {
+  bar: "bar",
+  line: "line",
+  pie: "pie",
+} as const;
+
+/** Built-in aggregate operations (see AggregateRegistry). */
+export const AggregateOps = {
+  /** Number of rows; ignores the field. */
+  count: "count",
+  sum: "sum",
+  avg: "avg",
+  min: "min",
+  max: "max",
 } as const;
 
 export const ValidatorTypes = {

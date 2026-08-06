@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:hatake/hatake.dart';
 
@@ -15,6 +17,8 @@ part 'renderer/search_page.dart';
 part 'renderer/detail_page.dart';
 part 'renderer/form_page.dart';
 part 'renderer/wizard_page.dart';
+part 'renderer/dashboard_page.dart';
+part 'renderer/dashboard_chart.dart';
 
 /// Context handed to a custom [MaterialFieldBuilder] for a form field.
 class MaterialFieldContext {
@@ -43,6 +47,34 @@ class MaterialFieldContext {
 /// [MaterialRenderer] to add or override how field types render.
 typedef MaterialFieldBuilder = Widget Function(MaterialFieldContext context);
 
+/// Context handed to a custom [MaterialDashboardItemBuilder] for one card.
+///
+/// The card's frame (title, height, tap action, loading and error states) is
+/// already drawn; a builder only fills the body from [state].
+class MaterialDashboardItemContext {
+  final BuildContext buildContext;
+  final DashboardItemDefinition item;
+
+  /// Rows / aggregated value / chart points loaded for this card.
+  final DashboardItemState state;
+
+  /// Formatters for display (honours the item's `format` + `config`).
+  final FormatterRegistry formatters;
+
+  const MaterialDashboardItemContext({
+    required this.buildContext,
+    required this.item,
+    required this.state,
+    required this.formatters,
+  });
+}
+
+/// Builds the body of a dashboard card of a given item type. Register these on
+/// [MaterialRenderer] to add item types (e.g. a gauge) or override built-ins.
+typedef MaterialDashboardItemBuilder = Widget Function(
+  MaterialDashboardItemContext context,
+);
+
 /// A Material 3 [Renderer] for hatake pages.
 ///
 /// Extend field-type support by passing [fieldBuilders] keyed by field type
@@ -54,7 +86,15 @@ class MaterialRenderer implements Renderer {
   /// the built-in registry; pass a custom one to add/override formatters.
   final FormatterRegistry? formatters;
 
-  const MaterialRenderer({this.fieldBuilders = const {}, this.formatters});
+  /// Bodies for dashboard card types, keyed by item type (e.g.
+  /// `{'gauge': (ctx) => ...}`); these take precedence over the built-ins.
+  final Map<String, MaterialDashboardItemBuilder> dashboardItemBuilders;
+
+  const MaterialRenderer({
+    this.fieldBuilders = const {},
+    this.formatters,
+    this.dashboardItemBuilders = const {},
+  });
 
   @override
   Widget buildCrudPage(
@@ -121,6 +161,20 @@ class MaterialRenderer implements Renderer {
       controller: controller,
       fieldBuilders: fieldBuilders,
       formatters: formatters,
+    );
+  }
+
+  @override
+  Widget buildDashboardPage(
+    BuildContext context,
+    DashboardPageDefinition definition,
+    DashboardController controller,
+  ) {
+    return _MaterialDashboardPage(
+      definition: definition,
+      controller: controller,
+      formatters: formatters ?? FormatterRegistry(),
+      itemBuilders: dashboardItemBuilders,
     );
   }
 

@@ -316,21 +316,24 @@ export function deriveDto(page: PageDefinition): DtoSpec {
   }
 
   // The DSL carries no type for the key, so it is described as a string.
-  shapes.push({
-    name: `${name}Key`,
-    role: "pathParams",
-    members: [
-      {
-        name: page.keyField,
-        label: "",
-        type: "string",
-        optional: false,
-        readOnly: false,
-        computed: false,
-        constraints: {},
-      },
-    ],
-  });
+  // A dashboard addresses no single record, so it has no key at all.
+  if ("keyField" in page) {
+    shapes.push({
+      name: `${name}Key`,
+      role: "pathParams",
+      members: [
+        {
+          name: page.keyField,
+          label: "",
+          type: "string",
+          optional: false,
+          readOnly: false,
+          computed: false,
+          constraints: {},
+        },
+      ],
+    });
+  }
 
   return { page: page.id, shapes: [...shapes, ...children] };
 }

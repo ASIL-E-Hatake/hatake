@@ -51,18 +51,90 @@ public final class DefinitionParser {
                 : new FormDefinition(steps.stream()
                         .map(s -> new SectionDefinition(s.title(), s.fields()))
                         .toList());
+        boolean dashboard = PageDefinition.DASHBOARD.equals(type);
 
         return new PageDefinition(
                 reqStr(page, "id"),
                 reqStr(page, "title"),
                 dslVersion,
                 type,
-                reqStr(page, "repository"),
+                // ダッシュボードの repository はカードの既定値なので任意。
+                dashboard
+                        ? (page.get("repository") instanceof String r ? r : null)
+                        : reqStr(page, "repository"),
                 page.get("key") instanceof String k ? k : "id",
                 parseSearch(page.get("search")),
                 parseTable(page.get("table")),
                 form,
-                steps);
+                steps,
+                parseDashboardItems(page, dashboard));
+    }
+
+    /** ダッシュボードのカード。1枚＝小さな読み取りクエリ + 見せ方。 */
+    @SuppressWarnings("unchecked")
+    private static List<DashboardItemDefinition> parseDashboardItems(
+            Map<String, Object> page, boolean dashboard) {
+        if (!dashboard) {
+            return List.of();
+        }
+        if (!(page.get("items") instanceof List<?> raw) || raw.isEmpty()) {
+            throw new IllegalArgumentException("A dashboard page needs at least one item");
+        }
+        List<DashboardItemDefinition> items = new ArrayList<>();
+        for (Object o : raw) {
+            Map<String, Object> m = (Map<String, Object>) o;
+            Map<String, Object> sort = optMap(m.get("sort"));
+            List<ColumnDefinition> columns = new ArrayList<>();
+            if (m.get("columns") instanceof List<?> list) {
+                for (Object c : list) {
+                    columns.add(parseColumn((Map<String, Object>) c));
+                }
+            }
+            List<String> roles = new ArrayList<>();
+            if (m.get("roles") instanceof List<?> list) {
+                for (Object r : list) {
+                    roles.add(String.valueOf(r));
+                }
+            }
+            Map<String, Object> filters = optMap(m.get("filters"));
+            items.add(new DashboardItemDefinition(
+                    reqStr(m, "id"),
+                    m.get("type") instanceof String t ? t : DashboardItemDefinition.METRIC,
+                    reqStr(m, "title"),
+                    m.get("repository") instanceof String r ? r : null,
+                    filters == null ? Map.of() : Map.copyOf(filters),
+                    m.get("limit") instanceof Number n ? n.intValue() : 100,
+                    sort == null || !(sort.get("field") instanceof String f) ? null : f,
+                    sort == null || !(sort.get("ascending") instanceof Boolean a) || a,
+                    parseDashboardValue(optMap(m.get("value"))),
+                    m.get("format") instanceof String f ? f : null,
+                    List.copyOf(columns),
+                    parseChart(optMap(m.get("chart"))),
+                    List.copyOf(roles)));
+        }
+        return List.copyOf(items);
+    }
+
+    /** {@code metric} の畳み込み。無ければ null（＝件数）。 */
+    private static DashboardValueDefinition parseDashboardValue(Map<String, Object> m) {
+        if (m == null || m.isEmpty()) {
+            return null;
+        }
+        return new DashboardValueDefinition(
+                m.get("aggregate") instanceof String a ? a : "count",
+                m.get("field") instanceof String f ? f : null);
+    }
+
+    /** {@code chart} のプロット。 */
+    private static ChartDefinition parseChart(Map<String, Object> m) {
+        if (m == null || m.isEmpty()) {
+            return null;
+        }
+        return new ChartDefinition(
+                m.get("kind") instanceof String k ? k : "bar",
+                reqStr(m, "labelField"),
+                m.get("valueField") instanceof String v ? v : null,
+                m.get("aggregate") instanceof String a ? a : null);
     }
 
     /** 一覧テーブルの列。レスポンス形の導出に使う。 */

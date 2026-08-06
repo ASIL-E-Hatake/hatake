@@ -50,6 +50,7 @@ YAML Language Server 系のエディタなら、ファイル先頭にこの一�
 | `detail` | 読み取り専用の単一レコード | — | form のフィールドを表示。対象レコードは実行時に渡す |
 | `form` | 単票の作成/編集フォーム | ✅ | table 無し。record key を渡せば編集、無ければ新規作成 |
 | `wizard` | ステップ入力 | ✅ | `steps` に分割したフォーム。**ステップ単位で検証**して次へ進み、最後にまとめて保存（→ [wizard](#wizardtype-wizard)） |
+| `dashboard` | ダッシュボード | — | `items`（カード）のグリッド。1枚＝小さな読み取りクエリ＋見せ方（→ [dashboard](#dashboardtype-dashboard)） |
 
 `search` ページは `crud` と同じ `search` / `table` / `actions` を持つけど `form` は無い。
 `rowActions` はページレベルの `plugin` アクション（例: `detail`）を指して、対象行を context に
@@ -191,6 +192,121 @@ page:
 同じ定義でサーバ側も検証できる。`FormValidator`（Dart / TypeScript / Java）に
 **ステップ単位のフォーム**を渡せばそのステップだけ、**全体のフォーム**を渡せば全項目を検証する
 （[コンフォーマンス](conformance/)の `wizard_validation.json` で3言語一致を担保）。
+
+## dashboard（type: dashboard）
+
+カードを並べた読み取り専用のページ。**1枚のカード = 小さな読み取りクエリ + その結果の見せ方**。
+
+他のページ種別と違って**単一レコードを指さない**ので `key` は無く、`repository` は
+「カードが省略したときの既定」でしかない（カードごとに別 Repository を引ける）。
+
+**集計の考え方**: Framework は集計クエリを投げない。Repository が**行を返し**、
+その行に対する畳み込み（[集約](#集約オペレーション)）だけを定義する。だから
+`limit` は「集計が見る母数」でもある。大きなテーブルで正確な数字が要るときは
+**集計済みのエンドポイント**を Repository にして、`aggregate` を省く（1行＝1点）か
+`count` を使う。`count` だけは Repository が返す**総件数**を使うので `limit` に影響されない。
+
+```yaml
+dsl_version: "1.0"
+page:
+  type: dashboard
+  id: sales_dashboard
+  title: 売上ダッシュボード
+  repository: orderRepository       # カードが省略したときの既定
+  layout: { columns: 4 }            # カードのグリッド幅
+  # 検索エリアは全カードのクエリに混ざる（期間で board 全体を絞る）
+  search:
+    filters:
+      - { field: orderDate, label: 受注日, type: date, operator: between }
+  items:
+    # metric: 集約された1つの数値。value 省略時は count（件数）
+    - { id: orderCount, title: 受注件数, action: openOrders }
+    - id: totalAmount
+      title: 受注金額
+      value: { aggregate: sum, field: amount }
+      format: currency
+      config: { symbol: "¥" }
+    - id: pending
+      title: 未出荷
+      filters: { status: 未出荷 }   # このカードだけの固定条件
+    # chart: aggregate があるとラベルが同じ行を1点に畳む
+    - id: byCustomer
+      type: chart
+      title: 顧客別の受注金額
+      span: 2
+      chart: { kind: bar, labelField: customer, valueField: amount, aggregate: sum }
+    # table: 数行の一覧（列は table の column と同じ形）
+    - id: recent
+      type: table
+      title: 直近の受注
+      span: 2
+      limit: 5
+      sort: { field: orderDate, ascending: false }
+      columns:
+        - { field: orderNo, label: 受注番号, width: 140 }
+        - { field: amount, label: 金額, type: number, format: currency }
+  actions:
+    - { id: openOrders, type: navigate, label: 受注照会, page: order_search }
+```
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `type` | string | ✅ | — | `dashboard`。 |
+| `id` | string | ✅ | — | 安定したページ識別子。 |
+| `title` | string | ✅ | — | ページタイトル。 |
+| `repository` | string | | — | カードが省略したときの既定 Repository キー。 |
+| `layout` | [layout](#layout) | | `{columns: 2}` | カードのグリッド幅。 |
+| `search` | [search](#search) | | — | **全カード**のクエリに混ぜる絞り込み（カードの `filters` より優先）。 |
+| `items` | [item](#item)[] | ✅ | — | カード（1つ以上）。宣言順に並ぶ。 |
+| `actions` | [action](#action)[] | | `[]` | ページレベルのアクション（カードの `action` から参照）。 |
+
+### item
+
+1枚のカード。「どう引くか」（`repository` / `filters` / `limit` / `sort`）と
+「どう見せるか」（`type` と、それに対応する `value` / `columns` / `chart`）を持つ。
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `id` | string | ✅ | — | カード識別子。 |
+| `title` | string | ✅ | — | カード見出し。 |
+| `type` | string | | `metric` | カード種別（[ダッシュボード項目型](#ダッシュボード項目型)参照）。 |
+| `repository` | string | | ページの既定 | このカードが引く Repository キー。 |
+| `span` | integer（≥1） | | `1` | グリッドで何列ぶん使うか。 |
+| `filters` | map | | `{}` | このカードだけの固定条件。 |
+| `limit` | integer（≥1） | | `100` | 取得件数（クエリの `pageSize`）。 |
+| `sort` | `{field, ascending}` | | — | 並び替え。`ascending` の既定は `true`。 |
+| `value` | [value](#value) | | `{aggregate: count}` | `metric` の畳み込み。 |
+| `format` | string | | — | 表示フォーマッタ名（[フォーマッタ](#フォーマッタ)参照）。 |
+| `config` | map | | `{}` | 追加設定（フォーマッタのオプション、`height` など）。 |
+| `columns` | [column](#column)[] | | `[]` | `table` の列。 |
+| `chart` | [chart](#chart) | | — | `chart` のプロット。 |
+| `action` | string | | — | タップで実行するページアクションの id。 |
+| `roles` | string[] | | `[]` | 表示を許可するロール（[権限](#権限roles)参照）。 |
+
+**カードは独立して読み込む**ので、1つの Repository が落ちても**そのカードだけ**がエラーになる。
+
+### value
+
+`metric` カードが行を1つの数値に畳む方法。
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `aggregate` | string | `count` | 集約オペレーション（[集約](#集約オペレーション)参照）。 |
+| `field` | string | — | 畳む項目。`count` では不要、それ以外は必須。 |
+
+### chart
+
+`chart` カードが行を点の列にする方法。
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `kind` | string | | `bar` | チャート種別（[チャート種別](#チャート種別)参照）。 |
+| `labelField` | string | ✅ | — | 各点のラベルを持つ項目。 |
+| `valueField` | string | | — | 各点の値を持つ項目（`count` では不要）。 |
+| `aggregate` | string | | — | ラベル別に適用する集約。**省略すると1行＝1点**（集計済みデータ向け）。 |
+
+ラベルの並びは**初出順**（言語をまたいで同じ順序にするため。並べ替えは Repository の責務）。
+ラベルが無い行は空文字のグループにまとまる。
 
 ## search
 
@@ -468,6 +584,26 @@ computed: { op: sum, fields: [price, tax] }
 ### アクション型
 `create`, `edit`, `delete`, `navigate`, `plugin`
 
+### ダッシュボード項目型
+（[item](#item) の `type`）`metric`, `table`, `chart`
+
+### チャート種別
+（[chart](#chart) の `kind`）`bar`, `line`, `pie`
+
+### 集約オペレーション
+（[value](#value) / [chart](#chart) の `aggregate`）`count`, `sum`, `avg`, `min`, `max`。
+
+| op | 意味 | 空のとき |
+|---|---|---|
+| `count` | 行数（`field` は見ない） | `0` |
+| `sum` | 数値の合計（数値でない値は 0 扱い） | `0` |
+| `avg` | 数値の平均（数値でない行は分母に入れない） | `null` |
+| `min` / `max` | 数値の最小 / 最大 | `null` |
+
+数値の解釈は `computed` と同じ（`"1500"` は数値、真偽値は数値ではない）。
+未登録の op は `null`（例外にしない）。3言語で同結果になることを
+[`conformance/dashboard_aggregate.json`](conformance/dashboard_aggregate.json) で担保している。
+
 ### フォーマッタ
 （表示整形、`format` で指定）`currency`, `percent`, `date`, `wareki`, `postal`, `mask`。
 オプションはその要素の `config` から読む（例 `{ symbol: "¥", negative: "triangle" }`）。
@@ -482,7 +618,8 @@ computed: { op: sum, fields: [price, tax] }
 アプリ丸ごと（メニュー＋複数ページ）は [`examples/sales_app.yaml`](examples/sales_app.yaml)、
 親子・明細は [`examples/order_entry.yaml`](examples/order_entry.yaml)（埋め込み）と
 [`examples/order_entry_paged.yaml`](examples/order_entry_paged.yaml)（子Repository）。
-ステップ入力は [`examples/customer_wizard.yaml`](examples/customer_wizard.yaml)。
+ステップ入力は [`examples/customer_wizard.yaml`](examples/customer_wizard.yaml)、
+ダッシュボードは [`examples/sales_dashboard.yaml`](examples/sales_dashboard.yaml)。
 
 ## 同一性の保証
 

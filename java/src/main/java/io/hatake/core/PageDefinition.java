@@ -14,6 +14,10 @@ import java.util.List;
  * セクション1つ）が入るので、「保存時に全項目を検証する」は他のページ種別と同じ
  * {@code validate(page.form(), record)} で書ける。1ステップだけ検証したいときは
  * {@link #stepById(String)} → {@link WizardStepDefinition#form()}。
+ *
+ * <p>{@code type: dashboard} のページは form を持たず {@link #items} を持つ。
+ * 単一レコードを指さないので {@code repository} は<b>カードの既定値</b>でしかなく
+ * （null もあり得る）、{@code keyField} には意味が無い。
  */
 public record PageDefinition(
         String id,
@@ -25,13 +29,17 @@ public record PageDefinition(
         SearchDefinition search,
         TableDefinition table,
         FormDefinition form,
-        List<WizardStepDefinition> steps) {
+        List<WizardStepDefinition> steps,
+        List<DashboardItemDefinition> items) {
 
     /** ステップ入力ページの type。 */
     public static final String WIZARD = "wizard";
 
+    /** ダッシュボードページの type。 */
+    public static final String DASHBOARD = "dashboard";
+
     /**
-     * テーブルもステップも持たないページ用の短縮コンストラクタ。
+     * テーブルもステップもカードも持たないページ用の短縮コンストラクタ。
      *
      * <p>正式コンストラクタは項目が増えるたびに全呼び出し元を壊すので、
      * それらに関係ない箇所（テスト・単純な組み立て）はこちらを使う。
@@ -46,12 +54,32 @@ public record PageDefinition(
             SearchDefinition search,
             FormDefinition form) {
         this(id, title, dslVersion, type, repository, keyField, search,
-                TableDefinition.EMPTY, form, List.of());
+                TableDefinition.EMPTY, form, List.of(), List.of());
     }
 
     /** このページがステップ入力かどうか。 */
     public boolean isWizard() {
         return WIZARD.equals(type);
+    }
+
+    /** このページがダッシュボードかどうか。 */
+    public boolean isDashboard() {
+        return DASHBOARD.equals(type);
+    }
+
+    /** id でカードを引く。見つからなければ null。 */
+    public DashboardItemDefinition itemById(String itemId) {
+        for (DashboardItemDefinition item : items) {
+            if (item.id().equals(itemId)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    /** カード {@code item} が使う Repository キー（カード指定 → ページ既定）。 */
+    public String repositoryOf(DashboardItemDefinition item) {
+        return item.repository() != null ? item.repository() : repository;
     }
 
     /** id でステップを引く。見つからなければ null。 */

@@ -26,10 +26,12 @@ PageDefinition parsePageMap(Map<String, Object?> root) {
       return _parseFormPage(page, dslVersion);
     case 'wizard':
       return _parseWizardPage(page, dslVersion);
+    case 'dashboard':
+      return _parseDashboardPage(page, dslVersion);
     default:
       throw DefinitionParseException(
         'Unsupported page type "$type" '
-        '(supported: crud, search, master, detail, form, wizard)',
+        '(supported: crud, search, master, detail, form, wizard, dashboard)',
         path: 'page.type',
       );
   }
@@ -90,6 +92,84 @@ WizardStepDefinition _parseWizardStep(Map<String, Object?> m, int index) {
       for (var i = 0; i < fields.length; i++)
         _parseField(_asMap(fields[i], 'page.steps[$index].fields[$i]')),
     ],
+  );
+}
+
+/// A dashboard is a grid of card queries. `repository` is optional here: it is
+/// only the default for items that declare none.
+DashboardPageDefinition _parseDashboardPage(
+  Map<String, Object?> m,
+  String? dslVersion,
+) {
+  final items = m.optList('items');
+  if (items.isEmpty) {
+    throw DefinitionParseException(
+      'A dashboard page needs at least one item',
+      path: 'page.items',
+    );
+  }
+  return DashboardPageDefinition(
+    id: m.reqString('id', at: 'page.id'),
+    title: m.reqString('title', at: 'page.title'),
+    dslVersion: dslVersion ?? kDslVersion,
+    repository: m.optString('repository'),
+    layout: _parseLayout(m.optMap('layout'), orElse: 2),
+    search: _parseSearch(m.optMap('search')),
+    items: [
+      for (var i = 0; i < items.length; i++)
+        _parseDashboardItem(_asMap(items[i], 'page.items[$i]'), i),
+    ],
+    actions: [
+      for (var i = 0; i < m.optList('actions').length; i++)
+        _parseAction(_asMap(m.optList('actions')[i], 'page.actions[$i]')),
+    ],
+  );
+}
+
+DashboardItemDefinition _parseDashboardItem(
+  Map<String, Object?> m,
+  int index,
+) {
+  final at = 'page.items[$index]';
+  final sort = m.optMap('sort');
+  return DashboardItemDefinition(
+    id: m.reqString('id', at: '$at.id'),
+    title: m.reqString('title', at: '$at.title'),
+    type: m.optString('type') ?? DashboardItemTypes.metric,
+    repository: m.optString('repository'),
+    span: m.optInt('span') ?? 1,
+    filters: m.optMap('filters') ?? const {},
+    limit: m.optInt('limit') ?? 100,
+    sortField: sort?.optString('field'),
+    sortAscending: sort?.optBool('ascending', orElse: true) ?? true,
+    value: _parseDashboardValue(m.optMap('value')),
+    format: m.optString('format'),
+    config: m.optMap('config') ?? const {},
+    columns: [
+      for (var i = 0; i < m.optList('columns').length; i++)
+        _parseColumn(_asMap(m.optList('columns')[i], '$at.columns[$i]')),
+    ],
+    chart: _parseChart(m.optMap('chart'), at),
+    action: m.optString('action'),
+    roles: [for (final r in m.optList('roles')) r.toString()],
+  );
+}
+
+DashboardValueDefinition? _parseDashboardValue(Map<String, Object?>? m) {
+  if (m == null) return null;
+  return DashboardValueDefinition(
+    aggregate: m.optString('aggregate') ?? AggregateOps.count,
+    field: m.optString('field'),
+  );
+}
+
+ChartDefinition? _parseChart(Map<String, Object?>? m, String at) {
+  if (m == null) return null;
+  return ChartDefinition(
+    kind: m.optString('kind') ?? ChartKinds.bar,
+    labelField: m.reqString('labelField', at: '$at.chart.labelField'),
+    valueField: m.optString('valueField'),
+    aggregate: m.optString('aggregate'),
   );
 }
 
@@ -340,9 +420,9 @@ OptionItem _parseOption(Map<String, Object?> m) {
   );
 }
 
-LayoutDefinition _parseLayout(Map<String, Object?>? m) {
-  if (m == null) return LayoutDefinition.single;
-  return LayoutDefinition(columns: m.optInt('columns') ?? 1);
+LayoutDefinition _parseLayout(Map<String, Object?>? m, {int orElse = 1}) {
+  if (m == null) return LayoutDefinition(columns: orElse);
+  return LayoutDefinition(columns: m.optInt('columns') ?? orElse);
 }
 
 Map<String, Object?> _asMap(Object? node, String path) {

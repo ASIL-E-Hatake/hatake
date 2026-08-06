@@ -19,6 +19,7 @@
 | `conditions.json` | 条件表示 `evaluateCondition`（3言語） | `{ condition, record, expected: bool }` |
 | `computed.json` | 計算項目 `ComputedRegistry.compute`（3言語） | `{ computed, record, expected }`（数値は数値比較） |
 | `access.json` | 権限制御 `isAllowed`（3言語） | `{ roles, userRoles, expected: bool }` |
+| `dashboard_aggregate.json` | ダッシュボードの集約 `AggregateRegistry`（3言語） | 配列ではなくオブジェクト: `{ aggregate: [{ name, op, field?, rows, expected }], groupBy: [{ name, op, labelField, valueField?, rows, expected: [{label,value}] }] }`。数値は**整数値なら小数点なし**に正規化した文字列で比較（`200` と `200.0` を吸収）。`groupBy` は**ラベルの初出順**で比較 |
 | `subtable_validation.json` | 親子・明細の**子行バリデーション**（3言語） | 配列ではなくオブジェクト: `{ page, cases: [{ name, record, expected: [{field,message}] }] }`。`page` を各言語のパーサで読み、`record` を検証して**エラー集合**（順不同）を比較。子行のエラーは `<field>[<index>].<rowField>` 形式（例 `lines[0].qty`） |
 | `subtable_source_validation.json` | `source` 付き（子Repository方式）の `subTable` を親の検証が**まるごと飛ばす**こと（3言語） | `subtable_validation.json` と同じ形 |
 | `wizard_validation.json` | ステップ入力の**ステップ単位検証**（3言語） | `{ page, cases: [{ name, step, record, expected }] }`。`step` が id ならそのステップのフォームだけ、`null` なら全ステップを畳んだフォームを検証 |
@@ -35,7 +36,7 @@
 |---|---|---|
 | Flutter/Dart | `flutter/packages/hatake_core/test/conformance_test.dart` | `../../../spec/conformance` |
 | Flutter/Dart（`subtable_*` / `wizard_*` のみ。ページ解析が必要なため `hatake_yaml` 側） | `flutter/packages/hatake_yaml/test/conformance_subtable_test.dart`・`conformance_wizard_test.dart` | `../../../spec/conformance` |
-| TypeScript | `typescript/test/conformance.test.ts` | `../spec/conformance` |
-| Java | `java/src/test/java/io/hatake/core/ConformanceTest.java` | `../spec/conformance` |
+| TypeScript | `typescript/test/conformance.test.ts`（`dashboard_aggregate` は `conformanceAggregate.test.ts`） | `../spec/conformance` |
+| Java | `java/src/test/java/io/hatake/core/ConformanceTest.java`（`dashboard_aggregate` は `AggregateConformanceTest.java`） | `../spec/conformance` |
 
 新しい formatter/converter/validator を足したら、まずここに期待値を書いてから各言語を実装する（spec 先行）。

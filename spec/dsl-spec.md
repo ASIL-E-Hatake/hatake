@@ -56,6 +56,7 @@ settings.
 | `detail` | Read-only single record | — | displays the form's fields; the record is supplied to the view at runtime |
 | `form` | Standalone create/edit form | ✅ | form only (no table); edits when a record key is supplied, else creates |
 | `wizard` | Stepped input | ✅ | the form split into `steps`, **validated one step at a time**, saved once at the end (→ [wizard](#wizard-type-wizard)) |
+| `dashboard` | Dashboard | — | a grid of `items` (cards); one card = one small read-only query plus how to show it (→ [dashboard](#dashboard-type-dashboard)) |
 
 A `search` page has the same `search`, `table`, and `actions` as `crud` but no
 `form`, and its `rowActions` reference page-level `plugin` actions (e.g. a
@@ -207,6 +208,126 @@ The same definition validates on the server: hand `FormValidator` (Dart /
 TypeScript / Java) **one step's form** to check that step, or **the whole page's
 form** to check everything (the [conformance suite](conformance/)'s
 `wizard_validation.json` pins all three languages to the same behaviour).
+
+## dashboard (type: dashboard)
+
+A read-only page of cards. **One card = one small read-only query plus how to
+display its result.**
+
+Unlike the other page kinds it **addresses no single record**, so it has no
+`key`, and `repository` is only the default for cards that declare none (each
+card may read a different repository).
+
+**How aggregation works**: the framework never issues an aggregate query. The
+repository **returns rows** and the definition only describes the reduction over
+them (see [aggregates](#aggregate-operations)) — which makes `limit` the sample
+size an aggregate sees. When a number must be exact over a big table, point the
+card at a **pre-aggregated endpoint** and omit `aggregate` (one row = one point),
+or use `count`: `count` alone uses the **total count** the repository reports, so
+`limit` does not affect it.
+
+```yaml
+dsl_version: "1.0"
+page:
+  type: dashboard
+  id: sales_dashboard
+  title: 売上ダッシュボード
+  repository: orderRepository       # default for cards that omit one
+  layout: { columns: 4 }            # card grid width
+  # The search area is merged into every card's query (one period filters all)
+  search:
+    filters:
+      - { field: orderDate, label: 受注日, type: date, operator: between }
+  items:
+    # metric: one aggregated number. Without `value` it counts rows
+    - { id: orderCount, title: 受注件数, action: openOrders }
+    - id: totalAmount
+      title: 受注金額
+      value: { aggregate: sum, field: amount }
+      format: currency
+      config: { symbol: "¥" }
+    - id: pending
+      title: 未出荷
+      filters: { status: 未出荷 }   # this card's own fixed condition
+    # chart: with `aggregate`, rows sharing a label fold into one point
+    - id: byCustomer
+      type: chart
+      title: 顧客別の受注金額
+      span: 2
+      chart: { kind: bar, labelField: customer, valueField: amount, aggregate: sum }
+    # table: a few rows (columns take the same shape as a table's column)
+    - id: recent
+      type: table
+      title: 直近の受注
+      span: 2
+      limit: 5
+      sort: { field: orderDate, ascending: false }
+      columns:
+        - { field: orderNo, label: 受注番号, width: 140 }
+        - { field: amount, label: 金額, type: number, format: currency }
+  actions:
+    - { id: openOrders, type: navigate, label: 受注照会, page: order_search }
+```
+
+| Key | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `type` | string | ✅ | — | `dashboard`. |
+| `id` | string | ✅ | — | Stable page identifier. |
+| `title` | string | ✅ | — | Page title. |
+| `repository` | string | | — | Default repository key for cards that omit one. |
+| `layout` | [layout](#layout) | | `{columns: 2}` | Card grid width. |
+| `search` | [search](#search) | | — | Filters merged into **every** card's query (they win over a card's `filters`). |
+| `items` | [item](#item)[] | ✅ | — | Cards (at least one), in declaration order. |
+| `actions` | [action](#action)[] | | `[]` | Page-level actions (referenced by a card's `action`). |
+
+### item
+
+One card. It declares how to read (`repository` / `filters` / `limit` / `sort`)
+and how to show (`type`, plus the matching `value` / `columns` / `chart`).
+
+| Key | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | ✅ | — | Card identifier. |
+| `title` | string | ✅ | — | Card heading. |
+| `type` | string | | `metric` | Card kind (see [dashboard item types](#dashboard-item-types)). |
+| `repository` | string | | the page's | Repository this card reads. |
+| `span` | integer (≥1) | | `1` | Grid columns this card occupies. |
+| `filters` | map | | `{}` | This card's own fixed conditions. |
+| `limit` | integer (≥1) | | `100` | Rows to fetch (the query's `pageSize`). |
+| `sort` | `{field, ascending}` | | — | Sort; `ascending` defaults to `true`. |
+| `value` | [value](#value) | | `{aggregate: count}` | Reduction for a `metric`. |
+| `format` | string | | — | Display formatter (see [formatters](#formatters)). |
+| `config` | map | | `{}` | Extra settings (formatter options, `height`, …). |
+| `columns` | [column](#column)[] | | `[]` | Columns for a `table`. |
+| `chart` | [chart](#chart) | | — | Plot for a `chart`. |
+| `action` | string | | — | Id of a page action to run when the card is tapped. |
+| `roles` | string[] | | `[]` | Roles allowed to see this card (see [access control](#access-control-roles)). |
+
+**Cards load independently**, so one failing repository fails **only that card**.
+
+### value
+
+How a `metric` card folds its rows into a single number.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `aggregate` | string | `count` | Aggregate operation (see [aggregates](#aggregate-operations)). |
+| `field` | string | — | Field to reduce. Not needed by `count`, required by the others. |
+
+### chart
+
+How a `chart` card turns its rows into points.
+
+| Key | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `kind` | string | | `bar` | Chart kind (see [chart kinds](#chart-kinds)). |
+| `labelField` | string | ✅ | — | Field holding each point's label. |
+| `valueField` | string | | — | Field holding each point's value (not needed by `count`). |
+| `aggregate` | string | | — | Aggregate applied per label. **Omit it and every row is a point** (for pre-aggregated data). |
+
+Labels keep their **first-appearance order** (so every language produces the same
+sequence; sorting is the repository's job). Rows without a label fall into one
+group whose label is the empty string.
 
 ## search
 
@@ -519,6 +640,28 @@ wholesale — including for another locale — inject a `MessageResolver` into t
 ### Action types
 `create`, `edit`, `delete`, `navigate`, `plugin`
 
+### Dashboard item types
+(an [item](#item)'s `type`) `metric`, `table`, `chart`
+
+### Chart kinds
+(a [chart](#chart)'s `kind`) `bar`, `line`, `pie`
+
+### Aggregate operations
+(the `aggregate` of a [value](#value) / [chart](#chart)) `count`, `sum`, `avg`,
+`min`, `max`.
+
+| op | Meaning | On no rows |
+|---|---|---|
+| `count` | Row count (ignores `field`) | `0` |
+| `sum` | Sum of the numeric values (non-numeric counts as 0) | `0` |
+| `avg` | Mean of the numeric values (non-numeric rows are not counted) | `null` |
+| `min` / `max` | Smallest / largest numeric value | `null` |
+
+Numbers are read exactly as `computed` reads them (`"1500"` is a number, a
+boolean is not). An unregistered op yields `null` rather than throwing. All three
+languages are pinned to the same results by
+[`conformance/dashboard_aggregate.json`](conformance/dashboard_aggregate.json).
+
 ### Formatters
 (display, via `format`) `currency`, `percent`, `date`, `wareki`, `postal`, `mask`.
 Options are read from the element's `config` (e.g. `{ symbol: "¥", negative: "triangle" }`).
@@ -535,7 +678,8 @@ application (menu + several pages) see
 [`examples/order_entry.yaml`](examples/order_entry.yaml) (embedded rows) and
 [`examples/order_entry_paged.yaml`](examples/order_entry_paged.yaml) (child
 repository). Stepped input:
-[`examples/customer_wizard.yaml`](examples/customer_wizard.yaml).
+[`examples/customer_wizard.yaml`](examples/customer_wizard.yaml). Dashboard:
+[`examples/sales_dashboard.yaml`](examples/sales_dashboard.yaml).
 
 ## Equivalence guarantee
 

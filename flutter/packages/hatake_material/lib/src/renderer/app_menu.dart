@@ -91,6 +91,28 @@ IconData _iconFor(String? name) {
       return Icons.list;
     case 'inventory':
       return Icons.inventory_2;
+    case 'insights':
+      return Icons.insights;
+    case 'bar_chart':
+      return Icons.bar_chart;
+    case 'table_rows':
+      return Icons.table_rows;
+    case 'edit_note':
+      return Icons.edit_note;
+    case 'home':
+      return Icons.home;
+    case 'search':
+      return Icons.search;
+    case 'receipt_long':
+      return Icons.receipt_long;
+    case 'description':
+      return Icons.description;
+    case 'person':
+      return Icons.person;
+    case 'business':
+      return Icons.business;
+    case 'calendar_month':
+      return Icons.calendar_month;
     default:
       return Icons.folder_outlined;
   }

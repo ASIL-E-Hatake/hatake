@@ -45,6 +45,9 @@
         },
         {
           "$ref": "#/$defs/wizardPage"
+        },
+        {
+          "$ref": "#/$defs/dashboardPage"
         }
       ]
     },
@@ -100,6 +103,9 @@
               },
               {
                 "$ref": "#/$defs/wizardPage"
+              },
+              {
+                "$ref": "#/$defs/dashboardPage"
               }
             ]
           }
@@ -879,6 +885,216 @@
       "type": "object",
       "description": "Plugin / renderer specific extra settings.",
       "additionalProperties": true
+    },
+    "dashboardPage": {
+      "type": "object",
+      "description": "A dashboard page: a grid of read-only cards, each one a small query plus how to display its result. It addresses no single record, so it has no `key`, and `repository` is only the default for cards that declare none.",
+      "required": [
+        "type",
+        "id",
+        "title",
+        "items"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "description": "Page kind.",
+          "enum": [
+            "dashboard"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string",
+          "description": "Default repository key for cards that omit one."
+        },
+        "layout": {
+          "$ref": "#/$defs/layout",
+          "description": "Card grid width. Defaults to 2 columns."
+        },
+        "search": {
+          "$ref": "#/$defs/search",
+          "description": "Filters applied to every card's query."
+        },
+        "items": {
+          "type": "array",
+          "description": "Cards, in declaration order.",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/dashboardItem"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/action"
+          }
+        }
+      }
+    },
+    "dashboardItem": {
+      "type": "object",
+      "description": "One dashboard card: a query (repository + filters + limit + sort) and how to show its result (metric / table / chart).",
+      "required": [
+        "id",
+        "title"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Card identifier."
+        },
+        "type": {
+          "type": "string",
+          "description": "Card kind. Open string; built-ins below.",
+          "default": "metric",
+          "examples": [
+            "metric",
+            "table",
+            "chart"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "Card heading."
+        },
+        "repository": {
+          "type": "string",
+          "description": "Repository key. Falls back to the page's."
+        },
+        "span": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Grid columns this card occupies."
+        },
+        "filters": {
+          "type": "object",
+          "description": "Fixed filter values merged into the query."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100,
+          "description": "Rows to fetch (the query's pageSize)."
+        },
+        "sort": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Sort passed to the repository.",
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "ascending": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "value": {
+          "$ref": "#/$defs/dashboardValue",
+          "description": "Reduction for a `metric` card. Omitted = count."
+        },
+        "format": {
+          "type": "string",
+          "description": "Display formatter for a `metric` value."
+        },
+        "config": {
+          "type": "object",
+          "description": "Extra settings (formatter options, `height`, ...)."
+        },
+        "columns": {
+          "type": "array",
+          "description": "Columns for a `table` card.",
+          "items": {
+            "$ref": "#/$defs/column"
+          }
+        },
+        "chart": {
+          "$ref": "#/$defs/chart",
+          "description": "Plot for a `chart` card."
+        },
+        "action": {
+          "type": "string",
+          "description": "Id of a page action to run when the card is tapped."
+        },
+        "roles": {
+          "type": "array",
+          "description": "Roles allowed to see this card. Empty = everyone.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "dashboardValue": {
+      "type": "object",
+      "description": "How a `metric` card folds its rows into one number. The framework never issues an aggregate query: the repository returns rows and this reduces them.",
+      "additionalProperties": false,
+      "properties": {
+        "aggregate": {
+          "type": "string",
+          "description": "Aggregate operation. Open string; built-ins below.",
+          "default": "count",
+          "examples": [
+            "count",
+            "sum",
+            "avg",
+            "min",
+            "max"
+          ]
+        },
+        "field": {
+          "type": "string",
+          "description": "Field to reduce. Not needed by `count`."
+        }
+      }
+    },
+    "chart": {
+      "type": "object",
+      "description": "How a `chart` card plots its rows. With `aggregate`, rows sharing a label fold into one point; without it every row is a point (which is what a pre-aggregated endpoint wants).",
+      "required": [
+        "labelField"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Chart kind. Open string; built-ins below.",
+          "default": "bar",
+          "examples": [
+            "bar",
+            "line",
+            "pie"
+          ]
+        },
+        "labelField": {
+          "type": "string",
+          "description": "Field holding each point's label."
+        },
+        "valueField": {
+          "type": "string",
+          "description": "Field holding each point's value."
+        },
+        "aggregate": {
+          "type": "string",
+          "description": "Aggregate applied per label. Omitted = one point per row.",
+          "examples": [
+            "count",
+            "sum",
+            "avg",
+            "min",
+            "max"
+          ]
+        }
+      }
     }
   }
 }
