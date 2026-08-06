@@ -133,23 +133,45 @@ class OrderRepository implements Repository {
 
   @override
   Future<DataRecord> create(DataRecord data) async {
-    _rows.add({...data});
-    return {...data};
+    final record = _withAmount({...data});
+    _rows.add(record);
+    return record;
   }
 
   @override
   Future<DataRecord> update(Object key, DataRecord data) async {
     final index = _rows.indexWhere((r) => r['orderNo'] == key);
-    // 受注入力はヘッダ＋明細だけを送ってくるので、既存の項目（状態・受注日など）
-    // は残したままマージする。
+    // 送られてこなかった項目（別画面で持つ `shipped` など）は残したままマージする。
     final existing = index >= 0 ? _rows[index] : const <String, Object?>{};
-    final record = {...existing, ...data, 'orderNo': key};
+    final record = _withAmount({...existing, ...data, 'orderNo': key});
     if (index >= 0) {
       _rows[index] = record;
     } else {
       _rows.add(record);
     }
     return record;
+  }
+
+  /// 明細が付いてきたら受注金額を集計し直す。
+  ///
+  /// 「子を合計して親に持つ」は業務ロジックなので Framework の対象外＝ここ
+  /// （利用者の Repository / サービス層）の責務。これが無いと明細を直しても
+  /// 受注照会の金額が古いままになる。
+  ///
+  /// 明細を別テーブルに持つ画面（`subTable` の `source`）では `lines` が送られて
+  /// こないので、この集計は働かない。2つの Repository をまたぐ集計はサービス層の
+  /// 仕事で、デモの範囲外。
+  static DataRecord _withAmount(DataRecord record) {
+    final lines = record['lines'];
+    if (lines is! Iterable) return record;
+    var total = 0;
+    for (final line in lines) {
+      if (line is Map) {
+        final amount = line['amount'];
+        if (amount is num) total += amount.toInt();
+      }
+    }
+    return {...record, 'amount': total};
   }
 
   @override

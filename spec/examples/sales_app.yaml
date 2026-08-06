@@ -74,7 +74,7 @@ app:
           # between は開始／終了の2入力になり、[開始, 終了] で渡る。
           - { field: orderDate, label: 受注日, type: date, operator: between }
       table:
-        rowActions: [detail, openEntry]
+        rowActions: [detail, openEntry, openEntryPaged]
         columns:
           - { field: orderNo, label: 受注番号, sortable: true, width: 160 }
           - { field: customer, label: 顧客, width: 200 }
@@ -86,6 +86,8 @@ app:
         - { id: detail, type: navigate, label: 詳細, page: order_detail, params: { id: "$row.orderNo" } }
         # 行から親子（ヘッダ＋明細）編集へ。
         - { id: openEntry, type: navigate, label: 明細編集, page: order_entry, params: { id: "$row.orderNo" } }
+        # 明細を別テーブルに持つ版へ。子行は親キーが要るので、行から開くのが本来の入口。
+        - { id: openEntryPaged, type: navigate, label: 明細（別テーブル）, page: order_entry_paged, params: { id: "$row.orderNo" } }
 
     - type: detail
       id: order_detail
@@ -114,8 +116,16 @@ app:
             fields:
               - { field: orderNo, label: 受注番号, type: text, required: true, normalize: [toHankaku, trim] }
               - { field: customer, label: 顧客, type: text, required: true }
-          - title: 明細
-            fields:
+              - { field: orderDate, label: 受注日, type: date, required: true }
+              - field: status
+                label: 状態
+                type: select
+                required: true
+                options:
+                  - { value: 未出荷, label: 未出荷 }
+                  - { value: 出荷済, label: 出荷済 }
+          # セクション見出しは付けない: subTable 自身の label が見出しになるため。
+          - fields:
               # この項目の値が子行の配列になる（type: subTable）。
               - field: lines
                 label: 明細
@@ -145,8 +155,16 @@ app:
             fields:
               - { field: orderNo, label: 受注番号, type: text, required: true, normalize: [toHankaku, trim] }
               - { field: customer, label: 顧客, type: text, required: true }
-          - title: 明細
-            fields:
+              - { field: orderDate, label: 受注日, type: date, required: true }
+              - field: status
+                label: 状態
+                type: select
+                required: true
+                options:
+                  - { value: 未出荷, label: 未出荷 }
+                  - { value: 出荷済, label: 出荷済 }
+          # セクション見出しは付けない: subTable 自身の label が見出しになるため。
+          - fields:
               # 値は親レコードに入らない。行は orderLineRepository が持つ。
               - field: lines
                 label: 明細

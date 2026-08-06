@@ -5,6 +5,7 @@ part 'renderer/app_shell.dart';
 part 'renderer/app_menu.dart';
 part 'renderer/app_breadcrumb.dart';
 part 'renderer/table_support.dart';
+part 'renderer/page_actions.dart';
 part 'renderer/filter_input.dart';
 part 'renderer/crud_page.dart';
 part 'renderer/form_fields.dart';

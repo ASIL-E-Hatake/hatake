@@ -13,7 +13,7 @@ void main() {
     // Starts at column 0 as a standalone page definition.
     expect(yaml.startsWith('type: search'), isTrue);
     expect(yaml, contains('id: order_search'));
-    expect(yaml, contains('rowActions: [detail, openEntry]'));
+    expect(yaml, contains('rowActions: [detail, openEntry, openEntryPaged]'));
     // Nested structure keeps its relative indentation.
     expect(yaml, contains('  columns:'));
     // Stops before the next page.

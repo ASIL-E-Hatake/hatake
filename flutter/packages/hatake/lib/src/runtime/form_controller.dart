@@ -20,7 +20,17 @@ class FormController extends ChangeNotifier {
   })  : _validator = validator ?? FormValidator(),
         _normalizer = normalizer ?? FormNormalizer();
 
+  /// Whether the form was *opened* on an existing record.
   bool get isEdit => recordKey != null;
+
+  /// The key of the record this form is working on — [recordKey], or the key of
+  /// the record a successful create produced.
+  ///
+  /// Repository-backed `subTable` rows need it as their foreign key, so they
+  /// become editable as soon as the parent has been saved. It also stops a
+  /// second save from creating a duplicate.
+  Object? get effectiveKey =>
+      recordKey ?? _savedRecord?[definition.keyField];
 
   bool _loading = false;
   bool get loading => _loading;
@@ -80,9 +90,12 @@ class FormController extends ChangeNotifier {
     _validation = ValidationResult.valid;
     notifyListeners();
     try {
-      _savedRecord = isEdit
-          ? await repository.update(recordKey!, normalized)
-          : await repository.create(normalized);
+      // Keyed off the effective key, so saving again after a create updates
+      // that record instead of inserting a second one.
+      final key = effectiveKey;
+      _savedRecord = key == null
+          ? await repository.create(normalized)
+          : await repository.update(key, normalized);
       return _savedRecord;
     } catch (error) {
       _error = error;
