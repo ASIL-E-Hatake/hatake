@@ -13,9 +13,16 @@ page:
           - { field: orderNo, label: 受注番号, type: text, required: true, normalize: [toHankaku, trim] }
           - { field: customer, label: 顧客, type: text, required: true }
           - { field: orderDate, label: 受注日, type: date, required: true, format: date }
+          - field: status
+            label: 状態
+            type: select
+            required: true
+            options:
+              - { value: 未出荷, label: 未出荷 }
+              - { value: 出荷済, label: 出荷済 }
 
-      - title: 明細
-        fields:
+      # セクション見出しは付けない: subTable 自身の label がグリッドの見出しになるため。
+      - fields:
           # この項目の値が子行の配列になる。
           - field: lines
             label: 明細
