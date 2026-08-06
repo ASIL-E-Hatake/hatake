@@ -10,6 +10,7 @@ export * from "./conditionEvaluator.js";
 export * from "./computed.js";
 export * from "./access.js";
 export * from "./query.js";
+export * from "./dto.js";
 export * from "./formatter.js";
 export * from "./converter.js";
 export * from "./normalizer.js";

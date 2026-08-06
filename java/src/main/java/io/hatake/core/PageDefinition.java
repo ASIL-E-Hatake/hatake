@@ -23,6 +23,7 @@ public record PageDefinition(
         String repository,
         String keyField,
         SearchDefinition search,
+        TableDefinition table,
         FormDefinition form,
         List<WizardStepDefinition> steps) {
 
@@ -30,10 +31,10 @@ public record PageDefinition(
     public static final String WIZARD = "wizard";
 
     /**
-     * ステップを持たないページ用の短縮コンストラクタ。
+     * テーブルもステップも持たないページ用の短縮コンストラクタ。
      *
      * <p>正式コンストラクタは項目が増えるたびに全呼び出し元を壊すので、
-     * ウィザードに関係ない箇所はこちらを使う。
+     * それらに関係ない箇所（テスト・単純な組み立て）はこちらを使う。
      */
     public PageDefinition(
             String id,
@@ -44,7 +45,8 @@ public record PageDefinition(
             String keyField,
             SearchDefinition search,
             FormDefinition form) {
-        this(id, title, dslVersion, type, repository, keyField, search, form, List.of());
+        this(id, title, dslVersion, type, repository, keyField, search,
+                TableDefinition.EMPTY, form, List.of());
     }
 
     /** このページがステップ入力かどうか。 */

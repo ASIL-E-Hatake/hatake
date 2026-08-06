@@ -60,8 +60,26 @@ public final class DefinitionParser {
                 reqStr(page, "repository"),
                 page.get("key") instanceof String k ? k : "id",
                 parseSearch(page.get("search")),
+                parseTable(page.get("table")),
                 form,
                 steps);
+    }
+
+    /** 一覧テーブルの列。レスポンス形の導出に使う。 */
+    @SuppressWarnings("unchecked")
+    private static TableDefinition parseTable(Object o) {
+        if (!(o instanceof Map)) {
+            return TableDefinition.EMPTY;
+        }
+        Map<String, Object> m = (Map<String, Object>) o;
+        if (!(m.get("columns") instanceof List<?> list)) {
+            return TableDefinition.EMPTY;
+        }
+        List<ColumnDefinition> columns = new ArrayList<>();
+        for (Object c : list) {
+            columns.add(parseColumn((Map<String, Object>) c));
+        }
+        return new TableDefinition(List.copyOf(columns));
     }
 
     /** ステップは section の形（{@code fields}）＋ id / title。 */
