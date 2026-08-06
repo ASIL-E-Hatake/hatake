@@ -38,7 +38,7 @@
 | バックエンド | サーバ側バリデーション | ✅ Java/TS | |
 | | QueryBuilder（QuerySpec） | ✅ Java/TS | |
 | | ORM アダプタ（opt-in） | 🚧 Java/JPA | `JpaQueryTranslator`（`QuerySpec`→JPQL＋params＋paging、依存ゼロ）を Java に実装。MyBatis / Prisma 等は今後 |
-| | DTO / レスポンス形生成 | ⏳ | |
+| | DTO / レスポンス形生成 | ✅ Java/TS | `deriveDto(page)` → フレームワーク非依存の `DtoSpec`（`QuerySpec` と同じ立ち位置）。`form.fields`→request（`computed`/`readOnly` は除外）、`table.columns`→row＋`listResponse`＝`{items,totalCount}`、`search.filters`→queryParams（`between` は配列）、`key`→pathParams、`subTable`→子の形（`source` 付きは親に入れない）。`validators` は `constraints` に翻訳。**JSON Schema 2020-12 出力（`toJsonSchema`）と OpenAPI 3.1 出力（`toOpenApi`）まで完了**。受け取る形は閉じ・返す形は開ける／配列の制約は要素側／`basePath` は呼び出し側が渡す（DSL は URL を知らない。渡さなければ schemas だけ）／操作は必要な形があるときだけ出す（読み取り専用ページは一覧のみ）。**ネイティブ型出力（`toTypeScript` / `toJavaRecords`）まで完了**＝制約は doc コメント、Java の数値は `BigDecimal`、日付は文字列、1レコード＝1ファイル。生成物が javac / tsc を通ることもテストで担保。**Phase 1〜4 完了**。設計は [提案書](proposals/dto-generation.ja.md) |
 
 ## B. 言語間の足並み（パリティ）
 
@@ -51,6 +51,10 @@
 | FormValidator（サーバ側） | ✅ | ✅ | ✅ | ✅ |
 | Validator 拡張レジストリ | ✅ | ✅ | ✅ | ✅ |
 | QueryBuilder（QuerySpec） | ✅ | — | ✅ | ✅ |
+| DTO 導出（`deriveDto`→`DtoSpec`） | ✅ | 対象外(※2) | ✅ | ✅ |
+| JSON Schema 出力（`toJsonSchema`） | ✅ | 対象外(※2) | ✅ | ✅ |
+| OpenAPI 3.1 出力（`toOpenApi`） | ✅ | 対象外(※2) | ✅ | ✅ |
+| 型定義出力（`toTypeScript`/`toJavaRecords`） | ✅ | 対象外(※2) | ✅ | ✅ |
 | Formatter / Converter | ✅ | ✅ | ✅ | ✅ |
 | メッセージ i18n（`MessageResolver`） | — | ✅ | ✅ | ✅ |
 | 条件表示 `evaluateCondition` / 計算 `computed` | ✅ | ✅ | ✅ | ✅ |
@@ -61,9 +65,11 @@
 | 明細の `source`（子Repository方式） | ✅ | ✅（＋描画・ページング） | ✅（検証で当該項目を飛ばす） | ✅（同左） |
 | ステップ入力 `wizard`（モデル＋パーサ＋ステップ検証） | ✅ | ✅（＋描画） | ✅ | ✅ |
 | Renderer（画面描画） | — | ✅(Material) | 対象外 | 対象外(※) |
-| table/action など画面寄りモデル | ✅ | ✅ | ⏳一部 | ✅ |
+| table/action など画面寄りモデル | ✅ | ✅ | ⏳一部（table 追加済／action 未） | ✅ |
 
-※ Java の定義モデルは page 識別子 + search + form まで（table/action 未）。子グリッド用の `ColumnDefinition` は検証に必要な最小形（field/label/type/format）で、`width`/`sortable`/`roles` 等の描画専用キーは持たない。TS は画面寄りモデルも持つがバックエンド用途で描画はしない。対応ページ種別は TS が `crud`/`search`/`form`（`master`/`detail` は未）、Java は種別を文字列として保持。
+※ Java の定義モデルは page 識別子 + search + table + form まで（action 未。`table` は DTO のレスポンス形導出のために追加）。子グリッド用の `ColumnDefinition` は検証に必要な最小形（field/label/type/format）で、`width`/`sortable`/`roles` 等の描画専用キーは持たない。TS は画面寄りモデルも持つがバックエンド用途で描画はしない。
+
+※2 DTO 導出は**バックエンドの関心**なので Flutter は対象外（`QueryBuilder` と同じ扱い）。framework 側の Dart コードはシリアライズをせず、境界が `DataRecord`＝Map なので DTO を詰める場所が framework 内に無い。理由の詳細は [提案書](proposals/dto-generation.ja.md)。対応ページ種別は TS が `crud`/`search`/`form`（`master`/`detail` は未）、Java は種別を文字列として保持。
 
 ### パリティの進め方
 
@@ -114,12 +120,12 @@
 - **中（P2）**: ~~DetailPage / MasterPage~~ ✅、~~消費税・年度/四半期・年齢/勤続・営業日（utils P2）~~ ✅（3言語＋conformance）、~~元号算出/税率別合計（utils 小follow-up）~~ ✅（`eraOf` / `computeInvoice`、3言語＋conformance）→ ~~ORM アダプタ1個目~~ ✅（Java/JPA `JpaQueryTranslator`）。P2 はひと通り完了（i18n・条件表示・計算項目・ORM アダプタ1個目 すべて✅）
 - **遠い（P3）**: ~~権限制御~~ ✅（roles + `isAllowed`、3言語）、DashboardPage、Python/Rust エディション、帳票・全銀など重いやつ
 
-**P1・P2 は完了済み**。残っているのは次の2本（どちらも独立して着手できる）と P3:
+**P1・P2 は完了済み**。P1 が指していた次の2本（WizardPage / DTO生成）も完了したので、残るのは P3 相当:
 
 | 次の候補 | 内容 | 規模感 |
 |---|---|---|
 | ~~新ページ種別（WizardPage）~~ | ✅ 完了（`type: wizard`。上の表参照） | — |
-| **DTO / レスポンス形生成** | 定義から API の入出力形（型定義・OpenAPI 断片など）を生成。バックエンド側の価値が大きいが「何を出力するか」の設計判断が要る | 中〜大 |
+| ~~DTO / レスポンス形生成~~ | ✅ 完了（Phase 1〜4。上の表参照） | — |
 
 ## 依頼の仕方（メモ）
 

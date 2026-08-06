@@ -1,0 +1,650 @@
+{
+  "_comment": "OpenAPI emitter: each language parses `page`, calls deriveDto(page) then toOpenApi(spec, options), and must produce exactly `expected`. Scalars are compared as strings to absorb numeric type differences. Rules pinned here: OpenAPI 3.1 (its Schema Object IS JSON Schema 2020-12, so the Phase 2 output drops in unchanged); schemas live under components.schemas so $ref points there; `basePath` comes from the caller because the DSL knows nothing about URLs, and omitting it emits components.schemas with no `paths` at all; an operation is emitted only when the shapes it needs exist, so a read-only search page yields just the list operation; the list operation's query parameters are the page's filters plus the fixed RepositoryQuery contract (page/pageSize/sortField/sortAscending); ValidationErrorResponse mirrors ValidationResult and is only added when the page accepts a request.",
+  "cases": [
+    {
+      "name": "crud page with a basePath yields the full CRUD surface",
+      "options": {
+        "basePath": "/api/customers",
+        "title": "Customer master API",
+        "version": "1.0.0"
+      },
+      "page": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "crud",
+          "id": "customer_master",
+          "title": "顧客マスタ",
+          "repository": "customerRepository",
+          "key": "id",
+          "search": {
+            "filters": [
+              {
+                "field": "name",
+                "label": "顧客名",
+                "type": "text",
+                "operator": "contains"
+              }
+            ]
+          },
+          "table": {
+            "columns": [
+              {
+                "field": "id",
+                "label": "ID"
+              },
+              {
+                "field": "name",
+                "label": "顧客名"
+              }
+            ]
+          },
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  {
+                    "field": "code",
+                    "label": "コード",
+                    "required": true,
+                    "validators": [
+                      {
+                        "type": "maxLength",
+                        "value": 6
+                      }
+                    ]
+                  },
+                  {
+                    "field": "name",
+                    "label": "顧客名",
+                    "required": true
+                  },
+                  {
+                    "field": "id",
+                    "label": "ID",
+                    "readOnly": true
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "Customer master API",
+          "version": "1.0.0"
+        },
+        "paths": {
+          "/api/customers": {
+            "get": {
+              "operationId": "customerMasterList",
+              "summary": "List customer_master",
+              "parameters": [
+                {
+                  "name": "name",
+                  "in": "query",
+                  "required": false,
+                  "schema": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "name": "page",
+                  "in": "query",
+                  "required": false,
+                  "schema": {
+                    "type": "integer"
+                  }
+                },
+                {
+                  "name": "pageSize",
+                  "in": "query",
+                  "required": false,
+                  "schema": {
+                    "type": "integer"
+                  }
+                },
+                {
+                  "name": "sortField",
+                  "in": "query",
+                  "required": false,
+                  "schema": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "name": "sortAscending",
+                  "in": "query",
+                  "required": false,
+                  "schema": {
+                    "type": "boolean"
+                  }
+                }
+              ],
+              "responses": {
+                "200": {
+                  "description": "A page of results.",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/CustomerMasterListResponse"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "post": {
+              "operationId": "customerMasterCreate",
+              "summary": "Create customer_master",
+              "requestBody": {
+                "required": true,
+                "description": "The record to create.",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/CustomerMasterRequest"
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "201": {
+                  "description": "The created record.",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/CustomerMasterResponse"
+                      }
+                    }
+                  }
+                },
+                "400": {
+                  "description": "Validation failed.",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/ValidationErrorResponse"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "/api/customers/{id}": {
+            "get": {
+              "operationId": "customerMasterGet",
+              "summary": "Fetch one customer_master",
+              "parameters": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              ],
+              "responses": {
+                "200": {
+                  "description": "The record.",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/CustomerMasterResponse"
+                      }
+                    }
+                  }
+                },
+                "404": {
+                  "description": "Not found."
+                }
+              }
+            },
+            "put": {
+              "operationId": "customerMasterUpdate",
+              "summary": "Update customer_master",
+              "parameters": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              ],
+              "requestBody": {
+                "required": true,
+                "description": "The new values.",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/CustomerMasterRequest"
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "The updated record.",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/CustomerMasterResponse"
+                      }
+                    }
+                  }
+                },
+                "400": {
+                  "description": "Validation failed.",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/ValidationErrorResponse"
+                      }
+                    }
+                  }
+                },
+                "404": {
+                  "description": "Not found."
+                }
+              }
+            },
+            "delete": {
+              "operationId": "customerMasterDelete",
+              "summary": "Delete customer_master",
+              "parameters": [
+                {
+                  "name": "id",
+                  "in": "path",
+                  "required": true,
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              ],
+              "responses": {
+                "204": {
+                  "description": "Deleted."
+                },
+                "404": {
+                  "description": "Not found."
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "CustomerMasterRequest": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "code",
+                "name"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "maxLength": 6
+                },
+                "name": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                }
+              }
+            },
+            "CustomerMasterResponse": {
+              "type": "object",
+              "required": [
+                "code",
+                "name"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "maxLength": 6
+                },
+                "name": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                }
+              }
+            },
+            "CustomerMasterRow": {
+              "type": "object",
+              "required": [
+                "id",
+                "name"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            },
+            "CustomerMasterListResponse": {
+              "type": "object",
+              "required": [
+                "items",
+                "totalCount"
+              ],
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerMasterRow"
+                  }
+                },
+                "totalCount": {
+                  "type": "number"
+                }
+              }
+            },
+            "CustomerMasterQuery": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              }
+            },
+            "CustomerMasterKey": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                }
+              }
+            },
+            "ValidationErrorResponse": {
+              "type": "object",
+              "description": "Validation failure as reported by FormValidator (ValidationResult).",
+              "required": [
+                "valid",
+                "errors"
+              ],
+              "properties": {
+                "valid": {
+                  "type": "boolean"
+                },
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "field",
+                      "message"
+                    ],
+                    "properties": {
+                      "field": {
+                        "type": "string"
+                      },
+                      "message": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "read-only search page yields the list operation only",
+      "options": {
+        "basePath": "/api/orders"
+      },
+      "page": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "search",
+          "id": "order_search",
+          "title": "受注照会",
+          "repository": "orderRepository",
+          "key": "orderNo",
+          "search": {
+            "filters": [
+              {
+                "field": "status",
+                "label": "状態",
+                "type": "select",
+                "operator": "equals"
+              }
+            ]
+          },
+          "table": {
+            "columns": [
+              {
+                "field": "orderNo",
+                "label": "受注番号"
+              },
+              {
+                "field": "amount",
+                "label": "金額",
+                "type": "number"
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "order_search",
+          "version": "1.0.0"
+        },
+        "paths": {
+          "/api/orders": {
+            "get": {
+              "operationId": "orderSearchList",
+              "summary": "List order_search",
+              "parameters": [
+                {
+                  "name": "status",
+                  "in": "query",
+                  "required": false,
+                  "schema": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "name": "page",
+                  "in": "query",
+                  "required": false,
+                  "schema": {
+                    "type": "integer"
+                  }
+                },
+                {
+                  "name": "pageSize",
+                  "in": "query",
+                  "required": false,
+                  "schema": {
+                    "type": "integer"
+                  }
+                },
+                {
+                  "name": "sortField",
+                  "in": "query",
+                  "required": false,
+                  "schema": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "name": "sortAscending",
+                  "in": "query",
+                  "required": false,
+                  "schema": {
+                    "type": "boolean"
+                  }
+                }
+              ],
+              "responses": {
+                "200": {
+                  "description": "A page of results.",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/OrderSearchListResponse"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "components": {
+          "schemas": {
+            "OrderSearchRow": {
+              "type": "object",
+              "required": [
+                "orderNo",
+                "amount"
+              ],
+              "properties": {
+                "orderNo": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                }
+              }
+            },
+            "OrderSearchListResponse": {
+              "type": "object",
+              "required": [
+                "items",
+                "totalCount"
+              ],
+              "properties": {
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrderSearchRow"
+                  }
+                },
+                "totalCount": {
+                  "type": "number"
+                }
+              }
+            },
+            "OrderSearchQuery": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "status": {
+                  "type": "string"
+                }
+              }
+            },
+            "OrderSearchKey": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "orderNo"
+              ],
+              "properties": {
+                "orderNo": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "no basePath yields components.schemas only",
+      "options": {},
+      "page": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "form",
+          "id": "customer_form",
+          "title": "顧客登録",
+          "repository": "customerRepository",
+          "key": "id",
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  {
+                    "field": "code",
+                    "label": "コード",
+                    "required": true
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "openapi": "3.1.0",
+        "info": {
+          "title": "customer_form",
+          "version": "1.0.0"
+        },
+        "components": {
+          "schemas": {
+            "CustomerFormRequest": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "code"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                }
+              }
+            },
+            "CustomerFormResponse": {
+              "type": "object",
+              "required": [
+                "code"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                }
+              }
+            },
+            "CustomerFormKey": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
