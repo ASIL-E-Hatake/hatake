@@ -6,6 +6,7 @@ import 'package:hatake_yaml/hatake_yaml.dart';
 import 'customer_repository.dart';
 import 'definition_dialog.dart';
 import 'definition_source.dart';
+import 'order_line_repository.dart';
 import 'order_repository.dart';
 import 'product_repository.dart';
 
@@ -47,6 +48,8 @@ class HatakeExampleApp extends StatelessWidget {
           'customerRepository': CustomerRepository.seeded(),
           'productRepository': ProductRepository.seeded(),
           'orderRepository': OrderRepository.seeded(),
+          // 明細を別テーブルに持つ画面（subTable の source）用。
+          'orderLineRepository': OrderLineRepository.seeded(),
         }),
         renderer: const MaterialRenderer(),
         // Plugin action: each page declares

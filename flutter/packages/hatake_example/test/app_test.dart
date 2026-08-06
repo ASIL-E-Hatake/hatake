@@ -56,4 +56,23 @@ void main() {
     // Reachable from the menu and from the order list.
     expect(app.menu.any((m) => m.page == 'order_entry'), isTrue);
   });
+
+  test('the demo also defines the child-repository variant', () {
+    final app = parseAppYaml(File('assets/sales_app.yaml').readAsStringSync());
+
+    final paged = app.pageById('order_entry_paged') as FormPageDefinition;
+    final lines = paged.form.fields.firstWhere((f) => f.field == 'lines');
+    // Same subTable, only the rows come from their own repository.
+    expect(lines.type, FieldTypes.subTable);
+    expect(
+      lines.source,
+      const SubTableSource(
+        repository: 'orderLineRepository',
+        parentKey: 'orderNo',
+        keyField: 'lineNo',
+        pageSize: 10,
+      ),
+    );
+    expect(app.menu.any((m) => m.page == 'order_entry_paged'), isTrue);
+  });
 }
