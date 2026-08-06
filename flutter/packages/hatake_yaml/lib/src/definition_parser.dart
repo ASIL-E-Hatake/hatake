@@ -236,6 +236,19 @@ FieldDefinition _parseField(Map<String, Object?> m) {
       for (var i = 0; i < m.optList('fields').length; i++)
         _parseField(_asMap(m.optList('fields')[i], 'field.fields[$i]')),
     ],
+    source: _parseSubTableSource(m.optMap('source')),
+  );
+}
+
+/// Parses a `subTable`'s `source` (child-repository rows). Null when absent,
+/// which keeps rows embedded in the parent record.
+SubTableSource? _parseSubTableSource(Map<String, Object?>? m) {
+  if (m == null) return null;
+  return SubTableSource(
+    repository: m.reqString('repository', at: 'field.source.repository'),
+    parentKey: m.reqString('parentKey', at: 'field.source.parentKey'),
+    keyField: m.optString('key') ?? 'id',
+    pageSize: m.optInt('pageSize') ?? 20,
   );
 }
 

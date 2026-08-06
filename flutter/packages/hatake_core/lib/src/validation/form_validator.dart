@@ -13,6 +13,10 @@ import 'validators.dart';
 /// Child rows of a `subTable` field are validated too: each row is checked
 /// against the field's `rowFields`, and errors are reported with an indexed
 /// path — `lines[0].qty`. Nested sub-tables recurse with the same convention.
+///
+/// A `subTable` with a `source` (repository-backed rows) is skipped entirely:
+/// its rows live in another repository, not in this record, so validating them
+/// here — including the field's own `required` — would be meaningless.
 class FormValidator {
   final ValidatorRegistry registry;
 
@@ -22,6 +26,9 @@ class FormValidator {
   ValidationResult validate(FormDefinition form, DataRecord record) {
     final errors = <ValidationError>[];
     for (final field in form.fields) {
+      // Repository-backed child rows are not part of this record.
+      if (field.type == FieldTypes.subTable && field.source != null) continue;
+
       final value = record[field.field];
       final rules = <ValidatorDefinition>[
         if (field.required)

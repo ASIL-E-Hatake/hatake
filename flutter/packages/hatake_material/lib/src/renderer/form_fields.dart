@@ -19,6 +19,15 @@ class _HatakeFormFields extends StatefulWidget {
   /// outside the `HatakeScope` subtree.
   final ValidatorRegistry? validators;
 
+  /// Builds the runtime for a `subTable` with a `source` (repository-backed
+  /// rows). Passed in for the same reason as [validators]. When null, such a
+  /// field falls back to the embedded grid.
+  final SubTableControllerFactory? subTables;
+
+  /// Primary-key value of the record being edited, or null when creating.
+  /// Repository-backed child rows need it as their foreign key.
+  final Object? recordKey;
+
   const _HatakeFormFields({
     super.key,
     required this.form,
@@ -28,6 +37,8 @@ class _HatakeFormFields extends StatefulWidget {
     required this.roles,
     this.formatters,
     this.validators,
+    this.subTables,
+    this.recordKey,
   });
 
   @override
@@ -89,6 +100,11 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
     for (final field in widget.form.fields) {
       if (field.computed != null) {
         values[field.field] = _computeds.compute(field.computed, values);
+      }
+      // Repository-backed child rows are saved on their own; they must not ride
+      // along in the parent record.
+      if (field.type == FieldTypes.subTable && field.source != null) {
+        values.remove(field.field);
       }
     }
     return values;
@@ -190,7 +206,20 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
 
     Widget input;
     switch (field.type) {
-      // Child-row grid (master-detail): the value is a list of rows.
+      // Child-row grid (master-detail). With a `source` the rows live in their
+      // own repository and are paged; otherwise the value is a list of rows.
+      case FieldTypes.subTable when field.source != null &&
+          widget.subTables != null:
+        input = _PagedSubTableField(
+          field: field,
+          factory: widget.subTables!,
+          parentKey: widget.recordKey,
+          formatters: _formatters,
+          validators: _validators,
+          fieldBuilders: widget.fieldBuilders,
+          roles: widget.roles,
+          readOnly: readOnly,
+        );
       case FieldTypes.subTable:
         input = _SubTableField(
           field: field,

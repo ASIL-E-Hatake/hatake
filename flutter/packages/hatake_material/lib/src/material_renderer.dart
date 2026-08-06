@@ -9,6 +9,7 @@ part 'renderer/filter_input.dart';
 part 'renderer/crud_page.dart';
 part 'renderer/form_fields.dart';
 part 'renderer/sub_table_field.dart';
+part 'renderer/sub_table_paged.dart';
 part 'renderer/search_page.dart';
 part 'renderer/detail_page.dart';
 part 'renderer/form_page.dart';

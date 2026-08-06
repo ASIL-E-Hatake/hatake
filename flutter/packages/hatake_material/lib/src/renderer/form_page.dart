@@ -55,6 +55,8 @@ class _MaterialFormPageState extends State<_MaterialFormPage> {
                       roles: HatakeScope.of(context).roles,
                       formatters: widget.formatters,
                       validators: HatakeScope.of(context).validators,
+                      subTables: HatakeScope.of(context).subTableController,
+                      recordKey: controller.recordKey,
                     ),
                   ),
           ),

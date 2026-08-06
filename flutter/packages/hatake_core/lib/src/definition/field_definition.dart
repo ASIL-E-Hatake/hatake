@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'column_definition.dart';
 import 'field_types.dart';
 import 'option_item.dart';
+import 'sub_table_source.dart';
 import 'validator_definition.dart';
 
 /// A single input field within a form.
@@ -67,6 +68,11 @@ class FieldDefinition extends Equatable {
   /// renderer derives inputs from [columns]. DSL key: `fields`.
   final List<FieldDefinition> rowFields;
 
+  /// Where child rows come from, for `type: subTable`. Null (the default) keeps
+  /// them embedded in the parent record; set it to page them from their own
+  /// repository instead. DSL key: `source`.
+  final SubTableSource? source;
+
   const FieldDefinition({
     required this.field,
     required this.label,
@@ -85,6 +91,7 @@ class FieldDefinition extends Equatable {
     this.roles = const [],
     this.columns = const [],
     this.rowFields = const [],
+    this.source,
   });
 
   @override
@@ -106,5 +113,6 @@ class FieldDefinition extends Equatable {
         roles,
         columns,
         rowFields,
+        source,
       ];
 }

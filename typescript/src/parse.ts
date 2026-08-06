@@ -11,6 +11,7 @@ import {
   type PaginationDefinition,
   type SearchDefinition,
   type SectionDefinition,
+  type SubTableSource,
   type TableDefinition,
   type ValidatorDefinition,
 } from "./definition.js";
@@ -244,6 +245,18 @@ function parseField(m: Dict): FieldDefinition {
     rowFields: optList(m, "fields").map((f, i) =>
       parseField(asDict(f, `field.fields[${i}]`)),
     ),
+    source: parseSubTableSource(optDict(m, "source")),
+  };
+}
+
+/** Parses a `subTable`'s `source`. Undefined keeps rows embedded in the parent. */
+function parseSubTableSource(m: Dict | undefined): SubTableSource | undefined {
+  if (!m) return undefined;
+  return {
+    repository: reqString(m, "repository", "field.source.repository"),
+    parentKey: reqString(m, "parentKey", "field.source.parentKey"),
+    keyField: optString(m, "key") ?? "id",
+    pageSize: optNumber(m, "pageSize") ?? 20,
   };
 }
 

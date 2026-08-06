@@ -87,6 +87,84 @@ void main() {
     expect(header.rowFields, isEmpty);
   });
 
+  test('no source means embedded rows (the default)', () {
+    expect(_linesOf(parsePageYaml(_yaml)).source, isNull);
+  });
+
+  test('parses a subTable source (child repository, paged)', () {
+    final lines = _linesOf(parsePageYaml('''
+page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            source:
+              repository: orderLineRepository
+              parentKey: orderNo
+              key: lineNo
+              pageSize: 25
+            columns:
+              - { field: item, label: 品名 }
+'''));
+
+    expect(
+      lines.source,
+      const SubTableSource(
+        repository: 'orderLineRepository',
+        parentKey: 'orderNo',
+        keyField: 'lineNo',
+        pageSize: 25,
+      ),
+    );
+  });
+
+  test('source key and pageSize fall back to id / 20', () {
+    final lines = _linesOf(parsePageYaml('''
+page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            source: { repository: lineRepository, parentKey: orderNo }
+'''));
+
+    expect(lines.source!.keyField, 'id');
+    expect(lines.source!.pageSize, 20);
+  });
+
+  test('a source without parentKey is rejected', () {
+    expect(
+      () => parsePageYaml('''
+page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            source: { repository: lineRepository }
+'''),
+      throwsA(isA<DefinitionParseException>()),
+    );
+  });
+
   test('YAML and JSON converge on an identical definition', () {
     expect(parsePageYaml(_yaml), parsePageJson(_json));
   });
@@ -96,6 +174,25 @@ void main() {
         File('../../../spec/examples/order_entry.yaml').readAsStringSync();
     final lines = _linesOf(parsePageYaml(source));
     expect(lines.type, FieldTypes.subTable);
+    expect(lines.columns.length, 4);
+    expect(lines.rowFields.length, 4);
+    expect(lines.source, isNull);
+  });
+
+  test('the paged example (spec/examples/order_entry_paged.yaml) parses', () {
+    final source =
+        File('../../../spec/examples/order_entry_paged.yaml').readAsStringSync();
+    final lines = _linesOf(parsePageYaml(source));
+    expect(
+      lines.source,
+      const SubTableSource(
+        repository: 'orderLineRepository',
+        parentKey: 'orderNo',
+        keyField: 'lineNo',
+        pageSize: 20,
+      ),
+    );
+    // Everything else is identical to the embedded example.
     expect(lines.columns.length, 4);
     expect(lines.rowFields.length, 4);
   });

@@ -11,27 +11,32 @@ import {
 // Shared master-detail validation fixture (spec/conformance), consumed
 // identically by the Dart and Java editions, so server-side row validation
 // stays the same across languages.
-const fixture = JSON.parse(
-  readFileSync("../spec/conformance/subtable_validation.json", "utf8"),
-);
-
 const key = (e: ValidationError | { field: string; message: string }): string =>
   `${e.field}=${e.message}`;
 
-describe("conformance: subTable validation", () => {
-  const page = parsePageJson(JSON.stringify(fixture.page)) as FormPageDefinition;
-  const form = page.form;
-  const validator = new FormValidator();
+function runFixture(name: string, file: string): void {
+  const fixture = JSON.parse(readFileSync(`../spec/conformance/${file}`, "utf8"));
 
-  for (const c of fixture.cases as any[]) {
-    it(c.name, () => {
-      const actual = validator.validate(form, c.record).errors;
-      expect(new Set(actual.map(key))).toEqual(
-        new Set((c.expected as any[]).map(key)),
-      );
-    });
-  }
-});
+  describe(`conformance: ${name}`, () => {
+    const page = parsePageJson(
+      JSON.stringify(fixture.page),
+    ) as FormPageDefinition;
+    const form = page.form;
+    const validator = new FormValidator();
+
+    for (const c of fixture.cases as any[]) {
+      it(c.name, () => {
+        const actual = validator.validate(form, c.record).errors;
+        expect(new Set(actual.map(key))).toEqual(
+          new Set((c.expected as any[]).map(key)),
+        );
+      });
+    }
+  });
+}
+
+runFixture("subTable validation", "subtable_validation.json");
+runFixture("subTable with source is skipped", "subtable_source_validation.json");
 
 describe("subTable field parsing", () => {
   const page = parsePageJson(
@@ -76,6 +81,91 @@ describe("subTable field parsing", () => {
     expect(field.rowFields.map((f) => f.field)).toEqual(["item", "qty"]);
     expect(field.rowFields[0].required).toBe(true);
     expect(field.rowFields[1].type).toBe("number");
+  });
+
+  it("has no source, so rows stay embedded in the parent record", () => {
+    expect(field.source).toBeUndefined();
+  });
+
+  it("parses a source (child repository, paged)", () => {
+    const withSource = parsePageJson(
+      JSON.stringify({
+        page: {
+          type: "form",
+          id: "order_entry",
+          title: "受注入力",
+          repository: "orderRepository",
+          form: {
+            sections: [
+              {
+                fields: [
+                  {
+                    field: "lines",
+                    label: "明細",
+                    type: "subTable",
+                    source: {
+                      repository: "orderLineRepository",
+                      parentKey: "orderNo",
+                      key: "lineNo",
+                      pageSize: 25,
+                    },
+                  },
+                  {
+                    field: "notes",
+                    label: "備考",
+                    type: "subTable",
+                    // key / pageSize fall back to id / 20.
+                    source: { repository: "noteRepository", parentKey: "orderNo" },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      }),
+    ) as FormPageDefinition;
+
+    expect(withSource.form.sections[0].fields[0].source).toEqual({
+      repository: "orderLineRepository",
+      parentKey: "orderNo",
+      keyField: "lineNo",
+      pageSize: 25,
+    });
+    expect(withSource.form.sections[0].fields[1].source).toEqual({
+      repository: "noteRepository",
+      parentKey: "orderNo",
+      keyField: "id",
+      pageSize: 20,
+    });
+  });
+
+  it("rejects a source without parentKey", () => {
+    expect(() =>
+      parsePageJson(
+        JSON.stringify({
+          page: {
+            type: "form",
+            id: "p",
+            title: "t",
+            repository: "r",
+            form: {
+              sections: [
+                {
+                  fields: [
+                    {
+                      field: "lines",
+                      label: "明細",
+                      type: "subTable",
+                      source: { repository: "lineRepository" },
+                    },
+                  ],
+                },
+              ],
+            },
+          },
+        }),
+      ),
+    ).toThrow();
   });
 
   it("leaves columns/rowFields empty for a plain field", () => {

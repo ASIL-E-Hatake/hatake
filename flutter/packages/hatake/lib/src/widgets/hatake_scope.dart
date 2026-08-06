@@ -4,6 +4,16 @@ import 'package:hatake_core/hatake_core.dart';
 import '../renderer/renderer.dart';
 import '../runtime/action_registry.dart';
 import '../runtime/repository_registry.dart';
+import '../runtime/sub_table_controller.dart';
+
+/// Builds the runtime for a repository-backed `subTable` field. Renderers get
+/// one of these from [HatakeScope.subTableController] so they never resolve
+/// repositories themselves; it is a plain function so it can also be passed
+/// into dialog routes, which sit outside the scope's subtree.
+typedef SubTableControllerFactory = SubTableController Function(
+  FieldDefinition field,
+  Object? parentKey,
+);
 
 /// Provides the active [Renderer], [RepositoryRegistry], and the plugin
 /// registries ([ValidatorRegistry], [ActionRegistry]) to the widget tree.
@@ -42,6 +52,21 @@ class HatakeScope extends InheritedWidget {
         converters = converters ?? ConverterRegistry(),
         actions = actions ?? ActionRegistry(),
         roles = roles ?? const {};
+
+  /// Runtime for a repository-backed `subTable` [field] under the parent record
+  /// identified by [parentKey] (null while the parent is unsaved). The caller
+  /// owns the returned controller and must dispose it.
+  SubTableController subTableController(
+    FieldDefinition field,
+    Object? parentKey,
+  ) {
+    return SubTableController(
+      field: field,
+      repository: repositories.resolve(field.source!.repository),
+      parentKey: parentKey,
+      validator: FormValidator(validators),
+    );
+  }
 
   static HatakeScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<HatakeScope>();

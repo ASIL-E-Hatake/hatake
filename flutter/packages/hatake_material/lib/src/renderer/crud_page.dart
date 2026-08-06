@@ -36,6 +36,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
         roles: _roles,
         formatters: _formatters,
         validators: HatakeScope.of(context).validators,
+        subTables: HatakeScope.of(context).subTableController,
       ),
     );
   }
@@ -243,6 +244,7 @@ class _FormDialog extends StatefulWidget {
   final Set<String> roles;
   final FormatterRegistry formatters;
   final ValidatorRegistry validators;
+  final SubTableControllerFactory subTables;
 
   const _FormDialog({
     required this.definition,
@@ -251,6 +253,7 @@ class _FormDialog extends StatefulWidget {
     required this.roles,
     required this.formatters,
     required this.validators,
+    required this.subTables,
   });
 
   @override
@@ -294,6 +297,11 @@ class _FormDialogState extends State<_FormDialog> {
                 roles: widget.roles,
                 formatters: widget.formatters,
                 validators: widget.validators,
+                subTables: widget.subTables,
+                // Child rows need the parent key; null while creating.
+                recordKey: isCreate
+                    ? null
+                    : controller.draft[widget.definition.keyField],
               ),
             ),
           ),

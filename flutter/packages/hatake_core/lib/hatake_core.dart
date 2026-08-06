@@ -21,6 +21,7 @@ export 'src/definition/pagination_definition.dart';
 export 'src/definition/field_definition.dart';
 export 'src/definition/column_definition.dart';
 export 'src/definition/filter_definition.dart';
+export 'src/definition/sub_table_source.dart';
 
 // Composite definitions.
 export 'src/definition/section_definition.dart';
