@@ -137,13 +137,28 @@ Member {
 
 `validators` は両言語が持っているので `constraints` はそのまま導出できる。
 
+## Phase 3 で見つかった Phase 1 のバグ（修正済み）
+
+Phase 1 で `request` から `readOnly` / `computed` を**除外**し、Phase 2 で
+`additionalProperties: false` を付けた結果、**生成スキーマが framework 自身のクライアントの
+送信内容を弾く**状態になっていた。
+
+`_HatakeFormFields.collect()` は `{..._values}`（`initial` 由来＝`readOnly` 項目を含む
+レコード全体）から始め、`computed` の値も明示的に詰める。つまり Flutter はこの2種を送る。
+
+**修正**: `request` は**全項目を含める**。ただし `readOnly` / `computed` は**常に optional**
+（「あってもよい・必須ではない」＝サーバは無視も再計算も自由）。閉じたスキーマのまま嘘が消える。
+
+あわせて 1件取得用に `response` ロールを追加した（`required` はフォームの `required` に一致。
+`computed` は Renderer が導出するのでサーバは送らなくてよく optional）。
+
 ## 段階
 
 | Phase | 内容 | 状態 |
 |---|---|---|
 | **1** | spec（`DtoSpec` の形＋導出ルール＋型マッピング表）／conformance fixture（`dto_spec.json`）／TS・Java に `deriveDto(page)` … ✅ 完了 | ✅ |
 | **2** | **JSON Schema emitter** … ✅ 完了。`toJsonSchema(spec)` が 2020-12 のドキュメント1本（全形を `$defs` に置いて `$ref` で相互参照）。受け取る形は閉じ（`additionalProperties: false`）・返す形は開ける／配列の制約は `items` 側／`required` は空なら出さない。`spec/tools/check_dto_schema.py` が「妥当なスキーマか」「実際に通す/弾くか」を独立検証（CI 込み） | ✅ |
-| 3 | OpenAPI 断片 emitter（`paths` + `components.schemas`）。opt-in アダプタ（別クラス） | その後 |
+| **3** | **OpenAPI emitter** … ✅ 完了。`toOpenApi(spec, options)` が **OpenAPI 3.1**（Schema Object が JSON Schema 2020-12 そのものなので Phase 2 の出力をそのまま埋められる）。`basePath` は**呼び出し側が渡す**＝DSL に URL を持ち込まない。渡さなければ `components.schemas` だけ。操作は必要な形があるときだけ出す（読み取り専用ページは一覧のみ）。一覧のクエリは絞り込み条件＋`RepositoryQuery` の契約。400 は `ValidationResult` 準拠。`spec/tools/check_openapi.py` が妥当性と約束を独立検証（CI 込み） | ✅ |
 | 4 | ネイティブ型出力（TS `interface` / Java `record`）。CLI として。**整形の議論はここまで遅らせる** | 将来 |
 
 Phase 1 は**出力なし**（`DtoSpec` が正しく導出できるところまで）だった。ナビゲーションや明細と同じ刻み方で、

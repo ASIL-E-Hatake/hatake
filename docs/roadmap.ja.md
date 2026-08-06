@@ -38,7 +38,7 @@
 | バックエンド | サーバ側バリデーション | ✅ Java/TS | |
 | | QueryBuilder（QuerySpec） | ✅ Java/TS | |
 | | ORM アダプタ（opt-in） | 🚧 Java/JPA | `JpaQueryTranslator`（`QuerySpec`→JPQL＋params＋paging、依存ゼロ）を Java に実装。MyBatis / Prisma 等は今後 |
-| | DTO / レスポンス形生成 | 🚧 Java/TS（Phase 1+2） | `deriveDto(page)` → フレームワーク非依存の `DtoSpec`（`QuerySpec` と同じ立ち位置）。`form.fields`→request（`computed`/`readOnly` は除外）、`table.columns`→row＋`listResponse`＝`{items,totalCount}`、`search.filters`→queryParams（`between` は配列）、`key`→pathParams、`subTable`→子の形（`source` 付きは親に入れない）。`validators` は `constraints` に翻訳。**JSON Schema 2020-12 出力（`toJsonSchema`）まで完了**（1ドキュメント＋`$defs`、受け取る形は閉じ・返す形は開ける、配列の制約は要素側）。OpenAPI 断片とネイティブ型出力は次段。設計は [提案書](proposals/dto-generation.ja.md) |
+| | DTO / レスポンス形生成 | 🚧 Java/TS（Phase 1〜3） | `deriveDto(page)` → フレームワーク非依存の `DtoSpec`（`QuerySpec` と同じ立ち位置）。`form.fields`→request（`computed`/`readOnly` は除外）、`table.columns`→row＋`listResponse`＝`{items,totalCount}`、`search.filters`→queryParams（`between` は配列）、`key`→pathParams、`subTable`→子の形（`source` 付きは親に入れない）。`validators` は `constraints` に翻訳。**JSON Schema 2020-12 出力（`toJsonSchema`）と OpenAPI 3.1 出力（`toOpenApi`）まで完了**。受け取る形は閉じ・返す形は開ける／配列の制約は要素側／`basePath` は呼び出し側が渡す（DSL は URL を知らない。渡さなければ schemas だけ）／操作は必要な形があるときだけ出す（読み取り専用ページは一覧のみ）。ネイティブ型出力は次段。設計は [提案書](proposals/dto-generation.ja.md) |
 
 ## B. 言語間の足並み（パリティ）
 
@@ -53,6 +53,7 @@
 | QueryBuilder（QuerySpec） | ✅ | — | ✅ | ✅ |
 | DTO 導出（`deriveDto`→`DtoSpec`） | ✅ | 対象外(※2) | ✅ | ✅ |
 | JSON Schema 出力（`toJsonSchema`） | ✅ | 対象外(※2) | ✅ | ✅ |
+| OpenAPI 3.1 出力（`toOpenApi`） | ✅ | 対象外(※2) | ✅ | ✅ |
 | Formatter / Converter | ✅ | ✅ | ✅ | ✅ |
 | メッセージ i18n（`MessageResolver`） | — | ✅ | ✅ | ✅ |
 | 条件表示 `evaluateCondition` / 計算 `computed` | ✅ | ✅ | ✅ | ✅ |
@@ -123,7 +124,7 @@
 | 次の候補 | 内容 | 規模感 |
 |---|---|---|
 | ~~新ページ種別（WizardPage）~~ | ✅ 完了（`type: wizard`。上の表参照） | — |
-| **DTO / レスポンス形生成** | 🚧 Phase 1（`DtoSpec` 導出）・Phase 2（JSON Schema 出力）完了。次は Phase 3 = OpenAPI 断片、Phase 4 = ネイティブ型出力 | 中〜大 |
+| **DTO / レスポンス形生成** | 🚧 Phase 1（`DtoSpec` 導出）・2（JSON Schema）・3（OpenAPI 3.1）完了。残りは Phase 4 = ネイティブ型出力（TS `interface` / Java `record`） | 中 |
 
 ## 依頼の仕方（メモ）
 

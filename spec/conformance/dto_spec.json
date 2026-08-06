@@ -1,8 +1,8 @@
 {
-  "_comment": "DTO derivation: each language parses `page`, calls deriveDto(page), and must produce exactly `expected`. Shapes are compared in order; constraint values are compared as strings to absorb numeric type differences between languages. Shape order is fixed: request, row, listResponse, queryParams, pathParams, then child (subTable) shapes in field-declaration order, deduped by name.",
+  "_comment": "DTO derivation: each language parses `page`, calls deriveDto(page), and must produce exactly `expected`. Shapes are compared in order; constraint values are compared as strings to absorb numeric type differences between languages. Shape order is fixed: request, response, row, listResponse, queryParams, pathParams, then child (subTable) shapes in field-declaration order, deduped by name. `readOnly` / `computed` fields are part of a request but always optional (the framework's own client sends them); in a response `required` mirrors the form's `required` and computed values stay optional.",
   "cases": [
     {
-      "name": "crud page yields request, row, listResponse, query and key shapes",
+      "name": "crud page yields request, response, row, listResponse, query and key shapes",
       "page": {
         "dsl_version": "1.0",
         "page": {
@@ -13,33 +13,107 @@
           "key": "id",
           "search": {
             "filters": [
-              { "field": "name", "label": "顧客名", "type": "text", "operator": "contains" },
-              { "field": "openedAt", "label": "開設日", "type": "date", "operator": "between" }
+              {
+                "field": "name",
+                "label": "顧客名",
+                "type": "text",
+                "operator": "contains"
+              },
+              {
+                "field": "openedAt",
+                "label": "開設日",
+                "type": "date",
+                "operator": "between"
+              }
             ]
           },
           "table": {
             "columns": [
-              { "field": "id", "label": "ID" },
-              { "field": "name", "label": "顧客名" },
-              { "field": "credit", "label": "与信", "type": "number" }
+              {
+                "field": "id",
+                "label": "ID"
+              },
+              {
+                "field": "name",
+                "label": "顧客名"
+              },
+              {
+                "field": "credit",
+                "label": "与信",
+                "type": "number"
+              }
             ]
           },
           "form": {
             "sections": [
               {
                 "fields": [
-                  { "field": "code", "label": "コード", "required": true,
-                    "validators": [ { "type": "maxLength", "value": 6 } ] },
-                  { "field": "name", "label": "顧客名", "required": true },
-                  { "field": "credit", "label": "与信", "type": "number",
-                    "validators": [ { "type": "min", "value": 0 }, { "type": "max", "value": 1000000 } ] },
-                  { "field": "active", "label": "有効", "type": "checkbox" },
-                  { "field": "openedAt", "label": "開設日", "type": "date" },
-                  { "field": "email", "label": "メール",
-                    "validators": [ { "type": "email" } ] },
-                  { "field": "id", "label": "ID", "readOnly": true },
-                  { "field": "label", "label": "表示名",
-                    "computed": { "op": "concat", "fields": ["code", "name"] } }
+                  {
+                    "field": "code",
+                    "label": "コード",
+                    "required": true,
+                    "validators": [
+                      {
+                        "type": "maxLength",
+                        "value": 6
+                      }
+                    ]
+                  },
+                  {
+                    "field": "name",
+                    "label": "顧客名",
+                    "required": true
+                  },
+                  {
+                    "field": "credit",
+                    "label": "与信",
+                    "type": "number",
+                    "validators": [
+                      {
+                        "type": "min",
+                        "value": 0
+                      },
+                      {
+                        "type": "max",
+                        "value": 1000000
+                      }
+                    ]
+                  },
+                  {
+                    "field": "active",
+                    "label": "有効",
+                    "type": "checkbox"
+                  },
+                  {
+                    "field": "openedAt",
+                    "label": "開設日",
+                    "type": "date"
+                  },
+                  {
+                    "field": "email",
+                    "label": "メール",
+                    "validators": [
+                      {
+                        "type": "email"
+                      }
+                    ]
+                  },
+                  {
+                    "field": "id",
+                    "label": "ID",
+                    "readOnly": true
+                  },
+                  {
+                    "field": "label",
+                    "label": "表示名",
+                    "computed": {
+                      "op": "concat",
+                      "fields": [
+                        "code",
+                        "name"
+                      ]
+                    }
+                  }
                 ]
               }
             ]
@@ -53,50 +127,203 @@
             "name": "CustomerMasterRequest",
             "role": "request",
             "members": [
-              { "name": "code", "type": "string", "optional": false,
-                "constraints": { "maxLength": "6" } },
-              { "name": "name", "type": "string", "optional": false, "constraints": {} },
-              { "name": "credit", "type": "number", "optional": true,
-                "constraints": { "minimum": "0", "maximum": "1000000" } },
-              { "name": "active", "type": "boolean", "optional": true, "constraints": {} },
-              { "name": "openedAt", "type": "string", "optional": true,
-                "constraints": { "format": "date" } },
-              { "name": "email", "type": "string", "optional": true,
-                "constraints": { "format": "email" } }
+              {
+                "name": "code",
+                "type": "string",
+                "optional": false,
+                "constraints": {
+                  "maxLength": "6"
+                }
+              },
+              {
+                "name": "name",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              },
+              {
+                "name": "credit",
+                "type": "number",
+                "optional": true,
+                "constraints": {
+                  "minimum": "0",
+                  "maximum": "1000000"
+                }
+              },
+              {
+                "name": "active",
+                "type": "boolean",
+                "optional": true,
+                "constraints": {}
+              },
+              {
+                "name": "openedAt",
+                "type": "string",
+                "optional": true,
+                "constraints": {
+                  "format": "date"
+                }
+              },
+              {
+                "name": "email",
+                "type": "string",
+                "optional": true,
+                "constraints": {
+                  "format": "email"
+                }
+              },
+              {
+                "name": "id",
+                "type": "string",
+                "optional": true,
+                "constraints": {}
+              },
+              {
+                "name": "label",
+                "type": "string",
+                "optional": true,
+                "constraints": {}
+              }
+            ]
+          },
+          {
+            "name": "CustomerMasterResponse",
+            "role": "response",
+            "members": [
+              {
+                "name": "code",
+                "type": "string",
+                "optional": false,
+                "constraints": {
+                  "maxLength": "6"
+                }
+              },
+              {
+                "name": "name",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              },
+              {
+                "name": "credit",
+                "type": "number",
+                "optional": true,
+                "constraints": {
+                  "minimum": "0",
+                  "maximum": "1000000"
+                }
+              },
+              {
+                "name": "active",
+                "type": "boolean",
+                "optional": true,
+                "constraints": {}
+              },
+              {
+                "name": "openedAt",
+                "type": "string",
+                "optional": true,
+                "constraints": {
+                  "format": "date"
+                }
+              },
+              {
+                "name": "email",
+                "type": "string",
+                "optional": true,
+                "constraints": {
+                  "format": "email"
+                }
+              },
+              {
+                "name": "id",
+                "type": "string",
+                "optional": true,
+                "constraints": {}
+              },
+              {
+                "name": "label",
+                "type": "string",
+                "optional": true,
+                "constraints": {}
+              }
             ]
           },
           {
             "name": "CustomerMasterRow",
             "role": "row",
             "members": [
-              { "name": "id", "type": "string", "optional": false, "constraints": {} },
-              { "name": "name", "type": "string", "optional": false, "constraints": {} },
-              { "name": "credit", "type": "number", "optional": false, "constraints": {} }
+              {
+                "name": "id",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              },
+              {
+                "name": "name",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              },
+              {
+                "name": "credit",
+                "type": "number",
+                "optional": false,
+                "constraints": {}
+              }
             ]
           },
           {
             "name": "CustomerMasterListResponse",
             "role": "listResponse",
             "members": [
-              { "name": "items", "type": "array", "optional": false, "itemType": "object",
-                "shape": "CustomerMasterRow", "constraints": {} },
-              { "name": "totalCount", "type": "number", "optional": false, "constraints": {} }
+              {
+                "name": "items",
+                "type": "array",
+                "optional": false,
+                "itemType": "object",
+                "shape": "CustomerMasterRow",
+                "constraints": {}
+              },
+              {
+                "name": "totalCount",
+                "type": "number",
+                "optional": false,
+                "constraints": {}
+              }
             ]
           },
           {
             "name": "CustomerMasterQuery",
             "role": "queryParams",
             "members": [
-              { "name": "name", "type": "string", "optional": true, "constraints": {} },
-              { "name": "openedAt", "type": "array", "optional": true, "itemType": "string",
-                "constraints": { "format": "date" } }
+              {
+                "name": "name",
+                "type": "string",
+                "optional": true,
+                "constraints": {}
+              },
+              {
+                "name": "openedAt",
+                "type": "array",
+                "optional": true,
+                "itemType": "string",
+                "constraints": {
+                  "format": "date"
+                }
+              }
             ]
           },
           {
             "name": "CustomerMasterKey",
             "role": "pathParams",
             "members": [
-              { "name": "id", "type": "string", "optional": false, "constraints": {} }
+              {
+                "name": "id",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              }
             ]
           }
         ]
@@ -114,13 +341,25 @@
           "key": "orderNo",
           "search": {
             "filters": [
-              { "field": "status", "label": "状態", "type": "select", "operator": "equals" }
+              {
+                "field": "status",
+                "label": "状態",
+                "type": "select",
+                "operator": "equals"
+              }
             ]
           },
           "table": {
             "columns": [
-              { "field": "orderNo", "label": "受注番号" },
-              { "field": "amount", "label": "金額", "type": "number" }
+              {
+                "field": "orderNo",
+                "label": "受注番号"
+              },
+              {
+                "field": "amount",
+                "label": "金額",
+                "type": "number"
+              }
             ]
           }
         }
@@ -132,31 +371,62 @@
             "name": "OrderSearchRow",
             "role": "row",
             "members": [
-              { "name": "orderNo", "type": "string", "optional": false, "constraints": {} },
-              { "name": "amount", "type": "number", "optional": false, "constraints": {} }
+              {
+                "name": "orderNo",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              },
+              {
+                "name": "amount",
+                "type": "number",
+                "optional": false,
+                "constraints": {}
+              }
             ]
           },
           {
             "name": "OrderSearchListResponse",
             "role": "listResponse",
             "members": [
-              { "name": "items", "type": "array", "optional": false, "itemType": "object",
-                "shape": "OrderSearchRow", "constraints": {} },
-              { "name": "totalCount", "type": "number", "optional": false, "constraints": {} }
+              {
+                "name": "items",
+                "type": "array",
+                "optional": false,
+                "itemType": "object",
+                "shape": "OrderSearchRow",
+                "constraints": {}
+              },
+              {
+                "name": "totalCount",
+                "type": "number",
+                "optional": false,
+                "constraints": {}
+              }
             ]
           },
           {
             "name": "OrderSearchQuery",
             "role": "queryParams",
             "members": [
-              { "name": "status", "type": "string", "optional": true, "constraints": {} }
+              {
+                "name": "status",
+                "type": "string",
+                "optional": true,
+                "constraints": {}
+              }
             ]
           },
           {
             "name": "OrderSearchKey",
             "role": "pathParams",
             "members": [
-              { "name": "orderNo", "type": "string", "optional": false, "constraints": {} }
+              {
+                "name": "orderNo",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              }
             ]
           }
         ]
@@ -176,17 +446,40 @@
             "sections": [
               {
                 "fields": [
-                  { "field": "orderNo", "label": "受注番号", "required": true },
+                  {
+                    "field": "orderNo",
+                    "label": "受注番号",
+                    "required": true
+                  },
                   {
                     "field": "lines",
                     "label": "明細",
                     "type": "subTable",
                     "required": true,
-                    "columns": [ { "field": "item", "label": "品名" } ],
+                    "columns": [
+                      {
+                        "field": "item",
+                        "label": "品名"
+                      }
+                    ],
                     "fields": [
-                      { "field": "item", "label": "品名", "required": true },
-                      { "field": "qty", "label": "数量", "type": "number", "required": true,
-                        "validators": [ { "type": "min", "value": 1 } ] }
+                      {
+                        "field": "item",
+                        "label": "品名",
+                        "required": true
+                      },
+                      {
+                        "field": "qty",
+                        "label": "数量",
+                        "type": "number",
+                        "required": true,
+                        "validators": [
+                          {
+                            "type": "min",
+                            "value": 1
+                          }
+                        ]
+                      }
                     ]
                   }
                 ]
@@ -202,25 +495,72 @@
             "name": "OrderEntryRequest",
             "role": "request",
             "members": [
-              { "name": "orderNo", "type": "string", "optional": false, "constraints": {} },
-              { "name": "lines", "type": "array", "optional": false, "itemType": "object",
-                "shape": "OrderEntryLinesRow", "constraints": {} }
+              {
+                "name": "orderNo",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              },
+              {
+                "name": "lines",
+                "type": "array",
+                "optional": false,
+                "itemType": "object",
+                "shape": "OrderEntryLinesRow",
+                "constraints": {}
+              }
+            ]
+          },
+          {
+            "name": "OrderEntryResponse",
+            "role": "response",
+            "members": [
+              {
+                "name": "orderNo",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              },
+              {
+                "name": "lines",
+                "type": "array",
+                "optional": false,
+                "itemType": "object",
+                "shape": "OrderEntryLinesRow",
+                "constraints": {}
+              }
             ]
           },
           {
             "name": "OrderEntryKey",
             "role": "pathParams",
             "members": [
-              { "name": "orderNo", "type": "string", "optional": false, "constraints": {} }
+              {
+                "name": "orderNo",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              }
             ]
           },
           {
             "name": "OrderEntryLinesRow",
             "role": "child",
             "members": [
-              { "name": "item", "type": "string", "optional": false, "constraints": {} },
-              { "name": "qty", "type": "number", "optional": false,
-                "constraints": { "minimum": "1" } }
+              {
+                "name": "item",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              },
+              {
+                "name": "qty",
+                "type": "number",
+                "optional": false,
+                "constraints": {
+                  "minimum": "1"
+                }
+              }
             ]
           }
         ]
@@ -240,14 +580,25 @@
             "sections": [
               {
                 "fields": [
-                  { "field": "orderNo", "label": "受注番号", "required": true },
+                  {
+                    "field": "orderNo",
+                    "label": "受注番号",
+                    "required": true
+                  },
                   {
                     "field": "lines",
                     "label": "明細",
                     "type": "subTable",
-                    "source": { "repository": "orderLineRepository", "parentKey": "orderNo" },
+                    "source": {
+                      "repository": "orderLineRepository",
+                      "parentKey": "orderNo"
+                    },
                     "fields": [
-                      { "field": "item", "label": "品名", "required": true }
+                      {
+                        "field": "item",
+                        "label": "品名",
+                        "required": true
+                      }
                     ]
                   }
                 ]
@@ -263,21 +614,48 @@
             "name": "OrderEntryPagedRequest",
             "role": "request",
             "members": [
-              { "name": "orderNo", "type": "string", "optional": false, "constraints": {} }
+              {
+                "name": "orderNo",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              }
+            ]
+          },
+          {
+            "name": "OrderEntryPagedResponse",
+            "role": "response",
+            "members": [
+              {
+                "name": "orderNo",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              }
             ]
           },
           {
             "name": "OrderEntryPagedKey",
             "role": "pathParams",
             "members": [
-              { "name": "orderNo", "type": "string", "optional": false, "constraints": {} }
+              {
+                "name": "orderNo",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              }
             ]
           },
           {
             "name": "OrderEntryPagedLinesRow",
             "role": "child",
             "members": [
-              { "name": "item", "type": "string", "optional": false, "constraints": {} }
+              {
+                "name": "item",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              }
             ]
           }
         ]
@@ -297,14 +675,27 @@
             {
               "id": "basic",
               "title": "基本情報",
-              "fields": [ { "field": "code", "label": "コード", "required": true } ]
+              "fields": [
+                {
+                  "field": "code",
+                  "label": "コード",
+                  "required": true
+                }
+              ]
             },
             {
               "id": "contact",
               "title": "連絡先",
               "fields": [
-                { "field": "email", "label": "メール",
-                  "validators": [ { "type": "email" } ] }
+                {
+                  "field": "email",
+                  "label": "メール",
+                  "validators": [
+                    {
+                      "type": "email"
+                    }
+                  ]
+                }
               ]
             }
           ]
@@ -317,16 +708,52 @@
             "name": "CustomerWizardRequest",
             "role": "request",
             "members": [
-              { "name": "code", "type": "string", "optional": false, "constraints": {} },
-              { "name": "email", "type": "string", "optional": true,
-                "constraints": { "format": "email" } }
+              {
+                "name": "code",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              },
+              {
+                "name": "email",
+                "type": "string",
+                "optional": true,
+                "constraints": {
+                  "format": "email"
+                }
+              }
+            ]
+          },
+          {
+            "name": "CustomerWizardResponse",
+            "role": "response",
+            "members": [
+              {
+                "name": "code",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              },
+              {
+                "name": "email",
+                "type": "string",
+                "optional": true,
+                "constraints": {
+                  "format": "email"
+                }
+              }
             ]
           },
           {
             "name": "CustomerWizardKey",
             "role": "pathParams",
             "members": [
-              { "name": "id", "type": "string", "optional": false, "constraints": {} }
+              {
+                "name": "id",
+                "type": "string",
+                "optional": false,
+                "constraints": {}
+              }
             ]
           }
         ]

@@ -24,6 +24,7 @@
 | `wizard_validation.json` | ステップ入力の**ステップ単位検証**（3言語） | `{ page, cases: [{ name, step, record, expected }] }`。`step` が id ならそのステップのフォームだけ、`null` なら全ステップを畳んだフォームを検証 |
 | `dto_spec.json` | `deriveDto`（API の形の導出。**TS/Java のみ**、Flutter は非対象） | `{ cases: [{ name, page, expected: { page, shapes } }] }`。形は順序どおり比較。制約値は文字列比較で言語差を吸収 |
 | `dto_json_schema.json` | `toJsonSchema`（`DtoSpec` → JSON Schema 2020-12。**TS/Java のみ**） | `{ cases: [{ name, page, expected }] }`。`expected` は出力ドキュメントそのもの。スカラは再帰的に文字列化して比較。**加えて `spec/tools/check_dto_schema.py` が「出力が妥当なスキーマか」「実際に通す/弾くか」を独立検証**（2言語が同じ間違いをするのを防ぐ） |
+| `dto_openapi.json` | `toOpenApi`（`DtoSpec` → OpenAPI 3.1。**TS/Java のみ**） | `{ cases: [{ name, options, page, expected }] }`。`options.basePath` は呼び出し側が渡す値。スカラは再帰的に文字列化して比較。**`spec/tools/check_openapi.py` が「妥当な OpenAPI 3.1 か」「操作・パラメータ・`$ref` の約束を守っているか」を独立検証** |
 
 `value` の日付は ISO の日付文字列（`"2026-07-22"`）で渡す（各言語が同じ解釈をするため）。
 
