@@ -19,8 +19,11 @@ function canonical(spec: DtoSpec): unknown {
       members: s.members.map((m) => {
         const out: Record<string, unknown> = {
           name: m.name,
+          label: m.label,
           type: m.type,
           optional: m.optional,
+          readOnly: m.readOnly,
+          computed: m.computed,
         };
         if (m.itemType !== undefined) out.itemType = m.itemType;
         if (m.shape !== undefined) out.shape = m.shape;
@@ -43,8 +46,11 @@ function expectedCanonical(expected: any): unknown {
       members: s.members.map((m: any) => {
         const out: Record<string, unknown> = {
           name: m.name,
+          label: m.label,
           type: m.type,
           optional: m.optional,
+          readOnly: m.readOnly,
+          computed: m.computed,
         };
         if (m.itemType !== undefined) out.itemType = m.itemType;
         if (m.shape !== undefined) out.shape = m.shape;

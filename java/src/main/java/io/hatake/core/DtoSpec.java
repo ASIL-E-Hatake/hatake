@@ -29,9 +29,13 @@ public record DtoSpec(String page, List<Shape> shapes) {
      * 形のメンバ 1 件。
      *
      * @param name 項目名
+     * @param label 定義由来の表示ラベル（生成コードのドキュメント用）。
+     *     framework が合成するメンバ（{@code items} / {@code totalCount} など）は空
      * @param type {@code string} / {@code number} / {@code boolean} /
      *     {@code object} / {@code array}（開いた文字列）
      * @param optional ペイロードで省略されうるか
+     * @param readOnly 項目が {@code readOnly}（送ってもサーバは無視してよい）
+     * @param computed 項目が {@code computed}（Renderer が導出。入力そのものではない）
      * @param itemType {@code type} が {@code array} のときの要素型。無ければ null
      * @param shape object / array&lt;object&gt; のとき参照する形の名前。無ければ null
      * @param constraints {@code validators} 由来の制約
@@ -39,8 +43,11 @@ public record DtoSpec(String page, List<Shape> shapes) {
      */
     public record Member(
             String name,
+            String label,
             String type,
             boolean optional,
+            boolean readOnly,
+            boolean computed,
             String itemType,
             String shape,
             Map<String, Object> constraints) {

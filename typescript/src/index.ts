@@ -13,6 +13,7 @@ export * from "./query.js";
 export * from "./dto.js";
 export * from "./jsonSchema.js";
 export * from "./openApi.js";
+export * from "./types.js";
 export * from "./formatter.js";
 export * from "./converter.js";
 export * from "./normalizer.js";

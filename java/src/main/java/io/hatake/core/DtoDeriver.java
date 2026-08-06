@@ -74,16 +74,17 @@ public final class DtoDeriver {
         if (!columns.isEmpty()) {
             List<DtoSpec.Member> rowMembers = new ArrayList<>();
             for (ColumnDefinition column : columns) {
-                rowMembers.add(new DtoSpec.Member(column.field(),
-                        memberType(column.type()), false, null, null, Map.of()));
+                rowMembers.add(new DtoSpec.Member(column.field(), column.label(),
+                        memberType(column.type()), false, false, false,
+                        null, null, Map.of()));
             }
             shapes.add(new DtoSpec.Shape(name + "Row", "row", List.copyOf(rowMembers)));
             // Repository の契約に合わせる: search() は items + totalCount を返す。
             shapes.add(new DtoSpec.Shape(name + "ListResponse", "listResponse", List.of(
-                    new DtoSpec.Member("items", "array", false, "object",
-                            name + "Row", Map.of()),
-                    new DtoSpec.Member("totalCount", "number", false, null, null,
-                            Map.of()))));
+                    new DtoSpec.Member("items", "", "array", false, false, false,
+                            "object", name + "Row", Map.of()),
+                    new DtoSpec.Member("totalCount", "", "number", false, false, false,
+                            null, null, Map.of()))));
         }
 
         List<FilterDefinition> filters = page.search() == null
@@ -99,9 +100,10 @@ public final class DtoDeriver {
         }
 
         // DSL は主キーの型を持たないので string として記述する。
+        // DSL は主キーにラベルを持たないので空。
         shapes.add(new DtoSpec.Shape(name + "Key", "pathParams", List.of(
-                new DtoSpec.Member(page.keyField(), "string", false, null, null,
-                        Map.of()))));
+                new DtoSpec.Member(page.keyField(), "", "string", false, false, false,
+                        null, null, Map.of()))));
 
         shapes.addAll(children);
         return new DtoSpec(page.id(), List.copyOf(shapes));
@@ -130,7 +132,7 @@ public final class DtoDeriver {
         if (field.isSubTable() && field.hasSubTableSource()) {
             return null;
         }
-        boolean derived = field.computed() != null || field.readOnly();
+        boolean computed = field.computed() != null;
         String type = memberType(field.type());
         String itemType = null;
         String shape = null;
@@ -140,8 +142,9 @@ public final class DtoDeriver {
         } else if (FieldTypesRef.MULTI_SELECT.equals(field.type())) {
             itemType = "string";
         }
-        return new DtoSpec.Member(field.field(), type, derived || !field.required(),
-                itemType, shape, constraintsOf(field));
+        boolean optional = computed || field.readOnly() || !field.required();
+        return new DtoSpec.Member(field.field(), field.label(), type, optional,
+                field.readOnly(), computed, itemType, shape, constraintsOf(field));
     }
 
     /**
@@ -155,7 +158,8 @@ public final class DtoDeriver {
             return null;
         }
         boolean optional = field.computed() != null || !field.required();
-        return new DtoSpec.Member(member.name(), member.type(), optional,
+        return new DtoSpec.Member(member.name(), member.label(), member.type(),
+                optional, member.readOnly(), member.computed(),
                 member.itemType(), member.shape(), member.constraints());
     }
 
@@ -168,11 +172,11 @@ public final class DtoDeriver {
         }
         // between は [開始, 終了] の2要素で届く。
         if ("between".equals(filter.operator())) {
-            return new DtoSpec.Member(filter.field(), "array", true, base, null,
-                    Map.copyOf(constraints));
+            return new DtoSpec.Member(filter.field(), filter.label(), "array", true,
+                    false, false, base, null, Map.copyOf(constraints));
         }
-        return new DtoSpec.Member(filter.field(), base, true, null, null,
-                Map.copyOf(constraints));
+        return new DtoSpec.Member(filter.field(), filter.label(), base, true,
+                false, false, null, null, Map.copyOf(constraints));
     }
 
     /** field / filter の type を DTO のメンバ型へ対応付ける。 */

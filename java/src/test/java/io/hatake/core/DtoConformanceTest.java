@@ -47,8 +47,11 @@ class DtoConformanceTest {
             for (DtoSpec.Member m : shape.members()) {
                 Map<String, Object> out = new LinkedHashMap<>();
                 out.put("name", m.name());
+                out.put("label", m.label());
                 out.put("type", m.type());
                 out.put("optional", m.optional());
+                out.put("readOnly", m.readOnly());
+                out.put("computed", m.computed());
                 if (m.itemType() != null) {
                     out.put("itemType", m.itemType());
                 }
@@ -79,8 +82,11 @@ class DtoConformanceTest {
             for (Map<String, Object> m : (List<Map<String, Object>>) shape.get("members")) {
                 Map<String, Object> out = new LinkedHashMap<>();
                 out.put("name", m.get("name"));
+                out.put("label", m.get("label"));
                 out.put("type", m.get("type"));
                 out.put("optional", m.get("optional"));
+                out.put("readOnly", m.get("readOnly"));
+                out.put("computed", m.get("computed"));
                 if (m.get("itemType") != null) {
                     out.put("itemType", m.get("itemType"));
                 }

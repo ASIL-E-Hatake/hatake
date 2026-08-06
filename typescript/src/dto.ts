@@ -21,10 +21,19 @@ export interface DtoShape {
 
 export interface DtoMember {
   name: string;
+  /**
+   * Display label from the definition, for generated documentation. Empty for
+   * members the framework synthesizes (e.g. `items` / `totalCount`).
+   */
+  label: string;
   /** string | number | boolean | object | array — an open string. */
   type: string;
   /** Whether the payload may omit this member. */
   optional: boolean;
+  /** The field is `readOnly`: a client may send it, the server ignores it. */
+  readOnly: boolean;
+  /** The field is `computed`: derived by the renderer, not stored input. */
+  computed: boolean;
   /** Element type when `type` is `array`. */
   itemType?: string;
   /** Referenced shape name when this member is an object / array of objects. */
@@ -137,11 +146,14 @@ function requestMember(
   // Repository-backed child rows travel on their own endpoint.
   if (field.type === FieldTypes.subTable && field.source) return undefined;
 
-  const derived = Boolean(field.computed) || field.readOnly;
+  const computed = Boolean(field.computed);
   const member: DtoMember = {
     name: field.field,
+    label: field.label,
     type: memberType(field.type),
-    optional: derived || !field.required,
+    optional: computed || field.readOnly || !field.required,
+    readOnly: field.readOnly,
+    computed,
     constraints: constraintsOf(field),
   };
   if (field.type === FieldTypes.subTable) {
@@ -177,13 +189,24 @@ function queryMember(filter: FilterDefinition): DtoMember {
   if (filter.operator === "between") {
     return {
       name: filter.field,
+      label: filter.label,
       type: "array",
       optional: true,
+      readOnly: false,
+      computed: false,
       itemType: base,
       constraints,
     };
   }
-  return { name: filter.field, type: base, optional: true, constraints };
+  return {
+    name: filter.field,
+    label: filter.label,
+    type: base,
+    optional: true,
+    readOnly: false,
+    computed: false,
+    constraints,
+  };
 }
 
 /** Every field that contributes a request member, for any page kind. */
@@ -246,8 +269,11 @@ export function deriveDto(page: PageDefinition): DtoSpec {
       role: "row",
       members: columns.map((c) => ({
         name: c.field,
+        label: c.label,
         type: memberType(c.type),
         optional: false,
+        readOnly: false,
+        computed: false,
         constraints: {},
       })),
     });
@@ -258,13 +284,24 @@ export function deriveDto(page: PageDefinition): DtoSpec {
       members: [
         {
           name: "items",
+          label: "",
           type: "array",
           optional: false,
+          readOnly: false,
+          computed: false,
           itemType: "object",
           shape: `${name}Row`,
           constraints: {},
         },
-        { name: "totalCount", type: "number", optional: false, constraints: {} },
+        {
+          name: "totalCount",
+          label: "",
+          type: "number",
+          optional: false,
+          readOnly: false,
+          computed: false,
+          constraints: {},
+        },
       ],
     });
   }
@@ -283,7 +320,15 @@ export function deriveDto(page: PageDefinition): DtoSpec {
     name: `${name}Key`,
     role: "pathParams",
     members: [
-      { name: page.keyField, type: "string", optional: false, constraints: {} },
+      {
+        name: page.keyField,
+        label: "",
+        type: "string",
+        optional: false,
+        readOnly: false,
+        computed: false,
+        constraints: {},
+      },
     ],
   });
 
