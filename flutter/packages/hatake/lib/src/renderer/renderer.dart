@@ -6,6 +6,7 @@ import '../runtime/detail_controller.dart';
 import '../runtime/form_controller.dart';
 import '../runtime/hatake_router.dart';
 import '../runtime/list_controller.dart';
+import '../runtime/wizard_controller.dart';
 
 /// Converts a [PageDefinition] into Flutter widgets.
 ///
@@ -42,6 +43,13 @@ abstract interface class Renderer {
     BuildContext context,
     FormPageDefinition definition,
     FormController controller,
+  );
+
+  /// Builds the widget tree for a stepped-input (wizard) page.
+  Widget buildWizardPage(
+    BuildContext context,
+    WizardPageDefinition definition,
+    WizardController controller,
   );
 
   /// Builds the app shell (navigation menu + current page) for an

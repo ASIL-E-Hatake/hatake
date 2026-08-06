@@ -68,6 +68,43 @@ SearchPageDefinition searchPage({
   );
 }
 
+WizardPageDefinition wizardPage({
+  required String id,
+  required String title,
+  required String repository,
+  required List<WizardStepDefinition> steps,
+  String key = 'id',
+  String dslVersion = kDslVersion,
+  List<ActionDefinition> actions = const [],
+}) {
+  return WizardPageDefinition(
+    id: id,
+    title: title,
+    repository: repository,
+    keyField: key,
+    dslVersion: dslVersion,
+    steps: steps,
+    actions: actions,
+  );
+}
+
+/// One wizard step — the section shape plus an id and a heading.
+WizardStepDefinition step(
+  String id, {
+  required String title,
+  String? description,
+  List<FieldDefinition> fields = const [],
+  int columns = 1,
+}) {
+  return WizardStepDefinition(
+    id: id,
+    title: title,
+    description: description,
+    layout: LayoutDefinition(columns: columns),
+    fields: fields,
+  );
+}
+
 SearchDefinition search(List<FilterDefinition> filters, {int columns = 1}) {
   return SearchDefinition(
     filters: filters,

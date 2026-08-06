@@ -3,7 +3,9 @@ import 'package:equatable/equatable.dart';
 import 'action_definition.dart';
 import 'form_definition.dart';
 import 'search_definition.dart';
+import 'section_definition.dart';
 import 'table_definition.dart';
+import 'wizard_step_definition.dart';
 
 /// The current DSL version. Backward compatibility is a top priority; the
 /// version travels with every definition so parsers can migrate older inputs.
@@ -198,6 +200,58 @@ class FormPageDefinition extends PageDefinition {
   @override
   List<Object?> get props =>
       [id, title, dslVersion, repository, keyField, form, actions];
+}
+
+/// A stepped-input page (ウィザード): the form split into [steps], each validated
+/// on its own before advancing, and persisted once on the final step.
+///
+/// Structurally it is a [FormPageDefinition] whose form arrives pre-sliced — so
+/// [form] exposes every step as one form for the final submit, while
+/// [WizardStepDefinition.form] scopes validation to a single step.
+class WizardPageDefinition extends PageDefinition {
+  final String repository;
+  final String keyField;
+
+  /// Steps in declaration order. At least one.
+  final List<WizardStepDefinition> steps;
+
+  final List<ActionDefinition> actions;
+
+  const WizardPageDefinition({
+    required super.id,
+    required super.title,
+    super.dslVersion,
+    required this.repository,
+    this.keyField = 'id',
+    this.steps = const [],
+    this.actions = const [],
+  });
+
+  /// Every step as a single form (one section per step), used to normalize and
+  /// validate the whole record before saving.
+  FormDefinition get form => FormDefinition(
+        sections: [
+          for (final step in steps)
+            SectionDefinition(
+              title: step.title,
+              fields: step.fields,
+              layout: step.layout,
+            ),
+        ],
+      );
+
+  /// Index of the first step declaring [field], or -1 when no step does. Lets a
+  /// renderer jump back to where a whole-form error actually lives.
+  int stepIndexOfField(String field) {
+    for (var i = 0; i < steps.length; i++) {
+      if (steps[i].fields.any((f) => f.field == field)) return i;
+    }
+    return -1;
+  }
+
+  @override
+  List<Object?> get props =>
+      [id, title, dslVersion, repository, keyField, steps, actions];
 }
 
 /// A read-only detail page: displays a single record's fields (grouped by the

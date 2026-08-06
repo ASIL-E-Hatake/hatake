@@ -55,6 +55,7 @@ settings.
 | `master` | Master maintenance | ✅ | same shape as `crud` |
 | `detail` | Read-only single record | — | displays the form's fields; the record is supplied to the view at runtime |
 | `form` | Standalone create/edit form | ✅ | form only (no table); edits when a record key is supplied, else creates |
+| `wizard` | Stepped input | ✅ | the form split into `steps`, **validated one step at a time**, saved once at the end (→ [wizard](#wizard-type-wizard)) |
 
 A `search` page has the same `search`, `table`, and `actions` as `crud` but no
 `form`, and its `rowActions` reference page-level `plugin` actions (e.g. a
@@ -128,6 +129,84 @@ the current row / record).
 | `table` | [table](#table) | | empty | Results table. |
 | `form` | [form](#form) | | empty | Create/edit form. |
 | `actions` | [action](#action)[] | | `[]` | Page-level actions. |
+
+## wizard (type: wizard)
+
+A single-record page that walks long input through **steps**. Only one step's
+fields are shown, and **only that step's fields are validated** before advancing.
+The repository is touched once, on the final step — nothing partial is written.
+
+It carries `steps` in place of `form`; everything else matches the
+[`form` page](#page-type-crud) (`repository` / `key`, editing when a record key is
+supplied, creating otherwise).
+
+```yaml
+dsl_version: "1.0"
+page:
+  type: wizard
+  id: customer_onboarding
+  title: 顧客登録
+  repository: customerRepository
+  key: id
+  steps:
+    - id: basic
+      title: 基本情報
+      description: まず会社の基本情報を入力してください   # optional
+      layout: { columns: 2 }
+      fields:
+        - { field: code, label: コード, required: true, normalize: [toHankaku, trim] }
+        - { field: name, label: 会社名, required: true }
+    - id: contact
+      title: 連絡先
+      fields:
+        - { field: zip, label: 郵便番号, validators: [ { type: postalCode } ] }
+        - { field: email, label: メール, validators: [ { type: email } ] }
+    - id: confirm
+      title: 確認
+      fields:
+        # Show earlier answers back via computed (read-only).
+        - { field: summary, label: 内容, computed: { op: concat, fields: [code, name], separator: " / " } }
+  actions:
+    - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る }
+```
+
+| Key | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `type` | string | ✅ | — | `wizard`. |
+| `id` | string | ✅ | — | Stable page identifier. |
+| `title` | string | ✅ | — | Page title. |
+| `repository` | string | ✅ | — | Key resolving the user-provided `Repository`. |
+| `key` | string | | `id` | Primary-key field of a record. |
+| `steps` | [step](#step)[] | ✅ | — | Steps (at least one), walked in declaration order. |
+| `actions` | [action](#action)[] | | `[]` | Page-level actions. |
+
+### step
+
+Think of it as **a [section](#section) with an `id` and a heading** — `fields` and
+`layout` are the section's.
+
+| Key | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `id` | string | ✅ | — | Step identifier (for stable references). |
+| `title` | string | ✅ | — | Step heading. |
+| `description` | string | | — | Optional explanatory text. |
+| `layout` | [layout](#layout) | | `{columns: 1}` | Field arrangement. |
+| `fields` | [field](#field)[] | | `[]` | Fields belonging to this step. |
+
+**How validation applies**:
+
+- **Next** … checks this step's `fields` only. A later step's blank `required`
+  never blocks leaving an earlier one.
+- **Save** … checks the final step, then the **whole wizard as one form**. If a
+  field from an earlier step fails there, the wizard **jumps back to the step that
+  owns it** rather than failing silently.
+- Saving happens once, and `normalize` is applied to every field at that point
+  (see [converters](#converters)) — so a confirmation step shows the raw input.
+
+The same definition validates on the server: hand `FormValidator` (Dart /
+TypeScript / Java) **one step's form** to check that step, or **the whole page's
+form** to check everything (the [conformance suite](conformance/)'s
+`wizard_validation.json` pins all three languages to the same behaviour).
 
 ## search
 
@@ -455,7 +534,8 @@ application (menu + several pages) see
 [`examples/sales_app.yaml`](examples/sales_app.yaml), and for master-detail
 [`examples/order_entry.yaml`](examples/order_entry.yaml) (embedded rows) and
 [`examples/order_entry_paged.yaml`](examples/order_entry_paged.yaml) (child
-repository).
+repository). Stepped input:
+[`examples/customer_wizard.yaml`](examples/customer_wizard.yaml).
 
 ## Equivalence guarantee
 

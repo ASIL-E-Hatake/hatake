@@ -1,0 +1,41 @@
+dsl_version: "1.0"
+# ステップ入力（type: wizard）の例。
+# 「次へ」はそのステップの項目だけを検証する。保存は最後のステップで1回だけ。
+page:
+  type: wizard
+  id: customer_wizard
+  title: 顧客登録
+  repository: customerRepository
+  key: id
+  steps:
+    - id: basic
+      title: 基本情報
+      description: まず会社の基本情報を入力してください。
+      layout: { columns: 2 }
+      fields:
+        - { field: code, label: コード, type: text, required: true,
+            normalize: [toHankaku, trim], validators: [ { type: maxLength, value: 6 } ] }
+        - { field: name, label: 会社名, type: text, required: true }
+        - { field: kind, label: 区分, type: select, required: true,
+            options: [ { value: corporate, label: 法人 }, { value: personal, label: 個人 } ] }
+        # 法人のときだけ聞く（条件表示）
+        - { field: registryNo, label: 法人番号, type: text,
+            visibleWhen: { field: kind, operator: equals, value: corporate } }
+
+    - id: contact
+      title: 連絡先
+      description: 請求書の送付先になります。
+      fields:
+        - { field: zip, label: 郵便番号, type: text, format: postal,
+            normalize: [toHankaku], validators: [ { type: postalCode } ] }
+        - { field: address, label: 住所, type: text }
+        - { field: email, label: メール, type: text, required: true,
+            validators: [ { type: email } ] }
+
+    - id: confirm
+      title: 確認
+      description: 内容を確認して保存してください。
+      fields:
+        # 前のステップの入力を計算項目で見せる（読み取り表示）
+        - { field: summary, label: 登録内容,
+            computed: { op: concat, fields: [code, name], separator: " / " } }

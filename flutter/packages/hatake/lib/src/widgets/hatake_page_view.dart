@@ -5,6 +5,7 @@ import 'hatake_crud_view.dart';
 import 'hatake_detail_view.dart';
 import 'hatake_form_view.dart';
 import 'hatake_search_view.dart';
+import 'hatake_wizard_view.dart';
 
 /// Renders any [PageDefinition] by dispatching to the view for its kind.
 ///
@@ -27,6 +28,8 @@ class HatakePageView extends StatelessWidget {
         HatakeDetailView(definition: d, recordKey: recordKey),
       final FormPageDefinition d =>
         HatakeFormView(definition: d, recordKey: recordKey),
+      final WizardPageDefinition d =>
+        HatakeWizardView(definition: d, recordKey: recordKey),
     };
   }
 }

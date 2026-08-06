@@ -20,12 +20,12 @@
 | | DetailPage（詳細・読取） | ✅ Flutter | 単一レコードを読み取り表示（`DetailController`＋`format`）。record は実行時に渡す |
 | | MasterPage（マスタメンテ） | ✅ Flutter | Crud と同構造。`CrudLike` で Crud と描画/コントローラを共用 |
 | | DashboardPage | ⏳ | カード/集計/グラフ。設計重め |
-| | WizardPage（ステップ入力） | ⏳ | |
+| | WizardPage（ステップ入力） | ✅ Flutter（3言語検証） | `type: wizard` ＋ `steps`（**id と見出しを持つ section**）。「次へ」は**そのステップの項目だけ**検証、「保存」は最後のステップ＋全体を検証して1回だけ永続化。全体検証で前のステップの項目が落ちたら**その項目を持つステップまで自動で戻る**。`normalize` は保存時に全項目へ適用。サーバ側もステップ単位／全体で同じ定義で検証可（`wizard_validation.json` で3言語一致） |
 | | FormPage（単票入力） | ✅ Flutter | 単票の作成/編集。フォーム描画を `_HatakeFormFields` に共通化しダイアログと共用。record key で編集/新規を切替 |
 | | 親子・明細（master-detail） | ✅ Flutter（3言語検証） | `type: subTable` でヘッダ＋明細行を1画面編集し**まとめて保存**（子行は親レコードの1項目）。行内 `validators`/`computed`、**行の並べ替え**（既定ON／`config: { reorderable: false }` で無効）が効く。サーバ側も同じ定義で子行を検証（エラー項目名 `lines[0].qty`）。設計は [提案書](proposals/master-detail.ja.md)。**大量明細は `source`（子Repository方式）**＝子行を別 Repository から外部キーでページング取得し、行ごとに即時保存（親が未保存なら明細は編集不可、並べ替えなし、親の検証は当該項目を飛ばす）。埋め込みとの併存で使い分ける |
 | 検索 | 検索条件の拡充 | ✅ Flutter | `filter.type` ごとの入力（text/number/select/**checkbox=3状態**/date=カレンダー）、**`operator: between` の範囲入力**（`[開始,終了]` で送信・片側指定可）、**`search.layout.columns`** の反映（狭い画面は1列に退避）。フィルタ描画は `filter_input.dart` に一本化（crud/search の重複実装を解消）。デモの受注照会が複数条件のショーケース |
-| 入出力 | Formatter（金額/和暦…） | 🚧 P0+P1 Flutter | [utils](roadmap-utils.ja.md) |
-| | Converter（全半角…） | 🚧 P0+P1 Flutter | 同上。入力normalizeパイプ配線は未 |
+| 入出力 | Formatter（金額/和暦…） | ✅ 3言語（P0+P1） | `currency`/`percent`/`date`/`wareki`/`postal`/`mask`。[utils](roadmap-utils.ja.md) の P2 分（曜日・相対日付・電話番号等）は未 |
+| | Converter（全半角…） | ✅ 3言語（P0+P1） | 同上。**入力 normalize は送信時に自動適用**（Flutter は `CrudController`/`FormController` が `FormNormalizer` を通す／TS `normalizeRecord`／Java `FormNormalizer`） |
 | | Validator 拡充 | 🚧 一部 | 郵便番号済。法人番号/相関等は未 |
 | 表現 | i18n / メッセージ多言語化 | ✅ 3言語 | `MessageResolver`（ロケール＋開いたキー、既定 ja）でバリデータ固定文言を差し替え可能に。`ValidatorRegistry(custom, messages)` で注入。Dart/TS/Java で同名・同挙動 |
 | | テーマ / スタイル定義 | ⏳ | Renderer 側 |
@@ -59,6 +59,7 @@
 | 親子・明細 `subTable`（モデル＋パーサ） | ✅ | ✅（＋描画） | ✅ | ✅ |
 | 明細行のサーバ側検証（`lines[0].qty`） | ✅ | ✅ | ✅ | ✅ |
 | 明細の `source`（子Repository方式） | ✅ | ✅（＋描画・ページング） | ✅（検証で当該項目を飛ばす） | ✅（同左） |
+| ステップ入力 `wizard`（モデル＋パーサ＋ステップ検証） | ✅ | ✅（＋描画） | ✅ | ✅ |
 | Renderer（画面描画） | — | ✅(Material) | 対象外 | 対象外(※) |
 | table/action など画面寄りモデル | ✅ | ✅ | ⏳一部 | ✅ |
 
@@ -109,9 +110,16 @@
 
 ## フェーズ感（ざっくり優先度）
 
-- **近い（P1）**: ~~Formatter/Converter を TS/Java へ横展開~~ ✅、~~コンフォーマンス・スイートの器~~ ✅、~~normalize 入力パイプの配線~~ ✅（Flutter は送信時に自動適用 / TS・Java は `normalizeRecord`・`FormNormalizer`）、~~QuerySpec の fixture 化~~ ✅ → 次は **utils P2**（消費税・年度・営業日）や **新ページ種別**、**DTO/レスポンス生成**あたり
+- **近い（P1）… ✅ 完了**: ~~Formatter/Converter を TS/Java へ横展開~~ ✅、~~コンフォーマンス・スイートの器~~ ✅、~~normalize 入力パイプの配線~~ ✅（Flutter は送信時に自動適用 / TS・Java は `normalizeRecord`・`FormNormalizer`）、~~QuerySpec の fixture 化~~ ✅、~~utils P1（金額/日付/和暦/パーセント/半↔全角/数値パース/郵便番号/マスク）~~ ✅（3言語）
 - **中（P2）**: ~~DetailPage / MasterPage~~ ✅、~~消費税・年度/四半期・年齢/勤続・営業日（utils P2）~~ ✅（3言語＋conformance）、~~元号算出/税率別合計（utils 小follow-up）~~ ✅（`eraOf` / `computeInvoice`、3言語＋conformance）→ ~~ORM アダプタ1個目~~ ✅（Java/JPA `JpaQueryTranslator`）。P2 はひと通り完了（i18n・条件表示・計算項目・ORM アダプタ1個目 すべて✅）
 - **遠い（P3）**: ~~権限制御~~ ✅（roles + `isAllowed`、3言語）、DashboardPage、Python/Rust エディション、帳票・全銀など重いやつ
+
+**P1・P2 は完了済み**。残っているのは次の2本（どちらも独立して着手できる）と P3:
+
+| 次の候補 | 内容 | 規模感 |
+|---|---|---|
+| ~~新ページ種別（WizardPage）~~ | ✅ 完了（`type: wizard`。上の表参照） | — |
+| **DTO / レスポンス形生成** | 定義から API の入出力形（型定義・OpenAPI 断片など）を生成。バックエンド側の価値が大きいが「何を出力するか」の設計判断が要る | 中〜大 |
 
 ## 依頼の仕方（メモ）
 
