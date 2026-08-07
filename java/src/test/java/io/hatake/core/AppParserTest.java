@@ -28,39 +28,45 @@ class AppParserTest {
         assertEquals("sales_admin", app.id());
         assertEquals("販売管理", app.title());
         assertEquals("1.0", app.dslVersion());
-        assertEquals("customers", app.home());
+        assertEquals("dashboard", app.home());
     }
 
     @Test
     void parsesMenuAsLeafGroupLeaf() throws IOException {
         List<MenuItem> menu = shippedExample().menu();
-        assertEquals(5, menu.size());
+        assertEquals(6, menu.size());
 
-        MenuItem customers = menu.get(0);
+        // ダッシュボードがトップ（アプリの着地点）。
+        MenuItem dashboard = menu.get(0);
+        assertFalse(dashboard.isGroup());
+        assertEquals("dashboard", dashboard.id());
+        assertEquals("sales_dashboard", dashboard.page());
+
+        MenuItem customers = menu.get(1);
         assertFalse(customers.isGroup());
         assertEquals("customers", customers.id());
         assertEquals("customer_master", customers.page());
         assertEquals("people", customers.icon());
 
-        MenuItem master = menu.get(1);
+        MenuItem master = menu.get(2);
         assertTrue(master.isGroup());
         assertEquals("マスタ", master.label());
         assertEquals(1, master.children().size());
         assertEquals("商品", master.children().get(0).label());
         assertEquals("product_master", master.children().get(0).page());
 
-        MenuItem orders = menu.get(2);
+        MenuItem orders = menu.get(3);
         assertFalse(orders.isGroup());
         assertEquals("orders", orders.id());
         assertEquals("order_search", orders.page());
 
         // 親子・明細の入力画面もメニューから開ける（埋め込み版と子Repository版）。
-        MenuItem orderEntry = menu.get(3);
+        MenuItem orderEntry = menu.get(4);
         assertFalse(orderEntry.isGroup());
         assertEquals("orderEntry", orderEntry.id());
         assertEquals("order_entry", orderEntry.page());
 
-        MenuItem orderEntryPaged = menu.get(4);
+        MenuItem orderEntryPaged = menu.get(5);
         assertFalse(orderEntryPaged.isGroup());
         assertEquals("orderEntryPaged", orderEntryPaged.id());
         assertEquals("order_entry_paged", orderEntryPaged.page());
@@ -69,15 +75,15 @@ class AppParserTest {
     @Test
     void parsesShallowPageInventory() throws IOException {
         List<PageRef> pages = shippedExample().pages();
-        assertEquals(6, pages.size());
+        assertEquals(7, pages.size());
         assertEquals(
-                List.of("customer_master", "product_master", "order_search", "order_detail",
-                        "order_entry", "order_entry_paged"),
+                List.of("sales_dashboard", "customer_master", "product_master", "order_search",
+                        "order_detail", "order_entry", "order_entry_paged"),
                 pages.stream().map(PageRef::id).toList());
         assertEquals(
-                List.of("master", "master", "search", "detail", "form", "form"),
+                List.of("dashboard", "master", "master", "search", "detail", "form", "form"),
                 pages.stream().map(PageRef::type).toList());
-        assertEquals("顧客マスタ", pages.get(0).title());
-        assertEquals("customerRepository", pages.get(0).repository());
+        assertEquals("顧客マスタ", pages.get(1).title());
+        assertEquals("customerRepository", pages.get(1).repository());
     }
 }

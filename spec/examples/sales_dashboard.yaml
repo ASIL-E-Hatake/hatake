@@ -1,0 +1,68 @@
+# ダッシュボード（type: dashboard）の例。
+#
+# カード1枚 = 小さな読み取りクエリ + その結果の見せ方。Framework は集計クエリを
+# 投げない。Repository が行を返し、その行に対する畳み込み（aggregate）だけを
+# 定義する。大きなテーブルで正確な数字が要るときは、集計済みのエンドポイントを
+# Repository にして aggregate を省く（1行1点で描かれる）。
+dsl_version: "1.0"
+page:
+  type: dashboard
+  id: sales_dashboard
+  title: 売上ダッシュボード
+  # カードが repository を省いたときの既定。カード側の指定が優先される。
+  repository: orderRepository
+  layout: { columns: 4 }
+  # 検索エリアは全カードのクエリに混ざる（期間で board 全体を絞る）。
+  search:
+    filters:
+      - { field: orderDate, label: 受注日, type: date, operator: between }
+  items:
+    # metric: 集約された1つの数値。value 省略時は count（件数）。
+    - { id: orderCount, title: 受注件数, action: openOrders }
+    - id: totalAmount
+      title: 受注金額
+      value: { aggregate: sum, field: amount }
+      format: currency
+      config: { symbol: "¥" }
+    - id: avgAmount
+      title: 平均受注額
+      value: { aggregate: avg, field: amount }
+      format: currency
+      config: { symbol: "¥" }
+    - id: pending
+      title: 未出荷
+      filters: { status: 未出荷 }   # このカードだけの固定条件
+      action: openOrders
+    # chart: aggregate があるとラベルが同じ行を1点に畳む。
+    - id: byCustomer
+      type: chart
+      title: 顧客別の受注金額
+      span: 2
+      chart: { kind: bar, labelField: customer, valueField: amount, aggregate: sum }
+      format: currency
+      config: { symbol: "¥" }
+    # 集計済みのエンドポイントなら aggregate は不要（1行＝1点）。
+    - id: monthlyTrend
+      type: chart
+      title: 月別売上
+      span: 2
+      repository: monthlySalesRepository
+      chart: { kind: line, labelField: month, valueField: amount }
+      format: currency
+      config: { symbol: "¥" }
+    # table: 数行の一覧。列は table の column と同じ形。
+    - id: recent
+      type: table
+      title: 直近の受注
+      span: 4
+      limit: 5
+      sort: { field: orderDate, ascending: false }
+      columns:
+        - { field: orderNo, label: 受注番号, width: 140 }
+        - { field: customer, label: 顧客名 }
+        - { field: orderDate, label: 受注日, width: 120 }
+        - { field: status, label: 状態, width: 100 }
+        - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+  actions:
+    # カードの action はここの id を指す（タップで実行）。
+    - { id: openOrders, type: navigate, label: 受注照会, page: order_search }

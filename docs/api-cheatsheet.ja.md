@@ -10,7 +10,7 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
 ```yaml
 dsl_version: "1.0"
 page:
-  type: crud                 # crud | search | master | detail | form
+  type: crud                 # crud | search | master | detail | form | wizard | dashboard
   id: customer_master
   title: 顧客マスタ
   repository: customerRepository   # 利用者が実装する Repository をキーで解決
@@ -62,6 +62,33 @@ app:
 | `master` | マスタメンテ（crud と同構造） | あり |
 | `detail` | 単一レコードの読み取り表示（record は実行時に渡す） | 表示のみ |
 | `form` | 単票の作成/編集（record key あり=編集 / なし=新規） | あり |
+| `wizard` | ステップ入力（`steps`。ステップ単位で検証して次へ、最後に1回保存） | あり |
+| `dashboard` | カードのグリッド（`items`。1枚=小さな読み取りクエリ+見せ方） | なし |
+
+```yaml
+# ダッシュボード: 集計は「Repository が返した行の畳み込み」。集計クエリは投げない。
+page:
+  type: dashboard
+  id: sales_dashboard
+  title: 売上ダッシュボード
+  repository: orderRepository      # カードが省略したときの既定
+  layout: { columns: 4 }
+  search: { filters: [ { field: orderDate, label: 受注日, type: date, operator: between } ] }
+  items:
+    - { id: orderCount, title: 受注件数, action: openOrders }        # value 省略=count
+    - { id: total, title: 受注金額, value: { aggregate: sum, field: amount }, format: currency }
+    - { id: pending, title: 未出荷, filters: { status: 未出荷 } }     # カード固有の条件
+    - { id: byCustomer, type: chart, title: 顧客別, span: 2,
+        chart: { kind: bar, labelField: customer, valueField: amount, aggregate: sum } }
+    - { id: recent, type: table, title: 直近, span: 2, limit: 5,
+        sort: { field: orderDate, ascending: false },
+        columns: [ { field: orderNo, label: 受注番号 } ] }
+  actions:
+    - { id: openOrders, type: navigate, label: 受注照会, page: order_search }
+```
+
+集約（`aggregate`）: `count` / `sum` / `avg` / `min` / `max`。チャート種別（`kind`）: `bar` / `line` / `pie`。
+`chart.aggregate` を省くと**1行=1点**（集計済みエンドポイント向け）。`count` だけは Repository の総件数を使う。
 
 ## フィールド型（`field.type` / `filter.type`）
 `text` `textarea` `number` `select` `multiSelect` `checkbox` `radio` `date` `dateTime` `time`

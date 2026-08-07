@@ -9,13 +9,18 @@ describe("parseAppYaml: shipped example", () => {
     expect(app.id).toBe("sales_admin");
     expect(app.title).toBe("販売管理");
     expect(app.dslVersion).toBe("1.0");
-    expect(app.home).toBe("customers");
+    expect(app.home).toBe("dashboard");
   });
 
   it("parses the menu as leaf + group(with child) + leaves", () => {
-    expect(app.menu).toHaveLength(5);
+    expect(app.menu).toHaveLength(6);
 
-    const [customers, master, orders, orderEntry, orderEntryPaged] = app.menu;
+    const [dashboard, customers, master, orders, orderEntry, orderEntryPaged] =
+      app.menu;
+    expect(menuIsGroup(dashboard)).toBe(false);
+    expect(dashboard.id).toBe("dashboard");
+    expect(dashboard.page).toBe("sales_dashboard");
+
     expect(menuIsGroup(customers)).toBe(false);
     expect(customers.id).toBe("customers");
     expect(customers.page).toBe("customer_master");
@@ -41,9 +46,10 @@ describe("parseAppYaml: shipped example", () => {
     expect(orderEntryPaged.page).toBe("order_entry_paged");
   });
 
-  it("parses the shallow page inventory (6 pages)", () => {
-    expect(app.pages).toHaveLength(6);
+  it("parses the shallow page inventory (7 pages)", () => {
+    expect(app.pages).toHaveLength(7);
     expect(app.pages.map((p) => p.id)).toEqual([
+      "sales_dashboard",
       "customer_master",
       "product_master",
       "order_search",
@@ -52,6 +58,7 @@ describe("parseAppYaml: shipped example", () => {
       "order_entry_paged",
     ]);
     expect(app.pages.map((p) => p.type)).toEqual([
+      "dashboard",
       "master",
       "master",
       "search",
@@ -59,8 +66,8 @@ describe("parseAppYaml: shipped example", () => {
       "form",
       "form",
     ]);
-    expect(app.pages[0].title).toBe("顧客マスタ");
-    expect(app.pages[0].repository).toBe("customerRepository");
+    expect(app.pages[1].title).toBe("顧客マスタ");
+    expect(app.pages[1].repository).toBe("customerRepository");
   });
 });
 

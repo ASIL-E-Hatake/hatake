@@ -9,6 +9,7 @@ export * from "./messageResolver.js";
 export * from "./conditionEvaluator.js";
 export * from "./computed.js";
 export * from "./access.js";
+export * from "./aggregate.js";
 export * from "./query.js";
 export * from "./dto.js";
 export * from "./jsonSchema.js";

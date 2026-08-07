@@ -16,7 +16,7 @@
 - [レシピ: 一覧→詳細](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/cookbook/search-list-detail.ja.md): `app:` でメニュー付きアプリ化・`navigate` で遷移
 - [レシピ: 消費税/インボイス](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/cookbook/invoice-tax.ja.md): 税率別合計・端数処理
 - [仕組みと責務分担](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/concepts.ja.md): 利用者が書くのは定義とRepositoryだけ／正規化→検証→永続化の順／Frameworkが持たない領域
-- [ページ種別の選び方](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/page-types.ja.md): crud/master/search/detail/form の判断表
+- [ページ種別の選び方](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/page-types.ja.md): crud/master/search/detail/form/wizard/dashboard の判断表
 - [入力検証](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/validation.ja.md): 実行順・空値スキップ・独自ルール登録・メッセージi18n
 - [バックエンド連携](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/backend.ja.md): サーバ側バリデーション・QuerySpec・JPAアダプタ
 
@@ -26,7 +26,10 @@
 - [部門マスタ / master](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/dept_master.yaml)
 - [顧客詳細 / detail](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_detail.yaml)
 - [顧客入力 / form](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_form.yaml)
-- [販売管理アプリ / app（メニュー＋4ページ＋遷移）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/sales_app.yaml)
+- [顧客登録 / wizard（ステップ入力）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_wizard.yaml)
+- [受注入力 / 親子・明細（subTable）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/order_entry.yaml)
+- [売上ダッシュボード / dashboard（metric・chart・table のカード）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/sales_dashboard.yaml)
+- [販売管理アプリ / app（メニュー＋7ページ＋遷移）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/sales_app.yaml)
 
 ## 拡張・内部（必要なときだけ）
 - [Plugin ガイド](https://github.com/ASIL-E-Hatake/hatake/raw/main/flutter/docs/plugins.ja.md): 独自フォーマッタ/バリデータ/フィールド型/Renderer の登録

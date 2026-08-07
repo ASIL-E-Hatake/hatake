@@ -88,6 +88,92 @@ WizardPageDefinition wizardPage({
   );
 }
 
+/// A dashboard: a grid of card queries. [repository] is only the default for
+/// cards that declare none, so it is optional.
+DashboardPageDefinition dashboardPage({
+  required String id,
+  required String title,
+  required List<DashboardItemDefinition> items,
+  String? repository,
+  int columns = 2,
+  String dslVersion = kDslVersion,
+  SearchDefinition? search,
+  List<ActionDefinition> actions = const [],
+}) {
+  return DashboardPageDefinition(
+    id: id,
+    title: title,
+    repository: repository,
+    dslVersion: dslVersion,
+    layout: LayoutDefinition(columns: columns),
+    search: search,
+    items: items,
+    actions: actions,
+  );
+}
+
+/// One dashboard card: how to read, plus how to show.
+DashboardItemDefinition item(
+  String id, {
+  required String title,
+  String type = DashboardItemTypes.metric,
+  String? repository,
+  int span = 1,
+  Map<String, Object?> filters = const {},
+  int limit = 100,
+  String? sortField,
+  bool sortAscending = true,
+  DashboardValueDefinition? value,
+  String? format,
+  Map<String, Object?> config = const {},
+  List<ColumnDefinition> columns = const [],
+  ChartDefinition? chart,
+  String? action,
+  List<String> roles = const [],
+}) {
+  return DashboardItemDefinition(
+    id: id,
+    title: title,
+    type: type,
+    repository: repository,
+    span: span,
+    filters: filters,
+    limit: limit,
+    sortField: sortField,
+    sortAscending: sortAscending,
+    value: value,
+    format: format,
+    config: config,
+    columns: columns,
+    chart: chart,
+    action: action,
+    roles: roles,
+  );
+}
+
+/// A `metric` card's reduction. Defaults to counting rows.
+DashboardValueDefinition metric({
+  String aggregate = AggregateOps.count,
+  String? field,
+}) {
+  return DashboardValueDefinition(aggregate: aggregate, field: field);
+}
+
+/// A `chart` card's plot. Without [aggregate] every row is one point.
+ChartDefinition chart({
+  required String labelField,
+  String kind = ChartKinds.bar,
+  String? valueField,
+  String? aggregate,
+}) {
+  return ChartDefinition(
+    kind: kind,
+    labelField: labelField,
+    valueField: valueField,
+    aggregate: aggregate,
+  );
+}
+
 /// One wizard step — the section shape plus an id and a heading.
 WizardStepDefinition step(
   String id, {

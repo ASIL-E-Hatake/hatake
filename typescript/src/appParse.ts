@@ -101,10 +101,15 @@ function parseMenu(m: Dict): MenuItem {
 
 /** Shallow page inventory entry; full page models are not parsed here. */
 function parsePageRef(m: Dict): PageRef {
+  const type = reqString(m, "type", "app.pages[].type");
   return {
     id: reqString(m, "id", "app.pages[].id"),
-    type: reqString(m, "type", "app.pages[].type"),
+    type,
     title: reqString(m, "title", "app.pages[].title"),
-    repository: reqString(m, "repository", "app.pages[].repository"),
+    // A dashboard reads per card, so its page-level repository is optional.
+    repository:
+      type === "dashboard"
+        ? optString(m, "repository")
+        : reqString(m, "repository", "app.pages[].repository"),
   };
 }

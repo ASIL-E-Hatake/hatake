@@ -1,7 +1,9 @@
 import 'package:equatable/equatable.dart';
 
 import 'action_definition.dart';
+import 'dashboard_item_definition.dart';
 import 'form_definition.dart';
+import 'layout_definition.dart';
 import 'search_definition.dart';
 import 'section_definition.dart';
 import 'table_definition.dart';
@@ -252,6 +254,49 @@ class WizardPageDefinition extends PageDefinition {
   @override
   List<Object?> get props =>
       [id, title, dslVersion, repository, keyField, steps, actions];
+}
+
+/// A dashboard page: a grid of read-only cards ([items]), each one a small query
+/// against a repository plus how to display its result.
+///
+/// Unlike the other page kinds a dashboard has no single record and no single
+/// repository — [repository] is only the default for items that omit their own.
+/// An optional [search] area applies to every item, which is how a period or
+/// branch selector filters the whole board at once.
+class DashboardPageDefinition extends PageDefinition {
+  /// Default repository key for items that declare none.
+  final String? repository;
+
+  /// Cards, in declaration order.
+  final List<DashboardItemDefinition> items;
+
+  /// Card grid: how many columns wide the board is on a wide layout.
+  final LayoutDefinition layout;
+
+  /// Optional filters applied to every item's query.
+  final SearchDefinition? search;
+
+  final List<ActionDefinition> actions;
+
+  const DashboardPageDefinition({
+    required super.id,
+    required super.title,
+    super.dslVersion,
+    this.repository,
+    this.items = const [],
+    this.layout = const LayoutDefinition(columns: 2),
+    this.search,
+    this.actions = const [],
+  });
+
+  /// Repository key for [item] — its own, or the page default.
+  /// Null when neither is declared (the renderer reports it).
+  String? repositoryOf(DashboardItemDefinition item) =>
+      item.repository ?? repository;
+
+  @override
+  List<Object?> get props =>
+      [id, title, dslVersion, repository, items, layout, search, actions];
 }
 
 /// A read-only detail page: displays a single record's fields (grouped by the

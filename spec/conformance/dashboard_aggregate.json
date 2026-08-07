@@ -1,0 +1,111 @@
+{
+  "aggregate": [
+    { "name": "count は行数（field は見ない）", "op": "count", "rows": [{ "a": 1 }, { "a": 2 }, { "a": 3 }], "expected": 3 },
+    { "name": "count は空でも 0", "op": "count", "rows": [], "expected": 0 },
+    { "name": "sum", "op": "sum", "field": "amount", "rows": [{ "amount": 1000 }, { "amount": 2000 }], "expected": 3000 },
+    { "name": "sum: 欠損・null は 0 扱い", "op": "sum", "field": "amount", "rows": [{ "amount": 1000 }, { "amount": null }, { "other": 5 }], "expected": 1000 },
+    { "name": "sum: 数値に読める文字列は数値", "op": "sum", "field": "amount", "rows": [{ "amount": "1500" }, { "amount": 500 }], "expected": 2000 },
+    { "name": "sum: 真偽値は数値ではない", "op": "sum", "field": "flag", "rows": [{ "flag": true }, { "flag": false }], "expected": 0 },
+    { "name": "sum: 空なら 0", "op": "sum", "field": "amount", "rows": [], "expected": 0 },
+    { "name": "avg", "op": "avg", "field": "amount", "rows": [{ "amount": 100 }, { "amount": 200 }, { "amount": 300 }], "expected": 200 },
+    { "name": "avg: 小数になる場合", "op": "avg", "field": "amount", "rows": [{ "amount": 10 }, { "amount": 15 }], "expected": 12.5 },
+    { "name": "avg: 数値でない行は分母に入れない", "op": "avg", "field": "amount", "rows": [{ "amount": 100 }, { "amount": "x" }, { "amount": 300 }], "expected": 200 },
+    { "name": "avg: 数値が1つも無ければ null", "op": "avg", "field": "amount", "rows": [{ "amount": "x" }], "expected": null },
+    { "name": "avg: 空なら null", "op": "avg", "field": "amount", "rows": [], "expected": null },
+    { "name": "min", "op": "min", "field": "amount", "rows": [{ "amount": 300 }, { "amount": 100 }, { "amount": 200 }], "expected": 100 },
+    { "name": "max", "op": "max", "field": "amount", "rows": [{ "amount": 300 }, { "amount": 100 }, { "amount": 200 }], "expected": 300 },
+    { "name": "min: 負数も扱う", "op": "min", "field": "amount", "rows": [{ "amount": -50 }, { "amount": 0 }], "expected": -50 },
+    { "name": "max: 空なら null", "op": "max", "field": "amount", "rows": [], "expected": null },
+    { "name": "count 以外は field が無ければ null", "op": "sum", "rows": [{ "amount": 1000 }], "expected": null },
+    { "name": "未登録の op は null", "op": "median", "field": "amount", "rows": [{ "amount": 1000 }], "expected": null }
+  ],
+  "groupBy": [
+    {
+      "name": "ラベル別の合計（ラベルは初出順）",
+      "op": "sum",
+      "labelField": "status",
+      "valueField": "amount",
+      "rows": [
+        { "status": "未出荷", "amount": 100 },
+        { "status": "出荷済", "amount": 200 },
+        { "status": "未出荷", "amount": 50 }
+      ],
+      "expected": [
+        { "label": "未出荷", "value": 150 },
+        { "label": "出荷済", "value": 200 }
+      ]
+    },
+    {
+      "name": "ラベル別の件数（valueField 不要）",
+      "op": "count",
+      "labelField": "status",
+      "rows": [
+        { "status": "未出荷" },
+        { "status": "出荷済" },
+        { "status": "未出荷" }
+      ],
+      "expected": [
+        { "label": "未出荷", "value": 2 },
+        { "label": "出荷済", "value": 1 }
+      ]
+    },
+    {
+      "name": "ラベル別の平均",
+      "op": "avg",
+      "labelField": "customer",
+      "valueField": "amount",
+      "rows": [
+        { "customer": "山田商事", "amount": 100 },
+        { "customer": "山田商事", "amount": 300 },
+        { "customer": "佐藤物産", "amount": 50 }
+      ],
+      "expected": [
+        { "label": "山田商事", "value": 200 },
+        { "label": "佐藤物産", "value": 50 }
+      ]
+    },
+    {
+      "name": "ラベル別の最大",
+      "op": "max",
+      "labelField": "status",
+      "valueField": "amount",
+      "rows": [
+        { "status": "未出荷", "amount": 100 },
+        { "status": "未出荷", "amount": 700 }
+      ],
+      "expected": [{ "label": "未出荷", "value": 700 }]
+    },
+    {
+      "name": "ラベルが無い行は空ラベルにまとまる",
+      "op": "sum",
+      "labelField": "status",
+      "valueField": "amount",
+      "rows": [{ "amount": 10 }, { "status": null, "amount": 5 }],
+      "expected": [{ "label": "", "value": 15 }]
+    },
+    {
+      "name": "数値が1つも無いグループの avg は null",
+      "op": "avg",
+      "labelField": "status",
+      "valueField": "amount",
+      "rows": [{ "status": "未出荷", "amount": "x" }],
+      "expected": [{ "label": "未出荷", "value": null }]
+    },
+    {
+      "name": "行が無ければ空",
+      "op": "sum",
+      "labelField": "status",
+      "valueField": "amount",
+      "rows": [],
+      "expected": []
+    },
+    {
+      "name": "未登録の op はグループの値が null",
+      "op": "median",
+      "labelField": "status",
+      "valueField": "amount",
+      "rows": [{ "status": "未出荷", "amount": 100 }],
+      "expected": [{ "label": "未出荷", "value": null }]
+    }
+  ]
+}

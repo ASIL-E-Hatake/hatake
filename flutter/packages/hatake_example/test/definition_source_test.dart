@@ -20,6 +20,16 @@ void main() {
     expect(yaml, isNot(contains('id: order_detail')));
   });
 
+  test('a dashboard block extracts like any other page', () {
+    final yaml = extractPageYaml(source, 'sales_dashboard')!;
+
+    expect(yaml.startsWith('type: dashboard'), isTrue);
+    expect(yaml, contains('items:'));
+    // Cards keep their relative indentation and stop before the next page.
+    expect(yaml, contains('  - { id: orderCount'));
+    expect(yaml, isNot(contains('id: customer_master')));
+  });
+
   test('picks the right page among several', () {
     expect(extractPageYaml(source, 'customer_master'),
         startsWith('type: master'));

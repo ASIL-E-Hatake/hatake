@@ -2,7 +2,11 @@ import { parse as parseYamlText } from "yaml";
 import {
   kDslVersion,
   type ActionDefinition,
+  type ChartDefinition,
   type ColumnDefinition,
+  type DashboardItemDefinition,
+  type DashboardPageDefinition,
+  type DashboardValueDefinition,
   type FieldDefinition,
   type FilterDefinition,
   type FormDefinition,
@@ -131,9 +135,12 @@ export function parsePageMap(root: Dict): PageDefinition {
         steps: parseWizardSteps(page),
         actions: parseActions(page),
       };
+    case "dashboard":
+      return parseDashboardPage(page, dslVersion);
     default:
       throw new DefinitionParseError(
-        `Unsupported page type "${type}" (supported: crud, search, form, wizard)`,
+        `Unsupported page type "${type}" ` +
+          `(supported: crud, search, form, wizard, dashboard)`,
         "page.type",
       );
   }
@@ -160,6 +167,84 @@ function parseWizardSteps(page: Dict): WizardStepDefinition[] {
       ),
     };
   });
+}
+
+/**
+ * A dashboard is a grid of card queries. Unlike the other kinds `repository` is
+ * optional (it is only the default for items) and there is no `key`.
+ */
+function parseDashboardPage(
+  page: Dict,
+  dslVersion: string,
+): DashboardPageDefinition {
+  const items = optList(page, "items");
+  if (items.length === 0) {
+    throw new DefinitionParseError(
+      "A dashboard page needs at least one item",
+      "page.items",
+    );
+  }
+  return {
+    kind: "dashboard",
+    id: reqString(page, "id", "page.id"),
+    title: reqString(page, "title", "page.title"),
+    dslVersion,
+    repository: optString(page, "repository"),
+    columns: optNumber(optDict(page, "layout") ?? {}, "columns") ?? 2,
+    search: parseSearch(optDict(page, "search")),
+    items: items.map((raw, i) =>
+      parseDashboardItem(asDict(raw, `page.items[${i}]`), i),
+    ),
+    actions: parseActions(page),
+  };
+}
+
+function parseDashboardItem(m: Dict, index: number): DashboardItemDefinition {
+  const at = `page.items[${index}]`;
+  const sort = optDict(m, "sort");
+  return {
+    id: reqString(m, "id", `${at}.id`),
+    title: reqString(m, "title", `${at}.title`),
+    type: optString(m, "type") ?? "metric",
+    repository: optString(m, "repository"),
+    span: optNumber(m, "span") ?? 1,
+    filters: optDict(m, "filters") ?? {},
+    limit: optNumber(m, "limit") ?? 100,
+    sortField: sort ? optString(sort, "field") : undefined,
+    sortAscending: sort ? optBool(sort, "ascending", true) : true,
+    value: parseDashboardValue(optDict(m, "value")),
+    format: optString(m, "format"),
+    config: optDict(m, "config") ?? {},
+    columns: optList(m, "columns").map((c, i) =>
+      parseColumn(asDict(c, `${at}.columns[${i}]`)),
+    ),
+    chart: parseChart(optDict(m, "chart"), at),
+    action: optString(m, "action"),
+    roles: optList(m, "roles").map(String),
+  };
+}
+
+function parseDashboardValue(
+  m: Dict | undefined,
+): DashboardValueDefinition | undefined {
+  if (!m) return undefined;
+  return {
+    aggregate: optString(m, "aggregate") ?? "count",
+    field: optString(m, "field"),
+  };
+}
+
+function parseChart(
+  m: Dict | undefined,
+  at: string,
+): ChartDefinition | undefined {
+  if (!m) return undefined;
+  return {
+    kind: optString(m, "kind") ?? "bar",
+    labelField: reqString(m, "labelField", `${at}.chart.labelField`),
+    valueField: optString(m, "valueField"),
+    aggregate: optString(m, "aggregate"),
+  };
 }
 
 function common(page: Dict, dslVersion: string) {

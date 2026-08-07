@@ -6,7 +6,10 @@ library;
 
 // Type constants (open, plugin-extensible).
 export 'src/definition/action_types.dart';
+export 'src/definition/aggregate_ops.dart';
+export 'src/definition/chart_kinds.dart';
 export 'src/definition/column_types.dart';
+export 'src/definition/dashboard_item_types.dart';
 export 'src/definition/field_types.dart';
 export 'src/definition/filter_operators.dart';
 export 'src/definition/validator_types.dart';
@@ -23,6 +26,11 @@ export 'src/definition/column_definition.dart';
 export 'src/definition/filter_definition.dart';
 export 'src/definition/sub_table_source.dart';
 export 'src/definition/wizard_step_definition.dart';
+
+// Dashboard cards.
+export 'src/definition/chart_definition.dart';
+export 'src/definition/dashboard_item_definition.dart';
+export 'src/definition/dashboard_value_definition.dart';
 
 // Composite definitions.
 export 'src/definition/section_definition.dart';
@@ -50,6 +58,7 @@ export 'src/validation/form_validator.dart';
 export 'src/i18n/message_resolver.dart';
 
 // Logic (conditional display / computed fields / role-based access).
+export 'src/logic/aggregate.dart';
 export 'src/logic/condition_evaluator.dart';
 export 'src/logic/computed_registry.dart';
 export 'src/logic/access.dart';

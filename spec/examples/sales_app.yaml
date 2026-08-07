@@ -5,16 +5,73 @@ dsl_version: "1.0"
 app:
   id: sales_admin
   title: 販売管理
-  home: customers
+  home: dashboard
   menu:
+    - { id: dashboard, label: ダッシュボード, icon: insights, page: sales_dashboard }
     - { id: customers, label: 顧客, icon: people, page: customer_master }
     - group: マスタ
       items:
         - { label: 商品, icon: inventory, page: product_master }
     - { id: orders, label: 受注照会, icon: list, page: order_search }
-    - { id: orderEntry, label: 受注入力, icon: dashboard, page: order_entry }
+    - { id: orderEntry, label: 受注入力, icon: edit_note, page: order_entry }
     - { id: orderEntryPaged, label: 受注入力（明細別テーブル）, icon: table_rows, page: order_entry_paged }
   pages:
+    # ダッシュボード: カードごとに小さな読み取りクエリを投げ、結果の見せ方だけを
+    # 定義する。集計は Repository が返した行に対する畳み込み（aggregate）。
+    - type: dashboard
+      id: sales_dashboard
+      title: 売上ダッシュボード
+      repository: orderRepository     # カードが repository を省いたときの既定
+      layout: { columns: 4 }
+      # 検索エリアは全カードに効く（期間で board 全体を絞る）。
+      search:
+        filters:
+          - { field: orderDate, label: 受注日, type: date, operator: between }
+      items:
+        - { id: orderCount, title: 受注件数, action: openOrders }
+        - id: totalAmount
+          title: 受注金額
+          value: { aggregate: sum, field: amount }
+          format: currency
+          config: { symbol: "¥" }
+        - id: avgAmount
+          title: 平均受注額
+          value: { aggregate: avg, field: amount }
+          format: currency
+          config: { symbol: "¥" }
+        - id: pending
+          title: 未出荷
+          filters: { status: 未出荷 }   # このカードだけの固定条件
+          action: openOrders
+        - id: byCustomer
+          type: chart
+          title: 顧客別の受注金額
+          span: 2
+          chart: { kind: bar, labelField: customer, valueField: amount, aggregate: sum }
+          format: currency
+          config: { symbol: "¥" }
+        - id: byStatus
+          type: chart
+          title: 状態別の構成比
+          span: 2
+          chart: { kind: pie, labelField: status, valueField: amount, aggregate: sum }
+          format: currency
+          config: { symbol: "¥" }
+        - id: recent
+          type: table
+          title: 直近の受注
+          span: 4
+          limit: 5
+          sort: { field: orderDate, ascending: false }
+          columns:
+            - { field: orderNo, label: 受注番号, width: 140 }
+            - { field: customer, label: 顧客名 }
+            - { field: orderDate, label: 受注日, width: 120 }
+            - { field: status, label: 状態, width: 100 }
+            - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+      actions:
+        - { id: openOrders, type: navigate, label: 受注照会, page: order_search }
+
     - type: master
       id: customer_master
       title: 顧客マスタ

@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:hatake_core/hatake_core.dart';
 
 import '../runtime/crud_controller.dart';
+import '../runtime/dashboard_controller.dart';
 import '../runtime/detail_controller.dart';
 import '../runtime/form_controller.dart';
 import '../runtime/hatake_router.dart';
@@ -50,6 +51,13 @@ abstract interface class Renderer {
     BuildContext context,
     WizardPageDefinition definition,
     WizardController controller,
+  );
+
+  /// Builds the widget tree for a dashboard page (a grid of card queries).
+  Widget buildDashboardPage(
+    BuildContext context,
+    DashboardPageDefinition definition,
+    DashboardController controller,
   );
 
   /// Builds the app shell (navigation menu + current page) for an

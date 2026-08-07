@@ -19,7 +19,7 @@
 | | SearchPage（照会） | ✅ Flutter | |
 | | DetailPage（詳細・読取） | ✅ Flutter | 単一レコードを読み取り表示（`DetailController`＋`format`）。record は実行時に渡す |
 | | MasterPage（マスタメンテ） | ✅ Flutter | Crud と同構造。`CrudLike` で Crud と描画/コントローラを共用 |
-| | DashboardPage | ⏳ | カード/集計/グラフ。設計重め |
+| | DashboardPage | ✅ Flutter（3言語検証） | `type: dashboard` ＋ `items`（カード）。1枚＝**小さな読み取りクエリ + 見せ方**（`metric` / `table` / `chart`）。単一レコードを指さないので `key` 無し・`repository` はカードの既定値。**Framework は集計クエリを投げない**＝Repository が返した行に対する畳み込み（`AggregateRegistry`: count/sum/avg/min/max、登録式）。`chart.aggregate` を省くと1行＝1点（集計済みエンドポイント向け）、`count` は総件数を使う。ページの `search` は全カードに効き、カードは**独立して読み込む**（1つ落ちてもそのカードだけ）。チャートは**依存ゼロの自作描画**（bar/line/pie）で、それ以上は `dashboardItemBuilders` でプラグイン。集約は `dashboard_aggregate.json` で3言語一致 |
 | | WizardPage（ステップ入力） | ✅ Flutter（3言語検証） | `type: wizard` ＋ `steps`（**id と見出しを持つ section**）。「次へ」は**そのステップの項目だけ**検証、「保存」は最後のステップ＋全体を検証して1回だけ永続化。全体検証で前のステップの項目が落ちたら**その項目を持つステップまで自動で戻る**。`normalize` は保存時に全項目へ適用。サーバ側もステップ単位／全体で同じ定義で検証可（`wizard_validation.json` で3言語一致） |
 | | FormPage（単票入力） | ✅ Flutter | 単票の作成/編集。フォーム描画を `_HatakeFormFields` に共通化しダイアログと共用。record key で編集/新規を切替 |
 | | 親子・明細（master-detail） | ✅ Flutter（3言語検証） | `type: subTable` でヘッダ＋明細行を1画面編集し**まとめて保存**（子行は親レコードの1項目）。行内 `validators`/`computed`、**行の並べ替え**（既定ON／`config: { reorderable: false }` で無効）が効く。サーバ側も同じ定義で子行を検証（エラー項目名 `lines[0].qty`）。設計は [提案書](proposals/master-detail.ja.md)。**大量明細は `source`（子Repository方式）**＝子行を別 Repository から外部キーでページング取得し、行ごとに即時保存（親が未保存なら明細は編集不可、並べ替えなし、親の検証は当該項目を飛ばす）。埋め込みとの併存で使い分ける |
@@ -64,12 +64,14 @@
 | 明細行のサーバ側検証（`lines[0].qty`） | ✅ | ✅ | ✅ | ✅ |
 | 明細の `source`（子Repository方式） | ✅ | ✅（＋描画・ページング） | ✅（検証で当該項目を飛ばす） | ✅（同左） |
 | ステップ入力 `wizard`（モデル＋パーサ＋ステップ検証） | ✅ | ✅（＋描画） | ✅ | ✅ |
+| ダッシュボード `dashboard`（モデル＋パーサ） | ✅ | ✅（＋描画・チャート） | ✅ | ✅ |
+| 集約 `AggregateRegistry`（count/sum/avg/min/max） | ✅ | ✅ | ✅ | ✅ |
 | Renderer（画面描画） | — | ✅(Material) | 対象外 | 対象外(※) |
 | table/action など画面寄りモデル | ✅ | ✅ | ⏳一部（table 追加済／action 未） | ✅ |
 
-※ Java の定義モデルは page 識別子 + search + table + form まで（action 未。`table` は DTO のレスポンス形導出のために追加）。子グリッド用の `ColumnDefinition` は検証に必要な最小形（field/label/type/format）で、`width`/`sortable`/`roles` 等の描画専用キーは持たない。TS は画面寄りモデルも持つがバックエンド用途で描画はしない。
+※ Java の定義モデルは page 識別子 + search + table + form + dashboard の `items` まで（action 未。`table` は DTO のレスポンス形導出のために追加）。ダッシュボードのカードは「どう引くか＋どう畳むか」を持ち、`span` / `height` のような描画専用キーは持たない。子グリッド用の `ColumnDefinition` は検証に必要な最小形（field/label/type/format）で、`width`/`sortable`/`roles` 等の描画専用キーは持たない。TS は画面寄りモデルも持つがバックエンド用途で描画はしない。
 
-※2 DTO 導出は**バックエンドの関心**なので Flutter は対象外（`QueryBuilder` と同じ扱い）。framework 側の Dart コードはシリアライズをせず、境界が `DataRecord`＝Map なので DTO を詰める場所が framework 内に無い。理由の詳細は [提案書](proposals/dto-generation.ja.md)。対応ページ種別は TS が `crud`/`search`/`form`（`master`/`detail` は未）、Java は種別を文字列として保持。
+※2 DTO 導出は**バックエンドの関心**なので Flutter は対象外（`QueryBuilder` と同じ扱い）。framework 側の Dart コードはシリアライズをせず、境界が `DataRecord`＝Map なので DTO を詰める場所が framework 内に無い。理由の詳細は [提案書](proposals/dto-generation.ja.md)。対応ページ種別は TS が `crud`/`search`/`form`（`master`/`detail` は未）、Java は種別を文字列として保持。`dashboard` は単一レコードを指さないので `pathParams` を出さず、`search` があればクエリパラメータだけを出す（カード単位のレスポンス形導出は未）。
 
 ### パリティの進め方
 
@@ -114,18 +116,49 @@
 - **英語版チートシート**（`docs/api-cheatsheet.md`）: 日本企業向け優先のため後回し。需要が出たら追加（構成は日本語版 `api-cheatsheet.ja.md` を踏襲）。
 - 各パッケージ公開時、README にチートシート要約 or リンクを入れる。
 
-## フェーズ感（ざっくり優先度）
+## これから（優先度つき）
 
-- **近い（P1）… ✅ 完了**: ~~Formatter/Converter を TS/Java へ横展開~~ ✅、~~コンフォーマンス・スイートの器~~ ✅、~~normalize 入力パイプの配線~~ ✅（Flutter は送信時に自動適用 / TS・Java は `normalizeRecord`・`FormNormalizer`）、~~QuerySpec の fixture 化~~ ✅、~~utils P1（金額/日付/和暦/パーセント/半↔全角/数値パース/郵便番号/マスク）~~ ✅（3言語）
-- **中（P2）**: ~~DetailPage / MasterPage~~ ✅、~~消費税・年度/四半期・年齢/勤続・営業日（utils P2）~~ ✅（3言語＋conformance）、~~元号算出/税率別合計（utils 小follow-up）~~ ✅（`eraOf` / `computeInvoice`、3言語＋conformance）→ ~~ORM アダプタ1個目~~ ✅（Java/JPA `JpaQueryTranslator`）。P2 はひと通り完了（i18n・条件表示・計算項目・ORM アダプタ1個目 すべて✅）
-- **遠い（P3）**: ~~権限制御~~ ✅（roles + `isAllowed`、3言語）、DashboardPage、Python/Rust エディション、帳票・全銀など重いやつ
+**終わったものはこの節から消す。** 完了した機能の状態は上の [A. 機能として用意すべきもの](#a-機能として用意すべきもの)と
+[B. 言語間の足並み](#b-言語間の足並みパリティ)が持つので、ここは「まだ無いもの」だけの一覧にしておく。
+（履歴が要るときは git log を見る。P0〜P2 と WizardPage / DTO生成 / DashboardPage は完了済み。）
 
-**P1・P2 は完了済み**。P1 が指していた次の2本（WizardPage / DTO生成）も完了したので、残るのは P3 相当:
+### 1. 機能（Framework 本体）
 
-| 次の候補 | 内容 | 規模感 |
-|---|---|---|
-| ~~新ページ種別（WizardPage）~~ | ✅ 完了（`type: wizard`。上の表参照） | — |
-| ~~DTO / レスポンス形生成~~ | ✅ 完了（Phase 1〜4。上の表参照） | — |
+| 項目 | 内容 | なぜ | 規模感 |
+|---|---|---|---|
+| **帳票 / CSV / 印刷** | 一覧の CSV 出力（列ラベル＋Formatter を共有）と、印刷向けの集計帳票（グループ・小計・用紙レイアウト）。まずは定義から中立な出力仕様を作り、Renderer が描く形 | 業務システムで必ず要求される。日本企業向けの差別化枠でもある | 中〜大 |
+| テーマ / スタイル定義 | 色・余白・密度を定義から差せるようにする（`app.theme`）。Renderer 側の関心 | 「会社の色にしたい」は最初に来る要望 | 中 |
+| Action / Workflow フック | 確認ダイアログ・実行前後フック・成功時の遷移を宣言で書く（今は `plugin` に逃がしている） | 「削除前に確認」を毎回 Dart で書かせたくない | 中 |
+| Validator 拡充 | 法人番号・マイナンバー・相関チェック（項目間の比較） | 相関チェックが無いと結局コードに落ちる | 小〜中 |
+| Web URL 同期 / タブ | ルートと URL の相互反映、複数タブ | Web で配ると必ず「URL 共有できないの？」になる | 中 |
+| ダッシュボードの次段 | 期間プリセット（今月/今年度）・カードからのドリルダウン・自動更新 | 1枚目が出た後の実運用要望 | 小〜中 |
+| ORM アダプタ2個目 | MyBatis（Java）か Prisma（TS） | 1個目（JPA）で形が固まったので横展開 | 中 |
+| 全銀・固定長 | 固定長レコードの入出力（全銀フォーマット等） | 金融・給与まわりで効く。帳票の後 | 大 |
+| Python / Rust エディション | **保留**（当面やらない）。やるときは [C. 対応言語を増やす](#c-対応言語を増やすpython--rust-など)の最低ラインに従う | 需要が出てから | 大 |
+
+### 2. AI が扱いやすくする（AI First の実装）
+
+「AI が理解・生成しやすい」を掛け声で終わらせないための具体項目。**AI が実際に転ぶ所**から並べた。
+
+| 項目 | 内容 | なぜ | 規模感 |
+|---|---|---|---|
+| **strict パース（未知キーを弾く）** | パーサに厳格モードを足し、綴り間違い・存在しないキーをエラーにする（今は黙って無視するので、`labell:` と書いても通ってしまう） | AI のタイポが**無言で消える**のが一番痛い。JSON Schema 側は `additionalProperties: false` なのでパーサだけが緩い | 小 |
+| **`hatake` CLI（validate / generate）** | `hatake validate <yaml>`（path 付きエラー）、`hatake dto <yaml> --lang ts|java`（今はライブラリ呼び出しだけでファイル出力の入口が無い）、`hatake new page` | AI も人も「書いた → すぐ検証」のループが回る。CI からも呼べる | 中 |
+| 機械可読な DSL リファレンス | 全キー・型・既定値・列挙値・どのページ種別で有効かを1つの JSON に生成（spec から導出）。仕様書を読ませずに参照させる | 仕様書 500行を毎回読ませるのは高い。索引があれば1発で引ける | 小〜中 |
+| hatake MCP サーバ | 仕様の検索・定義の検証・例の取得を MCP ツールとして提供 | エージェントが**手元に仕様を持たなくても**正しい定義を書ける | 中 |
+| 例のカタログ化 | `spec/examples/` を「やりたいこと → 例」の索引にする（今はファイル名の羅列） | AI は近い例をコピーする方が確実に速い | 小 |
+| 英語版の最小資料 | `docs/api-cheatsheet.md`（英語）＋ llms.txt の英語版（[ドキュメント配布 TODO](#ドキュメント配布-todo) と同じ話） | 英語で学習したモデルに効く。日本語のみだと確度が落ちる | 小 |
+
+### 3. 人が使うための道具・資料
+
+| 項目 | 内容 | なぜ | 規模感 |
+|---|---|---|---|
+| **VSCode 拡張** | 段階的に: ①スニペット＋JSON Schema 自動紐付け（今は YAML 先頭に `# yaml-language-server:` を手書き）→ ②**定義プレビュー**（横に画面イメージ）→ ③GUI 編集（項目を並べて YAML を書き戻す） | 「YAML を手で書く」の敷居を下げる。②まで来ると営業でも見せられる | ①小 / ②中 / ③大 |
+| Web プレイグラウンド | YAML を貼るとその場で描画される場（Flutter Web を GitHub Pages に置く。デモ資産が流用できる） | インストール前に触れる。紹介記事から直リンクできる | 中 |
+| チュートリアル | 「0から受注入力画面まで」を通しで1本（今は導入＋レシピが個別にある状態） | 最初の30分の体験が採用を決める | 小〜中 |
+| 移行ガイド | 既存の Flutter 画面 / 既存の業務システムからの置き換え手順（部分導入のやり方） | 新規案件より置き換えの方が多い | 小 |
+| 図解 | アーキ図（Definition→Parser→Renderer）・データフロー・層の責務を画像で | 文章だけだと伝わらない層がいる | 小 |
+| 配布（pub.dev / npm / Maven） | [配布・公開](#配布公開distribution)の TODO を実際に publish する | `git` 参照のままだと採用されにくい | 中 |
 
 ## 依頼の仕方（メモ）
 

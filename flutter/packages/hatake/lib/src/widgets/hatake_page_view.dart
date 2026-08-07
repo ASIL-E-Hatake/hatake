@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:hatake_core/hatake_core.dart';
 
 import 'hatake_crud_view.dart';
+import 'hatake_dashboard_view.dart';
 import 'hatake_detail_view.dart';
 import 'hatake_form_view.dart';
 import 'hatake_search_view.dart';
@@ -30,6 +31,7 @@ class HatakePageView extends StatelessWidget {
         HatakeFormView(definition: d, recordKey: recordKey),
       final WizardPageDefinition d =>
         HatakeWizardView(definition: d, recordKey: recordKey),
+      final DashboardPageDefinition d => HatakeDashboardView(definition: d),
     };
   }
 }
