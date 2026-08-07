@@ -40,6 +40,8 @@ const spec = buildQuery(page.search, req.query); // { conditions, sort, page, pa
 npx hatake validate spec/examples/*.yaml     # 解析 + strict（既定）
 npx hatake new report --id sales_report --title 売上明細表 > page.yaml
 npx hatake types page.yaml --lang java --package io.example.api --out gen/
+npx hatake reference rowsPerPage             # このキー、どこに書くの？型は？既定値は？
+npx hatake examples 帳票                      # 近い例を探す
 ```
 
 | コマンド | 何をするか |
@@ -50,6 +52,11 @@ npx hatake types page.yaml --lang java --package io.example.api --out gen/
 | `schema <file>` | JSON Schema 2020-12 |
 | `openapi <file> [--base-path /api/orders]` | OpenAPI 3.1（`--base-path` を省くと `components.schemas` だけ） |
 | `types <file> --lang ts\|java [--out dir]` | ネイティブ型。Java は**1レコード＝1ファイル**で書き出す |
+| `reference [name] [--page-kind k]` | 機械可読な [DSL リファレンス](../spec/reference.json)（JSON）。`name` にキー名・ノード名・ページ種別を渡すとその1件だけ。綴り違いは候補を出す |
+| `examples [query] [--json]` | [例のカタログ](../spec/examples/README.md)を「やりたいこと」で引く |
+
+`reference` / `examples` は `spec/` を実行時に探す（`--spec <dir>` で明示もできる）。
+リファレンスは**その場でスキーマから生成する**ので、古い写しを配ることがない。
 
 `validate` は失敗したとき、場所・キー・直し方をそのまま出す:
 

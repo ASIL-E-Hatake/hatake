@@ -104,9 +104,13 @@ CrudPage / SearchPage に対応。検索・一覧・ページング・CRUD・バ
 ```bash
 npx hatake validate spec/examples/*.yaml   # strict（知らないキーを弾く）。問題があれば終了コード 1
 npx hatake new crud --id customer_master --title 顧客マスタ
+npx hatake reference rowsPerPage           # このキーどこに書くの？型は？既定値は？
+npx hatake examples 帳票                    # やりたいことから近い例を引く
 ```
 
 書き間違いは場所と直し方まで出る（`page.table.columns[0]: 知らないキー "witdh"（width の間違い？）`）。生成（`dto` / `schema` / `openapi` / `types`）も同じ CLI から。→ [使い方](typescript/README.md#cli)
+
+仕様を「読ませる」のではなく「引かせる」ための機械可読な資料も置いてある: [DSL リファレンス](spec/reference.json)（全キーの索引。JSON Schema から生成）と [例のカタログ](spec/examples/README.md)（やりたいこと → 例）。
 
 読み物としては [紹介記事（全体）](docs/blog/introducing-hatake.md) と [Flutter 版の使い方](docs/blog/introducing-hatake-flutter.md) がある。
 

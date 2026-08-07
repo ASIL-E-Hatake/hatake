@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseArgs, runCli, type CliIo } from "../src/cli.js";
 import { parsePageYaml, scaffold, scaffoldKinds } from "../src/index.js";
@@ -267,12 +268,112 @@ describe("hatake new", () => {
   });
 });
 
+// spec/ の場所は実行時に探すが、テストは中身を差し替えたいので --spec で渡す。
+const SPEC = "../spec";
+const specFiles = {
+  [join(SPEC, "hatake-page.schema.json")]: readFileSync(
+    "../spec/hatake-page.schema.json",
+    "utf8",
+  ),
+  [join(SPEC, "examples", "index.json")]: readFileSync(
+    "../spec/examples/index.json",
+    "utf8",
+  ),
+};
+
+describe("hatake reference", () => {
+  it("prints the whole reference as JSON", () => {
+    const io = fakeIo(specFiles);
+    expect(runCli(["reference", "--spec", SPEC], io)).toBe(0);
+    const reference = JSON.parse(io.stdout.join("\n"));
+    expect(reference.pageKinds).toHaveLength(8);
+    expect(reference.nodes.column.keys[0].key).toBe("field");
+  });
+
+  it("looks one name up — which is the point of having an index", () => {
+    const io = fakeIo(specFiles);
+    expect(runCli(["reference", "rowsPerPage", "--spec", SPEC], io)).toBe(0);
+    const found = JSON.parse(io.stdout.join("\n"));
+    expect(found.keys[0].node).toBe("report");
+    expect(found.keys[0].key.default).toBe(40);
+  });
+
+  it("narrows to one page kind", () => {
+    const io = fakeIo(specFiles);
+    expect(runCli(["reference", "--page-kind", "report", "--spec", SPEC], io)).toBe(0);
+    const reference = JSON.parse(io.stdout.join("\n"));
+    expect(Object.keys(reference.nodes)).not.toContain("wizardStep");
+
+    const unknown = fakeIo(specFiles);
+    expect(
+      runCli(["reference", "--page-kind", "kanban", "--spec", SPEC], unknown),
+    ).toBe(1);
+    expect(unknown.stderr.join("")).toContain("知らないページ種別");
+  });
+
+  it("suggests the right name when asked for a typo", () => {
+    const io = fakeIo(specFiles);
+    expect(runCli(["reference", "rowsPerpage", "--spec", SPEC], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("rowsPerPage の間違い？");
+  });
+
+  it("writes to --out, which is how spec/reference.json is made", () => {
+    const io = fakeIo(specFiles);
+    expect(
+      runCli(["reference", "--spec", SPEC, "--out", "reference.json"], io),
+    ).toBe(0);
+    expect(io.written["reference.json"].endsWith("\n")).toBe(true);
+    expect(JSON.parse(io.written["reference.json"]).nodes.report).toBeDefined();
+  });
+
+  it("says where to point it when spec/ is nowhere to be found", () => {
+    const io = fakeIo();
+    expect(runCli(["reference", "--spec", "nope"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("--spec");
+  });
+});
+
+describe("hatake examples", () => {
+  it("lists the catalog with what each example is for", () => {
+    const io = fakeIo(specFiles);
+    expect(runCli(["examples", "--spec", SPEC], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("customer_master.yaml  [crud]  顧客マスタ");
+    expect(out).toContain("キー:");
+  });
+
+  it("filters by what you are trying to do", () => {
+    const io = fakeIo(specFiles);
+    expect(runCli(["examples", "帳票", "--spec", SPEC], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("sales_report.yaml");
+    expect(io.stdout.join("\n")).not.toContain("customer_master.yaml");
+  });
+
+  it("--json for tools, and a miss is an error", () => {
+    const io = fakeIo(specFiles);
+    expect(runCli(["examples", "小計", "--json", "--spec", SPEC], io)).toBe(0);
+    expect(JSON.parse(io.stdout.join("\n"))[0].file).toBe("sales_report.yaml");
+
+    const miss = fakeIo(specFiles);
+    expect(runCli(["examples", "ブロックチェーン", "--spec", SPEC], miss)).toBe(1);
+  });
+});
+
 describe("hatake --help", () => {
   it("lists the commands", () => {
     const io = fakeIo();
     expect(runCli(["--help"], io)).toBe(0);
     const help = io.stdout.join("\n");
-    for (const command of ["validate", "dto", "schema", "openapi", "types", "new"]) {
+    for (const command of [
+      "validate",
+      "dto",
+      "schema",
+      "openapi",
+      "types",
+      "new",
+      "reference",
+      "examples",
+    ]) {
       expect(help).toContain(`hatake ${command}`);
     }
   });

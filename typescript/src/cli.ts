@@ -9,8 +9,15 @@
 // 「業務システムを10年動かす」側の都合と合わなくなる。
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { deriveDto } from "./dto.js";
+import { type ExampleCatalog, filterExamples } from "./examples.js";
+import {
+  buildReference,
+  filterByPageKind,
+  lookupReference,
+} from "./reference.js";
 import { toJsonSchema } from "./jsonSchema.js";
 import { toOpenApi } from "./openApi.js";
 import { type PageDefinition } from "./definition.js";
@@ -21,6 +28,7 @@ import {
   describeUnknownKey,
 } from "./parse.js";
 import { parseAppYaml } from "./appParse.js";
+import { closestKey } from "./strictKeys.js";
 import { scaffold, scaffoldKinds } from "./scaffold.js";
 import { toJavaRecords, toTypeScript } from "./types.js";
 
@@ -63,6 +71,13 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
 
   hatake new <kind> --id <id> --title <title> [--repository <key>] [--out file]
       ページ定義の雛形を出す。kind: ${scaffoldKinds.join(" | ")}
+
+  hatake reference [name] [--page-kind <kind>] [--out file]
+      機械可読な DSL リファレンス（JSON）。name にノード名・キー名・ページ種別を
+      渡すとその1件だけ。--page-kind でその画面で使えるところだけに絞る。
+
+  hatake examples [query] [--json]
+      例のカタログ（やりたいこと → 例）。query で絞り込む。
 
   hatake --help / --version
 
@@ -151,6 +166,10 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return types(positional, flags, io);
       case "new":
         return scaffoldCommand(positional, flags, io);
+      case "reference":
+        return reference(positional, flags, io);
+      case "examples":
+        return examples(positional, flags, io);
       default:
         io.err(`知らないコマンド "${command}" です。--help を見てください。`);
         return 1;
@@ -282,6 +301,129 @@ function scaffoldCommand(
     io.out(yaml);
   } else {
     io.writeFile(out, yaml);
+    io.out(`書きました: ${out}`);
+  }
+  return 0;
+}
+
+const SCHEMA_FILE = "hatake-page.schema.json";
+
+/**
+ * spec/ の場所。`--spec <dir>` / 実行時のカレント / このモジュールの位置、の順に
+ * 上へ辿って探す。リポジトリを持っている前提の暫定（npm 配布時は同梱する）。
+ */
+function specDir(flags: Args["flags"]): string | null {
+  const explicit = str(flags, "spec");
+  if (explicit !== undefined) {
+    return existsSync(join(explicit, SCHEMA_FILE)) ? explicit : null;
+  }
+  for (const start of [process.cwd(), dirname(fileURLToPath(import.meta.url))]) {
+    let dir = resolve(start);
+    for (let depth = 0; depth < 6; depth++) {
+      const candidate = join(dir, "spec");
+      if (existsSync(join(candidate, SCHEMA_FILE))) return candidate;
+      const parent = dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+  }
+  return null;
+}
+
+/** spec/ の中の1ファイルを読む。見つからなければ理由を出して null。 */
+function readSpec(
+  flags: Args["flags"],
+  io: CliIo,
+  ...names: string[]
+): unknown | null {
+  const dir = specDir(flags);
+  if (dir === null) {
+    io.err(
+      `spec/${SCHEMA_FILE} が見つかりません（--spec <dir> で場所を渡せます）。`,
+    );
+    return null;
+  }
+  return JSON.parse(io.readFile(join(dir, ...names)));
+}
+
+/**
+ * 機械可読な DSL リファレンス。仕様書を読ませる代わりに引かせるためのもの。
+ * スキーマから毎回作るので、古い写しを配ることがない。
+ */
+function reference(
+  positional: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const schema = readSpec(flags, io, SCHEMA_FILE);
+  if (schema === null) return 1;
+  let ref = buildReference(schema as Record<string, unknown>);
+
+  const kind = str(flags, "page-kind");
+  if (kind !== undefined) {
+    const only = filterByPageKind(ref, kind);
+    if (only === null) {
+      io.err(
+        `知らないページ種別 "${kind}" です` +
+          `（${ref.pageKinds.map((k) => k.type).join(" | ")}）。`,
+      );
+      return 1;
+    }
+    ref = only;
+  }
+
+  const name = positional[0];
+  if (name === undefined) return output(JSON.stringify(ref, null, 2), flags, io);
+
+  const found = lookupReference(ref, name);
+  if (found === null) {
+    const suggestion = closestKey(name, [
+      ...Object.keys(ref.nodes),
+      ...Object.keys(ref.keyIndex),
+    ]);
+    io.err(
+      `"${name}" はリファレンスにありません` +
+        `${suggestion === null ? "" : `（${suggestion} の間違い？）`}。`,
+    );
+    return 1;
+  }
+  return output(JSON.stringify(found, null, 2), flags, io);
+}
+
+/** 例のカタログ。「やりたいこと」で引いて、近い例をコピーしてもらう。 */
+function examples(
+  positional: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const catalog = readSpec(flags, io, "examples", "index.json");
+  if (catalog === null) return 1;
+  const query = positional[0];
+  const found = filterExamples(catalog as ExampleCatalog, query);
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(found, null, 2));
+    return found.length === 0 ? 1 : 0;
+  }
+  if (found.length === 0) {
+    io.err(`"${query}" に近い例は見つかりませんでした。`);
+    return 1;
+  }
+  for (const example of found) {
+    io.out(`${example.file}  [${example.kind}]  ${example.title}`);
+    io.out(`    ${example.task}`);
+    io.out(`    キー: ${example.keys.join(" ")}`);
+  }
+  return 0;
+}
+
+/** `--out` があればファイルへ、無ければ標準出力へ（どちらも末尾は改行1つ）。 */
+function output(text: string, flags: Args["flags"], io: CliIo): number {
+  const out = str(flags, "out");
+  if (out === undefined) {
+    io.out(text);
+  } else {
+    io.writeFile(out, `${text}\n`);
     io.out(`書きました: ${out}`);
   }
   return 0;

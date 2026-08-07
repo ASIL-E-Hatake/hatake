@@ -1,0 +1,2557 @@
+{
+  "dslVersion": "1.0",
+  "generatedFrom": "spec/hatake-page.schema.json",
+  "pageKinds": [
+    {
+      "type": "crud",
+      "node": "crudPage",
+      "description": "A create/read/update/delete page over a single repository.",
+      "required": [
+        "id",
+        "repository",
+        "title",
+        "type"
+      ]
+    },
+    {
+      "type": "search",
+      "node": "searchPage",
+      "description": "A read-only search/list page (照会). Search + table, no form.",
+      "required": [
+        "id",
+        "repository",
+        "title",
+        "type"
+      ]
+    },
+    {
+      "type": "master",
+      "node": "masterPage",
+      "description": "A master-maintenance page. Same shape as crud (search + table + form).",
+      "required": [
+        "id",
+        "repository",
+        "title",
+        "type"
+      ]
+    },
+    {
+      "type": "detail",
+      "node": "detailPage",
+      "description": "A read-only single-record detail page. Displays the form's fields.",
+      "required": [
+        "id",
+        "repository",
+        "title",
+        "type"
+      ]
+    },
+    {
+      "type": "form",
+      "node": "formPage",
+      "description": "A standalone create/edit form page (form only, no table).",
+      "required": [
+        "id",
+        "repository",
+        "title",
+        "type"
+      ]
+    },
+    {
+      "type": "wizard",
+      "node": "wizardPage",
+      "description": "A stepped-input page: the form is split into steps, each validated on its own before advancing. Persisted once, on the final step.",
+      "required": [
+        "id",
+        "repository",
+        "steps",
+        "title",
+        "type"
+      ]
+    },
+    {
+      "type": "dashboard",
+      "node": "dashboardPage",
+      "description": "A dashboard page: a grid of read-only cards, each one a small query plus how to display its result. It addresses no single record, so it has no `key`, and `repository` is only the default for cards that declare none.",
+      "required": [
+        "id",
+        "items",
+        "title",
+        "type"
+      ]
+    },
+    {
+      "type": "report",
+      "node": "reportPage",
+      "description": "A report page (帳票): read-only rows laid out on sheets, grouped with subtotals — the printable counterpart of a list. Detail columns come from `table`; `report` adds only the printing structure. It addresses no single record, so it has no `key`.",
+      "required": [
+        "id",
+        "repository",
+        "title",
+        "type"
+      ]
+    }
+  ],
+  "nodes": {
+    "action": {
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "crudPage",
+        "dashboardPage",
+        "detailPage",
+        "formPage",
+        "masterPage",
+        "reportPage",
+        "searchPage",
+        "wizardPage"
+      ],
+      "keys": [
+        {
+          "key": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "type",
+          "type": "string",
+          "required": true,
+          "description": "Action type (open string). Built-ins: create, edit, delete, navigate, plugin, export.",
+          "values": [
+            "create",
+            "edit",
+            "delete",
+            "navigate",
+            "plugin",
+            "export"
+          ],
+          "open": true
+        },
+        {
+          "key": "label",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "plugin",
+          "type": "string",
+          "required": false,
+          "description": "Registered action plugin key (used when type is 'plugin')."
+        },
+        {
+          "key": "page",
+          "type": "string",
+          "required": false,
+          "description": "Target page id (used when type is 'navigate')."
+        },
+        {
+          "key": "params",
+          "type": "object",
+          "required": false,
+          "description": "Route params for a navigate action; $row.id / $record.id template against the current row/record.",
+          "nodes": [
+            "action.params"
+          ]
+        },
+        {
+          "key": "config",
+          "type": "object",
+          "required": false,
+          "description": "Plugin / renderer specific extra settings.",
+          "nodes": [
+            "config"
+          ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Roles allowed to see this item/action. Empty or absent = everyone. UI-level display gating only, not access enforcement.",
+          "items": "string"
+        }
+      ]
+    },
+    "action.params": {
+      "description": "Route params for a navigate action; $row.id / $record.id template against the current row/record.",
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "action"
+      ],
+      "keys": []
+    },
+    "app": {
+      "description": "An application: pages composed by a navigation menu.",
+      "closed": true,
+      "pageKinds": [],
+      "parents": [
+        "document"
+      ],
+      "keys": [
+        {
+          "key": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "home",
+          "type": "string",
+          "required": false,
+          "description": "Initial route: a menu item id (or page id)."
+        },
+        {
+          "key": "menu",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "menuItem"
+          ]
+        },
+        {
+          "key": "pages",
+          "type": "array",
+          "required": false,
+          "description": "Pages composing the app, referenced by id.",
+          "nodes": [
+            "crudPage",
+            "searchPage",
+            "masterPage",
+            "detailPage",
+            "formPage",
+            "wizardPage",
+            "dashboardPage",
+            "reportPage"
+          ]
+        }
+      ]
+    },
+    "chart": {
+      "description": "How a `chart` card plots its rows. With `aggregate`, rows sharing a label fold into one point; without it every row is a point (which is what a pre-aggregated endpoint wants).",
+      "closed": true,
+      "pageKinds": [
+        "dashboard"
+      ],
+      "parents": [
+        "dashboardItem"
+      ],
+      "keys": [
+        {
+          "key": "kind",
+          "type": "string",
+          "required": false,
+          "description": "Chart kind. Open string; built-ins below.",
+          "default": "bar",
+          "values": [
+            "bar",
+            "line",
+            "pie"
+          ],
+          "open": true
+        },
+        {
+          "key": "labelField",
+          "type": "string",
+          "required": true,
+          "description": "Field holding each point's label."
+        },
+        {
+          "key": "valueField",
+          "type": "string",
+          "required": false,
+          "description": "Field holding each point's value."
+        },
+        {
+          "key": "aggregate",
+          "type": "string",
+          "required": false,
+          "description": "Aggregate applied per label. Omitted = one point per row.",
+          "values": [
+            "count",
+            "sum",
+            "avg",
+            "min",
+            "max"
+          ],
+          "open": true
+        }
+      ]
+    },
+    "column": {
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "dashboardItem",
+        "field",
+        "table"
+      ],
+      "keys": [
+        {
+          "key": "field",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "label",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "type",
+          "type": "string",
+          "required": false,
+          "description": "Render type (open string). Built-ins: text, number, badge, boolean, date, dateTime.",
+          "default": "text",
+          "values": [
+            "text",
+            "number",
+            "badge",
+            "boolean",
+            "date",
+            "dateTime"
+          ],
+          "open": true
+        },
+        {
+          "key": "width",
+          "type": "number",
+          "required": false,
+          "description": "Fixed width in logical pixels; omit for flexible."
+        },
+        {
+          "key": "sortable",
+          "type": "boolean",
+          "required": false,
+          "default": false
+        },
+        {
+          "key": "format",
+          "type": "string",
+          "required": false,
+          "description": "Display formatter name (open string). Built-ins: currency, percent, date, wareki, postal, mask.",
+          "values": [
+            "currency",
+            "percent",
+            "date",
+            "wareki",
+            "postal",
+            "mask"
+          ],
+          "open": true
+        },
+        {
+          "key": "config",
+          "type": "object",
+          "required": false,
+          "description": "Plugin / renderer specific extra settings.",
+          "nodes": [
+            "config"
+          ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Roles allowed to see this item/action. Empty or absent = everyone. UI-level display gating only, not access enforcement.",
+          "items": "string"
+        }
+      ]
+    },
+    "condition": {
+      "description": "A conditional expression evaluated against a record. Either a leaf {field, operator, value} or a combinator {all|any: [..]} / {not: {..}}.",
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "detail",
+        "form",
+        "master",
+        "wizard"
+      ],
+      "parents": [
+        "condition",
+        "field"
+      ],
+      "keys": [
+        {
+          "key": "field",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "operator",
+          "type": "string",
+          "required": false,
+          "description": "Built-ins: equals, notEquals, gt, gte, lt, lte, contains, in, isEmpty, isNotEmpty.",
+          "values": [
+            "equals",
+            "notEquals",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "contains",
+            "in",
+            "isEmpty",
+            "isNotEmpty"
+          ],
+          "open": true
+        },
+        {
+          "key": "value",
+          "type": "any",
+          "required": false
+        },
+        {
+          "key": "all",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "condition"
+          ]
+        },
+        {
+          "key": "any",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "condition"
+          ]
+        },
+        {
+          "key": "not",
+          "type": "object",
+          "required": false,
+          "description": "A conditional expression evaluated against a record. Either a leaf {field, operator, value} or a combinator {all|any: [..]} / {not: {..}}.",
+          "nodes": [
+            "condition"
+          ]
+        }
+      ]
+    },
+    "config": {
+      "description": "Plugin / renderer specific extra settings.",
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "action",
+        "column",
+        "field",
+        "filter"
+      ],
+      "keys": []
+    },
+    "crudPage": {
+      "description": "A create/read/update/delete page over a single repository.",
+      "closed": true,
+      "pageKinds": [
+        "crud"
+      ],
+      "parents": [
+        "app",
+        "document"
+      ],
+      "keys": [
+        {
+          "key": "type",
+          "type": "string",
+          "required": true,
+          "description": "Page kind.",
+          "values": [
+            "crud"
+          ],
+          "open": false
+        },
+        {
+          "key": "id",
+          "type": "string",
+          "required": true,
+          "description": "Stable page identifier."
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "description": "Page title."
+        },
+        {
+          "key": "repository",
+          "type": "string",
+          "required": true,
+          "description": "Key resolving the user-provided Repository implementation."
+        },
+        {
+          "key": "key",
+          "type": "string",
+          "required": false,
+          "description": "Primary-key field name of a record.",
+          "default": "id"
+        },
+        {
+          "key": "search",
+          "type": "object",
+          "required": false,
+          "description": "The search area: filters plus their layout.",
+          "nodes": [
+            "search"
+          ]
+        },
+        {
+          "key": "table",
+          "type": "object",
+          "required": false,
+          "description": "The results table.",
+          "nodes": [
+            "table"
+          ]
+        },
+        {
+          "key": "form",
+          "type": "object",
+          "required": false,
+          "description": "The create/edit form.",
+          "nodes": [
+            "form"
+          ]
+        },
+        {
+          "key": "actions",
+          "type": "array",
+          "required": false,
+          "description": "Page-level actions (buttons).",
+          "nodes": [
+            "action"
+          ]
+        }
+      ]
+    },
+    "dashboardItem": {
+      "description": "One dashboard card: a query (repository + filters + limit + sort) and how to show its result (metric / table / chart).",
+      "closed": true,
+      "pageKinds": [
+        "dashboard"
+      ],
+      "parents": [
+        "dashboardPage"
+      ],
+      "keys": [
+        {
+          "key": "id",
+          "type": "string",
+          "required": true,
+          "description": "Card identifier."
+        },
+        {
+          "key": "type",
+          "type": "string",
+          "required": false,
+          "description": "Card kind. Open string; built-ins below.",
+          "default": "metric",
+          "values": [
+            "metric",
+            "table",
+            "chart"
+          ],
+          "open": true
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "description": "Card heading."
+        },
+        {
+          "key": "repository",
+          "type": "string",
+          "required": false,
+          "description": "Repository key. Falls back to the page's."
+        },
+        {
+          "key": "span",
+          "type": "integer",
+          "required": false,
+          "description": "Grid columns this card occupies.",
+          "default": 1,
+          "minimum": 1
+        },
+        {
+          "key": "filters",
+          "type": "object",
+          "required": false,
+          "description": "Fixed filter values merged into the query.",
+          "nodes": [
+            "dashboardItem.filters"
+          ]
+        },
+        {
+          "key": "limit",
+          "type": "integer",
+          "required": false,
+          "description": "Rows to fetch (the query's pageSize).",
+          "default": 100,
+          "minimum": 1
+        },
+        {
+          "key": "sort",
+          "type": "object",
+          "required": false,
+          "description": "Sort passed to the repository.",
+          "nodes": [
+            "dashboardItem.sort"
+          ]
+        },
+        {
+          "key": "value",
+          "type": "object",
+          "required": false,
+          "description": "Reduction for a `metric` card. Omitted = count.",
+          "nodes": [
+            "dashboardValue"
+          ]
+        },
+        {
+          "key": "format",
+          "type": "string",
+          "required": false,
+          "description": "Display formatter for a `metric` value (open string). Built-ins: currency, percent, date, wareki, postal, mask.",
+          "values": [
+            "currency",
+            "percent",
+            "date",
+            "wareki",
+            "postal",
+            "mask"
+          ],
+          "open": true
+        },
+        {
+          "key": "config",
+          "type": "object",
+          "required": false,
+          "description": "Extra settings (formatter options, `height`, ...).",
+          "nodes": [
+            "dashboardItem.config"
+          ]
+        },
+        {
+          "key": "columns",
+          "type": "array",
+          "required": false,
+          "description": "Columns for a `table` card.",
+          "nodes": [
+            "column"
+          ]
+        },
+        {
+          "key": "chart",
+          "type": "object",
+          "required": false,
+          "description": "Plot for a `chart` card.",
+          "nodes": [
+            "chart"
+          ]
+        },
+        {
+          "key": "action",
+          "type": "string",
+          "required": false,
+          "description": "Id of a page action to run when the card is tapped."
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Roles allowed to see this card. Empty = everyone.",
+          "items": "string"
+        }
+      ]
+    },
+    "dashboardItem.config": {
+      "description": "Extra settings (formatter options, `height`, ...).",
+      "closed": false,
+      "pageKinds": [
+        "dashboard"
+      ],
+      "parents": [
+        "dashboardItem"
+      ],
+      "keys": []
+    },
+    "dashboardItem.filters": {
+      "description": "Fixed filter values merged into the query.",
+      "closed": false,
+      "pageKinds": [
+        "dashboard"
+      ],
+      "parents": [
+        "dashboardItem"
+      ],
+      "keys": []
+    },
+    "dashboardItem.sort": {
+      "description": "Sort passed to the repository.",
+      "closed": true,
+      "pageKinds": [
+        "dashboard"
+      ],
+      "parents": [
+        "dashboardItem"
+      ],
+      "keys": [
+        {
+          "key": "field",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "ascending",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        }
+      ]
+    },
+    "dashboardPage": {
+      "description": "A dashboard page: a grid of read-only cards, each one a small query plus how to display its result. It addresses no single record, so it has no `key`, and `repository` is only the default for cards that declare none.",
+      "closed": true,
+      "pageKinds": [
+        "dashboard"
+      ],
+      "parents": [
+        "app",
+        "document"
+      ],
+      "keys": [
+        {
+          "key": "type",
+          "type": "string",
+          "required": true,
+          "description": "Page kind.",
+          "values": [
+            "dashboard"
+          ],
+          "open": false
+        },
+        {
+          "key": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "repository",
+          "type": "string",
+          "required": false,
+          "description": "Default repository key for cards that omit one."
+        },
+        {
+          "key": "layout",
+          "type": "object",
+          "required": false,
+          "description": "Card grid width. Defaults to 2 columns.",
+          "nodes": [
+            "layout"
+          ]
+        },
+        {
+          "key": "search",
+          "type": "object",
+          "required": false,
+          "description": "Filters applied to every card's query.",
+          "nodes": [
+            "search"
+          ]
+        },
+        {
+          "key": "items",
+          "type": "array",
+          "required": true,
+          "description": "Cards, in declaration order.",
+          "nodes": [
+            "dashboardItem"
+          ]
+        },
+        {
+          "key": "actions",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "action"
+          ]
+        }
+      ]
+    },
+    "dashboardValue": {
+      "description": "How a `metric` card folds its rows into one number. The framework never issues an aggregate query: the repository returns rows and this reduces them.",
+      "closed": true,
+      "pageKinds": [
+        "dashboard"
+      ],
+      "parents": [
+        "dashboardItem"
+      ],
+      "keys": [
+        {
+          "key": "aggregate",
+          "type": "string",
+          "required": false,
+          "description": "Aggregate operation. Open string; built-ins below.",
+          "default": "count",
+          "values": [
+            "count",
+            "sum",
+            "avg",
+            "min",
+            "max"
+          ],
+          "open": true
+        },
+        {
+          "key": "field",
+          "type": "string",
+          "required": false,
+          "description": "Field to reduce. Not needed by `count`."
+        }
+      ]
+    },
+    "detailPage": {
+      "description": "A read-only single-record detail page. Displays the form's fields.",
+      "closed": true,
+      "pageKinds": [
+        "detail"
+      ],
+      "parents": [
+        "app",
+        "document"
+      ],
+      "keys": [
+        {
+          "key": "type",
+          "type": "string",
+          "required": true,
+          "description": "Page kind.",
+          "values": [
+            "detail"
+          ],
+          "open": false
+        },
+        {
+          "key": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "repository",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "key",
+          "type": "string",
+          "required": false,
+          "default": "id"
+        },
+        {
+          "key": "form",
+          "type": "object",
+          "required": false,
+          "description": "The create/edit form.",
+          "nodes": [
+            "form"
+          ]
+        },
+        {
+          "key": "actions",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "action"
+          ]
+        }
+      ]
+    },
+    "document": {
+      "description": "A hatake document: either a single `page` or an `app` (pages + navigation).",
+      "closed": true,
+      "pageKinds": [],
+      "parents": [],
+      "keys": [
+        {
+          "key": "dsl_version",
+          "type": "string",
+          "required": false,
+          "description": "DSL version the document conforms to.",
+          "default": "1.0",
+          "values": [
+            "1.0"
+          ],
+          "open": true
+        },
+        {
+          "key": "page",
+          "type": "object",
+          "required": false,
+          "nodes": [
+            "crudPage",
+            "searchPage",
+            "masterPage",
+            "detailPage",
+            "formPage",
+            "wizardPage",
+            "dashboardPage",
+            "reportPage"
+          ]
+        },
+        {
+          "key": "app",
+          "type": "object",
+          "required": false,
+          "description": "An application: pages composed by a navigation menu.",
+          "nodes": [
+            "app"
+          ]
+        }
+      ]
+    },
+    "field": {
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "detail",
+        "form",
+        "master",
+        "wizard"
+      ],
+      "parents": [
+        "field",
+        "section",
+        "wizardStep"
+      ],
+      "keys": [
+        {
+          "key": "field",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "label",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "type",
+          "type": "string",
+          "required": false,
+          "description": "Field type (open string). Built-ins: text, textarea, number, select, multiSelect, checkbox, radio, date, dateTime, time, subTable. A subTable holds child rows — see columns / fields / source.",
+          "default": "text",
+          "values": [
+            "text",
+            "textarea",
+            "number",
+            "select",
+            "multiSelect",
+            "checkbox",
+            "radio",
+            "date",
+            "dateTime",
+            "time",
+            "subTable"
+          ],
+          "open": true
+        },
+        {
+          "key": "required",
+          "type": "boolean",
+          "required": false,
+          "default": false
+        },
+        {
+          "key": "readOnly",
+          "type": "boolean",
+          "required": false,
+          "default": false
+        },
+        {
+          "key": "defaultValue",
+          "type": "string|number|boolean|null",
+          "required": false,
+          "description": "Value applied when creating a new record."
+        },
+        {
+          "key": "validators",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "validator"
+          ]
+        },
+        {
+          "key": "options",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "option"
+          ]
+        },
+        {
+          "key": "format",
+          "type": "string",
+          "required": false,
+          "description": "Display formatter name (open string). Built-ins: currency, percent, date, wareki, postal, mask.",
+          "values": [
+            "currency",
+            "percent",
+            "date",
+            "wareki",
+            "postal",
+            "mask"
+          ],
+          "open": true
+        },
+        {
+          "key": "normalize",
+          "type": "array",
+          "required": false,
+          "description": "Input converters applied before validation. Built-ins: toHankaku, toZenkaku, hiraToKata, kataToHira, trim, collapseSpaces, parseNumber.",
+          "items": "string",
+          "values": [
+            "toHankaku",
+            "toZenkaku",
+            "hiraToKata",
+            "kataToHira",
+            "trim",
+            "collapseSpaces",
+            "parseNumber"
+          ],
+          "open": true
+        },
+        {
+          "key": "config",
+          "type": "object",
+          "required": false,
+          "description": "Plugin / renderer specific extra settings.",
+          "nodes": [
+            "config"
+          ]
+        },
+        {
+          "key": "visibleWhen",
+          "type": "object",
+          "required": false,
+          "description": "Show this field only when the condition matches the current record.",
+          "nodes": [
+            "condition"
+          ]
+        },
+        {
+          "key": "enabledWhen",
+          "type": "object",
+          "required": false,
+          "description": "Enable this field only when the condition matches the current record.",
+          "nodes": [
+            "condition"
+          ]
+        },
+        {
+          "key": "computed",
+          "type": "object",
+          "required": false,
+          "description": "Derive the field value from the record. Built-in ops: concat, sum, subtract, product. Extensible via ComputedRegistry.",
+          "nodes": [
+            "field.computed"
+          ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Roles allowed to see this item/action. Empty or absent = everyone. UI-level display gating only, not access enforcement.",
+          "items": "string"
+        },
+        {
+          "key": "columns",
+          "type": "array",
+          "required": false,
+          "description": "Child-row grid columns, for type: subTable (master-detail). The field's value is then a list of records.",
+          "nodes": [
+            "column"
+          ]
+        },
+        {
+          "key": "fields",
+          "type": "array",
+          "required": false,
+          "description": "Editor fields for one child row, for type: subTable. Omit to derive inputs from `columns`.",
+          "nodes": [
+            "field"
+          ]
+        },
+        {
+          "key": "source",
+          "type": "object",
+          "required": false,
+          "description": "Fetch a subTable's child rows from their own repository, paged and linked by a foreign key, instead of embedding them in the parent record. Rows are then saved per row (create/update/delete) and require the parent to already have a key.",
+          "nodes": [
+            "subTableSource"
+          ]
+        }
+      ]
+    },
+    "field.computed": {
+      "description": "Derive the field value from the record. Built-in ops: concat, sum, subtract, product. Extensible via ComputedRegistry.",
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "detail",
+        "form",
+        "master",
+        "wizard"
+      ],
+      "parents": [
+        "field"
+      ],
+      "keys": [
+        {
+          "key": "op",
+          "type": "string",
+          "required": true,
+          "values": [
+            "concat",
+            "sum",
+            "subtract",
+            "product"
+          ],
+          "open": true
+        },
+        {
+          "key": "fields",
+          "type": "array",
+          "required": false,
+          "items": "string"
+        },
+        {
+          "key": "separator",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "filter": {
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "master",
+        "report",
+        "search"
+      ],
+      "parents": [
+        "search"
+      ],
+      "keys": [
+        {
+          "key": "field",
+          "type": "string",
+          "required": true,
+          "description": "Backing data key."
+        },
+        {
+          "key": "label",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "type",
+          "type": "string",
+          "required": false,
+          "description": "Input type (open string). Built-ins: text, textarea, number, select, multiSelect, checkbox, radio, date, dateTime, time.",
+          "default": "text",
+          "values": [
+            "text",
+            "textarea",
+            "number",
+            "select",
+            "multiSelect",
+            "checkbox",
+            "radio",
+            "date",
+            "dateTime",
+            "time"
+          ],
+          "open": true
+        },
+        {
+          "key": "operator",
+          "type": "string",
+          "required": false,
+          "description": "Match operator (open string). Built-ins: equals, notEquals, contains, startsWith, endsWith, gt, gte, lt, lte, between, in.",
+          "default": "contains",
+          "values": [
+            "equals",
+            "notEquals",
+            "contains",
+            "startsWith",
+            "endsWith",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "between",
+            "in"
+          ],
+          "open": true
+        },
+        {
+          "key": "options",
+          "type": "array",
+          "required": false,
+          "description": "Options for select-style filters.",
+          "nodes": [
+            "option"
+          ]
+        },
+        {
+          "key": "config",
+          "type": "object",
+          "required": false,
+          "description": "Plugin / renderer specific extra settings.",
+          "nodes": [
+            "config"
+          ]
+        }
+      ]
+    },
+    "form": {
+      "description": "The create/edit form.",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "detail",
+        "form",
+        "master"
+      ],
+      "parents": [
+        "crudPage",
+        "detailPage",
+        "formPage",
+        "masterPage"
+      ],
+      "keys": [
+        {
+          "key": "sections",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "section"
+          ]
+        }
+      ]
+    },
+    "formPage": {
+      "description": "A standalone create/edit form page (form only, no table).",
+      "closed": true,
+      "pageKinds": [
+        "form"
+      ],
+      "parents": [
+        "app",
+        "document"
+      ],
+      "keys": [
+        {
+          "key": "type",
+          "type": "string",
+          "required": true,
+          "description": "Page kind.",
+          "values": [
+            "form"
+          ],
+          "open": false
+        },
+        {
+          "key": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "repository",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "key",
+          "type": "string",
+          "required": false,
+          "default": "id"
+        },
+        {
+          "key": "form",
+          "type": "object",
+          "required": false,
+          "description": "The create/edit form.",
+          "nodes": [
+            "form"
+          ]
+        },
+        {
+          "key": "actions",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "action"
+          ]
+        }
+      ]
+    },
+    "layout": {
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "dashboardPage",
+        "search",
+        "section",
+        "wizardStep"
+      ],
+      "keys": [
+        {
+          "key": "columns",
+          "type": "integer",
+          "required": false,
+          "description": "Items per row on wide layouts.",
+          "default": 1,
+          "minimum": 1
+        }
+      ]
+    },
+    "masterPage": {
+      "description": "A master-maintenance page. Same shape as crud (search + table + form).",
+      "closed": true,
+      "pageKinds": [
+        "master"
+      ],
+      "parents": [
+        "app",
+        "document"
+      ],
+      "keys": [
+        {
+          "key": "type",
+          "type": "string",
+          "required": true,
+          "description": "Page kind.",
+          "values": [
+            "master"
+          ],
+          "open": false
+        },
+        {
+          "key": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "repository",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "key",
+          "type": "string",
+          "required": false,
+          "default": "id"
+        },
+        {
+          "key": "search",
+          "type": "object",
+          "required": false,
+          "description": "The search area: filters plus their layout.",
+          "nodes": [
+            "search"
+          ]
+        },
+        {
+          "key": "table",
+          "type": "object",
+          "required": false,
+          "description": "The results table.",
+          "nodes": [
+            "table"
+          ]
+        },
+        {
+          "key": "form",
+          "type": "object",
+          "required": false,
+          "description": "The create/edit form.",
+          "nodes": [
+            "form"
+          ]
+        },
+        {
+          "key": "actions",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "action"
+          ]
+        }
+      ]
+    },
+    "menuItem": {
+      "description": "A navigation menu node: a leaf (opens `page`) or a group (has `items`).",
+      "closed": true,
+      "pageKinds": [],
+      "parents": [
+        "app",
+        "menuItem"
+      ],
+      "keys": [
+        {
+          "key": "id",
+          "type": "string",
+          "required": false,
+          "description": "Route key for a leaf (defaults to `page`)."
+        },
+        {
+          "key": "label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "group",
+          "type": "string",
+          "required": false,
+          "description": "Group heading (marks this node as a group)."
+        },
+        {
+          "key": "icon",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "page",
+          "type": "string",
+          "required": false,
+          "description": "Page id this leaf opens."
+        },
+        {
+          "key": "items",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "menuItem"
+          ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Roles allowed to see this item/action. Empty or absent = everyone. UI-level display gating only, not access enforcement.",
+          "items": "string"
+        }
+      ]
+    },
+    "option": {
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "field",
+        "filter"
+      ],
+      "keys": [
+        {
+          "key": "value",
+          "type": "string|number|boolean|null",
+          "required": false,
+          "description": "Stored value (kept as-is)."
+        },
+        {
+          "key": "label",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    "pagination": {
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "master",
+        "report",
+        "search"
+      ],
+      "parents": [
+        "table"
+      ],
+      "keys": [
+        {
+          "key": "pageSize",
+          "type": "integer",
+          "required": false,
+          "default": 50,
+          "minimum": 1
+        },
+        {
+          "key": "enabled",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        }
+      ]
+    },
+    "paper": {
+      "description": "The sheet a report is laid out on. The renderer previews at this shape.",
+      "closed": true,
+      "pageKinds": [
+        "report"
+      ],
+      "parents": [
+        "report"
+      ],
+      "keys": [
+        {
+          "key": "size",
+          "type": "string",
+          "required": false,
+          "description": "Paper size. Open string; built-ins below.",
+          "default": "A4",
+          "values": [
+            "A4",
+            "A3",
+            "B5",
+            "letter"
+          ],
+          "open": true
+        },
+        {
+          "key": "orientation",
+          "type": "string",
+          "required": false,
+          "default": "portrait",
+          "values": [
+            "portrait",
+            "landscape"
+          ],
+          "open": false
+        }
+      ]
+    },
+    "report": {
+      "description": "The printing structure: paper, lines per sheet, control breaks and totals. Grouping is a control break over consecutive rows, so the repository must return them in the right order.",
+      "closed": true,
+      "pageKinds": [
+        "report"
+      ],
+      "parents": [
+        "reportPage"
+      ],
+      "keys": [
+        {
+          "key": "paper",
+          "type": "object",
+          "required": false,
+          "description": "The sheet a report is laid out on. The renderer previews at this shape.",
+          "nodes": [
+            "paper"
+          ]
+        },
+        {
+          "key": "rowsPerPage",
+          "type": "integer",
+          "required": false,
+          "description": "Lines per sheet. Group headings and total lines count as lines.",
+          "default": 40,
+          "minimum": 1
+        },
+        {
+          "key": "limit",
+          "type": "integer",
+          "required": false,
+          "description": "Rows read for one run (a report is printed, not paged).",
+          "default": 1000,
+          "minimum": 1
+        },
+        {
+          "key": "groupBy",
+          "type": "array",
+          "required": false,
+          "description": "Control breaks, outermost first.",
+          "nodes": [
+            "reportGroup"
+          ]
+        },
+        {
+          "key": "totals",
+          "type": "array",
+          "required": false,
+          "description": "Figures on the subtotal / grand-total lines, in order.",
+          "nodes": [
+            "reportTotal"
+          ]
+        },
+        {
+          "key": "sort",
+          "type": "object",
+          "required": false,
+          "description": "Print order, passed to the repository. Groups are control breaks, so the rows must arrive in this order.",
+          "nodes": [
+            "report.sort"
+          ]
+        }
+      ]
+    },
+    "report.sort": {
+      "description": "Print order, passed to the repository. Groups are control breaks, so the rows must arrive in this order.",
+      "closed": true,
+      "pageKinds": [
+        "report"
+      ],
+      "parents": [
+        "report"
+      ],
+      "keys": [
+        {
+          "key": "field",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "ascending",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        }
+      ]
+    },
+    "reportGroup": {
+      "description": "A control break: rows whose `field` value changes start a new group.",
+      "closed": true,
+      "pageKinds": [
+        "report"
+      ],
+      "parents": [
+        "report"
+      ],
+      "keys": [
+        {
+          "key": "field",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "label",
+          "type": "string",
+          "required": true,
+          "description": "Heading label shown next to the group's value."
+        },
+        {
+          "key": "pageBreak",
+          "type": "boolean",
+          "required": false,
+          "description": "Start a new sheet whenever this group changes.",
+          "default": false
+        }
+      ]
+    },
+    "reportPage": {
+      "description": "A report page (帳票): read-only rows laid out on sheets, grouped with subtotals — the printable counterpart of a list. Detail columns come from `table`; `report` adds only the printing structure. It addresses no single record, so it has no `key`.",
+      "closed": true,
+      "pageKinds": [
+        "report"
+      ],
+      "parents": [
+        "app",
+        "document"
+      ],
+      "keys": [
+        {
+          "key": "type",
+          "type": "string",
+          "required": true,
+          "description": "Page kind.",
+          "values": [
+            "report"
+          ],
+          "open": false
+        },
+        {
+          "key": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "repository",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "search",
+          "type": "object",
+          "required": false,
+          "description": "Output conditions, passed to the repository as filters.",
+          "nodes": [
+            "search"
+          ]
+        },
+        {
+          "key": "table",
+          "type": "object",
+          "required": false,
+          "description": "Detail columns (number columns print right-aligned).",
+          "nodes": [
+            "table"
+          ]
+        },
+        {
+          "key": "report",
+          "type": "object",
+          "required": false,
+          "description": "The printing structure: paper, lines per sheet, control breaks and totals. Grouping is a control break over consecutive rows, so the repository must return them in the right order.",
+          "nodes": [
+            "report"
+          ]
+        },
+        {
+          "key": "actions",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "action"
+          ]
+        }
+      ]
+    },
+    "reportTotal": {
+      "description": "One figure on the subtotal / grand-total lines. Two totals may share a field (e.g. sum and count of the same column).",
+      "closed": true,
+      "pageKinds": [
+        "report"
+      ],
+      "parents": [
+        "report"
+      ],
+      "keys": [
+        {
+          "key": "field",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "aggregate",
+          "type": "string",
+          "required": false,
+          "description": "Aggregate operation (same vocabulary as a dashboard's).",
+          "default": "sum",
+          "values": [
+            "count",
+            "sum",
+            "avg",
+            "min",
+            "max"
+          ],
+          "open": true
+        }
+      ]
+    },
+    "search": {
+      "description": "The search area: filters plus their layout.",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "master",
+        "report",
+        "search"
+      ],
+      "parents": [
+        "crudPage",
+        "dashboardPage",
+        "masterPage",
+        "reportPage",
+        "searchPage"
+      ],
+      "keys": [
+        {
+          "key": "layout",
+          "type": "object",
+          "required": false,
+          "nodes": [
+            "layout"
+          ]
+        },
+        {
+          "key": "filters",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "filter"
+          ]
+        }
+      ]
+    },
+    "searchPage": {
+      "description": "A read-only search/list page (照会). Search + table, no form.",
+      "closed": true,
+      "pageKinds": [
+        "search"
+      ],
+      "parents": [
+        "app",
+        "document"
+      ],
+      "keys": [
+        {
+          "key": "type",
+          "type": "string",
+          "required": true,
+          "description": "Page kind.",
+          "values": [
+            "search"
+          ],
+          "open": false
+        },
+        {
+          "key": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "repository",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "key",
+          "type": "string",
+          "required": false,
+          "default": "id"
+        },
+        {
+          "key": "search",
+          "type": "object",
+          "required": false,
+          "description": "The search area: filters plus their layout.",
+          "nodes": [
+            "search"
+          ]
+        },
+        {
+          "key": "table",
+          "type": "object",
+          "required": false,
+          "description": "The results table.",
+          "nodes": [
+            "table"
+          ]
+        },
+        {
+          "key": "actions",
+          "type": "array",
+          "required": false,
+          "description": "Page-level actions; also referenced by table.rowActions.",
+          "nodes": [
+            "action"
+          ]
+        }
+      ]
+    },
+    "section": {
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "detail",
+        "form",
+        "master"
+      ],
+      "parents": [
+        "form"
+      ],
+      "keys": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "layout",
+          "type": "object",
+          "required": false,
+          "nodes": [
+            "layout"
+          ]
+        },
+        {
+          "key": "fields",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "field"
+          ]
+        }
+      ]
+    },
+    "subTableSource": {
+      "description": "Fetch a subTable's child rows from their own repository, paged and linked by a foreign key, instead of embedding them in the parent record. Rows are then saved per row (create/update/delete) and require the parent to already have a key.",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "detail",
+        "form",
+        "master",
+        "wizard"
+      ],
+      "parents": [
+        "field"
+      ],
+      "keys": [
+        {
+          "key": "repository",
+          "type": "string",
+          "required": true,
+          "description": "Repository key for the child rows."
+        },
+        {
+          "key": "parentKey",
+          "type": "string",
+          "required": true,
+          "description": "Child field holding the parent key; passed as the search filter { parentKey: <parent key value> }."
+        },
+        {
+          "key": "key",
+          "type": "string",
+          "required": false,
+          "description": "Primary-key field of a child row, used to update/delete it.",
+          "default": "id"
+        },
+        {
+          "key": "pageSize",
+          "type": "integer",
+          "required": false,
+          "description": "Rows per page.",
+          "default": 20,
+          "minimum": 1
+        }
+      ]
+    },
+    "table": {
+      "description": "The results table.",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "master",
+        "report",
+        "search"
+      ],
+      "parents": [
+        "crudPage",
+        "masterPage",
+        "reportPage",
+        "searchPage"
+      ],
+      "keys": [
+        {
+          "key": "pagination",
+          "type": "object",
+          "required": false,
+          "nodes": [
+            "pagination"
+          ]
+        },
+        {
+          "key": "rowActions",
+          "type": "array",
+          "required": false,
+          "description": "Per-row action ids. Built-ins: edit, delete.",
+          "items": "string",
+          "values": [
+            "edit",
+            "delete"
+          ],
+          "open": true
+        },
+        {
+          "key": "columns",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "column"
+          ]
+        }
+      ]
+    },
+    "validator": {
+      "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters (e.g. maxLength uses 'value').",
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "detail",
+        "form",
+        "master",
+        "wizard"
+      ],
+      "parents": [
+        "field"
+      ],
+      "keys": [
+        {
+          "key": "type",
+          "type": "string",
+          "required": true,
+          "description": "Validator type (open string). Built-ins: required, maxLength, minLength, pattern, min, max, email, postalCode.",
+          "values": [
+            "required",
+            "maxLength",
+            "minLength",
+            "pattern",
+            "min",
+            "max",
+            "email",
+            "postalCode"
+          ],
+          "open": true
+        },
+        {
+          "key": "message",
+          "type": "string",
+          "required": false,
+          "description": "Override message shown on failure."
+        }
+      ]
+    },
+    "wizardPage": {
+      "description": "A stepped-input page: the form is split into steps, each validated on its own before advancing. Persisted once, on the final step.",
+      "closed": true,
+      "pageKinds": [
+        "wizard"
+      ],
+      "parents": [
+        "app",
+        "document"
+      ],
+      "keys": [
+        {
+          "key": "type",
+          "type": "string",
+          "required": true,
+          "description": "Page kind.",
+          "values": [
+            "wizard"
+          ],
+          "open": false
+        },
+        {
+          "key": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "repository",
+          "type": "string",
+          "required": true
+        },
+        {
+          "key": "key",
+          "type": "string",
+          "required": false,
+          "default": "id"
+        },
+        {
+          "key": "steps",
+          "type": "array",
+          "required": true,
+          "description": "Steps, walked in declaration order.",
+          "nodes": [
+            "wizardStep"
+          ]
+        },
+        {
+          "key": "actions",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "action"
+          ]
+        }
+      ]
+    },
+    "wizardStep": {
+      "description": "One wizard step — a section with an id and a heading. Only this step's fields are validated when advancing.",
+      "closed": true,
+      "pageKinds": [
+        "wizard"
+      ],
+      "parents": [
+        "wizardPage"
+      ],
+      "keys": [
+        {
+          "key": "id",
+          "type": "string",
+          "required": true,
+          "description": "Step identifier."
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "required": true,
+          "description": "Step heading."
+        },
+        {
+          "key": "description",
+          "type": "string",
+          "required": false,
+          "description": "Optional explanatory text."
+        },
+        {
+          "key": "layout",
+          "type": "object",
+          "required": false,
+          "nodes": [
+            "layout"
+          ]
+        },
+        {
+          "key": "fields",
+          "type": "array",
+          "required": false,
+          "nodes": [
+            "field"
+          ]
+        }
+      ]
+    }
+  },
+  "keyIndex": {
+    "action": [
+      "dashboardItem"
+    ],
+    "actions": [
+      "crudPage",
+      "dashboardPage",
+      "detailPage",
+      "formPage",
+      "masterPage",
+      "reportPage",
+      "searchPage",
+      "wizardPage"
+    ],
+    "aggregate": [
+      "chart",
+      "dashboardValue",
+      "reportTotal"
+    ],
+    "all": [
+      "condition"
+    ],
+    "any": [
+      "condition"
+    ],
+    "app": [
+      "document"
+    ],
+    "ascending": [
+      "dashboardItem.sort",
+      "report.sort"
+    ],
+    "chart": [
+      "dashboardItem"
+    ],
+    "columns": [
+      "dashboardItem",
+      "field",
+      "layout",
+      "table"
+    ],
+    "computed": [
+      "field"
+    ],
+    "config": [
+      "action",
+      "column",
+      "dashboardItem",
+      "field",
+      "filter"
+    ],
+    "defaultValue": [
+      "field"
+    ],
+    "description": [
+      "wizardStep"
+    ],
+    "dsl_version": [
+      "document"
+    ],
+    "enabled": [
+      "pagination"
+    ],
+    "enabledWhen": [
+      "field"
+    ],
+    "field": [
+      "column",
+      "condition",
+      "dashboardItem.sort",
+      "dashboardValue",
+      "field",
+      "filter",
+      "report.sort",
+      "reportGroup",
+      "reportTotal"
+    ],
+    "fields": [
+      "field",
+      "field.computed",
+      "section",
+      "wizardStep"
+    ],
+    "filters": [
+      "dashboardItem",
+      "search"
+    ],
+    "form": [
+      "crudPage",
+      "detailPage",
+      "formPage",
+      "masterPage"
+    ],
+    "format": [
+      "column",
+      "dashboardItem",
+      "field"
+    ],
+    "group": [
+      "menuItem"
+    ],
+    "groupBy": [
+      "report"
+    ],
+    "home": [
+      "app"
+    ],
+    "icon": [
+      "menuItem"
+    ],
+    "id": [
+      "action",
+      "app",
+      "crudPage",
+      "dashboardItem",
+      "dashboardPage",
+      "detailPage",
+      "formPage",
+      "masterPage",
+      "menuItem",
+      "reportPage",
+      "searchPage",
+      "wizardPage",
+      "wizardStep"
+    ],
+    "items": [
+      "dashboardPage",
+      "menuItem"
+    ],
+    "key": [
+      "crudPage",
+      "detailPage",
+      "formPage",
+      "masterPage",
+      "searchPage",
+      "subTableSource",
+      "wizardPage"
+    ],
+    "kind": [
+      "chart"
+    ],
+    "label": [
+      "action",
+      "column",
+      "field",
+      "filter",
+      "menuItem",
+      "option",
+      "reportGroup"
+    ],
+    "labelField": [
+      "chart"
+    ],
+    "layout": [
+      "dashboardPage",
+      "search",
+      "section",
+      "wizardStep"
+    ],
+    "limit": [
+      "dashboardItem",
+      "report"
+    ],
+    "menu": [
+      "app"
+    ],
+    "message": [
+      "validator"
+    ],
+    "normalize": [
+      "field"
+    ],
+    "not": [
+      "condition"
+    ],
+    "op": [
+      "field.computed"
+    ],
+    "operator": [
+      "condition",
+      "filter"
+    ],
+    "options": [
+      "field",
+      "filter"
+    ],
+    "orientation": [
+      "paper"
+    ],
+    "page": [
+      "action",
+      "document",
+      "menuItem"
+    ],
+    "pageBreak": [
+      "reportGroup"
+    ],
+    "pageSize": [
+      "pagination",
+      "subTableSource"
+    ],
+    "pages": [
+      "app"
+    ],
+    "pagination": [
+      "table"
+    ],
+    "paper": [
+      "report"
+    ],
+    "params": [
+      "action"
+    ],
+    "parentKey": [
+      "subTableSource"
+    ],
+    "plugin": [
+      "action"
+    ],
+    "readOnly": [
+      "field"
+    ],
+    "report": [
+      "reportPage"
+    ],
+    "repository": [
+      "crudPage",
+      "dashboardItem",
+      "dashboardPage",
+      "detailPage",
+      "formPage",
+      "masterPage",
+      "reportPage",
+      "searchPage",
+      "subTableSource",
+      "wizardPage"
+    ],
+    "required": [
+      "field"
+    ],
+    "roles": [
+      "action",
+      "column",
+      "dashboardItem",
+      "field",
+      "menuItem"
+    ],
+    "rowActions": [
+      "table"
+    ],
+    "rowsPerPage": [
+      "report"
+    ],
+    "search": [
+      "crudPage",
+      "dashboardPage",
+      "masterPage",
+      "reportPage",
+      "searchPage"
+    ],
+    "sections": [
+      "form"
+    ],
+    "separator": [
+      "field.computed"
+    ],
+    "size": [
+      "paper"
+    ],
+    "sort": [
+      "dashboardItem",
+      "report"
+    ],
+    "sortable": [
+      "column"
+    ],
+    "source": [
+      "field"
+    ],
+    "span": [
+      "dashboardItem"
+    ],
+    "steps": [
+      "wizardPage"
+    ],
+    "table": [
+      "crudPage",
+      "masterPage",
+      "reportPage",
+      "searchPage"
+    ],
+    "title": [
+      "app",
+      "crudPage",
+      "dashboardItem",
+      "dashboardPage",
+      "detailPage",
+      "formPage",
+      "masterPage",
+      "reportPage",
+      "searchPage",
+      "section",
+      "wizardPage",
+      "wizardStep"
+    ],
+    "totals": [
+      "report"
+    ],
+    "type": [
+      "action",
+      "column",
+      "crudPage",
+      "dashboardItem",
+      "dashboardPage",
+      "detailPage",
+      "field",
+      "filter",
+      "formPage",
+      "masterPage",
+      "reportPage",
+      "searchPage",
+      "validator",
+      "wizardPage"
+    ],
+    "validators": [
+      "field"
+    ],
+    "value": [
+      "condition",
+      "dashboardItem",
+      "option"
+    ],
+    "valueField": [
+      "chart"
+    ],
+    "visibleWhen": [
+      "field"
+    ],
+    "width": [
+      "column"
+    ]
+  }
+}

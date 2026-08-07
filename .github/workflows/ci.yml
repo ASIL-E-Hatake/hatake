@@ -60,6 +60,18 @@ jobs:
         run: |
           npm run build
           node dist/cli.js validate ../spec/examples/*.yaml
+      - name: Reference & example catalog are reachable from a real run
+        working-directory: typescript
+        run: |
+          set -e
+          # spec/ を実行時に探す経路（--spec 無し）はテストでは通らないので、ここで。
+          node dist/cli.js reference rowsPerPage
+          node dist/cli.js reference --page-kind report --out /tmp/report-reference.json
+          node dist/cli.js examples 帳票
+          # コミットしてある生成物と一致すること（vitest でも見ているが、CLI 経由でも）。
+          node dist/cli.js reference --out /tmp/reference.json
+          diff -u ../spec/reference.json /tmp/reference.json
+
       - name: Scaffolds are valid definitions
         working-directory: typescript
         run: |

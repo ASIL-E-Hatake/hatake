@@ -38,6 +38,8 @@
 | 出力 | CSV 出力 | ✅ 3言語 | `action` の型 `export`。**その画面の列と行から CSV を組む**（一覧・帳票で同じ書き方。ロールで見えない列は出さない）。RFC 4180 の引用、BOM / CRLF / 区切り / `raw`（format を通さない）を `config` で選べる。一覧の export は**表示中のページではなく検索結果全体**を出す（`limit` まで読み直す）。**ファイルを書くのは対象外**＝`HatakeScope(exportSink:)` に渡された出力先の責務（文字コード変換も同じ理由でそちら） |
 | | 帳票の印刷（PDF/プリンタ） | ⏳ | `ReportDocument` を PDF/印刷に落とす opt-in アダプタ。`printing` / `pdf` 依存を本体に入れないため別パッケージ |
 | 定義の品質 | `hatake` CLI | ✅ TS 同梱 | `npx hatake validate <file...>`（strict 既定・`--json`・**問題があれば終了コード 1** なので CI に置ける）、`new <kind>`（8種別の雛形。全部が strict とスキーマを通ることを CI で確認）、`dto` / `schema` / `openapi` / `types --out`（ネイティブ型のファイル出力の入口）。生成系は常に strict で読む（書き間違いを API に焼き付けないため）。→ [使い方](../typescript/README.md#cli) |
+| 定義の品質 | 機械可読な DSL リファレンス | ✅ spec + TS | [`spec/reference.json`](../spec/reference.json)＝**全キーの索引**（ノードごとのキー・型・既定値・取れる値・親ノード・**どのページ種別で有効か**＋`keyIndex`）。JSON Schema から機械生成（`npx hatake reference [name] [--page-kind k]`、`--out` でファイル）。`values` は `open: true` なら「組み込みの一覧」＝Registry で足せる、`false` なら enum。**嘘をつかないことが唯一の価値**なので、①strict のキー表と1キーずつ一致 ②組み込みの一覧が実装のレジストリと一致（フォーマッタ/コンバータ/バリデータ/集約/計算/フィールド型/列型/アクション型/演算子）③説明文の「Built-ins:」と機械可読な値が一致 ④条件の演算子は conformance に実例がある ⑤コミット済み生成物が最新、を CI で確認 |
+| 定義の品質 | 例のカタログ | ✅ spec + TS | [`spec/examples/index.json`](../spec/examples/index.json)＋[人向けの表](../spec/examples/README.md) で「やりたいこと → 例」を引ける（`npx hatake examples <query>`）。ディレクトリと1対1・`kind`/`title` が定義と一致・`keys` が実在して実際に使われている・全例が strict を通る、を CI で確認 |
 | 定義の品質 | 未知キーの検出（strict パース） | ✅ 3言語 | パーサの厳格モード。`parsePageYaml(source, strict: true)` で**知らないキーを全部まとめて**エラーにする（近い既知キーの提案つき: `pagesize` → `pageSize` / `visible_when` → `visibleWhen`）。厳しさは JSON Schema と同一＝`additionalProperties: false` のノードだけを閉じ、`config` / `validators` / `computed` の中は見ない。既定は従来どおり寛容（後方互換）だが、デモと CI は strict。**各版のキー表がスキーマとズレていないことも機械で確認**。詳細は [DSL 仕様](../spec/dsl-spec.ja.md#未知キーの検出strict) |
 | バックエンド | サーバ側バリデーション | ✅ Java/TS | |
 | | QueryBuilder（QuerySpec） | ✅ Java/TS | |
@@ -52,7 +54,8 @@
 |---|---|---|---|---|
 | 定義モデル + YAML/JSON パーサ | ✅ | ✅ | ✅(※) | ✅（8種別すべて） |
 | 未知キーの検出（strict パース） | ✅ | ✅ | ✅ | ✅ |
-| CLI（`hatake validate` / `new` / 生成） | — | — | — | ✅（`npx hatake`） |
+| CLI（`hatake validate` / `new` / 生成 / `reference` / `examples`） | — | — | — | ✅（`npx hatake`） |
+| 機械可読な DSL リファレンス（`reference.json`） | ✅ | 対象外(※3) | 対象外(※3) | ✅（生成元） |
 | YAML↔JSON↔DSL 収束テスト | — | ✅ | ✅(YAML↔JSON) | ✅(YAML↔JSON) |
 | FormValidator（サーバ側） | ✅ | ✅ | ✅ | ✅ |
 | Validator 拡張レジストリ | ✅ | ✅ | ✅ | ✅ |
@@ -78,6 +81,8 @@
 | table/action など画面寄りモデル | ✅ | ✅ | ⏳一部（table 追加済／action 未） | ✅ |
 
 ※ Java の定義モデルは page 識別子 + search + table + form + dashboard の `items` まで（action 未。`table` は DTO のレスポンス形導出のために追加）。ダッシュボードのカードは「どう引くか＋どう畳むか」を持ち、`span` / `height` のような描画専用キーは持たない。子グリッド用の `ColumnDefinition` は検証に必要な最小形（field/label/type/format）で、`width`/`sortable`/`roles` 等の描画専用キーは持たない。TS は画面寄りモデルも持つがバックエンド用途で描画はしない。
+
+※3 リファレンスは**言語非依存の成果物**（`spec/reference.json`）なので、各エディションが同じものを持つ必要はない。生成は CLI がある TS 版に置き、成果物をコミットして生の URL で引けるようにしてある。ただし「リファレンスが実装と一致しているか」の確認は TS のレジストリに対してしか機械化できていない（Dart/Java 側は conformance で3言語一致を担保しているので間接的には効いている）。
 
 ※2 DTO 導出は**バックエンドの関心**なので Flutter は対象外（`QueryBuilder` と同じ扱い）。framework 側の Dart コードはシリアライズをせず、境界が `DataRecord`＝Map なので DTO を詰める場所が framework 内に無い。理由の詳細は [提案書](proposals/dto-generation.ja.md)。TS は**8種別すべて**をパースする（CLI が全種別を検証できるように `master`/`detail` を追加）。Java は種別を文字列として保持。`master` は `crud` と同じ形を導出し、`detail` は**読み取り専用なので request を出さない**（form は「返ってくる形」なので、レスポンス専用ロールの導出は今後）。`dashboard` は単一レコードを指さないので `pathParams` を出さず、`search` があればクエリパラメータだけを出す（カード単位のレスポンス形導出は未）。
 
@@ -158,13 +163,18 @@
 > - **`hatake` CLI** … ✅ TS 版に同梱（`npx hatake`）。`validate`（strict・`--json`・終了コード1）/
 >   `new <kind>`（8種別の雛形）/ `dto` / `schema` / `openapi` / `types --out`。
 >   → [使い方](../typescript/README.md#cli)
+> - **機械可読な DSL リファレンス**＋**例のカタログ** … ✅
+>   [`spec/reference.json`](../spec/reference.json)（全キーの索引・`keyIndex`・ページ種別ごとの有効範囲）と
+>   [`spec/examples/index.json`](../spec/examples/index.json)（やりたいこと → 例）。
+>   引く口は `npx hatake reference <キー名>` / `npx hatake examples <やりたいこと>`。
+>   リファレンスがスキーマ・strict のキー表・実装のレジストリとズレないことは CI で確認。
+>   → [DSL 仕様](../spec/dsl-spec.ja.md#機械可読なリファレンス) / [例のカタログ](../spec/examples/README.md)
 
 | 項目 | 内容 | なぜ | 規模感 |
 |---|---|---|---|
-| **機械可読な DSL リファレンス** | 全キー・型・既定値・列挙値・どのページ種別で有効かを1つの JSON に生成（spec から導出。strict のキー表が土台になる）。仕様書を読ませずに参照させる。CLI に `hatake reference` として出す | 仕様書 900行を毎回読ませるのは高い。索引があれば1発で引ける | 小〜中 |
-| hatake MCP サーバ | 仕様の検索・定義の検証・例の取得を MCP ツールとして提供 | エージェントが**手元に仕様を持たなくても**正しい定義を書ける | 中 |
-| 例のカタログ化 | `spec/examples/` を「やりたいこと → 例」の索引にする（今はファイル名の羅列） | AI は近い例をコピーする方が確実に速い | 小 |
+| **hatake MCP サーバ** | 仕様の検索・定義の検証・例の取得を MCP ツールとして提供（土台はできた＝`reference.json` の引き当て・`examples` の絞り込み・strict 検証は関数として揃っているので、MCP の口を付けるだけ） | エージェントが**手元に仕様を持たなくても**正しい定義を書ける | 中 |
 | 英語版の最小資料 | `docs/api-cheatsheet.md`（英語）＋ llms.txt の英語版（[ドキュメント配布 TODO](#ドキュメント配布-todo) と同じ話） | 英語で学習したモデルに効く。日本語のみだと確度が落ちる | 小 |
+| リファレンスの次段 | 「よくある間違い → 正しい書き方」の対照表を機械可読で持つ（`pagesize` のような綴り違いは strict が拾うが、**構造の間違い**＝`search` に `form` を書く、`report` に `key` を書く、は今は落ちるだけ） | AI が転ぶのは綴りより構造。直し方まで機械で出せると往復が減る | 小〜中 |
 
 ### 3. 人が使うための道具・資料
 

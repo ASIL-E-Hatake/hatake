@@ -738,8 +738,11 @@ computed: { op: sum, fields: [price, tax] }
 `date`, `dateTime`, `time`, `subTable`
 
 ### フィルタ演算子
-`equals`, `contains`, `startsWith`, `endsWith`, `gt`, `gte`, `lt`, `lte`,
-`between`, `in`
+`equals`, `notEquals`, `contains`, `startsWith`, `endsWith`, `gt`, `gte`, `lt`,
+`lte`, `between`, `in`
+
+`isEmpty` / `isNotEmpty` は値を取らないので**条件（[condition](#condition)）専用**。
+逆に `between` / `startsWith` / `endsWith` は条件では使えない（検索専用）。
 
 ### カラム型
 `text`, `number`, `badge`, `boolean`, `date`, `dateTime`
@@ -775,7 +778,39 @@ computed: { op: sum, fields: [price, tax] }
 （入力正規化、`normalize` で指定）`toHankaku`, `toZenkaku`, `hiraToKata`,
 `kataToHira`, `trim`, `collapseSpaces`, `parseNumber`。
 
+## 機械可読なリファレンス
+
+この仕様書は読み物なので、**「ここに何を書けるか」を1発で引きたいとき**は
+[`reference.json`](reference.json) を使う。JSON Schema から機械的に生成しているので、
+仕様とズレない（ズレたら CI が落ちる）。
+
+```bash
+npx hatake reference                      # 全部（JSON）
+npx hatake reference rowsPerPage          # キー名で引く（どのノードに書けるか＋型・既定値）
+npx hatake reference report               # ノード名・ページ種別でも引ける（当たったもの全部）
+npx hatake reference --page-kind report   # その画面で使える所だけに絞る
+```
+
+中身:
+
+| フィールド | 内容 |
+|---|---|
+| `pageKinds` | ページ種別（`crud` …）→ ノード名・必須キー |
+| `nodes` | ノード（`table` / `column` …）ごとの説明・キー一覧・**どのページ種別で有効か**・親ノード |
+| `nodes.*.keys[]` | `key` / `type` / `required` / `default` / `values` / `open` / `minimum` / `nodes`（入れ子の名前） |
+| `keyIndex` | キー名 → そのキーを書けるノード名。「このキーどこに書くの？」用 |
+
+`values` は取れる値。`open: true` は**組み込みの一覧**という意味で、Registry で足せる
+（例: `format` は `currency` 等が組み込みだが独自フォーマッタを登録できる）。
+`open: false` は enum＝それ以外書けない。
+
+`closed: false` のノードは「中身が自由な入れ物」（`config` / `validators` / `computed` /
+`visibleWhen`）。strict パースもここは見ない。
+
 ## 完全な例
+
+用途から引く索引は [`examples/README.md`](examples/README.md)（機械可読版は
+[`examples/index.json`](examples/index.json)、CLI は `npx hatake examples <やりたいこと>`）。
 
 [`examples/customer_master.yaml`](examples/customer_master.yaml) を見て。
 アプリ丸ごと（メニュー＋複数ページ）は [`examples/sales_app.yaml`](examples/sales_app.yaml)、

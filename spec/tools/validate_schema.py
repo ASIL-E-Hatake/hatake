@@ -14,18 +14,15 @@ from jsonschema import Draft202012Validator
 SPEC = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = SPEC / "hatake-page.schema.json"
 
+CATALOG_PATH = SPEC / "examples" / "index.json"
+
+# The example catalog is the list of examples — deriving the default set from it
+# means a new example cannot be validated here but missing from the catalog (or
+# the other way round).
 DEFAULT_DOCS = [
-    SPEC / "examples" / "customer_master.yaml",
-    SPEC / "examples" / "product_search.yaml",
-    SPEC / "examples" / "dept_master.yaml",
-    SPEC / "examples" / "customer_detail.yaml",
-    SPEC / "examples" / "customer_form.yaml",
-    SPEC / "examples" / "sales_app.yaml",
-    SPEC / "examples" / "order_entry.yaml",
-    SPEC / "examples" / "order_entry_paged.yaml",
-    SPEC / "examples" / "customer_wizard.yaml",
-    SPEC / "examples" / "sales_dashboard.yaml",
-    SPEC / "examples" / "sales_report.yaml",
+    SPEC / "examples" / entry["file"]
+    for entry in json.loads(CATALOG_PATH.read_text(encoding="utf-8"))["examples"]
+] + [
     # The public demo's own definition (same app plus a demo-only viewer action)
     # — keep it schema-valid too, since it is what visitors actually see.
     SPEC.parent / "flutter" / "packages" / "hatake_example" / "assets" / "sales_app.yaml",

@@ -4,6 +4,9 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
 
 - 全仕様: [DSL 仕様書](../spec/dsl-spec.ja.md) / 機械検証: [JSON Schema](../spec/hatake-page.schema.json)
 - 拡張: [Plugin ガイド](../flutter/docs/plugins.ja.md)
+- ここに無いキーは**引く**: `npx hatake reference <キー名>`（[DSL リファレンス](../spec/reference.json)）／
+  近い例を探す: `npx hatake examples <やりたいこと>`（[例のカタログ](../spec/examples/README.md)）／
+  書けたら `npx hatake validate <file>`
 
 ## 最小の書き方（定義ファースト）
 
@@ -143,12 +146,14 @@ page:
 ## フィールド型（`field.type` / `filter.type`）
 `text` `textarea` `number` `select` `multiSelect` `checkbox` `radio` `date` `dateTime` `time`
 （`select`/`radio`/`multiSelect` は `options: [{value,label}]` を付ける）
+`field.type` はこれに加えて `subTable`（親子・明細。検索条件には使えない）
 
 ## カラム型（`column.type`）
 `text` `number` `badge` `boolean` `date` `dateTime`
 
 ## フィルタ演算子（`filter.operator`）
-`equals` `contains` `startsWith` `endsWith` `gt` `gte` `lt` `lte` `between` `in`
+`equals` `notEquals` `contains` `startsWith` `endsWith` `gt` `gte` `lt` `lte` `between` `in`
+（`isEmpty` `isNotEmpty` は値を取らないので条件専用。逆に `between` `startsWith` `endsWith` は検索専用）
 
 ## フォーマッタ（`format:` で指定。オプションは同じ要素の `config`）
 
