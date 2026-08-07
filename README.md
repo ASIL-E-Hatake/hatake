@@ -96,7 +96,17 @@ hatake は「定義を書く」フレームワークなので、AI に使わせ�
 CrudPage / SearchPage に対応。検索・一覧・ページング・CRUD・バリデーション、拡張（Validator / Action / Field型 / Renderer）も入ってる。詳しくは [`flutter/README.md`](flutter/README.md)、拡張は [Plugin ガイド](flutter/docs/plugins.ja.md)。
 
 ### Java / TypeScript（バックエンド・scaffold）
-どちらも `core`（定義モデル + YAML/JSON パーサ）、`FormValidator`（サーバ側バリデーション）、`QueryBuilder`（検索フィルタ + params → フレームワーク非依存の `QuerySpec`。フィルタに無い項目は弾く許可リスト方式）まで。ORM 依存は持たず、JPA/Prisma 等への変換は opt-in アダプタの領分。YAML↔JSON 収束もテスト済み。詳しくは [`java/README.md`](java/README.md) / [`typescript/README.md`](typescript/README.md)。
+どちらも `core`（定義モデル + YAML/JSON パーサ）、`FormValidator`（サーバ側バリデーション）、`QueryBuilder`（検索フィルタ + params → フレームワーク非依存の `QuerySpec`。フィルタに無い項目は弾く許可リスト方式）、API の形の生成（`DtoSpec` → JSON Schema / OpenAPI 3.1 / ネイティブ型）まで。ORM 依存は持たず、JPA/Prisma 等への変換は opt-in アダプタの領分。YAML↔JSON 収束もテスト済み。詳しくは [`java/README.md`](java/README.md) / [`typescript/README.md`](typescript/README.md)。
+
+### CLI（`npx hatake`）
+定義を「書いた → すぐ検証」にするやつ。TypeScript 版に同梱。
+
+```bash
+npx hatake validate spec/examples/*.yaml   # strict（知らないキーを弾く）。問題があれば終了コード 1
+npx hatake new crud --id customer_master --title 顧客マスタ
+```
+
+書き間違いは場所と直し方まで出る（`page.table.columns[0]: 知らないキー "witdh"（width の間違い？）`）。生成（`dto` / `schema` / `openapi` / `types`）も同じ CLI から。→ [使い方](typescript/README.md#cli)
 
 読み物としては [紹介記事（全体）](docs/blog/introducing-hatake.md) と [Flutter 版の使い方](docs/blog/introducing-hatake-flutter.md) がある。
 

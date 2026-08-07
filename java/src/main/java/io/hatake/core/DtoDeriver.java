@@ -114,6 +114,11 @@ public final class DtoDeriver {
         if (page.form() == null) {
             return List.of();
         }
+        // detail は読み取り専用なので、その form は「返ってくる形」であって
+        // 「送る形」ではない（TypeScript 版と揃えるための除外）。
+        if ("detail".equals(page.type())) {
+            return List.of();
+        }
         // ウィザードの form はパーサが既に全ステップを畳んである。
         return page.form().fields();
     }

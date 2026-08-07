@@ -110,13 +110,12 @@ app:
     ).toThrow(UnknownKeysError);
   });
 
-  it("every shipped example this edition parses passes strict", () => {
-    // dept_master (master) / customer_detail (detail) are left out: this edition
-    // has no parser for those kinds yet. The *checker* knows them — the fixture
-    // covers a `detail` page — so only the parse step is limited.
+  it("every shipped example passes strict", () => {
     for (const file of [
       "customer_master",
       "product_search",
+      "dept_master",
+      "customer_detail",
       "customer_form",
       "order_entry",
       "order_entry_paged",

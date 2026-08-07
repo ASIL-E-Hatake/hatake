@@ -55,6 +55,25 @@ jobs:
           npm install
           npm run typecheck
           npm test
+      - name: CLI smoke test (validate every shipped example)
+        working-directory: typescript
+        run: |
+          npm run build
+          node dist/cli.js validate ../spec/examples/*.yaml
+      - name: Scaffolds are valid definitions
+        working-directory: typescript
+        run: |
+          set -e
+          mkdir -p /tmp/scaffold
+          for kind in crud search master detail form wizard dashboard report; do
+            node dist/cli.js new "$kind" --id "demo_$kind" --title デモ \
+              --out "/tmp/scaffold/$kind.yaml"
+          done
+          node dist/cli.js validate /tmp/scaffold/*.yaml
+      - name: Scaffolds pass the JSON Schema too
+        run: |
+          pip install --quiet 'jsonschema[format]' pyyaml
+          python spec/tools/validate_schema.py /tmp/scaffold/*.yaml
 
   java:
     name: Java edition

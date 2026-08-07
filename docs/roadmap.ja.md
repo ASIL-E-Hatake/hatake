@@ -37,6 +37,7 @@
 | ページ種別 | ReportPage（帳票） | ✅ Flutter（3言語検証） | `type: report` ＝ 一覧の印刷版。明細の列は `table` から取り、`report` が紙の構造（`paper` / `rowsPerPage` / `sort` / `groupBy` / `totals`）を足す。**グループはコントロールブレイク**（並び順に見てキーが変わったら小計→見出し。並べ替えは Repository の責務なので `sort` で指定する）。集約は Dashboard と同じ `AggregateRegistry`。定義＋行 → 中立な `ReportDocument`（`QuerySpec` と同じ立ち位置）までを Framework が作り、Renderer は用紙比率でプレビューを描く。**PDF 化・プリンタ送出は対象外**（opt-in アダプタ） |
 | 出力 | CSV 出力 | ✅ 3言語 | `action` の型 `export`。**その画面の列と行から CSV を組む**（一覧・帳票で同じ書き方。ロールで見えない列は出さない）。RFC 4180 の引用、BOM / CRLF / 区切り / `raw`（format を通さない）を `config` で選べる。一覧の export は**表示中のページではなく検索結果全体**を出す（`limit` まで読み直す）。**ファイルを書くのは対象外**＝`HatakeScope(exportSink:)` に渡された出力先の責務（文字コード変換も同じ理由でそちら） |
 | | 帳票の印刷（PDF/プリンタ） | ⏳ | `ReportDocument` を PDF/印刷に落とす opt-in アダプタ。`printing` / `pdf` 依存を本体に入れないため別パッケージ |
+| 定義の品質 | `hatake` CLI | ✅ TS 同梱 | `npx hatake validate <file...>`（strict 既定・`--json`・**問題があれば終了コード 1** なので CI に置ける）、`new <kind>`（8種別の雛形。全部が strict とスキーマを通ることを CI で確認）、`dto` / `schema` / `openapi` / `types --out`（ネイティブ型のファイル出力の入口）。生成系は常に strict で読む（書き間違いを API に焼き付けないため）。→ [使い方](../typescript/README.md#cli) |
 | 定義の品質 | 未知キーの検出（strict パース） | ✅ 3言語 | パーサの厳格モード。`parsePageYaml(source, strict: true)` で**知らないキーを全部まとめて**エラーにする（近い既知キーの提案つき: `pagesize` → `pageSize` / `visible_when` → `visibleWhen`）。厳しさは JSON Schema と同一＝`additionalProperties: false` のノードだけを閉じ、`config` / `validators` / `computed` の中は見ない。既定は従来どおり寛容（後方互換）だが、デモと CI は strict。**各版のキー表がスキーマとズレていないことも機械で確認**。詳細は [DSL 仕様](../spec/dsl-spec.ja.md#未知キーの検出strict) |
 | バックエンド | サーバ側バリデーション | ✅ Java/TS | |
 | | QueryBuilder（QuerySpec） | ✅ Java/TS | |
@@ -49,8 +50,9 @@
 
 | 機能 | spec | Flutter | Java | TypeScript |
 |---|---|---|---|---|
-| 定義モデル + YAML/JSON パーサ | ✅ | ✅ | ✅(※) | ✅ |
+| 定義モデル + YAML/JSON パーサ | ✅ | ✅ | ✅(※) | ✅（8種別すべて） |
 | 未知キーの検出（strict パース） | ✅ | ✅ | ✅ | ✅ |
+| CLI（`hatake validate` / `new` / 生成） | — | — | — | ✅（`npx hatake`） |
 | YAML↔JSON↔DSL 収束テスト | — | ✅ | ✅(YAML↔JSON) | ✅(YAML↔JSON) |
 | FormValidator（サーバ側） | ✅ | ✅ | ✅ | ✅ |
 | Validator 拡張レジストリ | ✅ | ✅ | ✅ | ✅ |
@@ -77,7 +79,7 @@
 
 ※ Java の定義モデルは page 識別子 + search + table + form + dashboard の `items` まで（action 未。`table` は DTO のレスポンス形導出のために追加）。ダッシュボードのカードは「どう引くか＋どう畳むか」を持ち、`span` / `height` のような描画専用キーは持たない。子グリッド用の `ColumnDefinition` は検証に必要な最小形（field/label/type/format）で、`width`/`sortable`/`roles` 等の描画専用キーは持たない。TS は画面寄りモデルも持つがバックエンド用途で描画はしない。
 
-※2 DTO 導出は**バックエンドの関心**なので Flutter は対象外（`QueryBuilder` と同じ扱い）。framework 側の Dart コードはシリアライズをせず、境界が `DataRecord`＝Map なので DTO を詰める場所が framework 内に無い。理由の詳細は [提案書](proposals/dto-generation.ja.md)。対応ページ種別は TS が `crud`/`search`/`form`（`master`/`detail` は未）、Java は種別を文字列として保持。`dashboard` は単一レコードを指さないので `pathParams` を出さず、`search` があればクエリパラメータだけを出す（カード単位のレスポンス形導出は未）。
+※2 DTO 導出は**バックエンドの関心**なので Flutter は対象外（`QueryBuilder` と同じ扱い）。framework 側の Dart コードはシリアライズをせず、境界が `DataRecord`＝Map なので DTO を詰める場所が framework 内に無い。理由の詳細は [提案書](proposals/dto-generation.ja.md)。TS は**8種別すべて**をパースする（CLI が全種別を検証できるように `master`/`detail` を追加）。Java は種別を文字列として保持。`master` は `crud` と同じ形を導出し、`detail` は**読み取り専用なので request を出さない**（form は「返ってくる形」なので、レスポンス専用ロールの導出は今後）。`dashboard` は単一レコードを指さないので `pathParams` を出さず、`search` があればクエリパラメータだけを出す（カード単位のレスポンス形導出は未）。
 
 ### パリティの進め方
 
@@ -148,15 +150,18 @@
 
 「AI が理解・生成しやすい」を掛け声で終わらせないための具体項目。**AI が実際に転ぶ所**から並べた。
 
-> **済**: strict パース（未知キーを弾く）… ✅ 3言語。`parsePageYaml(source, strict: true)` で
-> 知らないキーを全部まとめて指摘（近い既知キーの提案つき）。厳しさは JSON Schema と同一で、
-> 各版のキー表がスキーマとズレていないことも機械で確認している。詳細は
-> [A の表](#a-機能として用意すべきもの)と [DSL 仕様](../spec/dsl-spec.ja.md#未知キーの検出strict)。
+> **済**:
+> - strict パース（未知キーを弾く）… ✅ 3言語。`parsePageYaml(source, strict: true)` で
+>   知らないキーを全部まとめて指摘（近い既知キーの提案つき）。厳しさは JSON Schema と同一で、
+>   各版のキー表がスキーマとズレていないことも機械で確認している。
+>   → [DSL 仕様](../spec/dsl-spec.ja.md#未知キーの検出strict)
+> - **`hatake` CLI** … ✅ TS 版に同梱（`npx hatake`）。`validate`（strict・`--json`・終了コード1）/
+>   `new <kind>`（8種別の雛形）/ `dto` / `schema` / `openapi` / `types --out`。
+>   → [使い方](../typescript/README.md#cli)
 
 | 項目 | 内容 | なぜ | 規模感 |
 |---|---|---|---|
-| **`hatake` CLI（validate / generate）** | `hatake validate <yaml>`（strict 込み・path 付きエラー）、`hatake dto <yaml> --lang ts|java`（今はライブラリ呼び出しだけでファイル出力の入口が無い）、`hatake new page` | AI も人も「書いた → すぐ検証」のループが回る。CI からも呼べる | 中 |
-| 機械可読な DSL リファレンス | 全キー・型・既定値・列挙値・どのページ種別で有効かを1つの JSON に生成（spec から導出）。仕様書を読ませずに参照させる | 仕様書 500行を毎回読ませるのは高い。索引があれば1発で引ける | 小〜中 |
+| **機械可読な DSL リファレンス** | 全キー・型・既定値・列挙値・どのページ種別で有効かを1つの JSON に生成（spec から導出。strict のキー表が土台になる）。仕様書を読ませずに参照させる。CLI に `hatake reference` として出す | 仕様書 900行を毎回読ませるのは高い。索引があれば1発で引ける | 小〜中 |
 | hatake MCP サーバ | 仕様の検索・定義の検証・例の取得を MCP ツールとして提供 | エージェントが**手元に仕様を持たなくても**正しい定義を書ける | 中 |
 | 例のカタログ化 | `spec/examples/` を「やりたいこと → 例」の索引にする（今はファイル名の羅列） | AI は近い例をコピーする方が確実に速い | 小 |
 | 英語版の最小資料 | `docs/api-cheatsheet.md`（英語）＋ llms.txt の英語版（[ドキュメント配布 TODO](#ドキュメント配布-todo) と同じ話） | 英語で学習したモデルに効く。日本語のみだと確度が落ちる | 小 |

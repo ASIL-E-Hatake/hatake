@@ -20,16 +20,30 @@ describe("generated TypeScript typechecks", () => {
   for (const c of fixture.cases as any[]) {
     it(c.name, () => {
       const dir = mkdtempSync(join(tmpdir(), "hatake-generated-"));
-      const file = join(dir, "generated.ts");
-      writeFileSync(file, c.typescript.join("\n"), "utf8");
+      writeFileSync(join(dir, "generated.ts"), c.typescript.join("\n"), "utf8");
+      // Its own tsconfig with `types: []`, so the compile is hermetic: a bare
+      // `tsc <file>` pulls in every @types package it can see and would fail on
+      // their problems instead of the generated code's.
+      writeFileSync(
+        join(dir, "tsconfig.json"),
+        JSON.stringify({
+          compilerOptions: {
+            strict: true,
+            target: "es2022",
+            noEmit: true,
+            types: [],
+          },
+          files: ["generated.ts"],
+        }),
+        "utf8",
+      );
 
       // Throws (with tsc's diagnostics) when the generated source is invalid.
       expect(() =>
-        execFileSync(
-          "npx",
-          ["tsc", "--noEmit", "--strict", "--target", "es2022", file],
-          { encoding: "utf8", stdio: "pipe" },
-        ),
+        execFileSync("npx", ["tsc", "-p", dir], {
+          encoding: "utf8",
+          stdio: "pipe",
+        }),
       ).not.toThrow();
     });
   }

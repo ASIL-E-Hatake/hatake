@@ -34,6 +34,14 @@ page:
     - { id: create, type: create, label: 新規登録 }
 ```
 
+**CLI で検証する**（人も AI も同じ入口。問題があれば終了コード 1）:
+
+```bash
+npx hatake validate page.yaml          # 解析 + strict。--json で機械可読
+npx hatake new crud --id customer_master --title 顧客マスタ   # 雛形（8種別）
+npx hatake types page.yaml --lang java --out gen/            # ネイティブ型
+```
+
 **書き間違いを検出する（strict）**: パーサは既定では知らないキーを黙って捨てるので、
 任意キーの綴り間違い（`readonly` / `pagesize` / `visible_when`）は**何も起きない**。
 `strict` を付けると全部まとめて指摘される（近い既知キーの提案つき）。定義を書くとき・CI は strict 推奨。
