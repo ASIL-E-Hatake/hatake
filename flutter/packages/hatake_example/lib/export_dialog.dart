@@ -20,10 +20,28 @@ class ExportDialog extends StatelessWidget {
     );
   }
 
+  /// 画面に出す用の整形。**中身は変えない**（コピーは本物を渡す）。
+  ///
+  /// CSV には Excel 向けに BOM と CRLF が入っているが、`Text` はそれを「豆腐」で
+  /// 描いてしまうので、表示のときだけ落とす。BOM/CRLF が入っていること自体は
+  /// 下の注記で伝える（デモは仕様を見せる場でもあるので）。
+  static String _forDisplay(String text) =>
+      text.replaceFirst('\u{FEFF}', '').replaceAll('\r\n', '\n');
+
+  /// 末尾の改行を1行と数えない。
+  static int _lineCount(String text) {
+    final body = _forDisplay(text);
+    final trimmed = body.endsWith('\n')
+        ? body.substring(0, body.length - 1)
+        : body;
+    return trimmed.isEmpty ? 0 : trimmed.split('\n').length;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final lines = request.text.split('\n').length;
+    final lines = _lineCount(request.text);
+    final hasBom = request.text.startsWith('\u{FEFF}');
     return AlertDialog(
       title: Text('出力 — ${request.filename}'),
       content: SizedBox(
@@ -35,7 +53,9 @@ class ExportDialog extends StatelessWidget {
             Text(
               'Framework が作るのはこの文字列までです（$lines 行 / ${request.mimeType}）。'
               'ダウンロードや保存はアプリ側で登録した出力先の担当なので、'
-              'このデモでは中身を見せています。',
+              'このデモでは中身を見せています。'
+              '${hasBom ? '実際の出力には Excel 向けに BOM と CRLF 改行が入っています'
+                  '（画面では読みやすさのため省いて表示。コピーは本物です）。' : ''}',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline),
             ),
@@ -51,7 +71,7 @@ class ExportDialog extends StatelessWidget {
                 ),
                 child: SingleChildScrollView(
                   child: Text(
-                    request.text,
+                    _forDisplay(request.text),
                     key: const Key('demo.export.text'),
                     style: const TextStyle(
                       fontFamily: 'monospace',

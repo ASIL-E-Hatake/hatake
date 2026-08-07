@@ -16,6 +16,9 @@ class _MaterialReportPage extends StatelessWidget {
     required this.formatters,
   });
 
+  /// Row height, matching what a data table gives the app's other lists.
+  static const double _rowHeight = 44;
+
   /// A4 and friends, long side over short side.
   static double _paperRatio(PaperDefinition paper) {
     final ratio = switch (paper.size) {
@@ -94,9 +97,17 @@ class _MaterialReportPage extends StatelessWidget {
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
-          child: AspectRatio(
-            aspectRatio: 1 / _paperRatio(definition.report.paper),
-            child: _sheet(context, sheet),
+          child: LayoutBuilder(
+            // Paper shape as a *minimum*: a sheet whose rows do not fit grows
+            // instead of overflowing (rowsPerPage is a line count, and rows are
+            // as tall as the app's other lists).
+            builder: (context, constraints) => ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxWidth *
+                    _paperRatio(definition.report.paper),
+              ),
+              child: _sheet(context, sheet),
+            ),
           ),
         ),
       ),
@@ -104,6 +115,10 @@ class _MaterialReportPage extends StatelessWidget {
   }
 
   /// One sheet of paper: title, page number, column headings, then the blocks.
+  ///
+  /// The rows deliberately look like the app's other lists (same text size, row
+  /// height and dividers as a `search` / `master` table). Every block kind goes
+  /// through [_cells], so the columns line up across details and totals.
   Widget _sheet(BuildContext context, ReportSheet sheet) {
     final theme = Theme.of(context);
     final roles = HatakeScope.of(context).roles;
@@ -114,49 +129,70 @@ class _MaterialReportPage extends StatelessWidget {
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: DefaultTextStyle.merge(
-          style: theme.textTheme.bodySmall,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(definition.title,
-                        style: theme.textTheme.titleMedium),
-                  ),
-                  Text('${sheet.number} / ${controller.totalPages}'),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _headings(context, columns),
-              const Divider(height: 8),
-              for (var i = 0; i < sheet.blocks.length; i++)
-                _block(context, sheet.blocks[i], columns, i),
-            ],
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(definition.title,
+                      style: theme.textTheme.titleMedium),
+                ),
+                Text('${sheet.number} / ${controller.totalPages}',
+                    style: theme.textTheme.bodySmall),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _headings(context, columns),
+            for (var i = 0; i < sheet.blocks.length; i++)
+              _block(context, sheet.blocks[i], columns, i),
+          ],
         ),
       ),
     );
   }
 
+  /// Column widths come from the definition (`column.width`); the rest share
+  /// what is left. Used by every row so nothing can drift out of alignment.
+  List<Widget> _cells(
+    List<ColumnDefinition> columns,
+    Widget Function(ColumnDefinition column) build,
+  ) {
+    return [
+      for (final column in columns)
+        if (column.width == null)
+          Expanded(child: _aligned(column, build(column)))
+        else
+          SizedBox(width: column.width, child: _aligned(column, build(column))),
+    ];
+  }
+
+  Widget _aligned(ColumnDefinition column, Widget child) => Padding(
+        padding: const EdgeInsets.only(right: 12),
+        child: Align(alignment: _alignOf(column), child: child),
+      );
+
+  /// Heading row, styled like a data table's (outline label + a divider under).
   Widget _headings(BuildContext context, List<ColumnDefinition> columns) {
     final theme = Theme.of(context);
-    return Row(
+    return Column(
       children: [
-        for (final column in columns)
-          Expanded(
-            child: Align(
-              alignment: _alignOf(column),
-              child: Text(
+        SizedBox(
+          height: 40,
+          child: Row(
+            children: _cells(
+              columns,
+              (column) => Text(
                 column.label,
-                style: theme.textTheme.labelSmall
+                style: theme.textTheme.labelMedium
                     ?.copyWith(color: theme.colorScheme.outline),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
+        ),
+        Divider(height: 1, color: theme.colorScheme.outlineVariant),
       ],
     );
   }
@@ -169,33 +205,51 @@ class _MaterialReportPage extends StatelessWidget {
     List<ColumnDefinition> columns,
     int index,
   ) {
+    final theme = Theme.of(context);
     switch (block.kind) {
       case ReportBlockKinds.groupHeader:
-        return Padding(
-          padding: EdgeInsets.only(top: 6, left: 12.0 * block.level),
+        // Spans the whole row: a group label is prose, not a cell, and a narrow
+        // first column would clip it.
+        return Container(
+          key: Key('hatake.report.group.$index'),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            border: Border(
+              bottom: BorderSide(color: theme.colorScheme.outlineVariant),
+            ),
+          ),
+          padding: EdgeInsets.only(
+            left: 8 + 16.0 * block.level,
+            right: 8,
+            top: 8,
+            bottom: 8,
+          ),
           child: Text(
             '${block.label}: ${block.value ?? ''}',
-            key: Key('hatake.report.group.$index'),
-            style: const TextStyle(fontWeight: FontWeight.bold),
+            style: theme.textTheme.titleSmall,
           ),
         );
       case ReportBlockKinds.detail:
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
+        return Container(
+          key: Key('hatake.report.detail.$index'),
+          height: _rowHeight,
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
           child: Row(
-            children: [
-              for (final column in columns)
-                Expanded(
-                  child: Align(
-                    alignment: _alignOf(column),
-                    child: Text(
-                      _cell(column, block.row[column.field]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-            ],
+            children: _cells(
+              columns,
+              (column) => Text(
+                _cell(column, block.row[column.field]),
+                style: theme.textTheme.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ),
         );
       case ReportBlockKinds.subtotal:
@@ -221,31 +275,47 @@ class _MaterialReportPage extends StatelessWidget {
       key: Key(isGrand
           ? 'hatake.report.grandTotal'
           : 'hatake.report.subtotal.$index'),
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      height: _rowHeight,
       decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant)),
+        color: isGrand ? theme.colorScheme.surfaceContainerHighest : null,
+        border: Border(
+          top: BorderSide(
+            color: theme.colorScheme.outlineVariant,
+            width: isGrand ? 1.5 : 1,
+          ),
+        ),
       ),
       child: DefaultTextStyle.merge(
-        style: TextStyle(
+        style: theme.textTheme.bodyMedium!.copyWith(
           fontWeight: FontWeight.bold,
           color: isGrand ? null : theme.colorScheme.onSurfaceVariant,
         ),
         child: Row(
           children: [
             for (var i = 0; i < columns.length; i++)
-              Expanded(
-                child: Align(
-                  alignment: _alignOf(columns[i]),
-                  child: Text(
-                    i == 0 ? label : _totalFor(columns[i], block),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+              if (columns[i].width == null)
+                Expanded(child: _aligned(columns[i], _totalCell(columns[i], block, i, label)))
+              else
+                SizedBox(
+                  width: columns[i].width,
+                  child: _aligned(columns[i], _totalCell(columns[i], block, i, label)),
                 ),
-              ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _totalCell(
+    ColumnDefinition column,
+    ReportBlock block,
+    int index,
+    String label,
+  ) {
+    return Text(
+      index == 0 ? label : _totalFor(column, block),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 
