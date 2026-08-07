@@ -38,7 +38,7 @@ final _rows = <DataRecord>[
 
 const _table = TableDefinition(
   columns: [
-    ColumnDefinition(field: 'orderNo', label: '受注番号'),
+    ColumnDefinition(field: 'orderNo', label: '受注番号', width: 160),
     ColumnDefinition(
       field: 'amount',
       label: '金額',
@@ -105,6 +105,39 @@ void main() {
     expect(find.text('小計'), findsNWidgets(2));
     expect(find.byKey(const Key('hatake.report.grandTotal')), findsOneWidget);
     expect(find.text('¥350'), findsOneWidget);
+  });
+
+  testWidgets('rows read like the app’s other lists', (tester) async {
+    // The 帳票 used to be typeset dense like a print-out, which looked out of
+    // place next to the search / master tables. These pin the shared look:
+    // declared column widths, list-sized text, and one row height everywhere.
+    await tester.pumpWidget(_harness(_Orders(_rows)));
+    await tester.pumpAndSettle();
+
+    final theme = Theme.of(tester.element(find.byType(HatakePageView)));
+
+    // Detail cells sit in the width the column declared (like _sizedColumn).
+    final cell = tester.widget<SizedBox>(find
+        .descendant(
+          of: find.byKey(const Key('hatake.report.detail.1')),
+          matching: find.byType(SizedBox),
+        )
+        .first);
+    expect(cell.width, 160);
+
+    // Detail text is the same size as a list row's, not print-dense.
+    final text = tester.widget<Text>(find.text('SO-1'));
+    expect(text.style?.fontSize, theme.textTheme.bodyMedium?.fontSize);
+
+    // Details and totals share one row height, so the columns line up.
+    Size sizeOf(Key key) => tester.getSize(find.byKey(key));
+    expect(sizeOf(const Key('hatake.report.detail.1')).height, 44);
+    expect(sizeOf(const Key('hatake.report.grandTotal')).height, 44);
+    // Group headings span the whole row (a narrow first column would clip them).
+    expect(
+      sizeOf(const Key('hatake.report.group.0')).width,
+      sizeOf(const Key('hatake.report.detail.1')).width,
+    );
   });
 
   testWidgets('the conditions re-run the report', (tester) async {
