@@ -51,6 +51,7 @@ YAML Language Server 系のエディタなら、ファイル先頭にこの一�
 | `form` | 単票の作成/編集フォーム | ✅ | table 無し。record key を渡せば編集、無ければ新規作成 |
 | `wizard` | ステップ入力 | ✅ | `steps` に分割したフォーム。**ステップ単位で検証**して次へ進み、最後にまとめて保存（→ [wizard](#wizardtype-wizard)） |
 | `dashboard` | ダッシュボード | — | `items`（カード）のグリッド。1枚＝小さな読み取りクエリ＋見せ方（→ [dashboard](#dashboardtype-dashboard)） |
+| `report` | 帳票 | — | 一覧の印刷版。グループ・小計・用紙で紙に組む（→ [report](#reporttype-report)） |
 
 `search` ページは `crud` と同じ `search` / `table` / `actions` を持つけど `form` は無い。
 `rowActions` はページレベルの `plugin` アクション（例: `detail`）を指して、対象行を context に
@@ -307,6 +308,128 @@ page:
 
 ラベルの並びは**初出順**（言語をまたいで同じ順序にするため。並べ替えは Repository の責務）。
 ラベルが無い行は空文字のグループにまとまる。
+
+## report（type: report）
+
+一覧の**印刷版**。明細の列は [table](#table) から取るので、一覧と帳票で列がずれない。
+`report` が足すのは「紙の構造」だけ。単一レコードを指さないので `key` は無い。
+
+**グループはコントロールブレイク**（並び順に見て、キーが変わったら小計を出して
+見出しを出す）。だから**行が先に並んでいる必要がある**＝並べ替えは Repository の責務で、
+同じ値が離れて2回出れば2グループになる。
+
+**印刷そのものは Framework の外**。定義 + 行 → 中立な「帳票ドキュメント」までを
+Framework が作り、Renderer はそれを用紙の比率で描く（プレビュー）。PDF 化や
+プリンタ送出は opt-in アダプタの領分（`QuerySpec` と同じ立ち位置）。
+
+```yaml
+dsl_version: "1.0"
+page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  # 出力条件。値はそのまま Repository のフィルタに渡る
+  search:
+    layout: { columns: 2 }
+    filters:
+      - { field: orderDate, label: 受注日, type: date, operator: between }
+  # 明細の列（column そのまま。number は右寄せで印字）
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号, width: 140 }
+      - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+  report:
+    paper: { size: A4, orientation: portrait }
+    rowsPerPage: 30
+    sort: { field: customer }          # groupBy はこの並びに依存する
+    groupBy:
+      - { field: customer, label: 顧客, pageBreak: true }   # 得意先ごとに1枚
+    totals:
+      - { field: amount, aggregate: sum }
+      - { field: amount, aggregate: count }
+  actions:
+    # CSV も同じ列から出る（出力先は利用者が登録する）
+    - { id: csv, type: export, label: CSV出力, config: { filename: 売上明細, bom: true } }
+```
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `type` | string | ✅ | — | `report`。 |
+| `id` | string | ✅ | — | 安定したページ識別子。 |
+| `title` | string | ✅ | — | 帳票タイトル（紙にも出る）。 |
+| `repository` | string | ✅ | — | 利用者が実装した `Repository` を解決するキー。 |
+| `search` | [search](#search) | | — | 出力条件。 |
+| `table` | [table](#table) | | 空 | 明細の列。 |
+| `report` | 下表 | | 既定値 | 紙の構造。 |
+| `actions` | [action](#action)[] | | `[]` | ページレベルのアクション（`export` など）。 |
+
+**`report`**:
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `paper` | `{size, orientation}` | `{A4, portrait}` | 用紙。`size` は開いた文字列（`A4` / `A3` / `B5` / `letter`）、`orientation` は `portrait` / `landscape`。 |
+| `rowsPerPage` | integer（≥1） | `40` | 1枚に載る行数。**グループ見出し・小計も1行として数える**（これでページ割りが3言語で一致する）。 |
+| `limit` | integer（≥1） | `1000` | 1回の出力で読む行数。帳票は印刷物なのでページングしない。 |
+| `sort` | `{field, ascending}` | — | 印字順（Repository に渡す）。列見出しを押せない帳票では**ここが唯一の並び指定**で、`groupBy` はこの順に依存する。 |
+| `groupBy` | [reportGroup](#reportgroup)[] | `[]` | コントロールブレイク（外側から順）。 |
+| `totals` | [reportTotal](#reporttotal)[] | `[]` | 小計・総計に出す数字。 |
+
+### reportGroup
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `field` | string | ✅ | — | グループを切る項目。 |
+| `label` | string | ✅ | — | 見出しに出すラベル（`顧客: 山田商事` のように出る）。 |
+| `pageBreak` | boolean | | `false` | 変わるたびに改ページするか。 |
+
+### reportTotal
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `field` | string | ✅ | — | 集約する項目。 |
+| `aggregate` | string | | `sum` | 集約オペレーション（[集約](#集約オペレーション)。ダッシュボードと同じ語彙）。 |
+
+同じ `field` を2つ宣言してよい（例: 金額の `sum` と `count`）。小計の値は項目名ではなく
+**宣言順の位置**で対応する。
+
+**出力の組み立て方**（3言語一致。[`conformance/report.json`](conformance/report.json)）:
+
+1. 行を順に見て、`groupBy` の値が変わったら → **深い階層から小計** → （`pageBreak` があれば改ページ）→ **外側から見出し**
+2. 明細を1行出す
+3. 最後に、開いていた階層の小計 → **総計**
+4. できた行を `rowsPerPage` ごとに紙へ割る（ページが埋まっていれば小計・総計も次の紙へ送る）
+5. 行が0件なら紙も0枚（Renderer が「データがありません」を出す）
+
+## export（CSV 出力）
+
+`action` の型 `export`。**その画面の列（`table.columns`）と行から CSV を組む**ので、
+一覧・帳票のどちらでも同じ書き方になる。ロールで見えない列は出力にも入らない。
+
+```yaml
+- { id: csv, type: export, label: CSV出力, config: { filename: 受注一覧, bom: true } }
+```
+
+| `config` | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `filename` | string | ページタイトル | ファイル名（拡張子が無ければ `.csv` を付ける）。 |
+| `header` | boolean | `true` | 見出し行（列ラベル）を出すか。 |
+| `delimiter` | string | `,` | 区切り文字（タブ区切りは `"\t"`）。 |
+| `newline` | string | `crlf` | 改行（`crlf` / `lf`）。 |
+| `bom` | boolean | `false` | 先頭に BOM を付けるか（Excel の文字化け対策）。 |
+| `raw` | boolean | `false` | `format` を通さず生の値を書くか（Excel で計算させたいとき）。 |
+| `limit` | integer | `10000` | 一覧ページで出力のために読み直す上限件数。 |
+
+**書き出しの決まり**（[`conformance/csv.json`](conformance/csv.json)）: 区切り・引用符・改行を含む値は
+`"` で囲み、`"` は2つに重ねる（RFC 4180）。欠損・`null` は空欄。列が無ければ空文字。
+最後の行にも改行を付ける。
+
+**一覧ページの `export` は表示中のページではなく検索結果全体を出す**（`limit` まで
+読み直す）。帳票ページは既に `report.limit` ぶん読んでいるので、その行をそのまま出す。
+
+**ファイルを書くのは Framework の外**。Framework は文字列（BOM 込み）までを作り、
+ダウンロード・保存ダイアログ・共有・アップロードは利用者が登録した出力先が行う。
+文字コード変換（Shift_JIS 等）も同じ理由で出力先の責務。
 
 ## search
 
@@ -582,7 +705,7 @@ computed: { op: sum, fields: [price, tax] }
 `text`, `number`, `badge`, `boolean`, `date`, `dateTime`
 
 ### アクション型
-`create`, `edit`, `delete`, `navigate`, `plugin`
+`create`, `edit`, `delete`, `navigate`, `plugin`, `export`（→ [export](#exportcsv-出力)）
 
 ### ダッシュボード項目型
 （[item](#item) の `type`）`metric`, `table`, `chart`
@@ -619,7 +742,8 @@ computed: { op: sum, fields: [price, tax] }
 親子・明細は [`examples/order_entry.yaml`](examples/order_entry.yaml)（埋め込み）と
 [`examples/order_entry_paged.yaml`](examples/order_entry_paged.yaml)（子Repository）。
 ステップ入力は [`examples/customer_wizard.yaml`](examples/customer_wizard.yaml)、
-ダッシュボードは [`examples/sales_dashboard.yaml`](examples/sales_dashboard.yaml)。
+ダッシュボードは [`examples/sales_dashboard.yaml`](examples/sales_dashboard.yaml)、
+帳票は [`examples/sales_report.yaml`](examples/sales_report.yaml)。
 
 ## 同一性の保証
 

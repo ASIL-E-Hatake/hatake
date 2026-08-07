@@ -5,6 +5,7 @@ import 'hatake_crud_view.dart';
 import 'hatake_dashboard_view.dart';
 import 'hatake_detail_view.dart';
 import 'hatake_form_view.dart';
+import 'hatake_report_view.dart';
 import 'hatake_search_view.dart';
 import 'hatake_wizard_view.dart';
 
@@ -32,6 +33,7 @@ class HatakePageView extends StatelessWidget {
       final WizardPageDefinition d =>
         HatakeWizardView(definition: d, recordKey: recordKey),
       final DashboardPageDefinition d => HatakeDashboardView(definition: d),
+      final ReportPageDefinition d => HatakeReportView(definition: d),
     };
   }
 }

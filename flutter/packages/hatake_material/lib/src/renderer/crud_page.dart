@@ -48,6 +48,16 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
         await _openForm();
       case ActionTypes.navigate:
         _navigateAction(context, action);
+      case ActionTypes.export:
+        // Re-query so the CSV holds the whole result, not just the page shown.
+        await _runExportAction(
+          context,
+          action,
+          columns: _def.table.columns,
+          rows: _controller.fetchForExport,
+          formatters: _formatters,
+          fallbackName: _def.title,
+        );
       case ActionTypes.plugin:
         final registry = HatakeScope.of(context).actions;
         final handler =

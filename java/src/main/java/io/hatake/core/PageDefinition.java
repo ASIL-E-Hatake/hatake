@@ -15,6 +15,9 @@ import java.util.List;
  * {@code validate(page.form(), record)} で書ける。1ステップだけ検証したいときは
  * {@link #stepById(String)} → {@link WizardStepDefinition#form()}。
  *
+ * <p>{@code type: report} のページは {@link #report}（紙の構造）を持ち、明細の列は
+ * {@link #table} から取る。単一レコードを指さないので {@code keyField} に意味は無い。
+ *
  * <p>{@code type: dashboard} のページは form を持たず {@link #items} を持つ。
  * 単一レコードを指さないので {@code repository} は<b>カードの既定値</b>でしかなく
  * （null もあり得る）、{@code keyField} には意味が無い。
@@ -30,13 +33,17 @@ public record PageDefinition(
         TableDefinition table,
         FormDefinition form,
         List<WizardStepDefinition> steps,
-        List<DashboardItemDefinition> items) {
+        List<DashboardItemDefinition> items,
+        ReportDefinition report) {
 
     /** ステップ入力ページの type。 */
     public static final String WIZARD = "wizard";
 
     /** ダッシュボードページの type。 */
     public static final String DASHBOARD = "dashboard";
+
+    /** 帳票ページの type。 */
+    public static final String REPORT = "report";
 
     /**
      * テーブルもステップもカードも持たないページ用の短縮コンストラクタ。
@@ -54,7 +61,7 @@ public record PageDefinition(
             SearchDefinition search,
             FormDefinition form) {
         this(id, title, dslVersion, type, repository, keyField, search,
-                TableDefinition.EMPTY, form, List.of(), List.of());
+                TableDefinition.EMPTY, form, List.of(), List.of(), null);
     }
 
     /** このページがステップ入力かどうか。 */
@@ -65,6 +72,11 @@ public record PageDefinition(
     /** このページがダッシュボードかどうか。 */
     public boolean isDashboard() {
         return DASHBOARD.equals(type);
+    }
+
+    /** このページが帳票かどうか（{@link #report} が入っている）。 */
+    public boolean isReport() {
+        return REPORT.equals(type);
     }
 
     /** id でカードを引く。見つからなければ null。 */

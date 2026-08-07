@@ -7,6 +7,7 @@ import '../runtime/detail_controller.dart';
 import '../runtime/form_controller.dart';
 import '../runtime/hatake_router.dart';
 import '../runtime/list_controller.dart';
+import '../runtime/report_controller.dart';
 import '../runtime/wizard_controller.dart';
 
 /// Converts a [PageDefinition] into Flutter widgets.
@@ -58,6 +59,13 @@ abstract interface class Renderer {
     BuildContext context,
     DashboardPageDefinition definition,
     DashboardController controller,
+  );
+
+  /// Builds the widget tree for a report page (帳票 preview).
+  Widget buildReportPage(
+    BuildContext context,
+    ReportPageDefinition definition,
+    ReportController controller,
   );
 
   /// Builds the app shell (navigation menu + current page) for an

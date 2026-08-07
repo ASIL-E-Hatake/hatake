@@ -13,10 +13,18 @@ describe("parseAppYaml: shipped example", () => {
   });
 
   it("parses the menu as leaf + group(with child) + leaves", () => {
-    expect(app.menu).toHaveLength(6);
+    expect(app.menu).toHaveLength(7);
 
-    const [dashboard, customers, master, orders, orderEntry, orderEntryPaged] =
-      app.menu;
+    const [
+      dashboard,
+      customers,
+      master,
+      orders,
+      salesReport,
+      orderEntry,
+      orderEntryPaged,
+    ] = app.menu;
+    expect(salesReport.page).toBe("sales_report");
     expect(menuIsGroup(dashboard)).toBe(false);
     expect(dashboard.id).toBe("dashboard");
     expect(dashboard.page).toBe("sales_dashboard");
@@ -46,13 +54,14 @@ describe("parseAppYaml: shipped example", () => {
     expect(orderEntryPaged.page).toBe("order_entry_paged");
   });
 
-  it("parses the shallow page inventory (7 pages)", () => {
-    expect(app.pages).toHaveLength(7);
+  it("parses the shallow page inventory (8 pages)", () => {
+    expect(app.pages).toHaveLength(8);
     expect(app.pages.map((p) => p.id)).toEqual([
       "sales_dashboard",
       "customer_master",
       "product_master",
       "order_search",
+      "sales_report",
       "order_detail",
       "order_entry",
       "order_entry_paged",
@@ -62,6 +71,7 @@ describe("parseAppYaml: shipped example", () => {
       "master",
       "master",
       "search",
+      "report",
       "detail",
       "form",
       "form",

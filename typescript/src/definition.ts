@@ -273,12 +273,73 @@ export interface DashboardPageDefinition {
   actions: ActionDefinition[];
 }
 
+/** The sheet a report is laid out on. */
+export interface PaperDefinition {
+  /** Paper size name (see PaperSizes). */
+  size: string;
+  /** `portrait` or `landscape`. */
+  orientation: string;
+}
+
+/** A control break: rows whose `field` value changes start a new group. */
+export interface ReportGroup {
+  field: string;
+  /** Heading label shown next to the group's value. */
+  label: string;
+  /** Start a new sheet whenever this group changes. */
+  pageBreak: boolean;
+}
+
+/**
+ * One figure on the subtotal / grand-total lines. Reuses the aggregate
+ * vocabulary (see AggregateOps); two totals may share a `field`.
+ */
+export interface ReportTotal {
+  field: string;
+  aggregate: string;
+}
+
+/** The printing side of a report page: paper, lines per sheet, groups, totals. */
+export interface ReportDefinition {
+  paper: PaperDefinition;
+  /** Lines per sheet. Group headings and total lines count as lines. */
+  rowsPerPage: number;
+  /** Control breaks, outermost first (DSL: `groupBy`). */
+  groups: ReportGroup[];
+  totals: ReportTotal[];
+  /** Rows to fetch for one run — a report is printed, not paged. */
+  limit: number;
+  /** Print order (DSL: `sort`). Groups are control breaks, so it matters. */
+  sortField?: string;
+  sortAscending: boolean;
+}
+
+/**
+ * A report page (帳票): the printable counterpart of a list. Detail columns come
+ * from `table`, so the report and the list of the same data cannot drift apart.
+ * It addresses no single record, so it has no `keyField`.
+ */
+export interface ReportPageDefinition {
+  kind: "report";
+  id: string;
+  title: string;
+  dslVersion: string;
+  repository: string;
+  /** Output conditions, passed to the repository as filters. */
+  search?: SearchDefinition;
+  /** Detail columns. */
+  table: TableDefinition;
+  report: ReportDefinition;
+  actions: ActionDefinition[];
+}
+
 export type PageDefinition =
   | CrudPageDefinition
   | SearchPageDefinition
   | FormPageDefinition
   | WizardPageDefinition
-  | DashboardPageDefinition;
+  | DashboardPageDefinition
+  | ReportPageDefinition;
 
 /** A node in an app's navigation menu. Either a leaf (opens `page`) or a group
  * (has `children`). `isGroup` distinguishes them (see menuIsGroup). */
@@ -357,6 +418,20 @@ export const ChartKinds = {
   bar: "bar",
   line: "line",
   pie: "pie",
+} as const;
+
+/** Built-in paper sizes. Open strings — a renderer may know more. */
+export const PaperSizes = {
+  a4: "A4",
+  a3: "A3",
+  b5: "B5",
+  letter: "letter",
+} as const;
+
+/** Paper orientations. */
+export const Orientations = {
+  portrait: "portrait",
+  landscape: "landscape",
 } as const;
 
 /** Built-in aggregate operations (see AggregateRegistry). */

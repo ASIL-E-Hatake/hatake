@@ -67,7 +67,50 @@ public final class DefinitionParser {
                 parseTable(page.get("table")),
                 form,
                 steps,
-                parseDashboardItems(page, dashboard));
+                parseDashboardItems(page, dashboard),
+                PageDefinition.REPORT.equals(type)
+                        ? parseReport(optMap(page.get("report")))
+                        : null);
+    }
+
+    /** 帳票の「紙の構造」。無ければ既定（A4 縦・40行・グループ無し）。 */
+    @SuppressWarnings("unchecked")
+    private static ReportDefinition parseReport(Map<String, Object> m) {
+        if (m == null) {
+            return ReportDefinition.DEFAULT;
+        }
+        Map<String, Object> paper = optMap(m.get("paper"));
+        List<ReportGroup> groups = new ArrayList<>();
+        if (m.get("groupBy") instanceof List<?> list) {
+            for (Object o : list) {
+                Map<String, Object> g = (Map<String, Object>) o;
+                groups.add(new ReportGroup(
+                        reqStr(g, "field"),
+                        reqStr(g, "label"),
+                        Boolean.TRUE.equals(g.get("pageBreak"))));
+            }
+        }
+        List<ReportTotal> totals = new ArrayList<>();
+        if (m.get("totals") instanceof List<?> list) {
+            for (Object o : list) {
+                Map<String, Object> t = (Map<String, Object>) o;
+                totals.add(new ReportTotal(
+                        reqStr(t, "field"),
+                        t.get("aggregate") instanceof String a ? a : "sum"));
+            }
+        }
+        Map<String, Object> sort = optMap(m.get("sort"));
+        return new ReportDefinition(
+                paper != null && paper.get("size") instanceof String s ? s : "A4",
+                paper != null && paper.get("orientation") instanceof String o
+                        ? o
+                        : ReportDefinition.PORTRAIT,
+                m.get("rowsPerPage") instanceof Number n ? n.intValue() : 40,
+                List.copyOf(groups),
+                List.copyOf(totals),
+                m.get("limit") instanceof Number n ? n.intValue() : 1000,
+                sort == null || !(sort.get("field") instanceof String f) ? null : f,
+                sort == null || !(sort.get("ascending") instanceof Boolean a) || a);
     }
 
     /** ダッシュボードのカード。1枚＝小さな読み取りクエリ + 見せ方。 */
@@ -293,11 +336,13 @@ public final class DefinitionParser {
     }
 
     private static ColumnDefinition parseColumn(Map<String, Object> m) {
+        Map<String, Object> config = optMap(m.get("config"));
         return new ColumnDefinition(
                 reqStr(m, "field"),
                 reqStr(m, "label"),
                 m.get("type") instanceof String t ? t : "text",
-                m.get("format") instanceof String f ? f : null);
+                m.get("format") instanceof String f ? f : null,
+                config == null ? Map.of() : Map.copyOf(config));
     }
 
     @SuppressWarnings("unchecked")

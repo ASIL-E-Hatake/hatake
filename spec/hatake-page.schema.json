@@ -48,6 +48,9 @@
         },
         {
           "$ref": "#/$defs/dashboardPage"
+        },
+        {
+          "$ref": "#/$defs/reportPage"
         }
       ]
     },
@@ -106,6 +109,9 @@
               },
               {
                 "$ref": "#/$defs/dashboardPage"
+              },
+              {
+                "$ref": "#/$defs/reportPage"
               }
             ]
           }
@@ -823,7 +829,7 @@
         },
         "type": {
           "type": "string",
-          "description": "Action type (open string). Built-ins: create, edit, delete, plugin."
+          "description": "Action type (open string). Built-ins: create, edit, delete, navigate, plugin, export."
         },
         "label": {
           "type": "string"
@@ -1086,6 +1092,175 @@
         "aggregate": {
           "type": "string",
           "description": "Aggregate applied per label. Omitted = one point per row.",
+          "examples": [
+            "count",
+            "sum",
+            "avg",
+            "min",
+            "max"
+          ]
+        }
+      }
+    },
+    "reportPage": {
+      "type": "object",
+      "description": "A report page (帳票): read-only rows laid out on sheets, grouped with subtotals — the printable counterpart of a list. Detail columns come from `table`; `report` adds only the printing structure. It addresses no single record, so it has no `key`.",
+      "required": [
+        "type",
+        "id",
+        "title",
+        "repository"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "description": "Page kind.",
+          "enum": [
+            "report"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "repository": {
+          "type": "string"
+        },
+        "search": {
+          "$ref": "#/$defs/search",
+          "description": "Output conditions, passed to the repository as filters."
+        },
+        "table": {
+          "$ref": "#/$defs/table",
+          "description": "Detail columns (number columns print right-aligned)."
+        },
+        "report": {
+          "$ref": "#/$defs/report"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/action"
+          }
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "description": "The printing structure: paper, lines per sheet, control breaks and totals. Grouping is a control break over consecutive rows, so the repository must return them in the right order.",
+      "additionalProperties": false,
+      "properties": {
+        "paper": {
+          "$ref": "#/$defs/paper"
+        },
+        "rowsPerPage": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 40,
+          "description": "Lines per sheet. Group headings and total lines count as lines."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1000,
+          "description": "Rows read for one run (a report is printed, not paged)."
+        },
+        "groupBy": {
+          "type": "array",
+          "description": "Control breaks, outermost first.",
+          "items": {
+            "$ref": "#/$defs/reportGroup"
+          }
+        },
+        "totals": {
+          "type": "array",
+          "description": "Figures on the subtotal / grand-total lines, in order.",
+          "items": {
+            "$ref": "#/$defs/reportTotal"
+          }
+        },
+        "sort": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Print order, passed to the repository. Groups are control breaks, so the rows must arrive in this order.",
+          "properties": {
+            "field": {
+              "type": "string"
+            },
+            "ascending": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        }
+      }
+    },
+    "paper": {
+      "type": "object",
+      "description": "The sheet a report is laid out on. The renderer previews at this shape.",
+      "additionalProperties": false,
+      "properties": {
+        "size": {
+          "type": "string",
+          "description": "Paper size. Open string; built-ins below.",
+          "default": "A4",
+          "examples": [
+            "A4",
+            "A3",
+            "B5",
+            "letter"
+          ]
+        },
+        "orientation": {
+          "type": "string",
+          "default": "portrait",
+          "enum": [
+            "portrait",
+            "landscape"
+          ]
+        }
+      }
+    },
+    "reportGroup": {
+      "type": "object",
+      "description": "A control break: rows whose `field` value changes start a new group.",
+      "required": [
+        "field",
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string",
+          "description": "Heading label shown next to the group's value."
+        },
+        "pageBreak": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start a new sheet whenever this group changes."
+        }
+      }
+    },
+    "reportTotal": {
+      "type": "object",
+      "description": "One figure on the subtotal / grand-total lines. Two totals may share a field (e.g. sum and count of the same column).",
+      "required": [
+        "field"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "aggregate": {
+          "type": "string",
+          "description": "Aggregate operation (same vocabulary as a dashboard's).",
+          "default": "sum",
           "examples": [
             "count",
             "sum",

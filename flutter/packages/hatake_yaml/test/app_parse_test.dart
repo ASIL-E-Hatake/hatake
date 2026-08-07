@@ -108,11 +108,15 @@ void main() {
         File('../../../spec/examples/sales_app.yaml').readAsStringSync();
     final app = parseAppYaml(source);
     expect(app.id, 'sales_admin');
-    expect(app.pages.length, 7);
+    expect(app.pages.length, 8);
     // The app lands on a dashboard, whose cards read the order repository.
     final board = app.pageById('sales_dashboard') as DashboardPageDefinition;
     expect(board.items, isNotEmpty);
     expect(board.repository, 'orderRepository');
+    // …and it ships a 帳票 over the same data, grouped with subtotals.
+    final report = app.pageById('sales_report') as ReportPageDefinition;
+    expect(report.report.groups.single.field, 'customer');
+    expect(report.report.totals, isNotEmpty);
     // The order_search list has a navigate row action into the detail page.
     final search = app.pageById('order_search') as SearchPageDefinition;
     final navigate = search.actions.firstWhere((a) => a.id == 'detail');

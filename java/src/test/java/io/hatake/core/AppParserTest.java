@@ -34,7 +34,7 @@ class AppParserTest {
     @Test
     void parsesMenuAsLeafGroupLeaf() throws IOException {
         List<MenuItem> menu = shippedExample().menu();
-        assertEquals(6, menu.size());
+        assertEquals(7, menu.size());
 
         // ダッシュボードがトップ（アプリの着地点）。
         MenuItem dashboard = menu.get(0);
@@ -61,12 +61,16 @@ class AppParserTest {
         assertEquals("order_search", orders.page());
 
         // 親子・明細の入力画面もメニューから開ける（埋め込み版と子Repository版）。
-        MenuItem orderEntry = menu.get(4);
+        MenuItem salesReport = menu.get(4);
+        assertFalse(salesReport.isGroup());
+        assertEquals("sales_report", salesReport.page());
+
+        MenuItem orderEntry = menu.get(5);
         assertFalse(orderEntry.isGroup());
         assertEquals("orderEntry", orderEntry.id());
         assertEquals("order_entry", orderEntry.page());
 
-        MenuItem orderEntryPaged = menu.get(5);
+        MenuItem orderEntryPaged = menu.get(6);
         assertFalse(orderEntryPaged.isGroup());
         assertEquals("orderEntryPaged", orderEntryPaged.id());
         assertEquals("order_entry_paged", orderEntryPaged.page());
@@ -75,13 +79,14 @@ class AppParserTest {
     @Test
     void parsesShallowPageInventory() throws IOException {
         List<PageRef> pages = shippedExample().pages();
-        assertEquals(7, pages.size());
+        assertEquals(8, pages.size());
         assertEquals(
                 List.of("sales_dashboard", "customer_master", "product_master", "order_search",
-                        "order_detail", "order_entry", "order_entry_paged"),
+                        "sales_report", "order_detail", "order_entry", "order_entry_paged"),
                 pages.stream().map(PageRef::id).toList());
         assertEquals(
-                List.of("dashboard", "master", "master", "search", "detail", "form", "form"),
+                List.of("dashboard", "master", "master", "search", "report", "detail", "form",
+                        "form"),
                 pages.stream().map(PageRef::type).toList());
         assertEquals("顧客マスタ", pages.get(1).title());
         assertEquals("customerRepository", pages.get(1).repository());

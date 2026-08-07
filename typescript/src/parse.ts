@@ -13,6 +13,7 @@ import {
   type OptionItem,
   type PageDefinition,
   type PaginationDefinition,
+  type ReportDefinition,
   type SearchDefinition,
   type SectionDefinition,
   type SubTableSource,
@@ -137,10 +138,22 @@ export function parsePageMap(root: Dict): PageDefinition {
       };
     case "dashboard":
       return parseDashboardPage(page, dslVersion);
+    case "report":
+      return {
+        kind: "report",
+        id: reqString(page, "id", "page.id"),
+        title: reqString(page, "title", "page.title"),
+        dslVersion,
+        repository: reqString(page, "repository", "page.repository"),
+        search: parseSearch(optDict(page, "search")),
+        table: parseTable(optDict(page, "table")),
+        report: parseReport(optDict(page, "report")),
+        actions: parseActions(page),
+      };
     default:
       throw new DefinitionParseError(
         `Unsupported page type "${type}" ` +
-          `(supported: crud, search, form, wizard, dashboard)`,
+          `(supported: crud, search, form, wizard, dashboard, report)`,
         "page.type",
       );
   }
@@ -167,6 +180,39 @@ function parseWizardSteps(page: Dict): WizardStepDefinition[] {
       ),
     };
   });
+}
+
+/** The printing structure of a report page (`report`). */
+function parseReport(m: Dict | undefined): ReportDefinition {
+  const paper = m ? optDict(m, "paper") : undefined;
+  const sort = m ? optDict(m, "sort") : undefined;
+  return {
+    sortField: sort ? optString(sort, "field") : undefined,
+    sortAscending: sort ? optBool(sort, "ascending", true) : true,
+    paper: {
+      size: paper ? (optString(paper, "size") ?? "A4") : "A4",
+      orientation: paper
+        ? (optString(paper, "orientation") ?? "portrait")
+        : "portrait",
+    },
+    rowsPerPage: (m ? optNumber(m, "rowsPerPage") : undefined) ?? 40,
+    limit: (m ? optNumber(m, "limit") : undefined) ?? 1000,
+    groups: (m ? optList(m, "groupBy") : []).map((raw, i) => {
+      const g = asDict(raw, `page.report.groupBy[${i}]`);
+      return {
+        field: reqString(g, "field", `page.report.groupBy[${i}].field`),
+        label: reqString(g, "label", `page.report.groupBy[${i}].label`),
+        pageBreak: optBool(g, "pageBreak"),
+      };
+    }),
+    totals: (m ? optList(m, "totals") : []).map((raw, i) => {
+      const t = asDict(raw, `page.report.totals[${i}]`);
+      return {
+        field: reqString(t, "field", `page.report.totals[${i}].field`),
+        aggregate: optString(t, "aggregate") ?? "sum",
+      };
+    }),
+  };
 }
 
 /**

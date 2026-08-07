@@ -71,6 +71,28 @@ void main() {
   // The demo's master-detail definition is checked without driving the UI:
   // rendering of subTable is covered by hatake_material's widget tests, and
   // exercising the whole demo app through several screens is slow in tests.
+  test('the demo ships a 帳票 and CSV output over the same data', () {
+    final app = parseAppYaml(File('assets/sales_app.yaml').readAsStringSync());
+
+    final report = app.pageById('sales_report') as ReportPageDefinition;
+    // Detail columns come from `table`, so the report matches the order list.
+    expect(report.table.columns.map((c) => c.field),
+        ['orderNo', 'orderDate', 'status', 'amount']);
+    // Grouped by customer, in the order the report itself asks for.
+    expect(report.report.groups.single.field, 'customer');
+    expect(report.report.sortField, 'customer');
+    expect(report.report.totals.map((t) => t.aggregate),
+        [AggregateOps.sum, AggregateOps.count]);
+    expect(report.actions.any((a) => a.type == ActionTypes.export), isTrue);
+
+    // The order list exports the same columns it shows.
+    final search = app.pageById('order_search') as SearchPageDefinition;
+    final csv = search.actions.firstWhere((a) => a.id == 'csv');
+    expect(csv.type, ActionTypes.export);
+    expect(csv.config['bom'], isTrue);
+    expect(app.menu.any((m) => m.page == 'sales_report'), isTrue);
+  });
+
   test('the demo defines a master-detail entry page', () {
     // Read from disk (not rootBundle): this is a plain test with no binding.
     final app = parseAppYaml(File('assets/sales_app.yaml').readAsStringSync());

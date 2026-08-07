@@ -57,6 +57,7 @@ settings.
 | `form` | Standalone create/edit form | ✅ | form only (no table); edits when a record key is supplied, else creates |
 | `wizard` | Stepped input | ✅ | the form split into `steps`, **validated one step at a time**, saved once at the end (→ [wizard](#wizard-type-wizard)) |
 | `dashboard` | Dashboard | — | a grid of `items` (cards); one card = one small read-only query plus how to show it (→ [dashboard](#dashboard-type-dashboard)) |
+| `report` | Report (帳票) | — | the printable counterpart of a list: groups, subtotals, paper (→ [report](#report-type-report)) |
 
 A `search` page has the same `search`, `table`, and `actions` as `crud` but no
 `form`, and its `rowActions` reference page-level `plugin` actions (e.g. a
@@ -328,6 +329,139 @@ How a `chart` card turns its rows into points.
 Labels keep their **first-appearance order** (so every language produces the same
 sequence; sorting is the repository's job). Rows without a label fall into one
 group whose label is the empty string.
+
+## report (type: report)
+
+The **printable counterpart of a list**. Detail columns come from
+[table](#table), so the report and the list of the same data cannot drift apart;
+`report` adds only the printing structure. It addresses no single record, so it
+has no `key`.
+
+**Grouping is a control break**: rows are read in order and a change of key emits
+a subtotal and then a heading. So the **rows must already be sorted** — that is
+the repository's job — and the same value appearing twice apart makes two groups.
+
+**Printing itself is outside the framework.** Definition + rows produce a neutral
+report document; the renderer draws it at the paper's shape (a preview). Turning
+it into PDF or sending it to a printer is an opt-in adapter's job — the same
+position `QuerySpec` holds.
+
+```yaml
+dsl_version: "1.0"
+page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  # Output conditions, passed straight to the repository as filters
+  search:
+    layout: { columns: 2 }
+    filters:
+      - { field: orderDate, label: 受注日, type: date, operator: between }
+  # Detail columns (plain `column`s; number columns print right-aligned)
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号, width: 140 }
+      - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+  report:
+    paper: { size: A4, orientation: portrait }
+    rowsPerPage: 30
+    sort: { field: customer }          # groupBy depends on this order
+    groupBy:
+      - { field: customer, label: 顧客, pageBreak: true }   # one sheet per customer
+    totals:
+      - { field: amount, aggregate: sum }
+      - { field: amount, aggregate: count }
+  actions:
+    # The CSV comes from the same columns (the sink is registered by the app)
+    - { id: csv, type: export, label: CSV出力, config: { filename: 売上明細, bom: true } }
+```
+
+| Key | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `type` | string | ✅ | — | `report`. |
+| `id` | string | ✅ | — | Stable page identifier. |
+| `title` | string | ✅ | — | Report title (printed on the sheet too). |
+| `repository` | string | ✅ | — | Key resolving the user's `Repository`. |
+| `search` | [search](#search) | | — | Output conditions. |
+| `table` | [table](#table) | | empty | Detail columns. |
+| `report` | below | | defaults | Printing structure. |
+| `actions` | [action](#action)[] | | `[]` | Page-level actions (e.g. `export`). |
+
+**`report`**:
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `paper` | `{size, orientation}` | `{A4, portrait}` | `size` is an open string (`A4` / `A3` / `B5` / `letter`); `orientation` is `portrait` / `landscape`. |
+| `rowsPerPage` | integer (≥1) | `40` | Lines per sheet. **Group headings and total lines count as lines** — that is what keeps page breaks identical across the three languages. |
+| `limit` | integer (≥1) | `1000` | Rows read for one run. A report is printed, not paged. |
+| `sort` | `{field, ascending}` | — | Print order (passed to the repository). A report has no clickable headers, so this is **the only place its order is stated** — and `groupBy` depends on it. |
+| `groupBy` | [reportGroup](#reportgroup)[] | `[]` | Control breaks, outermost first. |
+| `totals` | [reportTotal](#reporttotal)[] | `[]` | Figures on the subtotal / grand-total lines. |
+
+### reportGroup
+
+| Key | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `field` | string | ✅ | — | Field whose change breaks the group. |
+| `label` | string | ✅ | — | Heading label (printed as `顧客: 山田商事`). |
+| `pageBreak` | boolean | | `false` | Start a new sheet whenever this group changes. |
+
+### reportTotal
+
+| Key | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `field` | string | ✅ | — | Field to aggregate. |
+| `aggregate` | string | | `sum` | Aggregate operation (see [aggregates](#aggregate-operations) — the same vocabulary a dashboard uses). |
+
+Two totals may share a `field` (e.g. `sum` and `count` of 金額), so the figures on
+a total line pair up with the declarations **by position**, not by field name.
+
+**How the document is built** (identical in all three languages, pinned by
+[`conformance/report.json`](conformance/report.json)):
+
+1. Walk the rows; when a `groupBy` value changes → **subtotals from the deepest
+   level up** → (a new sheet if that group has `pageBreak`) → **headings from the
+   outermost down**
+2. Emit one detail line
+3. At the end: subtotals for the levels still open → the **grand total**
+4. Fill sheets with the resulting lines, `rowsPerPage` at a time (a full sheet
+   pushes subtotals and the grand total onto the next one)
+5. No rows → no sheets (the renderer says so)
+
+## export (CSV)
+
+The `export` action type. It builds the CSV **from the page's own columns
+(`table.columns`) and rows**, so lists and reports are written the same way.
+Columns a role may not see stay out of the file.
+
+```yaml
+- { id: csv, type: export, label: CSV出力, config: { filename: 受注一覧, bom: true } }
+```
+
+| `config` | Type | Default | Description |
+|---|---|---|---|
+| `filename` | string | page title | File name (`.csv` is appended when it has no extension). |
+| `header` | boolean | `true` | Write the heading row (column labels). |
+| `delimiter` | string | `,` | Field separator (`"\t"` for TSV). |
+| `newline` | string | `crlf` | Line break (`crlf` / `lf`). |
+| `bom` | boolean | `false` | Prepend a BOM (so Excel reads UTF-8 Japanese). |
+| `raw` | boolean | `false` | Skip `format` and write raw values (to compute in Excel). |
+| `limit` | integer | `10000` | Cap on the rows a list page re-reads for the export. |
+
+**Writing rules** ([`conformance/csv.json`](conformance/csv.json)): a value
+containing the delimiter, a quote or a line break is wrapped in `"` and its quotes
+are doubled (RFC 4180); missing values and `null` are empty; no columns means an
+empty string; the last line ends with a line break too.
+
+**A list page's `export` writes the whole result, not the page on screen** (it
+re-reads up to `limit`). A report page already read `report.limit` rows, so it
+writes exactly those.
+
+**Writing the file is outside the framework.** It produces the text (BOM
+included) and stops; downloading, showing a save dialog, sharing or uploading is
+done by the sink the application registers. Character-set conversion (Shift_JIS
+and friends) belongs to the sink for the same reason.
 
 ## search
 
@@ -638,7 +772,7 @@ wholesale — including for another locale — inject a `MessageResolver` into t
 `text`, `number`, `badge`, `boolean`, `date`, `dateTime`
 
 ### Action types
-`create`, `edit`, `delete`, `navigate`, `plugin`
+`create`, `edit`, `delete`, `navigate`, `plugin`, `export` (→ [export](#export-csv))
 
 ### Dashboard item types
 (an [item](#item)'s `type`) `metric`, `table`, `chart`
@@ -679,7 +813,8 @@ application (menu + several pages) see
 [`examples/order_entry_paged.yaml`](examples/order_entry_paged.yaml) (child
 repository). Stepped input:
 [`examples/customer_wizard.yaml`](examples/customer_wizard.yaml). Dashboard:
-[`examples/sales_dashboard.yaml`](examples/sales_dashboard.yaml).
+[`examples/sales_dashboard.yaml`](examples/sales_dashboard.yaml). Report:
+[`examples/sales_report.yaml`](examples/sales_report.yaml).
 
 ## Equivalence guarantee
 

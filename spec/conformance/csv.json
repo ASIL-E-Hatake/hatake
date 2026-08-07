@@ -1,0 +1,108 @@
+{
+  "cases": [
+    {
+      "name": "見出し行＋データ行。行末は CRLF、最後の行にも改行を付ける",
+      "columns": [
+        { "field": "orderNo", "label": "受注番号" },
+        { "field": "customer", "label": "顧客" }
+      ],
+      "rows": [
+        { "orderNo": "SO-1", "customer": "山田商事" },
+        { "orderNo": "SO-2", "customer": "佐藤物産" }
+      ],
+      "expected": "受注番号,顧客\r\nSO-1,山田商事\r\nSO-2,佐藤物産\r\n"
+    },
+    {
+      "name": "区切り・引用符・改行を含む値は引用し、引用符は2つに重ねる",
+      "columns": [{ "field": "note", "label": "備考" }],
+      "rows": [
+        { "note": "山田, 佐藤" },
+        { "note": "いわゆる \"特価\"" },
+        { "note": "1行目\n2行目" }
+      ],
+      "expected": "備考\r\n\"山田, 佐藤\"\r\n\"いわゆる \"\"特価\"\"\"\r\n\"1行目\n2行目\"\r\n"
+    },
+    {
+      "name": "format があれば画面と同じ表記で出す（結果に区切りが入れば引用される）",
+      "columns": [
+        { "field": "orderNo", "label": "受注番号" },
+        {
+          "field": "amount",
+          "label": "金額",
+          "type": "number",
+          "format": "currency",
+          "config": { "symbol": "¥" }
+        }
+      ],
+      "rows": [{ "orderNo": "SO-1", "amount": 128000 }],
+      "expected": "受注番号,金額\r\nSO-1,\"¥128,000\"\r\n"
+    },
+    {
+      "name": "raw: true なら format を通さない（Excel で計算させたいとき）",
+      "columns": [
+        {
+          "field": "amount",
+          "label": "金額",
+          "format": "currency",
+          "config": { "symbol": "¥" }
+        }
+      ],
+      "rows": [{ "amount": 128000 }],
+      "options": { "raw": true },
+      "expected": "金額\r\n128000\r\n"
+    },
+    {
+      "name": "header: false で見出し行を出さない",
+      "columns": [{ "field": "orderNo", "label": "受注番号" }],
+      "rows": [{ "orderNo": "SO-1" }],
+      "options": { "header": false },
+      "expected": "SO-1\r\n"
+    },
+    {
+      "name": "delimiter でタブ区切りにできる",
+      "columns": [
+        { "field": "orderNo", "label": "受注番号" },
+        { "field": "customer", "label": "顧客" }
+      ],
+      "rows": [{ "orderNo": "SO-1", "customer": "山田商事" }],
+      "options": { "delimiter": "\t" },
+      "expected": "受注番号\t顧客\r\nSO-1\t山田商事\r\n"
+    },
+    {
+      "name": "newline: lf で LF 改行にできる",
+      "columns": [{ "field": "orderNo", "label": "受注番号" }],
+      "rows": [{ "orderNo": "SO-1" }],
+      "options": { "newline": "lf" },
+      "expected": "受注番号\nSO-1\n"
+    },
+    {
+      "name": "bom: true で先頭に BOM を付ける（Excel の文字化け対策）",
+      "columns": [{ "field": "orderNo", "label": "受注番号" }],
+      "rows": [{ "orderNo": "SO-1" }],
+      "options": { "bom": true },
+      "expected": "﻿受注番号\r\nSO-1\r\n"
+    },
+    {
+      "name": "欠損・null は空欄。真偽値はそのまま",
+      "columns": [
+        { "field": "orderNo", "label": "受注番号" },
+        { "field": "customer", "label": "顧客" },
+        { "field": "shipped", "label": "出荷済" }
+      ],
+      "rows": [{ "orderNo": "SO-1", "customer": null, "shipped": true }],
+      "expected": "受注番号,顧客,出荷済\r\nSO-1,,true\r\n"
+    },
+    {
+      "name": "行が無ければ見出しだけ",
+      "columns": [{ "field": "orderNo", "label": "受注番号" }],
+      "rows": [],
+      "expected": "受注番号\r\n"
+    },
+    {
+      "name": "列が無ければ空文字（出すものが無い）",
+      "columns": [],
+      "rows": [{ "orderNo": "SO-1" }],
+      "expected": ""
+    }
+  ]
+}

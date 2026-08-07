@@ -6,6 +6,7 @@ import 'package:hatake_yaml/hatake_yaml.dart';
 import 'customer_repository.dart';
 import 'definition_dialog.dart';
 import 'definition_source.dart';
+import 'export_dialog.dart';
 import 'order_line_repository.dart';
 import 'order_repository.dart';
 import 'product_repository.dart';
@@ -34,11 +35,18 @@ class HatakeExampleApp extends StatelessWidget {
     required this.source,
   });
 
+  /// Lets the export sink reach the widget tree. A sink is plain I/O and gets no
+  /// [BuildContext] — a real app downloads or saves the file, so it needs none;
+  /// this demo shows the document, so it goes through the navigator.
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'hatake example',
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         colorSchemeSeed: Colors.green,
         useMaterial3: true,
@@ -52,6 +60,13 @@ class HatakeExampleApp extends StatelessWidget {
           'orderLineRepository': OrderLineRepository.seeded(),
         }),
         renderer: const MaterialRenderer(),
+        // Where `type: export` actions send their document. The framework builds
+        // the CSV; getting it to the user is the application's job.
+        exportSink: (request) async {
+          final context = navigatorKey.currentContext;
+          if (context == null) return;
+          await ExportDialog.show(context, request);
+        },
         // Plugin action: each page declares
         //   { type: plugin, plugin: showDefinition, config: { page: <id> } }
         // and this handler shows the matching slice of the YAML.

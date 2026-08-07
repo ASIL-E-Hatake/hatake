@@ -3,6 +3,7 @@ import 'package:hatake_core/hatake_core.dart';
 
 import '../renderer/renderer.dart';
 import '../runtime/action_registry.dart';
+import '../runtime/export_sink.dart';
 import '../runtime/repository_registry.dart';
 import '../runtime/sub_table_controller.dart';
 
@@ -33,6 +34,11 @@ class HatakeScope extends InheritedWidget {
   /// Handlers for `type: plugin` actions.
   final ActionRegistry actions;
 
+  /// Receives the documents `type: export` actions produce (CSV and friends).
+  /// Null = no sink, and an export says so instead of silently doing nothing:
+  /// the framework builds the text but never performs I/O.
+  final ExportSink? exportSink;
+
   /// Roles of the current user, used to gate fields/columns/actions declared
   /// with `roles` (see `isAllowed`). Empty = the user has no roles, so anything
   /// with a non-empty `roles` is hidden. UI-level display gating only — real
@@ -46,6 +52,7 @@ class HatakeScope extends InheritedWidget {
     ValidatorRegistry? validators,
     ConverterRegistry? converters,
     ActionRegistry? actions,
+    this.exportSink,
     Set<String>? roles,
     required super.child,
   })  : validators = validators ?? ValidatorRegistry(),
@@ -81,6 +88,7 @@ class HatakeScope extends InheritedWidget {
         oldWidget.validators != validators ||
         oldWidget.converters != converters ||
         oldWidget.actions != actions ||
+        oldWidget.exportSink != exportSink ||
         oldWidget.roles != roles;
   }
 }
