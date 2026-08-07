@@ -38,6 +38,46 @@ YAML Language Server 系のエディタなら、ファイル先頭にこの一�
 全部**開いた文字列**。組込値は下にまとめてあるけど、Plugin でスキーマを触らずに値を足せる。
 あと各要素は `config` っていう自由なマップを持てて、Renderer/Plugin 固有の設定はそこに突っ込める。
 
+**開いているのは値だけで、キーは閉じている。** 型の名前はいくらでも足せるが、
+`label` を `labell` と書いたら**それは間違い**。次節がその話。
+
+## 未知キーの検出（strict）
+
+パーサは既定では知らないキーを黙って捨てる。これは既存の定義を壊さないためだが、
+**任意キーを書き間違えたときに何も起きない**という副作用がある（必須キーなら値が
+見つからないので既にエラーになる。困るのは `readOnly` / `sortable` / `visibleWhen`
+のような任意キーで、DSL の大半はそちら）。
+
+そこで **strict パース**がある。オンにすると、知らないキーは**1件も許されない**。
+
+```dart
+parsePageYaml(source, strict: true);   // Dart
+```
+```ts
+parsePageYaml(source, { strict: true });          // TypeScript
+```
+```java
+DefinitionParser.parsePageYaml(source, true);     // Java
+```
+
+- 厳しさは [JSON Schema](hatake-page.schema.json) と**完全に同じ**。`additionalProperties: false`
+  のノードだけを閉じ、`config` / `validators` / `computed` / `visibleWhen` のような
+  **自由な入れ物の中は見ない**（プラグインが自由に足せる場所なので）
+- **1件目で止めない**。見つかった全部をまとめて返す（1往復で直せるように）
+- 近い既知キーがあれば**指摘する**（大文字小文字を無視した編集距離が2以下。
+  `pagesize` → `pageSize`、`visible_when` → `visibleWhen`）
+- 未知の**ページ種別**はキーを見ない（種別エラーのほうが根本的なので、そちらが出る）
+- 出てくる順は `(パス, キー)` の昇順で、3言語同じ
+
+```
+知らないキーが 2 件あります:
+  - page.form.sections[0].fields[0]: 知らないキー "readonly"（readOnly の間違い？）
+  - page.form.sections[0].fields[0]: 知らないキー "requred"（required の間違い？）
+```
+
+CI や定義を書く道具では strict を使うのがいい（[`conformance/strict_keys.json`](conformance/strict_keys.json)
+で3言語一致を担保。各版のキー表がスキーマとズレていないことも機械で確認している）。
+
 ## ページ種別
 
 `page.type` で業務コンポーネントを選ぶ:

@@ -10,3 +10,5 @@ export 'src/app_parser.dart' show parseAppMap;
 export 'src/definition_parser.dart' show parsePageMap;
 export 'src/parse_exception.dart';
 export 'src/source_loaders.dart';
+export 'src/strict_keys.dart' show findUnknownKeys, strictKeyTable;
+export 'src/unknown_key.dart' show UnknownKey, UnknownKeysException;

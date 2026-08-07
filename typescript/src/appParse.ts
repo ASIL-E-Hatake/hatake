@@ -1,6 +1,11 @@
 import { parse as parseYamlText } from "yaml";
 import { kDslVersion, type AppDefinition, type MenuItem, type PageRef } from "./definition.js";
-import { DefinitionParseError } from "./parse.js";
+import {
+  DefinitionParseError,
+  UnknownKeysError,
+  type ParseOptions,
+} from "./parse.js";
+import { findUnknownKeys } from "./strictKeys.js";
 
 type Dict = Record<string, unknown>;
 
@@ -28,32 +33,48 @@ function asDict(v: unknown, at: string): Dict {
 }
 
 /** Parse a YAML app document into an AppDefinition. */
-export function parseAppYaml(source: string): AppDefinition {
+export function parseAppYaml(
+  source: string,
+  options?: ParseOptions,
+): AppDefinition {
   let decoded: unknown;
   try {
     decoded = parseYamlText(source);
   } catch (e) {
     throw new DefinitionParseError(`Invalid YAML: ${(e as Error).message}`);
   }
-  return fromDecoded(decoded, "YAML");
+  return fromDecoded(decoded, "YAML", options);
 }
 
 /** Parse a JSON app document into an AppDefinition. */
-export function parseAppJson(source: string): AppDefinition {
+export function parseAppJson(
+  source: string,
+  options?: ParseOptions,
+): AppDefinition {
   let decoded: unknown;
   try {
     decoded = JSON.parse(source);
   } catch (e) {
     throw new DefinitionParseError(`Invalid JSON: ${(e as Error).message}`);
   }
-  return fromDecoded(decoded, "JSON");
+  return fromDecoded(decoded, "JSON", options);
 }
 
-function fromDecoded(decoded: unknown, format: string): AppDefinition {
+function fromDecoded(
+  decoded: unknown,
+  format: string,
+  options?: ParseOptions,
+): AppDefinition {
   if (!isDict(decoded)) {
     throw new DefinitionParseError(`Top-level ${format} must be a mapping/object`);
   }
-  return parseAppMap(decoded);
+  // Parse first: a missing `id` is the more fundamental problem.
+  const app = parseAppMap(decoded);
+  if (options?.strict === true) {
+    const unknown = findUnknownKeys(decoded);
+    if (unknown.length > 0) throw new UnknownKeysError(unknown);
+  }
+  return app;
 }
 
 /**

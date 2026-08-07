@@ -14,7 +14,9 @@ import 'product_repository.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final yaml = await rootBundle.loadString('assets/sales_app.yaml');
-  final definition = parseAppYaml(yaml);
+  // strict: 知らないキーがあれば起動時に落ちる。デモの定義は「そのまま真似される
+  // もの」なので、書き間違いを黙って無視されるより早く気づきたい。
+  final definition = parseAppYaml(yaml, strict: true);
   runApp(HatakeExampleApp(definition: definition, source: yaml));
 }
 

@@ -19,15 +19,38 @@ public final class AppParser {
     }
 
     public static AppDefinition parseAppYaml(String source) {
-        return fromDecoded(new Yaml().load(source));
+        return fromDecoded(new Yaml().load(source), false);
+    }
+
+    /** {@code strict} なら知らないキーを1つも許さない（{@link StrictKeys}）。 */
+    public static AppDefinition parseAppYaml(String source, boolean strict) {
+        return fromDecoded(new Yaml().load(source), strict);
     }
 
     public static AppDefinition parseAppJson(String source) {
-        return fromDecoded(new Yaml().load(source));
+        return fromDecoded(new Yaml().load(source), false);
+    }
+
+    public static AppDefinition parseAppJson(String source, boolean strict) {
+        return fromDecoded(new Yaml().load(source), strict);
+    }
+
+    /** 先に解析する（id / title の欠落のほうが根本的な問題なので）。 */
+    @SuppressWarnings("unchecked")
+    private static AppDefinition fromDecoded(Object decoded, boolean strict) {
+        AppDefinition app = parseDecoded(decoded);
+        if (strict && decoded instanceof Map) {
+            List<StrictKeys.UnknownKey> unknown =
+                    StrictKeys.find((Map<String, Object>) decoded);
+            if (!unknown.isEmpty()) {
+                throw new UnknownKeysException(unknown);
+            }
+        }
+        return app;
     }
 
     @SuppressWarnings("unchecked")
-    private static AppDefinition fromDecoded(Object decoded) {
+    private static AppDefinition parseDecoded(Object decoded) {
         if (!(decoded instanceof Map)) {
             throw new IllegalArgumentException("Top-level document must be a mapping/object");
         }

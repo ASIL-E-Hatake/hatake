@@ -2,6 +2,7 @@
 // Language-agnostic hatake DSL model + parser + server-side validation.
 export * from "./definition.js";
 export * from "./parse.js";
+export * from "./strictKeys.js";
 export * from "./appParse.js";
 export * from "./validators.js";
 export * from "./formValidator.js";

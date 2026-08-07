@@ -7,20 +7,47 @@ import 'app_parser.dart';
 import 'definition_parser.dart';
 import 'normalize.dart';
 import 'parse_exception.dart';
+import 'strict_keys.dart';
+import 'unknown_key.dart';
 
 /// Parses a YAML app document into an [AppDefinition].
-AppDefinition parseAppYaml(String source) =>
-    parseAppMap(_decodeYaml(source));
+///
+/// With [strict] the document must not contain a single unknown key (see
+/// [findUnknownKeys]); a typo becomes an [UnknownKeysException] instead of
+/// silently doing nothing.
+AppDefinition parseAppYaml(String source, {bool strict = false}) =>
+    _app(_decodeYaml(source), strict);
 
 /// Parses a JSON app document into an [AppDefinition].
-AppDefinition parseAppJson(String source) =>
-    parseAppMap(_decodeJson(source));
+AppDefinition parseAppJson(String source, {bool strict = false}) =>
+    _app(_decodeJson(source), strict);
 
 /// Parses a YAML definition document into a [PageDefinition].
-PageDefinition parsePageYaml(String source) => parsePageMap(_decodeYaml(source));
+PageDefinition parsePageYaml(String source, {bool strict = false}) =>
+    _page(_decodeYaml(source), strict);
 
 /// Parses a JSON definition document into a [PageDefinition].
-PageDefinition parsePageJson(String source) => parsePageMap(_decodeJson(source));
+PageDefinition parsePageJson(String source, {bool strict = false}) =>
+    _page(_decodeJson(source), strict);
+
+/// Parse first (a missing `type` or `id` is the more fundamental problem), then
+/// report unknown keys.
+PageDefinition _page(Map<String, Object?> root, bool strict) {
+  final page = parsePageMap(root);
+  if (strict) _checkKeys(root);
+  return page;
+}
+
+AppDefinition _app(Map<String, Object?> root, bool strict) {
+  final app = parseAppMap(root);
+  if (strict) _checkKeys(root);
+  return app;
+}
+
+void _checkKeys(Map<String, Object?> root) {
+  final unknown = findUnknownKeys(root);
+  if (unknown.isNotEmpty) throw UnknownKeysException(unknown);
+}
 
 Map<String, Object?> _decodeYaml(String source) {
   final Object? decoded;

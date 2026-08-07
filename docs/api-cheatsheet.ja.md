@@ -34,6 +34,20 @@ page:
     - { id: create, type: create, label: 新規登録 }
 ```
 
+**書き間違いを検出する（strict）**: パーサは既定では知らないキーを黙って捨てるので、
+任意キーの綴り間違い（`readonly` / `pagesize` / `visible_when`）は**何も起きない**。
+`strict` を付けると全部まとめて指摘される（近い既知キーの提案つき）。定義を書くとき・CI は strict 推奨。
+
+```dart
+parsePageYaml(source, strict: true);              // Dart
+```
+```ts
+parsePageYaml(source, { strict: true });          // TypeScript
+```
+```java
+DefinitionParser.parsePageYaml(source, true);     // Java
+```
+
 ## アプリ（ナビゲーション）
 
 複数ページを束ねてアプリにするときはルートを `page:` でなく `app:` にする。Flutter は `HatakeApp(app: ...)` で描画（シェル＋ルータ）。

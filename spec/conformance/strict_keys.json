@@ -1,0 +1,201 @@
+{
+  "encoding": "見つかった未知キーは (path, key) の昇順に並べて比較する。path は親ノードまでのパス（ドキュメント直下は空文字）。suggestion は「大文字小文字を無視した編集距離が2以下で最も近い既知キー（同点はアルファベット順）」で、無ければ null。",
+  "cases": [
+    {
+      "name": "正しい定義には何も出ない",
+      "document": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "crud",
+          "id": "customer_master",
+          "title": "顧客マスタ",
+          "repository": "customerRepository",
+          "key": "id",
+          "search": { "layout": { "columns": 2 }, "filters": [{ "field": "name", "label": "顧客名" }] },
+          "table": { "columns": [{ "field": "code", "label": "コード", "sortable": true }] },
+          "form": {
+            "sections": [
+              { "title": "基本情報", "fields": [{ "field": "code", "label": "コード", "required": true }] }
+            ]
+          },
+          "actions": [{ "id": "create", "type": "create", "label": "新規登録" }]
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "綴り間違いは近い既知キーを示す",
+      "document": {
+        "page": {
+          "type": "form",
+          "id": "customer_form",
+          "title": "顧客入力",
+          "repository": "customerRepository",
+          "form": {
+            "sections": [
+              { "fields": [{ "field": "code", "labell": "コード" }] }
+            ]
+          }
+        }
+      },
+      "expected": [
+        { "path": "page.form.sections[0].fields[0]", "key": "labell", "suggestion": "label" }
+      ]
+    },
+    {
+      "name": "大文字小文字違い・スネークケースも拾う",
+      "document": {
+        "dslVersion": "1.0",
+        "page": {
+          "type": "search",
+          "id": "order_search",
+          "title": "受注照会",
+          "repository": "orderRepository",
+          "table": {
+            "pagination": { "pagesize": 20 },
+            "columns": [{ "field": "orderNo", "label": "受注番号", "read_only": true }]
+          }
+        }
+      },
+      "expected": [
+        { "path": "", "key": "dslVersion", "suggestion": "dsl_version" },
+        { "path": "page.table.columns[0]", "key": "read_only", "suggestion": null },
+        { "path": "page.table.pagination", "key": "pagesize", "suggestion": "pageSize" }
+      ]
+    },
+    {
+      "name": "似た既知キーが無ければ suggestion は null",
+      "document": {
+        "page": {
+          "type": "detail",
+          "id": "customer_detail",
+          "title": "顧客詳細",
+          "repository": "customerRepository",
+          "onLoad": "refresh"
+        }
+      },
+      "expected": [{ "path": "page", "key": "onLoad", "suggestion": null }]
+    },
+    {
+      "name": "自由な入れ物（config / validators / computed / visibleWhen）の中は見ない",
+      "document": {
+        "page": {
+          "type": "form",
+          "id": "order_entry",
+          "title": "受注入力",
+          "repository": "orderRepository",
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  {
+                    "field": "amount",
+                    "label": "金額",
+                    "format": "currency",
+                    "config": { "symbol": "¥", "anythingGoesHere": true },
+                    "validators": [{ "type": "min", "value": 1, "message": "1以上" }],
+                    "computed": { "op": "product", "fields": ["qty", "price"] },
+                    "visibleWhen": { "field": "status", "operator": "equals", "value": "未出荷" }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "明細（subTable）の子行・グリッド列・source も辿る",
+      "document": {
+        "page": {
+          "type": "form",
+          "id": "order_entry",
+          "title": "受注入力",
+          "repository": "orderRepository",
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  {
+                    "field": "lines",
+                    "label": "明細",
+                    "type": "subTable",
+                    "source": { "repository": "lineRepository", "parentKey": "orderNo", "pagesize": 10 },
+                    "columns": [{ "field": "item", "label": "品名", "witdh": 220 }],
+                    "fields": [{ "field": "qty", "label": "数量", "requiredd": true }]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "expected": [
+        { "path": "page.form.sections[0].fields[0].columns[0]", "key": "witdh", "suggestion": "width" },
+        { "path": "page.form.sections[0].fields[0].fields[0]", "key": "requiredd", "suggestion": "required" },
+        { "path": "page.form.sections[0].fields[0].source", "key": "pagesize", "suggestion": "pageSize" }
+      ]
+    },
+    {
+      "name": "ステップ入力・ダッシュボード・帳票の枝も辿る",
+      "document": {
+        "app": {
+          "id": "sales_admin",
+          "title": "販売管理",
+          "menu": [{ "id": "orders", "label": "受注", "page": "order_search", "ikon": "list" }],
+          "pages": [
+            {
+              "type": "wizard",
+              "id": "customer_onboarding",
+              "title": "顧客登録",
+              "repository": "customerRepository",
+              "steps": [{ "id": "basic", "title": "基本情報", "descriptio": "補足" }]
+            },
+            {
+              "type": "dashboard",
+              "id": "sales_dashboard",
+              "title": "売上",
+              "repository": "orderRepository",
+              "items": [
+                {
+                  "id": "total",
+                  "title": "受注金額",
+                  "value": { "aggregate": "sum", "fields": "amount" },
+                  "sort": { "field": "orderDate", "asc": false }
+                }
+              ]
+            },
+            {
+              "type": "report",
+              "id": "sales_report",
+              "title": "売上明細表",
+              "repository": "orderRepository",
+              "report": {
+                "paper": { "size": "A4", "orientaton": "portrait" },
+                "groupBy": [{ "field": "customer", "label": "顧客", "pagebreak": true }],
+                "totals": [{ "field": "amount", "agregate": "sum" }]
+              }
+            }
+          ]
+        }
+      },
+      "expected": [
+        { "path": "app.menu[0]", "key": "ikon", "suggestion": "icon" },
+        { "path": "app.pages[0].steps[0]", "key": "descriptio", "suggestion": "description" },
+        { "path": "app.pages[1].items[0].sort", "key": "asc", "suggestion": null },
+        { "path": "app.pages[1].items[0].value", "key": "fields", "suggestion": "field" },
+        { "path": "app.pages[2].report.groupBy[0]", "key": "pagebreak", "suggestion": "pageBreak" },
+        { "path": "app.pages[2].report.paper", "key": "orientaton", "suggestion": "orientation" },
+        { "path": "app.pages[2].report.totals[0]", "key": "agregate", "suggestion": "aggregate" }
+      ]
+    },
+    {
+      "name": "未知のページ種別は種別エラーの領分なので、キーは見ない",
+      "document": {
+        "page": { "type": "kanban", "id": "board", "title": "板", "repository": "taskRepository", "lanes": [] }
+      },
+      "expected": []
+    }
+  ]
+}

@@ -44,6 +44,52 @@ below, and plugins may register additional values without changing the schema.
 Each element also accepts a free-form `config` map for renderer/plugin-specific
 settings.
 
+**Only the values are open; the keys are closed.** Any number of type names may
+be added, but writing `labell` for `label` is simply a mistake — which is what
+the next section is about.
+
+## Unknown keys (strict)
+
+By default the parser drops keys it does not know. That keeps existing
+definitions working, but it has a side effect: **misspelling an optional key does
+nothing at all** (a misspelled *required* key already fails, because the value it
+needs cannot be found — the silent ones are `readOnly`, `sortable`,
+`visibleWhen`, and most of the DSL is optional).
+
+Hence **strict parsing**. With it, not a single unknown key is allowed.
+
+```dart
+parsePageYaml(source, strict: true);   // Dart
+```
+```ts
+parsePageYaml(source, { strict: true });          // TypeScript
+```
+```java
+DefinitionParser.parsePageYaml(source, true);     // Java
+```
+
+- It is **exactly as strict as the [JSON Schema](hatake-page.schema.json)**: only
+  nodes with `additionalProperties: false` are closed, and it never looks inside
+  free-form holders (`config`, `validators`, `computed`, `visibleWhen`) — those
+  are where plugins add their own keys.
+- It does **not stop at the first one**: every offending key comes back together,
+  so one round trip is enough to fix them all.
+- It **suggests** the nearest known key when there is one (case-insensitive edit
+  distance ≤ 2, so `pagesize` → `pageSize`, `visible_when` → `visibleWhen`).
+- An unknown **page kind** skips the key check (the kind error is more
+  fundamental, so that is what you get).
+- Results are ordered by `(path, key)`, identically in all three languages.
+
+```
+知らないキーが 2 件あります:
+  - page.form.sections[0].fields[0]: 知らないキー "readonly"（readOnly の間違い？）
+  - page.form.sections[0].fields[0]: 知らないキー "requred"（required の間違い？）
+```
+
+Use strict in CI and in tools that author definitions
+([`conformance/strict_keys.json`](conformance/strict_keys.json) pins all three
+languages; a second test proves each edition's key table matches the schema).
+
 ## Page kinds
 
 `page.type` selects the business component:
