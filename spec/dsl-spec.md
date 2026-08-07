@@ -811,8 +811,12 @@ wholesale — including for another locale — inject a `MessageResolver` into t
 `date`, `dateTime`, `time`, `subTable`
 
 ### Filter operators
-`equals`, `contains`, `startsWith`, `endsWith`, `gt`, `gte`, `lt`, `lte`,
-`between`, `in`
+`equals`, `notEquals`, `contains`, `startsWith`, `endsWith`, `gt`, `gte`, `lt`,
+`lte`, `between`, `in`
+
+`isEmpty` / `isNotEmpty` take no value, so they belong to
+[conditions](#condition) only; conversely `between` / `startsWith` / `endsWith`
+are search-only.
 
 ### Column types
 `text`, `number`, `badge`, `boolean`, `date`, `dateTime`
@@ -850,7 +854,36 @@ Options are read from the element's `config` (e.g. `{ symbol: "¥", negative: "t
 (input normalization, via `normalize`) `toHankaku`, `toZenkaku`, `hiraToKata`,
 `kataToHira`, `trim`, `collapseSpaces`, `parseNumber`.
 
+## Machine-readable reference
+
+This document is prose. To look up *what may be written here*, use
+[`reference.json`](reference.json) — generated from the JSON Schema, so it cannot
+drift from the spec (CI fails if it does).
+
+```bash
+npx hatake reference                      # everything, as JSON
+npx hatake reference rowsPerPage          # by key name: which nodes take it, type, default
+npx hatake reference report               # node name / page kind too (every match)
+npx hatake reference --page-kind report   # only what that page kind can reach
+```
+
+| Field | Contents |
+|---|---|
+| `pageKinds` | page kind (`crud` …) → node name + required keys |
+| `nodes` | per node (`table` / `column` …): description, keys, **which page kinds reach it**, parents |
+| `nodes.*.keys[]` | `key` / `type` / `required` / `default` / `values` / `open` / `minimum` / `nodes` |
+| `keyIndex` | key name → nodes that accept it ("where does this key go?") |
+
+`open: true` means `values` lists the *built-ins* and a registry can add more;
+`open: false` is an enum. A node with `closed: false` is a free-form container
+(`config` / `validators` / `computed` / `visibleWhen`), which strict parsing also
+leaves alone.
+
 ## Complete example
+
+An index by task lives in [`examples/README.md`](examples/README.md) (machine
+readable: [`examples/index.json`](examples/index.json); from the CLI:
+`npx hatake examples <what you want to do>`).
 
 See [`examples/customer_master.yaml`](examples/customer_master.yaml). For a whole
 application (menu + several pages) see

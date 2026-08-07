@@ -438,6 +438,48 @@ export const FieldTypes = {
   subTable: "subTable",
 } as const;
 
+/** Built-in table column render types. Open strings — extensible via plugins. */
+export const ColumnTypes = {
+  text: "text",
+  number: "number",
+  badge: "badge",
+  boolean: "boolean",
+  date: "date",
+  dateTime: "dateTime",
+} as const;
+
+/**
+ * Built-in search filter operators. Open strings — the repository (or an ORM
+ * adapter) is what finally honours them; hatake only carries the name.
+ * `isEmpty` / `isNotEmpty` take no value and are used by conditions.
+ */
+export const FilterOperators = {
+  equals: "equals",
+  notEquals: "notEquals",
+  contains: "contains",
+  startsWith: "startsWith",
+  endsWith: "endsWith",
+  gt: "gt",
+  gte: "gte",
+  lt: "lt",
+  lte: "lte",
+  between: "between",
+  in: "in",
+  isEmpty: "isEmpty",
+  isNotEmpty: "isNotEmpty",
+} as const;
+
+/** Built-in action types. Open strings — extensible via plugins. */
+export const ActionTypes = {
+  create: "create",
+  edit: "edit",
+  delete: "delete",
+  plugin: "plugin",
+  /** Build the page's rows as a document (CSV); writing it out is the app's. */
+  export: "export",
+  navigate: "navigate",
+} as const;
+
 /** Built-in dashboard card kinds. Open strings — extensible via plugins. */
 export const DashboardItemTypes = {
   /** A single aggregated number (KPI card). */

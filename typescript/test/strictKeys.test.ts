@@ -110,23 +110,6 @@ app:
     ).toThrow(UnknownKeysError);
   });
 
-  it("every shipped example passes strict", () => {
-    for (const file of [
-      "customer_master",
-      "product_search",
-      "dept_master",
-      "customer_detail",
-      "customer_form",
-      "order_entry",
-      "order_entry_paged",
-      "customer_wizard",
-      "sales_dashboard",
-      "sales_report",
-    ]) {
-      const source = readFileSync(`../spec/examples/${file}.yaml`, "utf8");
-      expect(() => parsePageYaml(source, { strict: true }), file).not.toThrow();
-    }
-    const app = readFileSync("../spec/examples/sales_app.yaml", "utf8");
-    expect(() => parseAppYaml(app, { strict: true })).not.toThrow();
-  });
+  // 同梱の例が strict を通ることは examples.test.ts が見る（カタログ経由なので、
+  // 例を足したら自動で対象に入る）。
 });

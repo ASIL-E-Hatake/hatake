@@ -491,12 +491,37 @@
         "type": {
           "type": "string",
           "description": "Input type (open string). Built-ins: text, textarea, number, select, multiSelect, checkbox, radio, date, dateTime, time.",
-          "default": "text"
+          "default": "text",
+          "examples": [
+            "text",
+            "textarea",
+            "number",
+            "select",
+            "multiSelect",
+            "checkbox",
+            "radio",
+            "date",
+            "dateTime",
+            "time"
+          ]
         },
         "operator": {
           "type": "string",
-          "description": "Match operator (open string). Built-ins: equals, contains, startsWith, endsWith, gt, gte, lt, lte, between, in.",
-          "default": "contains"
+          "description": "Match operator (open string). Built-ins: equals, notEquals, contains, startsWith, endsWith, gt, gte, lt, lte, between, in.",
+          "default": "contains",
+          "examples": [
+            "equals",
+            "notEquals",
+            "contains",
+            "startsWith",
+            "endsWith",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "between",
+            "in"
+          ]
         },
         "options": {
           "type": "array",
@@ -522,7 +547,11 @@
           "type": "array",
           "description": "Per-row action ids. Built-ins: edit, delete.",
           "items": {
-            "type": "string"
+            "type": "string",
+            "examples": [
+              "edit",
+              "delete"
+            ]
           }
         },
         "columns": {
@@ -550,7 +579,15 @@
         "type": {
           "type": "string",
           "description": "Render type (open string). Built-ins: text, number, badge, boolean, date, dateTime.",
-          "default": "text"
+          "default": "text",
+          "examples": [
+            "text",
+            "number",
+            "badge",
+            "boolean",
+            "date",
+            "dateTime"
+          ]
         },
         "width": {
           "type": "number",
@@ -562,7 +599,15 @@
         },
         "format": {
           "type": "string",
-          "description": "Display formatter name (open string). Built-ins: currency, percent, date, wareki, postal, mask."
+          "description": "Display formatter name (open string). Built-ins: currency, percent, date, wareki, postal, mask.",
+          "examples": [
+            "currency",
+            "percent",
+            "date",
+            "wareki",
+            "postal",
+            "mask"
+          ]
         },
         "config": {
           "$ref": "#/$defs/config"
@@ -634,8 +679,21 @@
         },
         "type": {
           "type": "string",
-          "description": "Field type (open string). Built-ins: text, textarea, number, select, multiSelect, checkbox, radio, date, dateTime, time.",
-          "default": "text"
+          "description": "Field type (open string). Built-ins: text, textarea, number, select, multiSelect, checkbox, radio, date, dateTime, time, subTable. A subTable holds child rows — see columns / fields / source.",
+          "default": "text",
+          "examples": [
+            "text",
+            "textarea",
+            "number",
+            "select",
+            "multiSelect",
+            "checkbox",
+            "radio",
+            "date",
+            "dateTime",
+            "time",
+            "subTable"
+          ]
         },
         "required": {
           "type": "boolean",
@@ -668,13 +726,30 @@
         },
         "format": {
           "type": "string",
-          "description": "Display formatter name (open string). Built-ins: currency, percent, date, wareki, postal, mask."
+          "description": "Display formatter name (open string). Built-ins: currency, percent, date, wareki, postal, mask.",
+          "examples": [
+            "currency",
+            "percent",
+            "date",
+            "wareki",
+            "postal",
+            "mask"
+          ]
         },
         "normalize": {
           "type": "array",
           "description": "Input converters applied before validation. Built-ins: toHankaku, toZenkaku, hiraToKata, kataToHira, trim, collapseSpaces, parseNumber.",
           "items": {
-            "type": "string"
+            "type": "string",
+            "examples": [
+              "toHankaku",
+              "toZenkaku",
+              "hiraToKata",
+              "kataToHira",
+              "trim",
+              "collapseSpaces",
+              "parseNumber"
+            ]
           }
         },
         "config": {
@@ -696,7 +771,13 @@
           ],
           "properties": {
             "op": {
-              "type": "string"
+              "type": "string",
+              "examples": [
+                "concat",
+                "sum",
+                "subtract",
+                "product"
+              ]
             },
             "fields": {
               "type": "array",
@@ -777,7 +858,19 @@
         },
         "operator": {
           "type": "string",
-          "description": "Built-ins: equals, notEquals, gt, gte, lt, lte, contains, in, isEmpty, isNotEmpty."
+          "description": "Built-ins: equals, notEquals, gt, gte, lt, lte, contains, in, isEmpty, isNotEmpty.",
+          "examples": [
+            "equals",
+            "notEquals",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "contains",
+            "in",
+            "isEmpty",
+            "isNotEmpty"
+          ]
         },
         "value": {},
         "all": {
@@ -807,7 +900,17 @@
       "properties": {
         "type": {
           "type": "string",
-          "description": "Validator type (open string). Built-ins: required, maxLength, minLength, pattern, min, max, email."
+          "description": "Validator type (open string). Built-ins: required, maxLength, minLength, pattern, min, max, email, postalCode.",
+          "examples": [
+            "required",
+            "maxLength",
+            "minLength",
+            "pattern",
+            "min",
+            "max",
+            "email",
+            "postalCode"
+          ]
         },
         "message": {
           "type": "string",
@@ -829,7 +932,15 @@
         },
         "type": {
           "type": "string",
-          "description": "Action type (open string). Built-ins: create, edit, delete, navigate, plugin, export."
+          "description": "Action type (open string). Built-ins: create, edit, delete, navigate, plugin, export.",
+          "examples": [
+            "create",
+            "edit",
+            "delete",
+            "navigate",
+            "plugin",
+            "export"
+          ]
         },
         "label": {
           "type": "string"
@@ -1010,7 +1121,15 @@
         },
         "format": {
           "type": "string",
-          "description": "Display formatter for a `metric` value."
+          "description": "Display formatter for a `metric` value (open string). Built-ins: currency, percent, date, wareki, postal, mask.",
+          "examples": [
+            "currency",
+            "percent",
+            "date",
+            "wareki",
+            "postal",
+            "mask"
+          ]
         },
         "config": {
           "type": "object",

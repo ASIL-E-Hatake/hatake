@@ -11,6 +11,8 @@
 | とりあえず動かす／自分のアプリに入れる | [getting-started](getting-started.ja.md) | 未公開なので git 依存の手順あり |
 | **定義の書き方をサッと知る**（AI に渡すならこれ1枚） | [AI チートシート](api-cheatsheet.ja.md) | 名前一覧＋最小例。実装は読まなくていい |
 | キーの意味・型・既定値を厳密に確認 | [DSL 仕様書](../spec/dsl-spec.ja.md) | 規範リファレンス |
+| **このキーどこに書くの？型は？既定値は？を1発で** | [DSL リファレンス](../spec/reference.json) | `npx hatake reference <キー名>`。スキーマから生成＝ズレない |
+| やりたいことに近い例を探す | [例のカタログ](../spec/examples/README.md) | `npx hatake examples <やりたいこと>` |
 | 定義が正しいか機械検証 | [JSON Schema](../spec/hatake-page.schema.json) | `python spec/tools/validate_schema.py <file>` |
 | 業務画面をまるごと写経したい | [cookbook](cookbook/) | 下記参照。実物は CI 検証済み |
 | **自分のコードをどこに書くか**知りたい | [仕組みと責務分担](guide/concepts.ja.md) | Framework が持たない領域も明記 |
@@ -56,4 +58,12 @@
 
 ## AI に使わせるとき
 
-`llms.txt`（[リポジトリ直下](../llms.txt)）が LLM 向けの入口。**実装（`src/`）は読ませない**。渡すのは「[チートシート](api-cheatsheet.ja.md) 1枚」＋必要なら「[例](../spec/examples/)」で足りる。
+`llms.txt`（[リポジトリ直下](../llms.txt)）が LLM 向けの入口。**実装（`src/`）は読ませない**。渡すのは「[チートシート](api-cheatsheet.ja.md) 1枚」＋必要なら「[例](../spec/examples/README.md)」で足りる。
+
+書いている途中で詰まったら、仕様書を全部読ませるのではなく**引かせる**:
+
+```bash
+npx hatake reference rowsPerPage    # キー名から：型・既定値・書ける場所
+npx hatake examples 小計            # やりたいことから：近い例
+npx hatake validate page.yaml       # 書けたら検証（未知キーは直し方まで出る）
+```
