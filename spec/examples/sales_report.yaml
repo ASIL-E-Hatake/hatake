@@ -1,0 +1,51 @@
+# 帳票（type: report）の例。
+#
+# 一覧（search / crud）の印刷版。明細の列は table から取るので、一覧と帳票で
+# 列がずれない。report が足すのは「紙の構造」だけ:
+#   ・paper       … 用紙（Renderer はこの比率でプレビューを描く）
+#   ・rowsPerPage … 1枚に載る行数（グループ見出し・小計も1行として数える）
+#   ・groupBy     … コントロールブレイク（並び順に見て、キーが変わったら小計）
+#   ・totals      … 小計・総計に出す数字（集約は metric カードと同じ語彙）
+#
+# 並べ替えは Repository の責務。グループは「連続する同値」なので、
+# groupBy の項目で並んだ行を返すこと。
+dsl_version: "1.0"
+page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  # 出力条件。値はそのまま Repository のフィルタに渡る。
+  search:
+    layout: { columns: 2 }
+    filters:
+      - { field: orderDate, label: 受注日, type: date, operator: between }
+      - field: status
+        label: 状態
+        type: select
+        operator: equals
+        options:
+          - { value: 未出荷, label: 未出荷 }
+          - { value: 出荷済, label: 出荷済 }
+  # 明細の列（column そのまま。number は右寄せで印字される）
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号, width: 140 }
+      - { field: orderDate, label: 受注日, width: 120 }
+      - { field: status, label: 状態, width: 100 }
+      - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+  report:
+    paper: { size: A4, orientation: portrait }
+    rowsPerPage: 30
+    limit: 1000
+    # 印字順。groupBy はこの並びに依存する（コントロールブレイクなので）。
+    sort: { field: customer }
+    groupBy:
+      # 顧客が変わったら小計を出して改ページする（得意先ごとに配る帳票）
+      - { field: customer, label: 顧客, pageBreak: true }
+    totals:
+      - { field: amount, aggregate: sum }
+      - { field: amount, aggregate: count }
+  actions:
+    # CSV も同じ列から出る。出力先（ダウンロード/保存）は利用者が登録する。
+    - { id: csv, type: export, label: CSV出力, config: { filename: 売上明細, bom: true } }

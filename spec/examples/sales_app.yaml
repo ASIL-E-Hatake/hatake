@@ -13,6 +13,7 @@ app:
       items:
         - { label: 商品, icon: inventory, page: product_master }
     - { id: orders, label: 受注照会, icon: list, page: order_search }
+    - { id: salesReport, label: 売上明細表, icon: receipt_long, page: sales_report }
     - { id: orderEntry, label: 受注入力, icon: edit_note, page: order_entry }
     - { id: orderEntryPaged, label: 受注入力（明細別テーブル）, icon: table_rows, page: order_entry_paged }
   pages:
@@ -145,6 +146,43 @@ app:
         - { id: openEntry, type: navigate, label: 明細編集, page: order_entry, params: { id: "$row.orderNo" } }
         # 明細を別テーブルに持つ版へ。子行は親キーが要るので、行から開くのが本来の入口。
         - { id: openEntryPaged, type: navigate, label: 明細（別テーブル）, page: order_entry_paged, params: { id: "$row.orderNo" } }
+        # 一覧の CSV。表示中のページではなく検索結果全体を出す。
+        - { id: csv, type: export, label: CSV出力, config: { filename: 受注一覧, bom: true } }
+
+    # 帳票: 一覧の印刷版。明細の列は table から取り、report が「紙の構造」を足す。
+    # グループはコントロールブレイクなので、sort で並べた順に依存する。
+    - type: report
+      id: sales_report
+      title: 売上明細表
+      repository: orderRepository
+      search:
+        layout: { columns: 2 }
+        filters:
+          - { field: orderDate, label: 受注日, type: date, operator: between }
+          - field: status
+            label: 状態
+            type: select
+            operator: equals
+            options:
+              - { value: 未出荷, label: 未出荷 }
+              - { value: 出荷済, label: 出荷済 }
+      table:
+        columns:
+          - { field: orderNo, label: 受注番号, width: 140 }
+          - { field: orderDate, label: 受注日, width: 120 }
+          - { field: status, label: 状態, width: 100 }
+          - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+      report:
+        paper: { size: A4, orientation: portrait }
+        rowsPerPage: 12
+        sort: { field: customer }
+        groupBy:
+          - { field: customer, label: 顧客 }
+        totals:
+          - { field: amount, aggregate: sum }
+          - { field: amount, aggregate: count }
+      actions:
+        - { id: csv, type: export, label: CSV出力, config: { filename: 売上明細, bom: true } }
 
     - type: detail
       id: order_detail

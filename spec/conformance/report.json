@@ -1,0 +1,214 @@
+{
+  "encoding": "1ブロック1行の文字列に潰して比較する。groupHeader=`G<level>:<label>=<value>`、detail=`D:<列1>=<値1>|<列2>=<値2>`（table.columns の順・書式なし）、subtotal=`S<level>:<field>=<値>,...`（totals の順）、grandTotal=`T:<field>=<値>,...`。数値は整数値なら小数点なしに正規化する。",
+  "cases": [
+    {
+      "name": "グループも集計も無い明細表は rowsPerPage で分かれるだけ",
+      "page": {
+        "type": "report",
+        "id": "order_list",
+        "title": "受注一覧表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [{ "field": "orderNo", "label": "受注番号" }]
+        },
+        "report": { "rowsPerPage": 2 }
+      },
+      "rows": [
+        { "orderNo": "SO-1" },
+        { "orderNo": "SO-2" },
+        { "orderNo": "SO-3" },
+        { "orderNo": "SO-4" },
+        { "orderNo": "SO-5" }
+      ],
+      "expected": [
+        ["D:orderNo=SO-1", "D:orderNo=SO-2"],
+        ["D:orderNo=SO-3", "D:orderNo=SO-4"],
+        ["D:orderNo=SO-5"]
+      ]
+    },
+    {
+      "name": "グループ見出し・小計・総計が入る（見出しと小計も1行として数える）",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            { "field": "orderNo", "label": "受注番号" },
+            { "field": "amount", "label": "金額" }
+          ]
+        },
+        "report": {
+          "rowsPerPage": 50,
+          "groupBy": [{ "field": "customer", "label": "顧客" }],
+          "totals": [{ "field": "amount", "aggregate": "sum" }]
+        }
+      },
+      "rows": [
+        { "orderNo": "SO-1", "customer": "山田商事", "amount": 100 },
+        { "orderNo": "SO-2", "customer": "山田商事", "amount": 200 },
+        { "orderNo": "SO-3", "customer": "佐藤物産", "amount": 50 }
+      ],
+      "expected": [
+        [
+          "G0:顧客=山田商事",
+          "D:orderNo=SO-1|amount=100",
+          "D:orderNo=SO-2|amount=200",
+          "S0:amount=300",
+          "G0:顧客=佐藤物産",
+          "D:orderNo=SO-3|amount=50",
+          "S0:amount=50",
+          "T:amount=350"
+        ]
+      ]
+    },
+    {
+      "name": "pageBreak: true のグループは変わるたびに改ページする",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [{ "field": "orderNo", "label": "受注番号" }]
+        },
+        "report": {
+          "rowsPerPage": 50,
+          "groupBy": [
+            { "field": "customer", "label": "顧客", "pageBreak": true }
+          ],
+          "totals": [{ "field": "amount", "aggregate": "sum" }]
+        }
+      },
+      "rows": [
+        { "orderNo": "SO-1", "customer": "山田商事", "amount": 100 },
+        { "orderNo": "SO-2", "customer": "佐藤物産", "amount": 50 }
+      ],
+      "expected": [
+        ["G0:顧客=山田商事", "D:orderNo=SO-1", "S0:amount=100"],
+        ["G0:顧客=佐藤物産", "D:orderNo=SO-2", "S0:amount=50", "T:amount=150"]
+      ]
+    },
+    {
+      "name": "2段のグループは深い方から小計を出す",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [{ "field": "orderNo", "label": "受注番号" }]
+        },
+        "report": {
+          "rowsPerPage": 50,
+          "groupBy": [
+            { "field": "customer", "label": "顧客" },
+            { "field": "status", "label": "状態" }
+          ],
+          "totals": [
+            { "field": "amount", "aggregate": "sum" },
+            { "field": "amount", "aggregate": "count" }
+          ]
+        }
+      },
+      "rows": [
+        { "orderNo": "SO-1", "customer": "山田商事", "status": "未出荷", "amount": 100 },
+        { "orderNo": "SO-2", "customer": "山田商事", "status": "出荷済", "amount": 200 },
+        { "orderNo": "SO-3", "customer": "佐藤物産", "status": "未出荷", "amount": 50 }
+      ],
+      "expected": [
+        [
+          "G0:顧客=山田商事",
+          "G1:状態=未出荷",
+          "D:orderNo=SO-1",
+          "S1:amount=100,amount=1",
+          "G1:状態=出荷済",
+          "D:orderNo=SO-2",
+          "S1:amount=200,amount=1",
+          "S0:amount=300,amount=2",
+          "G0:顧客=佐藤物産",
+          "G1:状態=未出荷",
+          "D:orderNo=SO-3",
+          "S1:amount=50,amount=1",
+          "S0:amount=50,amount=1",
+          "T:amount=350,amount=3"
+        ]
+      ]
+    },
+    {
+      "name": "ページが埋まっていれば小計・総計は次のページに送る",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [{ "field": "orderNo", "label": "受注番号" }]
+        },
+        "report": {
+          "rowsPerPage": 2,
+          "groupBy": [{ "field": "customer", "label": "顧客" }],
+          "totals": [{ "field": "amount", "aggregate": "sum" }]
+        }
+      },
+      "rows": [
+        { "orderNo": "SO-1", "customer": "山田商事", "amount": 100 },
+        { "orderNo": "SO-2", "customer": "山田商事", "amount": 200 }
+      ],
+      "expected": [
+        ["G0:顧客=山田商事", "D:orderNo=SO-1"],
+        ["D:orderNo=SO-2", "S0:amount=300"],
+        ["T:amount=300"]
+      ]
+    },
+    {
+      "name": "同じ値でも連続していなければ別グループ（並びは Repository の責務）",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [{ "field": "orderNo", "label": "受注番号" }]
+        },
+        "report": {
+          "rowsPerPage": 50,
+          "groupBy": [{ "field": "customer", "label": "顧客" }]
+        }
+      },
+      "rows": [
+        { "orderNo": "SO-1", "customer": "山田商事" },
+        { "orderNo": "SO-2", "customer": "佐藤物産" },
+        { "orderNo": "SO-3", "customer": "山田商事" }
+      ],
+      "expected": [
+        [
+          "G0:顧客=山田商事",
+          "D:orderNo=SO-1",
+          "G0:顧客=佐藤物産",
+          "D:orderNo=SO-2",
+          "G0:顧客=山田商事",
+          "D:orderNo=SO-3"
+        ]
+      ]
+    },
+    {
+      "name": "行が無ければページも無い",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [{ "field": "orderNo", "label": "受注番号" }]
+        },
+        "report": {
+          "totals": [{ "field": "amount", "aggregate": "sum" }]
+        }
+      },
+      "rows": [],
+      "expected": []
+    }
+  ]
+}

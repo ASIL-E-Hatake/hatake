@@ -28,10 +28,12 @@ PageDefinition parsePageMap(Map<String, Object?> root) {
       return _parseWizardPage(page, dslVersion);
     case 'dashboard':
       return _parseDashboardPage(page, dslVersion);
+    case 'report':
+      return _parseReportPage(page, dslVersion);
     default:
       throw DefinitionParseException(
-        'Unsupported page type "$type" '
-        '(supported: crud, search, master, detail, form, wizard, dashboard)',
+        'Unsupported page type "$type" (supported: crud, search, master, '
+        'detail, form, wizard, dashboard, report)',
         path: 'page.type',
       );
   }
@@ -92,6 +94,72 @@ WizardStepDefinition _parseWizardStep(Map<String, Object?> m, int index) {
       for (var i = 0; i < fields.length; i++)
         _parseField(_asMap(fields[i], 'page.steps[$index].fields[$i]')),
     ],
+  );
+}
+
+/// A report reuses `search` + `table` (conditions and detail columns) and adds
+/// `report` for the printing structure.
+ReportPageDefinition _parseReportPage(
+  Map<String, Object?> m,
+  String? dslVersion,
+) {
+  return ReportPageDefinition(
+    id: m.reqString('id', at: 'page.id'),
+    title: m.reqString('title', at: 'page.title'),
+    dslVersion: dslVersion ?? kDslVersion,
+    repository: m.reqString('repository', at: 'page.repository'),
+    search: _parseSearch(m.optMap('search')),
+    table: _parseTable(m.optMap('table')),
+    report: _parseReport(m.optMap('report')),
+    actions: [
+      for (var i = 0; i < m.optList('actions').length; i++)
+        _parseAction(_asMap(m.optList('actions')[i], 'page.actions[$i]')),
+    ],
+  );
+}
+
+ReportDefinition _parseReport(Map<String, Object?>? m) {
+  if (m == null) return const ReportDefinition();
+  final groups = m.optList('groupBy');
+  final totals = m.optList('totals');
+  final sort = m.optMap('sort');
+  return ReportDefinition(
+    paper: _parsePaper(m.optMap('paper')),
+    rowsPerPage: m.optInt('rowsPerPage') ?? 40,
+    limit: m.optInt('limit') ?? 1000,
+    sortField: sort?.optString('field'),
+    sortAscending: sort?.optBool('ascending', orElse: true) ?? true,
+    groups: [
+      for (var i = 0; i < groups.length; i++)
+        _parseReportGroup(_asMap(groups[i], 'page.report.groupBy[$i]'), i),
+    ],
+    totals: [
+      for (var i = 0; i < totals.length; i++)
+        _parseReportTotal(_asMap(totals[i], 'page.report.totals[$i]'), i),
+    ],
+  );
+}
+
+PaperDefinition _parsePaper(Map<String, Object?>? m) {
+  if (m == null) return const PaperDefinition();
+  return PaperDefinition(
+    size: m.optString('size') ?? PaperSizes.a4,
+    orientation: m.optString('orientation') ?? Orientations.portrait,
+  );
+}
+
+ReportGroup _parseReportGroup(Map<String, Object?> m, int index) {
+  return ReportGroup(
+    field: m.reqString('field', at: 'page.report.groupBy[$index].field'),
+    label: m.reqString('label', at: 'page.report.groupBy[$index].label'),
+    pageBreak: m.optBool('pageBreak'),
+  );
+}
+
+ReportTotal _parseReportTotal(Map<String, Object?> m, int index) {
+  return ReportTotal(
+    field: m.reqString('field', at: 'page.report.totals[$index].field'),
+    aggregate: m.optString('aggregate') ?? AggregateOps.sum,
   );
 }
 

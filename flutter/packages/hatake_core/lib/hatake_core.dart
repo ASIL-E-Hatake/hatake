@@ -32,6 +32,10 @@ export 'src/definition/chart_definition.dart';
 export 'src/definition/dashboard_item_definition.dart';
 export 'src/definition/dashboard_value_definition.dart';
 
+// Reports (帳票).
+export 'src/definition/paper_definition.dart';
+export 'src/definition/report_definition.dart';
+
 // Composite definitions.
 export 'src/definition/section_definition.dart';
 export 'src/definition/search_definition.dart';
@@ -60,6 +64,11 @@ export 'src/i18n/message_resolver.dart';
 // Logic (conditional display / computed fields / role-based access).
 export 'src/logic/aggregate.dart';
 export 'src/logic/condition_evaluator.dart';
+
+// Output (CSV / report document — neutral, like QuerySpec).
+export 'src/logic/csv_writer.dart';
+export 'src/logic/report_builder.dart';
+export 'src/logic/report_document.dart';
 export 'src/logic/computed_registry.dart';
 export 'src/logic/access.dart';
 

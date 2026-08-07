@@ -10,7 +10,7 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
 ```yaml
 dsl_version: "1.0"
 page:
-  type: crud                 # crud | search | master | detail | form | wizard | dashboard
+  type: crud                 # crud | search | master | detail | form | wizard | dashboard | report
   id: customer_master
   title: 顧客マスタ
   repository: customerRepository   # 利用者が実装する Repository をキーで解決
@@ -64,6 +64,7 @@ app:
 | `form` | 単票の作成/編集（record key あり=編集 / なし=新規） | あり |
 | `wizard` | ステップ入力（`steps`。ステップ単位で検証して次へ、最後に1回保存） | あり |
 | `dashboard` | カードのグリッド（`items`。1枚=小さな読み取りクエリ+見せ方） | なし |
+| `report` | 帳票（一覧の印刷版。`report` でグループ・小計・用紙を指定） | なし |
 
 ```yaml
 # ダッシュボード: 集計は「Repository が返した行の畳み込み」。集計クエリは投げない。
@@ -89,6 +90,33 @@ page:
 
 集約（`aggregate`）: `count` / `sum` / `avg` / `min` / `max`。チャート種別（`kind`）: `bar` / `line` / `pie`。
 `chart.aggregate` を省くと**1行=1点**（集計済みエンドポイント向け）。`count` だけは Repository の総件数を使う。
+
+```yaml
+# 帳票: 明細の列は table から取る。グループはコントロールブレイクなので sort が要る。
+page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  search: { filters: [ { field: orderDate, label: 受注日, type: date, operator: between } ] }
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+      - { field: amount, label: 金額, type: number, format: currency }
+  report:
+    paper: { size: A4, orientation: portrait }   # A4/A3/B5/letter × portrait/landscape
+    rowsPerPage: 30            # 見出し・小計も1行として数える
+    sort: { field: customer }  # groupBy はこの並びに依存
+    groupBy: [ { field: customer, label: 顧客, pageBreak: true } ]
+    totals: [ { field: amount, aggregate: sum }, { field: amount, aggregate: count } ]
+  actions:
+    - { id: csv, type: export, label: CSV出力, config: { filename: 売上明細, bom: true } }
+```
+
+**CSV 出力（`type: export`）**: その画面の列と行から組む（一覧・帳票で同じ。ロールで見えない列は出ない）。
+`config` は `filename` / `header` / `delimiter` / `newline`(crlf|lf) / `bom` / `raw`(format を通さない) / `limit`。
+一覧の export は表示中のページではなく**検索結果全体**（`limit` まで）。
+**ファイルを書くのは利用者側**＝`HatakeScope(exportSink: (req) async {...})` に登録した出力先が受け取る。
 
 ## フィールド型（`field.type` / `filter.type`）
 `text` `textarea` `number` `select` `multiSelect` `checkbox` `radio` `date` `dateTime` `time`

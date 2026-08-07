@@ -1,6 +1,6 @@
 # ページ種別の選び方
 
-> **中身**: 7種類のどれを使うかの判断基準。キーの一覧ではなく**選択の指針**。
+> **中身**: 8種類のどれを使うかの判断基準。キーの一覧ではなく**選択の指針**。
 > **読むとき**: 画面を作り始めるとき。各キーの意味は [DSL 仕様](../../spec/dsl-spec.ja.md)、最小例は [チートシート](../api-cheatsheet.ja.md)。
 
 ## 判断表
@@ -14,6 +14,7 @@
 | 1件を入力/編集する単票画面 | **`form`** | — | — | ✅（インライン） |
 | 長い入力をステップに分けたい | **`wizard`** | — | — | ✅（ステップごと） |
 | 数字・グラフを並べて全体を見たい | **`dashboard`** | ✅（全カードに効く） | カード内 | — |
+| 印刷して配りたい（小計付きの明細表） | **`report`** | ✅（出力条件） | 紙に組む | — |
 | 上記を**複数まとめてアプリ**にする | ルートを `app:` に | — | — | — |
 
 **迷ったら `crud` で始める。** 更新が不要と分かったら `search`、1件ずつ扱う画面が必要になったら `detail` / `form` を足す、が素直。
@@ -66,3 +67,45 @@ items:
 カードは独立して読み込むので、1つの Repository が落ちても**そのカードだけ**がエラー表示になります。
 
 → 例は [`spec/examples/sales_dashboard.yaml`](../../spec/examples/sales_dashboard.yaml)
+
+## `report`（帳票）と CSV
+
+**`report` は一覧の印刷版**です。明細の列は `table` から取るので、`search` ページと同じ列定義を使い回せます。`report` が足すのは紙の構造だけ:
+
+```yaml
+report:
+  paper: { size: A4, orientation: portrait }
+  rowsPerPage: 30                                    # 見出し・小計も1行として数える
+  sort: { field: customer }                          # ← これが要る（下記）
+  groupBy: [ { field: customer, label: 顧客, pageBreak: true } ]
+  totals: [ { field: amount, aggregate: sum } ]
+```
+
+**グループはコントロールブレイク**です。「並び順に見ていって、キーが変わったら小計を出して見出しを出す」という昔ながらの帳票の作り方なので、**行が先に並んでいないと同じグループが何度も出ます**。並べ替えは Repository の責務なので、帳票側は `sort` で「この順で印字する」と宣言します（列見出しを押せない帳票では、ここが唯一の並び指定）。
+
+**印刷そのものは Framework の外**です。定義＋行から「帳票ドキュメント」を作るところまでが Framework で、Renderer はそれを用紙の比率でプレビューします。PDF 化やプリンタ送出は opt-in アダプタの担当（`printing` / `pdf` への依存を本体に持ち込まないため）。
+
+**CSV は `export` アクション**で、一覧でも帳票でも同じ書き方です。
+
+```yaml
+actions:
+  - { id: csv, type: export, label: CSV出力, config: { filename: 売上明細, bom: true } }
+```
+
+一覧ページの `export` は**表示中のページではなく検索結果全体**を出します（`config.limit` まで読み直す）。`bom: true` は Excel で開いたときの文字化け対策、`raw: true` は `format` を通さない生の値（Excel で計算させたいとき）。
+
+そして **ファイルを書くのは利用者側**です。Framework は文字列までを作り、`HatakeScope` に登録した出力先に渡します。
+
+```dart
+HatakeScope(
+  exportSink: (request) async {
+    // request.filename / request.mimeType / request.text
+    // → ブラウザのダウンロード、保存ダイアログ、共有、アップロードなど
+  },
+  ...
+)
+```
+
+登録していなければ「出力先が未登録です」と画面に出ます（黙って何も起きないのを避けるため）。Shift_JIS への変換も同じ理由で出力先の責務です。
+
+→ 例は [`spec/examples/sales_report.yaml`](../../spec/examples/sales_report.yaml)

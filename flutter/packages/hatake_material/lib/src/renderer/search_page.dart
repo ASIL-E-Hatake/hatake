@@ -36,6 +36,18 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
       _navigateAction(context, action, record: record);
       return;
     }
+    if (action.type == ActionTypes.export) {
+      // Re-query so the CSV holds the whole result, not just the page on screen.
+      await _runExportAction(
+        context,
+        action,
+        columns: _def.table.columns,
+        rows: _controller.fetchForExport,
+        formatters: _formatters,
+        fallbackName: _def.title,
+      );
+      return;
+    }
     final registry = HatakeScope.of(context).actions;
     final handler =
         action.plugin == null ? null : registry.resolve(action.plugin!);

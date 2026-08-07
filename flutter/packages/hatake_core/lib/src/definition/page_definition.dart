@@ -4,6 +4,7 @@ import 'action_definition.dart';
 import 'dashboard_item_definition.dart';
 import 'form_definition.dart';
 import 'layout_definition.dart';
+import 'report_definition.dart';
 import 'search_definition.dart';
 import 'section_definition.dart';
 import 'table_definition.dart';
@@ -254,6 +255,42 @@ class WizardPageDefinition extends PageDefinition {
   @override
   List<Object?> get props =>
       [id, title, dslVersion, repository, keyField, steps, actions];
+}
+
+/// A report page (帳票): read-only rows laid out on sheets, grouped with
+/// subtotals — the printable counterpart of a list.
+///
+/// Detail columns come from [table], so the report and the list of the same data
+/// cannot drift apart; [report] adds only the printing structure (paper, lines
+/// per sheet, control breaks, totals). The framework produces the document, not
+/// paper: turning it into PDF/print output is an opt-in adapter's job.
+class ReportPageDefinition extends PageDefinition {
+  final String repository;
+
+  /// Output conditions. Values are passed to the repository as filters.
+  final SearchDefinition? search;
+
+  /// Detail columns (same shape as any table's).
+  final TableDefinition table;
+
+  final ReportDefinition report;
+
+  final List<ActionDefinition> actions;
+
+  const ReportPageDefinition({
+    required super.id,
+    required super.title,
+    super.dslVersion,
+    required this.repository,
+    this.search,
+    this.table = const TableDefinition(),
+    this.report = const ReportDefinition(),
+    this.actions = const [],
+  });
+
+  @override
+  List<Object?> get props =>
+      [id, title, dslVersion, repository, search, table, report, actions];
 }
 
 /// A dashboard page: a grid of read-only cards ([items]), each one a small query

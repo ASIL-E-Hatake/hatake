@@ -22,6 +22,16 @@ List<Map<String, Object?>> _rows(Object? raw) => [
       for (final row in raw as List) (row as Map).cast<String, Object?>(),
     ];
 
+/// The subset of a column the CSV fixture needs (`hatake_core` has no parser —
+/// that lives in `hatake_yaml`).
+ColumnDefinition _column(Map<String, Object?> m) => ColumnDefinition(
+      field: m['field'] as String,
+      label: m['label'] as String,
+      type: m['type'] as String? ?? ColumnTypes.text,
+      format: m['format'] as String?,
+      config: (m['config'] as Map?)?.cast<String, Object?>() ?? const {},
+    );
+
 /// Numbers are compared as normalized strings so `200` and `200.0` match across
 /// languages.
 String _num(Object? value) {
@@ -231,6 +241,29 @@ void main() {
             for (final e in c['expected'] as List)
               '${(e as Map)['label']}=${_num(e['value'])}',
           ],
+        );
+      });
+    }
+  });
+
+  group('conformance: csv', () {
+    for (final raw in _loadMap('csv.json')['cases'] as List) {
+      final c = raw as Map<String, dynamic>;
+      test(c['name'], () {
+        final columns = [
+          for (final col in c['columns'] as List)
+            _column((col as Map).cast<String, Object?>()),
+        ];
+        final options = (c['options'] as Map?)?.cast<String, Object?>();
+        expect(
+          toCsv(
+            columns,
+            _rows(c['rows']),
+            options: options == null
+                ? const CsvOptions()
+                : CsvOptions.fromConfig(options),
+          ),
+          c['expected'],
         );
       });
     }

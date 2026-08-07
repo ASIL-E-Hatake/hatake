@@ -87,6 +87,16 @@ class ListController extends ChangeNotifier {
     await load();
   }
 
+  /// Re-runs the current query in one bigger page, so an export is not limited
+  /// to the rows on screen. [limit] caps it — a list can be arbitrarily large,
+  /// and a CSV that silently holds everything is its own kind of accident.
+  Future<List<DataRecord>> fetchForExport(int limit) async {
+    final result = await repository.search(
+      _query.copyWith(page: 0, pageSize: limit),
+    );
+    return result.items;
+  }
+
   /// Records an error and notifies listeners. For use by subclasses.
   @protected
   void setError(Object? error) {

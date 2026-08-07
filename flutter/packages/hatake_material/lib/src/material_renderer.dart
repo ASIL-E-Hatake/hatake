@@ -19,6 +19,8 @@ part 'renderer/form_page.dart';
 part 'renderer/wizard_page.dart';
 part 'renderer/dashboard_page.dart';
 part 'renderer/dashboard_chart.dart';
+part 'renderer/export_action.dart';
+part 'renderer/report_page.dart';
 
 /// Context handed to a custom [MaterialFieldBuilder] for a form field.
 class MaterialFieldContext {
@@ -175,6 +177,19 @@ class MaterialRenderer implements Renderer {
       controller: controller,
       formatters: formatters ?? FormatterRegistry(),
       itemBuilders: dashboardItemBuilders,
+    );
+  }
+
+  @override
+  Widget buildReportPage(
+    BuildContext context,
+    ReportPageDefinition definition,
+    ReportController controller,
+  ) {
+    return _MaterialReportPage(
+      definition: definition,
+      controller: controller,
+      formatters: formatters ?? FormatterRegistry(),
     );
   }
 

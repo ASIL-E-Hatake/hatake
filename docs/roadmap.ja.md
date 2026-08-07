@@ -34,7 +34,9 @@
 | 動き | Action / Workflow フック | 🚧 | plugin action 済。遷移や確認ダイアログ定義は未 |
 | | Navigation 定義 | ✅ Flutter（3言語パーサ） | `AppDefinition`（menu＋pages）＋`HatakeApp`／`HatakeRouter`（依存ゼロ）。`navigate` で一覧→詳細（`$row.id`）、グループ見出し・レスポンシブ（サイドバー/Drawer）・ブレッドクラム対応。メニューは roles 連動。TS/Java はナビ情報＋ページ目録をパース。タブ/Web URL 同期は次段 |
 | | 権限・可視制御 | ✅ 3言語 | `roles` を field/column/action に付与＋`isAllowed`（3言語＋conformance）。Flutter は現在ユーザのロール（`HatakeScope(roles:)`）で表示出し分け。※UI 表示制御のみ、認証・認可は対象外 |
-| 出力 | CSV / 帳票 / 印刷 | ⏳ | Formatter を共有して実装 |
+| ページ種別 | ReportPage（帳票） | ✅ Flutter（3言語検証） | `type: report` ＝ 一覧の印刷版。明細の列は `table` から取り、`report` が紙の構造（`paper` / `rowsPerPage` / `sort` / `groupBy` / `totals`）を足す。**グループはコントロールブレイク**（並び順に見てキーが変わったら小計→見出し。並べ替えは Repository の責務なので `sort` で指定する）。集約は Dashboard と同じ `AggregateRegistry`。定義＋行 → 中立な `ReportDocument`（`QuerySpec` と同じ立ち位置）までを Framework が作り、Renderer は用紙比率でプレビューを描く。**PDF 化・プリンタ送出は対象外**（opt-in アダプタ） |
+| 出力 | CSV 出力 | ✅ 3言語 | `action` の型 `export`。**その画面の列と行から CSV を組む**（一覧・帳票で同じ書き方。ロールで見えない列は出さない）。RFC 4180 の引用、BOM / CRLF / 区切り / `raw`（format を通さない）を `config` で選べる。一覧の export は**表示中のページではなく検索結果全体**を出す（`limit` まで読み直す）。**ファイルを書くのは対象外**＝`HatakeScope(exportSink:)` に渡された出力先の責務（文字コード変換も同じ理由でそちら） |
+| | 帳票の印刷（PDF/プリンタ） | ⏳ | `ReportDocument` を PDF/印刷に落とす opt-in アダプタ。`printing` / `pdf` 依存を本体に入れないため別パッケージ |
 | バックエンド | サーバ側バリデーション | ✅ Java/TS | |
 | | QueryBuilder（QuerySpec） | ✅ Java/TS | |
 | | ORM アダプタ（opt-in） | 🚧 Java/JPA | `JpaQueryTranslator`（`QuerySpec`→JPQL＋params＋paging、依存ゼロ）を Java に実装。MyBatis / Prisma 等は今後 |
@@ -66,6 +68,8 @@
 | ステップ入力 `wizard`（モデル＋パーサ＋ステップ検証） | ✅ | ✅（＋描画） | ✅ | ✅ |
 | ダッシュボード `dashboard`（モデル＋パーサ） | ✅ | ✅（＋描画・チャート） | ✅ | ✅ |
 | 集約 `AggregateRegistry`（count/sum/avg/min/max） | ✅ | ✅ | ✅ | ✅ |
+| 帳票 `report`（モデル＋パーサ＋`buildReport`） | ✅ | ✅（＋プレビュー描画） | ✅ | ✅ |
+| CSV 出力 `toCsv` | ✅ | ✅（＋`export` アクション） | ✅ | ✅ |
 | Renderer（画面描画） | — | ✅(Material) | 対象外 | 対象外(※) |
 | table/action など画面寄りモデル | ✅ | ✅ | ⏳一部（table 追加済／action 未） | ✅ |
 
@@ -126,12 +130,14 @@
 
 | 項目 | 内容 | なぜ | 規模感 |
 |---|---|---|---|
-| **帳票 / CSV / 印刷** | 一覧の CSV 出力（列ラベル＋Formatter を共有）と、印刷向けの集計帳票（グループ・小計・用紙レイアウト）。まずは定義から中立な出力仕様を作り、Renderer が描く形 | 業務システムで必ず要求される。日本企業向けの差別化枠でもある | 中〜大 |
+| **帳票の印刷アダプタ** | `ReportDocument` → PDF / プリンタ（`printing` / `pdf` 依存を本体に入れず opt-in パッケージで）。ページ番号・ヘッダフッタの体裁もここ | 帳票は「画面で見る」で終わらない。プレビューまでは入ったので残りは出力経路 | 中 |
 | テーマ / スタイル定義 | 色・余白・密度を定義から差せるようにする（`app.theme`）。Renderer 側の関心 | 「会社の色にしたい」は最初に来る要望 | 中 |
 | Action / Workflow フック | 確認ダイアログ・実行前後フック・成功時の遷移を宣言で書く（今は `plugin` に逃がしている） | 「削除前に確認」を毎回 Dart で書かせたくない | 中 |
 | Validator 拡充 | 法人番号・マイナンバー・相関チェック（項目間の比較） | 相関チェックが無いと結局コードに落ちる | 小〜中 |
 | Web URL 同期 / タブ | ルートと URL の相互反映、複数タブ | Web で配ると必ず「URL 共有できないの？」になる | 中 |
 | ダッシュボードの次段 | 期間プリセット（今月/今年度）・カードからのドリルダウン・自動更新 | 1枚目が出た後の実運用要望 | 小〜中 |
+| 帳票の次段 | 複数レベルの改ページ制御・「以下余白」・繰越／前頁計、Excel（xlsx）出力 | 実際の業務帳票で追加要求が来る定番 | 中 |
+| 文字コード変換 | Shift_JIS / EUC への変換（出力先の責務なので opt-in アダプタ） | 受け側が Shift_JIS 固定の連携がまだ多い | 小 |
 | ORM アダプタ2個目 | MyBatis（Java）か Prisma（TS） | 1個目（JPA）で形が固まったので横展開 | 中 |
 | 全銀・固定長 | 固定長レコードの入出力（全銀フォーマット等） | 金融・給与まわりで効く。帳票の後 | 大 |
 | Python / Rust エディション | **保留**（当面やらない）。やるときは [C. 対応言語を増やす](#c-対応言語を増やすpython--rust-など)の最低ラインに従う | 需要が出てから | 大 |

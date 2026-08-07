@@ -14,6 +14,12 @@ abstract final class ActionTypes {
   /// Delegate to a registered action plugin (see [ActionDefinition.plugin]).
   static const String plugin = 'plugin';
 
+  /// Export the page's rows (CSV by default). The framework builds the text
+  /// from the table's columns; handing it to the user (download, save dialog,
+  /// share) is the application's job — see the export sink on `HatakeScope`.
+  /// Options live in `ActionDefinition.config` (see `CsvOptions.fromConfig`).
+  static const String export = 'export';
+
   /// Navigate to another page (see `AppDefinition`). Target page id and route
   /// params are carried in `ActionDefinition.config` as `page` / `params`.
   static const String navigate = 'navigate';
