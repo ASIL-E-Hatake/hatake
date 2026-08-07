@@ -163,6 +163,23 @@ export function parsePageMap(root: Dict): PageDefinition {
         form: parseForm(optDict(page, "form")),
         actions: parseActions(page),
       };
+    // master is crud with a different name; detail is a read-only form.
+    case "master":
+      return {
+        kind: "master",
+        ...common(page, dslVersion),
+        search: parseSearch(optDict(page, "search")),
+        table: parseTable(optDict(page, "table")),
+        form: parseForm(optDict(page, "form")),
+        actions: parseActions(page),
+      };
+    case "detail":
+      return {
+        kind: "detail",
+        ...common(page, dslVersion),
+        form: parseForm(optDict(page, "form")),
+        actions: parseActions(page),
+      };
     case "search":
       return {
         kind: "search",
@@ -201,8 +218,8 @@ export function parsePageMap(root: Dict): PageDefinition {
       };
     default:
       throw new DefinitionParseError(
-        `Unsupported page type "${type}" ` +
-          `(supported: crud, search, form, wizard, dashboard, report)`,
+        `Unsupported page type "${type}" (supported: crud, master, search, ` +
+          `detail, form, wizard, dashboard, report)`,
         "page.type",
       );
   }

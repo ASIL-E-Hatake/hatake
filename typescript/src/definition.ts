@@ -137,6 +137,39 @@ export interface CrudPageDefinition {
   actions: ActionDefinition[];
 }
 
+/**
+ * A master-maintenance page. Structurally identical to `crud`; a distinct kind
+ * so a renderer or an API can treat master screens specially without changing
+ * the DSL.
+ */
+export interface MasterPageDefinition {
+  kind: "master";
+  id: string;
+  title: string;
+  dslVersion: string;
+  repository: string;
+  keyField: string;
+  search?: SearchDefinition;
+  table: TableDefinition;
+  form: FormDefinition;
+  actions: ActionDefinition[];
+}
+
+/**
+ * A read-only single-record page. It carries the same `form` as an editing page
+ * but nothing is written through it, so it implies no request payload.
+ */
+export interface DetailPageDefinition {
+  kind: "detail";
+  id: string;
+  title: string;
+  dslVersion: string;
+  repository: string;
+  keyField: string;
+  form: FormDefinition;
+  actions: ActionDefinition[];
+}
+
 export interface SearchPageDefinition {
   kind: "search";
   id: string;
@@ -335,6 +368,8 @@ export interface ReportPageDefinition {
 
 export type PageDefinition =
   | CrudPageDefinition
+  | MasterPageDefinition
+  | DetailPageDefinition
   | SearchPageDefinition
   | FormPageDefinition
   | WizardPageDefinition

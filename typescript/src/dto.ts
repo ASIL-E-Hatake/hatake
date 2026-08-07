@@ -209,10 +209,18 @@ function queryMember(filter: FilterDefinition): DtoMember {
   };
 }
 
-/** Every field that contributes a request member, for any page kind. */
+/**
+ * Every field that contributes a request member, for any page kind.
+ *
+ * `detail` is deliberately absent: it is read-only, so its `form` describes what
+ * comes back, not what goes in. Deriving a response-only shape from it needs a
+ * separate role (see the proposal's follow-ups).
+ */
 function requestFields(page: PageDefinition): FieldDefinition[] {
   if (page.kind === "wizard") return formFields(wizardForm(page));
-  if (page.kind === "crud" || page.kind === "form") return formFields(page.form);
+  if (page.kind === "crud" || page.kind === "master" || page.kind === "form") {
+    return formFields(page.form);
+  }
   return [];
 }
 
