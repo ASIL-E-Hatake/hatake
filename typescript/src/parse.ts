@@ -1,4 +1,5 @@
 import { parse as parseYamlText } from "yaml";
+import { findUnknownKeys, type UnknownKey } from "./strictKeys.js";
 import {
   kDslVersion,
   type ActionDefinition,
@@ -30,6 +31,41 @@ export class DefinitionParseError extends Error {
     super(path ? `${message} (at ${path})` : message);
     this.name = "DefinitionParseError";
   }
+}
+
+/**
+ * Thrown by a strict parse when the document contains keys the DSL does not
+ * know. It carries **every** offending key, so one round trip is enough to fix
+ * them all.
+ */
+export class UnknownKeysError extends DefinitionParseError {
+  constructor(readonly keys: UnknownKey[]) {
+    super(
+      `知らないキーが ${keys.length} 件あります:\n` +
+        keys.map((k) => `  - ${describeUnknownKey(k)}`).join("\n"),
+      keys.length > 0 ? keys[0].path : undefined,
+    );
+    this.name = "UnknownKeysError";
+  }
+}
+
+/** 人にも AI にも読める1行。 */
+export function describeUnknownKey(key: UnknownKey): string {
+  const at = key.path === "" ? "ドキュメント直下" : key.path;
+  const hint = key.suggestion === null ? "" : `（${key.suggestion} の間違い？）`;
+  return `${at}: 知らないキー "${key.key}"${hint}`;
+}
+
+/** How a parse should treat keys the DSL does not know. */
+export interface ParseOptions {
+  /** Reject unknown keys instead of ignoring them (see findUnknownKeys). */
+  strict?: boolean;
+}
+
+function checkKeys(root: Dict, options?: ParseOptions): void {
+  if (options?.strict !== true) return;
+  const unknown = findUnknownKeys(root);
+  if (unknown.length > 0) throw new UnknownKeysError(unknown);
 }
 
 type Dict = Record<string, unknown>;
@@ -70,32 +106,45 @@ function asDict(v: unknown, at: string): Dict {
 }
 
 /** Parse a YAML definition document into a PageDefinition. */
-export function parsePageYaml(source: string): PageDefinition {
+export function parsePageYaml(
+  source: string,
+  options?: ParseOptions,
+): PageDefinition {
   let decoded: unknown;
   try {
     decoded = parseYamlText(source);
   } catch (e) {
     throw new DefinitionParseError(`Invalid YAML: ${(e as Error).message}`);
   }
-  return fromDecoded(decoded, "YAML");
+  return fromDecoded(decoded, "YAML", options);
 }
 
 /** Parse a JSON definition document into a PageDefinition. */
-export function parsePageJson(source: string): PageDefinition {
+export function parsePageJson(
+  source: string,
+  options?: ParseOptions,
+): PageDefinition {
   let decoded: unknown;
   try {
     decoded = JSON.parse(source);
   } catch (e) {
     throw new DefinitionParseError(`Invalid JSON: ${(e as Error).message}`);
   }
-  return fromDecoded(decoded, "JSON");
+  return fromDecoded(decoded, "JSON", options);
 }
 
-function fromDecoded(decoded: unknown, format: string): PageDefinition {
+function fromDecoded(
+  decoded: unknown,
+  format: string,
+  options?: ParseOptions,
+): PageDefinition {
   if (!isDict(decoded)) {
     throw new DefinitionParseError(`Top-level ${format} must be a mapping/object`);
   }
-  return parsePageMap(decoded);
+  // Parse first: a missing `type` is the more fundamental problem.
+  const page = parsePageMap(decoded);
+  checkKeys(decoded, options);
+  return page;
 }
 
 /** The single convergence point shared by the YAML and JSON entry points. */

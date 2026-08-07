@@ -37,6 +37,7 @@
 | ページ種別 | ReportPage（帳票） | ✅ Flutter（3言語検証） | `type: report` ＝ 一覧の印刷版。明細の列は `table` から取り、`report` が紙の構造（`paper` / `rowsPerPage` / `sort` / `groupBy` / `totals`）を足す。**グループはコントロールブレイク**（並び順に見てキーが変わったら小計→見出し。並べ替えは Repository の責務なので `sort` で指定する）。集約は Dashboard と同じ `AggregateRegistry`。定義＋行 → 中立な `ReportDocument`（`QuerySpec` と同じ立ち位置）までを Framework が作り、Renderer は用紙比率でプレビューを描く。**PDF 化・プリンタ送出は対象外**（opt-in アダプタ） |
 | 出力 | CSV 出力 | ✅ 3言語 | `action` の型 `export`。**その画面の列と行から CSV を組む**（一覧・帳票で同じ書き方。ロールで見えない列は出さない）。RFC 4180 の引用、BOM / CRLF / 区切り / `raw`（format を通さない）を `config` で選べる。一覧の export は**表示中のページではなく検索結果全体**を出す（`limit` まで読み直す）。**ファイルを書くのは対象外**＝`HatakeScope(exportSink:)` に渡された出力先の責務（文字コード変換も同じ理由でそちら） |
 | | 帳票の印刷（PDF/プリンタ） | ⏳ | `ReportDocument` を PDF/印刷に落とす opt-in アダプタ。`printing` / `pdf` 依存を本体に入れないため別パッケージ |
+| 定義の品質 | 未知キーの検出（strict パース） | ✅ 3言語 | パーサの厳格モード。`parsePageYaml(source, strict: true)` で**知らないキーを全部まとめて**エラーにする（近い既知キーの提案つき: `pagesize` → `pageSize` / `visible_when` → `visibleWhen`）。厳しさは JSON Schema と同一＝`additionalProperties: false` のノードだけを閉じ、`config` / `validators` / `computed` の中は見ない。既定は従来どおり寛容（後方互換）だが、デモと CI は strict。**各版のキー表がスキーマとズレていないことも機械で確認**。詳細は [DSL 仕様](../spec/dsl-spec.ja.md#未知キーの検出strict) |
 | バックエンド | サーバ側バリデーション | ✅ Java/TS | |
 | | QueryBuilder（QuerySpec） | ✅ Java/TS | |
 | | ORM アダプタ（opt-in） | 🚧 Java/JPA | `JpaQueryTranslator`（`QuerySpec`→JPQL＋params＋paging、依存ゼロ）を Java に実装。MyBatis / Prisma 等は今後 |
@@ -49,6 +50,7 @@
 | 機能 | spec | Flutter | Java | TypeScript |
 |---|---|---|---|---|
 | 定義モデル + YAML/JSON パーサ | ✅ | ✅ | ✅(※) | ✅ |
+| 未知キーの検出（strict パース） | ✅ | ✅ | ✅ | ✅ |
 | YAML↔JSON↔DSL 収束テスト | — | ✅ | ✅(YAML↔JSON) | ✅(YAML↔JSON) |
 | FormValidator（サーバ側） | ✅ | ✅ | ✅ | ✅ |
 | Validator 拡張レジストリ | ✅ | ✅ | ✅ | ✅ |
@@ -146,10 +148,14 @@
 
 「AI が理解・生成しやすい」を掛け声で終わらせないための具体項目。**AI が実際に転ぶ所**から並べた。
 
+> **済**: strict パース（未知キーを弾く）… ✅ 3言語。`parsePageYaml(source, strict: true)` で
+> 知らないキーを全部まとめて指摘（近い既知キーの提案つき）。厳しさは JSON Schema と同一で、
+> 各版のキー表がスキーマとズレていないことも機械で確認している。詳細は
+> [A の表](#a-機能として用意すべきもの)と [DSL 仕様](../spec/dsl-spec.ja.md#未知キーの検出strict)。
+
 | 項目 | 内容 | なぜ | 規模感 |
 |---|---|---|---|
-| **strict パース（未知キーを弾く）** | パーサに厳格モードを足し、綴り間違い・存在しないキーをエラーにする（今は黙って無視するので、`labell:` と書いても通ってしまう） | AI のタイポが**無言で消える**のが一番痛い。JSON Schema 側は `additionalProperties: false` なのでパーサだけが緩い | 小 |
-| **`hatake` CLI（validate / generate）** | `hatake validate <yaml>`（path 付きエラー）、`hatake dto <yaml> --lang ts|java`（今はライブラリ呼び出しだけでファイル出力の入口が無い）、`hatake new page` | AI も人も「書いた → すぐ検証」のループが回る。CI からも呼べる | 中 |
+| **`hatake` CLI（validate / generate）** | `hatake validate <yaml>`（strict 込み・path 付きエラー）、`hatake dto <yaml> --lang ts|java`（今はライブラリ呼び出しだけでファイル出力の入口が無い）、`hatake new page` | AI も人も「書いた → すぐ検証」のループが回る。CI からも呼べる | 中 |
 | 機械可読な DSL リファレンス | 全キー・型・既定値・列挙値・どのページ種別で有効かを1つの JSON に生成（spec から導出）。仕様書を読ませずに参照させる | 仕様書 500行を毎回読ませるのは高い。索引があれば1発で引ける | 小〜中 |
 | hatake MCP サーバ | 仕様の検索・定義の検証・例の取得を MCP ツールとして提供 | エージェントが**手元に仕様を持たなくても**正しい定義を書ける | 中 |
 | 例のカタログ化 | `spec/examples/` を「やりたいこと → 例」の索引にする（今はファイル名の羅列） | AI は近い例をコピーする方が確実に速い | 小 |

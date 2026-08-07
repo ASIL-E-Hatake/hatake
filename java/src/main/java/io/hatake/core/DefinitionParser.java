@@ -20,8 +20,20 @@ public final class DefinitionParser {
         return fromDecoded(new Yaml().load(source));
     }
 
+    /**
+     * {@code strict} なら知らないキーを1つも許さない（{@link StrictKeys}）。
+     * 綴り間違いが「黙って効かない」ではなく {@link UnknownKeysException} になる。
+     */
+    public static PageDefinition parsePageYaml(String source, boolean strict) {
+        return fromDecoded(new Yaml().load(source), strict);
+    }
+
     public static PageDefinition parsePageJson(String source) {
         return fromDecoded(new Yaml().load(source));
+    }
+
+    public static PageDefinition parsePageJson(String source, boolean strict) {
+        return fromDecoded(new Yaml().load(source), strict);
     }
 
     /**
@@ -32,8 +44,26 @@ public final class DefinitionParser {
         return fromDecoded(root);
     }
 
-    @SuppressWarnings("unchecked")
     private static PageDefinition fromDecoded(Object decoded) {
+        return fromDecoded(decoded, false);
+    }
+
+    /** 先に解析する（type / id の欠落のほうが根本的な問題なので）。 */
+    @SuppressWarnings("unchecked")
+    private static PageDefinition fromDecoded(Object decoded, boolean strict) {
+        PageDefinition page = parseDecoded(decoded);
+        if (strict && decoded instanceof Map) {
+            List<StrictKeys.UnknownKey> unknown =
+                    StrictKeys.find((Map<String, Object>) decoded);
+            if (!unknown.isEmpty()) {
+                throw new UnknownKeysException(unknown);
+            }
+        }
+        return page;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static PageDefinition parseDecoded(Object decoded) {
         if (!(decoded instanceof Map)) {
             throw new IllegalArgumentException("Top-level document must be a mapping/object");
         }
