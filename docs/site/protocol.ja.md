@@ -118,6 +118,27 @@ claude "/site <トピックid> の解説を書く"
 | `npm run build` | リンク切れ、生成ページの構文エラー |
 | `site-todo.mjs` | 落とさない（未執筆は正常）。ログに残件が出る |
 
+## 次のサイト作業で一緒にやること
+
+- **`site.yml` の Actions のバージョンを上げる**（Node 20 廃止の警告が出ている。動作はしている）。
+  調べた到達版（2026-08 時点）と、警告に出ていた対象：
+
+  | いま | 上げる先 | 備考 |
+  | --- | --- | --- |
+  | `actions/checkout@v4` | `@v7` | 2か所（check / build） |
+  | `actions/setup-node@v4` | `@v7` | 2か所 |
+  | `actions/upload-pages-artifact@v3` | `@v5` | `path` 入力はそのまま |
+  | `actions/configure-pages@v5` | `@v6` | `enablement` 入力はそのまま |
+  | `actions/deploy-pages@v4` | `@v5` | `page_url` 出力はそのまま |
+
+  使っている入出力について破壊的変更は見当たらないが、**上げたら実際に公開まで通るかを
+  main の実行で確認する**（PR では `公開` がスキップされるので、そこまでは見えない）。
+  `subosito/flutter-action@v2` は警告対象外なのでそのまま。
+
+- `ci.yml` にも同じ警告が出る（`actions/checkout@v4` `actions/setup-node@v4`
+  `actions/setup-java@v4` `actions/setup-python@v5`）。**こちらはフレームワーク側の担当**なので
+  このワークフローでは触らない。別 PR で。
+
 ## 決めたこと・積み残し
 
 - 「済／未」はどのファイルにも保存しない。**散文ファイルが在るか無いかだけ**で判定する。
