@@ -114,11 +114,40 @@ export interface FormDefinition {
   sections: SectionDefinition[];
 }
 
+/**
+ * Ask before running an action. A `delete` asks even without this; declaring it
+ * replaces the wording. Written on the action because "delete asks first" is a
+ * rule about that button, not a rendering detail.
+ */
+export interface ConfirmDefinition {
+  title?: string;
+  /** The question itself. */
+  message: string;
+  okLabel?: string;
+  cancelLabel?: string;
+  /** Style the confirming button as destructive (`delete` is by default). */
+  danger: boolean;
+}
+
+/** What happens once the action succeeded. Never runs when it failed. */
+export interface ActionSuccessDefinition {
+  /** Shown briefly to the user. */
+  message?: string;
+  /** Page id to move to afterwards. */
+  page?: string;
+  /** Route params for `page`; `$row.id` / `$record.id` are interpolated. */
+  params: Record<string, unknown>;
+}
+
 export interface ActionDefinition {
   id: string;
   type: string;
   label: string;
   plugin?: string;
+  /** Ask before running. */
+  confirm?: ConfirmDefinition;
+  /** What to do once it succeeded. */
+  onSuccess?: ActionSuccessDefinition;
   config: Record<string, unknown>;
   /** Roles allowed to use this action (see isAllowed). Empty = everyone. */
   roles: string[];
@@ -405,6 +434,39 @@ export interface PageRef {
   repository?: string;
 }
 
+/**
+ * How an app looks: brand colour, brightness, density and shape. Renderer
+ * neutral and behaviour-free — a backend only carries it (it is parsed so that
+ * `hatake validate` does not have to ignore it), a frontend renderer applies it.
+ */
+export interface ThemeDefinition {
+  /** Brand colour as `#RRGGBB` / `#AARRGGBB`; the seed of the palette. */
+  primaryColor?: string;
+  /** Accent colour; derived from the primary when omitted. */
+  secondaryColor?: string;
+  /** `light` | `dark` | `system` (follow the device). */
+  brightness: string;
+  /** `comfortable` | `standard` | `compact`. */
+  density: string;
+  fontFamily?: string;
+  /** Corner radius in logical pixels. */
+  radius?: number;
+  /** Renderer specific extras. */
+  config: Record<string, unknown>;
+}
+
+export const Brightnesses = {
+  light: "light",
+  dark: "dark",
+  system: "system",
+} as const;
+
+export const Densities = {
+  comfortable: "comfortable",
+  standard: "standard",
+  compact: "compact",
+} as const;
+
 /** An application: a set of pages composed by a navigation menu. Backends read
  * navigation metadata + a shallow page inventory; rendering/routing is a
  * frontend concern. */
@@ -414,6 +476,8 @@ export interface AppDefinition {
   dslVersion: string;
   /** Initial route (menu item id or page id). Undefined = the first leaf. */
   home?: string;
+  /** Look and feel. Undefined = the renderer's default. */
+  theme?: ThemeDefinition;
   menu: MenuItem[];
   pages: PageRef[];
 }

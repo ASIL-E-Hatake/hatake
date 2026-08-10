@@ -41,43 +41,31 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
     );
   }
 
-  Future<void> _onAction(ActionDefinition action) async {
-    switch (action.type) {
-      case ActionTypes.create:
+  /// One dispatcher for every page kind (see `_runPageAction`), so `confirm` /
+  /// `onSuccess` behave the same wherever the action sits.
+  Future<void> _onAction(ActionDefinition action) {
+    return _runPageAction(
+      context,
+      action,
+      _controller,
+      onExport: _export,
+      onCreate: () {
         _controller.startCreate();
-        await _openForm();
-      case ActionTypes.navigate:
-        _navigateAction(context, action);
-      case ActionTypes.export:
-        // Re-query so the CSV holds the whole result, not just the page shown.
-        await _runExportAction(
-          context,
-          action,
-          columns: _def.table.columns,
-          rows: _controller.fetchForExport,
-          formatters: _formatters,
-          fallbackName: _def.title,
-        );
-      case ActionTypes.plugin:
-        final registry = HatakeScope.of(context).actions;
-        final handler =
-            action.plugin == null ? null : registry.resolve(action.plugin!);
-        if (handler == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('アクション "${action.id}" のハンドラが未登録です')),
-          );
-          return;
-        }
-        await handler(ActionContext(
-          buildContext: context,
-          controller: _controller,
-          action: action,
-        ));
-      default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('アクション "${action.id}" は未実装です')),
-        );
-    }
+        return _openForm();
+      },
+    );
+  }
+
+  /// Re-query so the CSV holds the whole result, not just the page shown.
+  Future<bool> _export(BuildContext context, ActionDefinition action) {
+    return _runExportAction(
+      context,
+      action,
+      columns: _def.table.columns,
+      rows: _controller.fetchForExport,
+      formatters: _formatters,
+      fallbackName: _def.title,
+    );
   }
 
   @override
@@ -194,6 +182,22 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
     }
   }
 
+  /// Deletes a row, asking first.
+  ///
+  /// **A delete always asks**, even when the definition says nothing: it is the
+  /// one action that cannot be undone. Declaring `confirm` on a `delete` action
+  /// replaces the wording; `onSuccess` adds a message or a move afterwards.
+  Future<void> _delete(Object key, DataRecord record) async {
+    final declared = _declaredAction(_def.actions, ActionTypes.delete);
+    if (!await _confirmAction(context, declared?.confirm, destructive: true)) {
+      return;
+    }
+    if (!mounted) return;
+    await _controller.deleteRecord(key);
+    if (!mounted || _controller.error != null) return;
+    _afterActionSuccess(context, declared?.onSuccess, record: record);
+  }
+
   Widget _buildRowActions(DataRecord record) {
     final key = record[_def.keyField];
     final rowActions = _def.table.rowActions;
@@ -215,7 +219,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
             key: Key('hatake.delete.$key'),
             icon: const Icon(Icons.delete_outline),
             tooltip: '削除',
-            onPressed: key == null ? null : () => _controller.deleteRecord(key),
+            onPressed: key == null ? null : () => _delete(key, record),
           ),
       ],
     );

@@ -6,8 +6,8 @@
       "kind": "crud",
       "title": "顧客マスタ",
       "task": "検索して一覧に出して、その場で登録・修正・削除まで面倒を見る画面が欲しい",
-      "keys": ["search", "filters", "table", "columns", "pagination", "form", "sections", "validators", "actions", "rowActions"],
-      "keywords": ["CRUD", "マスタメンテ", "一覧", "検索", "入力", "ページング", "まず最初に見る例"]
+      "keys": ["search", "filters", "table", "columns", "pagination", "form", "sections", "validators", "actions", "rowActions", "confirm", "onSuccess"],
+      "keywords": ["CRUD", "マスタメンテ", "一覧", "検索", "入力", "ページング", "削除前の確認", "まず最初に見る例"]
     },
     {
       "file": "dept_master.yaml",
@@ -85,9 +85,9 @@
       "file": "sales_app.yaml",
       "kind": "app",
       "title": "販売管理",
-      "task": "複数の画面をメニューで束ねて、1つのアプリにしたい",
-      "keys": ["app", "menu", "pages", "home", "group", "items", "page", "params"],
-      "keywords": ["アプリ", "メニュー", "ナビゲーション", "画面遷移", "navigate", "グループ見出し", "全部入り"]
+      "task": "複数の画面をメニューで束ねて、1つのアプリにしたい。会社の色にもしたい",
+      "keys": ["app", "menu", "pages", "home", "theme", "group", "items", "page", "params"],
+      "keywords": ["アプリ", "メニュー", "ナビゲーション", "画面遷移", "navigate", "グループ見出し", "テーマ", "色", "density", "全部入り"]
     }
   ]
 }

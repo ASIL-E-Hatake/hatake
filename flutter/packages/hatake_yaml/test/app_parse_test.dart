@@ -135,4 +135,161 @@ void main() {
     expect(pagedLines.source?.repository, 'orderLineRepository');
     expect(pagedLines.source?.parentKey, 'orderNo');
   });
+
+  group('action hooks', () {
+    const yaml = '''
+page:
+  type: crud
+  id: customer_master
+  title: 顧客マスタ
+  repository: customerRepository
+  table:
+    rowActions: [edit, delete]
+    columns: [{ field: code, label: コード }]
+  actions:
+    - id: delete
+      type: delete
+      label: 削除
+      confirm:
+        title: 顧客の削除
+        message: 受注履歴から辿れなくなります。よろしいですか？
+        okLabel: 削除する
+        cancelLabel: やめる
+        danger: true
+      onSuccess:
+        message: 顧客を削除しました
+        page: customer_list
+        params: { id: \$row.id }
+''';
+
+    test('parses confirm and onSuccess', () {
+      final page = parsePageYaml(yaml, strict: true) as CrudPageDefinition;
+      final action = page.actions.single;
+      expect(
+        action.confirm,
+        const ConfirmDefinition(
+          title: '顧客の削除',
+          message: '受注履歴から辿れなくなります。よろしいですか？',
+          okLabel: '削除する',
+          cancelLabel: 'やめる',
+          danger: true,
+        ),
+      );
+      expect(action.onSuccess?.message, '顧客を削除しました');
+      expect(action.onSuccess?.page, 'customer_list');
+      expect(action.onSuccess?.params, {'id': r'$row.id'});
+    });
+
+    test('no hooks at all is the normal case', () {
+      final page = parsePageYaml('''
+page:
+  type: crud
+  id: x
+  title: X
+  repository: xRepository
+  actions: [{ id: create, type: create, label: 新規 }]
+''') as CrudPageDefinition;
+      expect(page.actions.single.confirm, isNull);
+      expect(page.actions.single.onSuccess, isNull);
+    });
+
+    test('a confirmation with nothing to read is an error', () {
+      expect(
+        () => parsePageYaml('''
+page:
+  type: crud
+  id: x
+  title: X
+  repository: xRepository
+  actions:
+    - { id: delete, type: delete, label: 削除, confirm: { danger: true } }
+'''),
+        throwsA(isA<DefinitionParseException>().having(
+          (e) => e.toString(),
+          'message',
+          contains('action.confirm.message'),
+        )),
+      );
+    });
+  });
+
+  group('app.theme', () {
+    String withTheme(String theme) => '''
+app:
+  id: sales
+  title: 販売管理
+  theme:
+$theme
+''';
+
+    test('parses the look and feel', () {
+      final app = parseAppYaml(withTheme('''
+    primaryColor: "#1B5E20"
+    secondaryColor: "#FF6F00"
+    brightness: dark
+    density: compact
+    fontFamily: Noto Sans JP
+    radius: 12
+    config: { logo: assets/logo.png }
+'''));
+      final theme = app.theme!;
+      expect(theme.primaryColor, '#1B5E20');
+      expect(theme.primaryArgb, 0xFF1B5E20);
+      expect(theme.secondaryArgb, 0xFFFF6F00);
+      expect(theme.brightness, Brightnesses.dark);
+      expect(theme.density, Densities.compact);
+      expect(theme.fontFamily, 'Noto Sans JP');
+      expect(theme.radius, 12);
+      expect(theme.config['logo'], 'assets/logo.png');
+    });
+
+    test('defaults are light / standard, and no theme at all is fine', () {
+      expect(parseAppYaml(withTheme('    primaryColor: "#1B5E20"')).theme,
+          const ThemeDefinition(primaryColor: '#1B5E20'));
+      expect(
+        parseAppYaml('app: { id: a, title: A }').theme,
+        isNull,
+      );
+    });
+
+    test('#AARRGGBB and a missing # are both accepted', () {
+      expect(argbOf('#801B5E20'), 0x801B5E20);
+      expect(argbOf('1B5E20'), 0xFF1B5E20);
+    });
+
+    // 黙って無視されるのが一番困る（定義は正しく見えるのに画面が変わらない）。
+    test('a colour that is not a colour is an error, not silence', () {
+      expect(
+        () => parseAppYaml(withTheme('    primaryColor: navy')),
+        throwsA(isA<DefinitionParseException>().having(
+          (e) => e.toString(),
+          'message',
+          allOf(contains('#RRGGBB'), contains('app.theme.primaryColor')),
+        )),
+      );
+    });
+
+    test('an unknown brightness / density is an error too', () {
+      expect(
+        () => parseAppYaml(withTheme('    density: cozy')),
+        throwsA(isA<DefinitionParseException>().having(
+          (e) => e.toString(),
+          'message',
+          contains('comfortable'),
+        )),
+      );
+      expect(
+        () => parseAppYaml(withTheme('    brightness: auto')),
+        throwsA(isA<DefinitionParseException>()),
+      );
+    });
+
+    test('a misspelled theme key is caught by strict', () {
+      expect(
+        () => parseAppYaml(withTheme('    primaryColour: "#1B5E20"'),
+            strict: true),
+        throwsA(isA<UnknownKeysException>()),
+      );
+    });
+  });
 }

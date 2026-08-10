@@ -22,7 +22,11 @@ export interface UnknownKey {
  */
 export const strictKeyTable: Record<string, string[]> = {
   "": ["dsl_version", "page", "app"],
-  app: ["id", "title", "home", "menu", "pages"],
+  app: ["id", "title", "home", "theme", "menu", "pages"],
+  theme: [
+    "primaryColor", "secondaryColor", "brightness", "density", "fontFamily",
+    "radius", "config",
+  ],
   menuItem: ["id", "label", "group", "icon", "page", "items", "roles"],
   crudPage: ["type", "id", "title", "repository", "key", "search", "table", "form", "actions"],
   masterPage: ["type", "id", "title", "repository", "key", "search", "table", "form", "actions"],
@@ -58,7 +62,12 @@ export const strictKeyTable: Record<string, string[]> = {
     "enabledWhen", "computed", "roles", "columns", "fields", "source",
   ],
   subTableSource: ["repository", "parentKey", "key", "pageSize"],
-  action: ["id", "type", "label", "plugin", "page", "params", "config", "roles"],
+  action: [
+    "id", "type", "label", "plugin", "page", "params", "confirm", "onSuccess",
+    "config", "roles",
+  ],
+  confirm: ["title", "message", "okLabel", "cancelLabel", "danger"],
+  actionSuccess: ["message", "page", "params"],
   option: ["value", "label"],
   layout: ["columns"],
 };
@@ -66,8 +75,9 @@ export const strictKeyTable: Record<string, string[]> = {
 /** 子ノードへの道。`[]` 付きはそのノードの配列。無いキーは葉／自由な入れ物。 */
 const children: Record<string, Record<string, string>> = {
   "": { app: "app", page: "page" },
-  app: { menu: "menuItem[]", pages: "page[]" },
+  app: { theme: "theme", menu: "menuItem[]", pages: "page[]" },
   menuItem: { items: "menuItem[]" },
+  action: { confirm: "confirm", onSuccess: "actionSuccess" },
   crudPage: { search: "search", table: "table", form: "form", actions: "action[]" },
   masterPage: { search: "search", table: "table", form: "form", actions: "action[]" },
   searchPage: { search: "search", table: "table", actions: "action[]" },

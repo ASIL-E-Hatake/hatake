@@ -6,7 +6,10 @@ part of '../material_renderer.dart';
 /// The framework produces the text and stops there — writing a file, starting a
 /// download or opening a share sheet is platform I/O, so without a sink this
 /// reports the fact instead of quietly doing nothing.
-Future<void> _runExportAction(
+///
+/// Returns whether the document reached the sink, so a declared `onSuccess` does
+/// not claim success when there was nowhere to write.
+Future<bool> _runExportAction(
   BuildContext context,
   ActionDefinition action, {
   required List<ColumnDefinition> columns,
@@ -22,7 +25,7 @@ Future<void> _runExportAction(
       content: Text('アクション "${action.id}" の出力先が未登録です'
           '（HatakeScope の exportSink）'),
     ));
-    return;
+    return false;
   }
   // Never export a column the current user is not allowed to see.
   final visible =
@@ -42,8 +45,10 @@ Future<void> _runExportAction(
       ),
       actionId: action.id,
     ));
+    return true;
   } catch (error) {
     messenger.showSnackBar(SnackBar(content: Text('出力に失敗しました: $error')));
+    return false;
   }
 }
 

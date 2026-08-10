@@ -6,6 +6,12 @@ app:
   id: sales_admin
   title: 販売管理
   home: dashboard
+  # 見た目は定義で差す（Renderer が自分の流儀に落とす）。業務画面は情報密度が
+  # 高い方が使いやすいので density: compact が既定の選択。
+  theme:
+    primaryColor: "#1B5E20"
+    density: compact
+    radius: 8
   menu:
     - { id: dashboard, label: ダッシュボード, icon: insights, page: sales_dashboard }
     - { id: customers, label: 顧客, icon: people, page: customer_master }

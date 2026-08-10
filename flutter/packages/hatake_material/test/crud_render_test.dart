@@ -131,16 +131,36 @@ void main() {
     expect(find.text('全 1 件'), findsOneWidget);
   });
 
-  testWidgets('delete removes a row', (tester) async {
+  testWidgets('delete asks first, then removes the row', (tester) async {
     await tester.pumpWidget(_harness(InMemoryRepository(seed())));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('hatake.delete.2')));
     await tester.pumpAndSettle();
 
+    // 削除は取り消せないので、定義に何も書かなくても必ず確認する。
+    expect(find.byKey(const Key('hatake.confirm')), findsOneWidget);
+    expect(find.text('Bob'), findsOneWidget); // まだ消えていない
+
+    await tester.tap(find.byKey(const Key('hatake.confirm.ok')));
+    await tester.pumpAndSettle();
+
     expect(find.text('Bob'), findsNothing);
     expect(find.text('Alice'), findsOneWidget);
     expect(find.text('全 2 件'), findsOneWidget);
+  });
+
+  testWidgets('cancelling the confirmation keeps the row', (tester) async {
+    await tester.pumpWidget(_harness(InMemoryRepository(seed())));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('hatake.delete.2')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('hatake.confirm.cancel')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bob'), findsOneWidget);
+    expect(find.text('全 3 件'), findsOneWidget);
   });
 
   testWidgets('create adds a record via the form dialog', (tester) async {

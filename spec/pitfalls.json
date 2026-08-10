@@ -273,6 +273,82 @@
       ]
     },
     {
+      "id": "theme-on-page",
+      "keys": ["theme"],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "ページに `theme` を書く",
+        "en": "Putting `theme` on a page"
+      },
+      "why": {
+        "ja": "見た目はアプリ全体の性質なので `app.theme` にしかない。画面ごとに色が変わる業務システムは、ふつう作らない。",
+        "en": "Look and feel belongs to the whole application, so it exists only as `app.theme`. A business system rarely wants a different palette per screen."
+      },
+      "fix": {
+        "ja": "`app:` の直下に移す。1画面だけ違う見た目にしたいなら Renderer 側（Flutter なら `Theme`）で包む。",
+        "en": "Move it directly under `app:`. To restyle a single screen, wrap it on the renderer side (a `Theme` in Flutter)."
+      },
+      "bad": [
+        "page:",
+        "  type: search",
+        "  id: order_search",
+        "  title: 受注照会",
+        "  repository: orderRepository",
+        "  theme:",
+        "    primaryColor: \"#1B5E20\""
+      ],
+      "good": [
+        "app:",
+        "  id: sales_admin",
+        "  title: 販売管理",
+        "  theme:",
+        "    primaryColor: \"#1B5E20\"",
+        "    density: compact",
+        "  pages:",
+        "    - type: search",
+        "      id: order_search",
+        "      title: 受注照会",
+        "      repository: orderRepository"
+      ]
+    },
+    {
+      "id": "confirm-written-in-code",
+      "keys": ["confirm", "onSuccess"],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "確認ダイアログや「保存できたら戻る」を Dart / プラグインで書く",
+        "en": "Coding the confirmation dialog, or \"go back once saved\", in Dart or a plugin"
+      },
+      "why": {
+        "ja": "「削除前に確認する」「終わったら一覧に戻る」は**その操作の業務ルール**なので、画面ごとに実装すると画面ごとにズレる。`delete` は宣言が無くても必ず確認する。",
+        "en": "\"Confirm before deleting\" and \"return to the list afterwards\" are business rules about that operation, so implementing them per screen makes them differ per screen. A `delete` asks even with nothing declared."
+      },
+      "fix": {
+        "ja": "アクションに `confirm` / `onSuccess` を書く。`onSuccess` は**成功したときだけ**動くので、失敗時に「保存しました」と出る事故も防げる。",
+        "en": "Declare `confirm` / `onSuccess` on the action. `onSuccess` runs only on success, so it cannot announce \"saved\" after a failure."
+      },
+      "good": [
+        "page:",
+        "  type: crud",
+        "  id: customer_master",
+        "  title: 顧客マスタ",
+        "  repository: customerRepository",
+        "  table:",
+        "    rowActions: [edit, delete]",
+        "    columns: [{ field: code, label: コード }]",
+        "  actions:",
+        "    - id: delete",
+        "      type: delete",
+        "      label: 削除",
+        "      confirm:",
+        "        message: 受注履歴から辿れなくなります。よろしいですか？",
+        "        okLabel: 削除する",
+        "        danger: true",
+        "      onSuccess:",
+        "        message: 顧客を削除しました"
+      ]
+    },
+    {
       "id": "groupby-without-sort",
       "keys": ["groupBy"],
       "pageKinds": ["report"],

@@ -3,6 +3,8 @@ import { findUnknownKeys, type UnknownKey } from "./strictKeys.js";
 import {
   kDslVersion,
   type ActionDefinition,
+  type ActionSuccessDefinition,
+  type ConfirmDefinition,
   type ChartDefinition,
   type ColumnDefinition,
   type DashboardItemDefinition,
@@ -513,7 +515,32 @@ function parseAction(m: Dict): ActionDefinition {
     type: reqString(m, "type", "action.type"),
     label: reqString(m, "label", "action.label"),
     plugin: optString(m, "plugin"),
+    confirm: parseConfirm(optDict(m, "confirm")),
+    onSuccess: parseActionSuccess(optDict(m, "onSuccess")),
     config: optDict(m, "config") ?? {},
     roles: optList(m, "roles").map(String),
+  };
+}
+
+/** `message` is required: a confirmation with nothing to read is not one. */
+function parseConfirm(m: Dict | undefined): ConfirmDefinition | undefined {
+  if (m === undefined) return undefined;
+  return {
+    title: optString(m, "title"),
+    message: reqString(m, "message", "action.confirm.message"),
+    okLabel: optString(m, "okLabel"),
+    cancelLabel: optString(m, "cancelLabel"),
+    danger: m["danger"] === true,
+  };
+}
+
+function parseActionSuccess(
+  m: Dict | undefined,
+): ActionSuccessDefinition | undefined {
+  if (m === undefined) return undefined;
+  return {
+    message: optString(m, "message"),
+    page: optString(m, "page"),
+    params: optDict(m, "params") ?? {},
   };
 }

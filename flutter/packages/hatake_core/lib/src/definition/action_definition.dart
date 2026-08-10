@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 
+import 'action_success_definition.dart';
 import 'action_types.dart';
+import 'confirm_definition.dart';
 
 /// A page-level or row-level action (button / menu item).
 class ActionDefinition extends Equatable {
@@ -16,6 +18,12 @@ class ActionDefinition extends Equatable {
   /// When [type] is `plugin`, the registered action plugin key to invoke.
   final String? plugin;
 
+  /// Ask before running. A `delete` action asks even when this is null.
+  final ConfirmDefinition? confirm;
+
+  /// What to do once it succeeded (message / navigation). Not run on failure.
+  final ActionSuccessDefinition? onSuccess;
+
   /// Plugin / renderer specific extra configuration.
   final Map<String, Object?> config;
 
@@ -27,10 +35,13 @@ class ActionDefinition extends Equatable {
     required this.type,
     required this.label,
     this.plugin,
+    this.confirm,
+    this.onSuccess,
     this.config = const {},
     this.roles = const [],
   });
 
   @override
-  List<Object?> get props => [id, type, label, plugin, config, roles];
+  List<Object?> get props =>
+      [id, type, label, plugin, confirm, onSuccess, config, roles];
 }

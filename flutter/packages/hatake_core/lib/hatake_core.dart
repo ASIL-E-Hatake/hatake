@@ -41,6 +41,8 @@ export 'src/definition/section_definition.dart';
 export 'src/definition/search_definition.dart';
 export 'src/definition/table_definition.dart';
 export 'src/definition/form_definition.dart';
+export 'src/definition/confirm_definition.dart';
+export 'src/definition/action_success_definition.dart';
 export 'src/definition/action_definition.dart';
 
 // Pages.
@@ -48,6 +50,7 @@ export 'src/definition/page_definition.dart';
 
 // App (navigation shell).
 export 'src/definition/menu_item.dart';
+export 'src/definition/theme_definition.dart';
 export 'src/definition/app_definition.dart';
 
 // Repository contract.

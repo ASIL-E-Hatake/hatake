@@ -62,7 +62,7 @@ class _MaterialReportPage extends StatelessWidget {
     );
   }
 
-  Future<void> _export(BuildContext context, ActionDefinition action) {
+  Future<bool> _export(BuildContext context, ActionDefinition action) {
     return _runExportAction(
       context,
       action,

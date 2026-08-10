@@ -463,6 +463,8 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
     type: m.reqString('type', at: 'action.type'),
     label: m.reqString('label', at: 'action.label'),
     plugin: m.optString('plugin'),
+    confirm: _parseConfirm(m.optMap('confirm')),
+    onSuccess: _parseActionSuccess(m.optMap('onSuccess')),
     // Lift top-level `page` / `params` (navigate actions) into config so the
     // ActionDefinition model stays unchanged.
     config: {
@@ -471,6 +473,26 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
       if (m['params'] != null) 'params': m['params'],
     },
     roles: [for (final r in m.optList('roles')) r.toString()],
+  );
+}
+
+ConfirmDefinition? _parseConfirm(Map<String, Object?>? m) {
+  if (m == null) return null;
+  return ConfirmDefinition(
+    title: m.optString('title'),
+    message: m.reqString('message', at: 'action.confirm.message'),
+    okLabel: m.optString('okLabel'),
+    cancelLabel: m.optString('cancelLabel'),
+    danger: m.optBool('danger'),
+  );
+}
+
+ActionSuccessDefinition? _parseActionSuccess(Map<String, Object?>? m) {
+  if (m == null) return null;
+  return ActionSuccessDefinition(
+    message: m.optString('message'),
+    page: m.optString('page'),
+    params: m.optMap('params') ?? const {},
   );
 }
 

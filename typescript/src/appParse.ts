@@ -1,5 +1,13 @@
 import { parse as parseYamlText } from "yaml";
-import { kDslVersion, type AppDefinition, type MenuItem, type PageRef } from "./definition.js";
+import {
+  Brightnesses,
+  Densities,
+  kDslVersion,
+  type AppDefinition,
+  type MenuItem,
+  type PageRef,
+  type ThemeDefinition,
+} from "./definition.js";
 import {
   DefinitionParseError,
   UnknownKeysError,
@@ -90,6 +98,7 @@ export function parseAppMap(root: Dict): AppDefinition {
     title: reqString(app, "title", "app.title"),
     dslVersion,
     home: optString(app, "home"),
+    theme: parseTheme(optDict(app, "theme")),
     menu: optList(app, "menu").map((m, i) =>
       parseMenu(asDict(m, `app.menu[${i}]`)),
     ),
@@ -97,6 +106,66 @@ export function parseAppMap(root: Dict): AppDefinition {
       parsePageRef(asDict(p, `app.pages[${i}]`)),
     ),
   };
+}
+
+/**
+ * Reads `app.theme`. Colours and the two closed vocabularies are checked here:
+ * one that is silently ignored is the worst outcome, because the definition
+ * looks right and nothing changes. Same errors as the Dart edition.
+ */
+function parseTheme(m: Dict | undefined): ThemeDefinition | undefined {
+  if (m === undefined) return undefined;
+  return {
+    primaryColor: colorOf(m, "primaryColor"),
+    secondaryColor: colorOf(m, "secondaryColor"),
+    brightness: oneOf(m, "brightness", Brightnesses, Brightnesses.light),
+    density: oneOf(m, "density", Densities, Densities.standard),
+    fontFamily: optString(m, "fontFamily"),
+    radius: typeof m["radius"] === "number" ? (m["radius"] as number) : undefined,
+    config: optDict(m, "config") ?? {},
+  };
+}
+
+/** `#RRGGBB` / `#AARRGGBB` (`#` optional) as a 32-bit ARGB value, else null. */
+export function argbOf(color: string | undefined): number | null {
+  if (color === undefined) return null;
+  const hex = color.startsWith("#") ? color.slice(1) : color;
+  if (!/^[0-9a-fA-F]+$/.test(hex) || (hex.length !== 6 && hex.length !== 8)) {
+    return null;
+  }
+  const value = Number.parseInt(hex, 16);
+  // `>>> 0` で符号なしに戻す。JS のビット演算は符号付き32bitなので、これを忘れると
+  // 不透明色が負の数になり Dart 版と食い違う。
+  return hex.length === 6 ? (0xff000000 | value) >>> 0 : value;
+}
+
+function colorOf(m: Dict, key: string): string | undefined {
+  const value = optString(m, key);
+  if (value === undefined) return undefined;
+  if (argbOf(value) === null) {
+    throw new DefinitionParseError(
+      `Expected a colour like #RRGGBB, got "${value}"`,
+      `app.theme.${key}`,
+    );
+  }
+  return value;
+}
+
+function oneOf(
+  m: Dict,
+  key: string,
+  allowed: Record<string, string>,
+  orElse: string,
+): string {
+  const value = optString(m, key);
+  if (value === undefined) return orElse;
+  if (!Object.values(allowed).includes(value)) {
+    throw new DefinitionParseError(
+      `Expected one of ${Object.values(allowed).join(" / ")}, got "${value}"`,
+      `app.theme.${key}`,
+    );
+  }
+  return value;
 }
 
 /** A node with `group`/`items` is a group; otherwise a leaf opening a page. */

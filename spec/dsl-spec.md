@@ -138,8 +138,33 @@ app:
 | `id` | string | ✅ | — | Application identifier. |
 | `title` | string | ✅ | — | Application title (shown by the shell). |
 | `home` | string | | first leaf | Initial route (a [menu-item](#menu-item) id). |
+| `theme` | [theme](#theme) | | — | Look and feel. Omitted = the renderer's default. |
 | `menu` | [menu-item](#menu-item)[] | | `[]` | Navigation menu (a tree of leaves and groups). |
 | `pages` | page[] | | `[]` | Page definitions making up this app, referenced by id from `menu` / `navigate`. |
+
+### theme
+
+Brand colour, brightness, density and shape. **Renderer neutral** — Material turns it into a `ThemeData`, another renderer into its own equivalent — and **behaviour-free**. Renderer specific extras go in `config` rather than growing the DSL.
+
+```yaml
+app:
+  theme:
+    primaryColor: "#1B5E20"
+    density: compact
+    radius: 8
+```
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `primaryColor` | string | — | Brand colour (`#RRGGBB` / `#AARRGGBB`); the seed the palette derives from. |
+| `secondaryColor` | string | derived | Accent colour. |
+| `brightness` | `light` / `dark` / `system` | `light` | `system` follows the device setting. |
+| `density` | `comfortable` / `standard` / `compact` | `standard` | Row height and padding; business screens usually want `compact`. |
+| `fontFamily` | string | — | Font family name (the renderer resolves it). |
+| `radius` | number (≥0) | — | Corner radius in logical pixels. |
+| `config` | map | `{}` | Renderer specific extras. |
+
+A colour that is not a colour, or an unknown `brightness` / `density`, is a **parse error**: ignoring it silently would leave "I wrote it and nothing changed" with no way to find out why.
 
 ### menu-item
 
@@ -788,8 +813,36 @@ wholesale — including for another locale — inject a `MessageResolver` into t
 | `type` | string | ✅ | Action type (see [action types](#action-types)). |
 | `label` | string | ✅ | Button label. |
 | `plugin` | string | | Plugin key (when `type: plugin`). |
+| `confirm` | [confirm](#confirm) | | Ask before running it. |
+| `onSuccess` | [onSuccess](#onsuccess) | | What to do once it succeeded. |
 | `config` | map | | Extra settings. |
 | `roles` | string[] | | Roles allowed to run it (see [access control](#access-control-roles)). Empty = everyone. |
+
+### confirm
+
+Ask before running, declared instead of coded once per screen.
+
+| Key | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `title` | string | | renderer's | Dialog heading. |
+| `message` | string | ✅ | — | The question itself. |
+| `okLabel` | string | | renderer's | Label of the button that runs it. |
+| `cancelLabel` | string | | renderer's | Label of the button that does nothing. |
+| `danger` | bool | | `false` | Style the confirming button as destructive. |
+
+**A `type: delete` asks even without `confirm`** — it cannot be undone, so the safe default wins. Declaring `confirm` replaces the wording.
+
+### onSuccess
+
+Runs **only when the action succeeded**. That it does not run on failure is the point of declaring it rather than writing code after the call.
+
+| Key | Type | Description |
+|---|---|---|
+| `message` | string | Shown briefly (a snackbar in Material). |
+| `page` | string | Page id to move to afterwards. |
+| `params` | map | Route params for `page` (`$row.id` / `$record.id` are interpolated). |
+
+Failure covers an unregistered plugin handler, a missing export sink, or a repository that refuses. `create` / `edit` only open a form, so `onSuccess` does not apply — whether the save worked is not known at that point.
 
 ## option
 

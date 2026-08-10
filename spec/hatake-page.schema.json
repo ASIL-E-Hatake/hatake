@@ -78,6 +78,9 @@
           "type": "string",
           "description": "Initial route: a menu item id (or page id)."
         },
+        "theme": {
+          "$ref": "#/$defs/theme"
+        },
         "menu": {
           "type": "array",
           "items": {
@@ -115,6 +118,56 @@
               }
             ]
           }
+        }
+      }
+    },
+    "theme": {
+      "type": "object",
+      "description": "How the app looks: brand colour, brightness, density and shape. Renderer-neutral — a Material renderer maps this to a ThemeData, another renderer to its own equivalent. Nothing here changes behaviour.",
+      "additionalProperties": false,
+      "properties": {
+        "primaryColor": {
+          "type": "string",
+          "description": "Brand colour as #RRGGBB (or #AARRGGBB). Used as the seed the rest of the palette is derived from.",
+          "examples": [
+            "#1B5E20"
+          ]
+        },
+        "secondaryColor": {
+          "type": "string",
+          "description": "Accent colour as #RRGGBB. Derived from the primary colour when omitted."
+        },
+        "brightness": {
+          "type": "string",
+          "default": "light",
+          "description": "`system` follows the device setting.",
+          "enum": [
+            "light",
+            "dark",
+            "system"
+          ]
+        },
+        "density": {
+          "type": "string",
+          "default": "standard",
+          "description": "Row height and padding. Business screens usually want `compact`.",
+          "enum": [
+            "comfortable",
+            "standard",
+            "compact"
+          ]
+        },
+        "fontFamily": {
+          "type": "string",
+          "description": "Font family name; the renderer resolves it."
+        },
+        "radius": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Corner radius in logical pixels."
+        },
+        "config": {
+          "$ref": "#/$defs/config"
         }
       }
     },
@@ -957,11 +1010,67 @@
           "type": "object",
           "description": "Route params for a navigate action; $row.id / $record.id template against the current row/record."
         },
+        "confirm": {
+          "$ref": "#/$defs/confirm"
+        },
+        "onSuccess": {
+          "$ref": "#/$defs/actionSuccess"
+        },
         "config": {
           "$ref": "#/$defs/config"
         },
         "roles": {
           "$ref": "#/$defs/roles"
+        }
+      }
+    },
+    "confirm": {
+      "type": "object",
+      "description": "Ask before running the action. A `delete` action asks even without this; declaring it replaces the wording.",
+      "required": [
+        "message"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Dialog heading. Omit for the renderer's default."
+        },
+        "message": {
+          "type": "string",
+          "description": "The question itself."
+        },
+        "okLabel": {
+          "type": "string",
+          "description": "Label of the button that runs the action."
+        },
+        "cancelLabel": {
+          "type": "string",
+          "description": "Label of the button that does nothing."
+        },
+        "danger": {
+          "type": "boolean",
+          "default": false,
+          "description": "Style the confirming button as destructive. A `delete` action is destructive by default."
+        }
+      }
+    },
+    "actionSuccess": {
+      "type": "object",
+      "description": "What happens once the action succeeded. Nothing here runs when it fails.",
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "Shown briefly to the user (a snackbar / toast)."
+        },
+        "page": {
+          "type": "string",
+          "description": "Page id to move to afterwards."
+        },
+        "params": {
+          "type": "object",
+          "description": "Route params for `page`; $row.id / $record.id template against the current row/record."
         }
       }
     },

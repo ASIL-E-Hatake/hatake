@@ -31,38 +31,28 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
     return null;
   }
 
-  Future<void> _runAction(ActionDefinition action, {DataRecord? record}) async {
-    if (action.type == ActionTypes.navigate) {
-      _navigateAction(context, action, record: record);
-      return;
-    }
-    if (action.type == ActionTypes.export) {
-      // Re-query so the CSV holds the whole result, not just the page on screen.
-      await _runExportAction(
-        context,
-        action,
-        columns: _def.table.columns,
-        rows: _controller.fetchForExport,
-        formatters: _formatters,
-        fallbackName: _def.title,
-      );
-      return;
-    }
-    final registry = HatakeScope.of(context).actions;
-    final handler =
-        action.plugin == null ? null : registry.resolve(action.plugin!);
-    if (handler == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('アクション "${action.id}" のハンドラが未登録です')),
-      );
-      return;
-    }
-    await handler(ActionContext(
-      buildContext: context,
-      controller: _controller,
-      action: action,
+  /// One dispatcher for every page kind (see `_runPageAction`), so `confirm` /
+  /// `onSuccess` behave the same wherever the action sits.
+  Future<void> _runAction(ActionDefinition action, {DataRecord? record}) {
+    return _runPageAction(
+      context,
+      action,
+      _controller,
       record: record,
-    ));
+      onExport: _export,
+    );
+  }
+
+  /// Re-query so the CSV holds the whole result, not just the page on screen.
+  Future<bool> _export(BuildContext context, ActionDefinition action) {
+    return _runExportAction(
+      context,
+      action,
+      columns: _def.table.columns,
+      rows: _controller.fetchForExport,
+      formatters: _formatters,
+      fallbackName: _def.title,
+    );
   }
 
   @override

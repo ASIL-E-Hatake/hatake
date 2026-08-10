@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import 'menu_item.dart';
 import 'page_definition.dart';
+import 'theme_definition.dart';
 
 /// An application: a set of [pages] composed by a navigation [menu].
 ///
@@ -21,6 +22,9 @@ class AppDefinition extends Equatable {
   /// Null = the first leaf in [menu].
   final String? home;
 
+  /// How the app looks (brand colour, density…). Null = the renderer's default.
+  final ThemeDefinition? theme;
+
   /// Navigation menu (tree of leaves and groups).
   final List<MenuItem> menu;
 
@@ -33,6 +37,7 @@ class AppDefinition extends Equatable {
     required this.title,
     this.dslVersion = kDslVersion,
     this.home,
+    this.theme,
     this.menu = const [],
     this.pages = const [],
   });
@@ -46,5 +51,5 @@ class AppDefinition extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, title, dslVersion, home, menu, pages];
+  List<Object?> get props => [id, title, dslVersion, home, theme, menu, pages];
 }

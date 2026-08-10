@@ -1,5 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import {
+  argbOf,
+  Brightnesses,
+  Densities,
+  DefinitionParseError,
+  UnknownKeysError,
+} from "../src/index.js";
 import { menuIsGroup, parseAppJson, parseAppYaml } from "../src/index.js";
 
 describe("parseAppYaml: shipped example", () => {
@@ -78,6 +85,72 @@ describe("parseAppYaml: shipped example", () => {
     ]);
     expect(app.pages[1].title).toBe("顧客マスタ");
     expect(app.pages[1].repository).toBe("customerRepository");
+  });
+
+  it("carries the theme (a backend does not render, but must not drop it)", () => {
+    expect(app.theme).toEqual({
+      primaryColor: "#1B5E20",
+      secondaryColor: undefined,
+      brightness: Brightnesses.light,
+      density: Densities.compact,
+      fontFamily: undefined,
+      radius: 8,
+      config: {},
+    });
+  });
+});
+
+describe("app.theme", () => {
+  const withTheme = (theme: string) =>
+    parseAppYaml(`
+app:
+  id: sales
+  title: 販売管理
+  theme:
+${theme}
+`);
+
+  it("defaults to light / standard", () => {
+    const theme = withTheme('    primaryColor: "#1B5E20"').theme!;
+    expect(theme.brightness).toBe(Brightnesses.light);
+    expect(theme.density).toBe(Densities.standard);
+    expect(theme.radius).toBeUndefined();
+  });
+
+  it("reads #AARRGGBB and a missing #, same as the Dart edition", () => {
+    expect(argbOf("#801B5E20")).toBe(0x801b5e20);
+    expect(argbOf("1B5E20")).toBe(0xff1b5e20);
+    expect(argbOf("navy")).toBeNull();
+    expect(argbOf("#12345")).toBeNull();
+  });
+
+  // 黙って無視されるのが一番困る（定義は正しく見えるのに画面が変わらない）。
+  it("refuses a colour that is not a colour, with the path", () => {
+    expect(() => withTheme("    primaryColor: navy")).toThrow(
+      DefinitionParseError,
+    );
+    try {
+      withTheme("    primaryColor: navy");
+    } catch (e) {
+      expect((e as DefinitionParseError).path).toBe("app.theme.primaryColor");
+      expect((e as Error).message).toContain("#RRGGBB");
+    }
+  });
+
+  it("refuses an unknown brightness / density", () => {
+    expect(() => withTheme("    density: cozy")).toThrow(/comfortable/);
+    expect(() => withTheme("    brightness: auto")).toThrow(
+      DefinitionParseError,
+    );
+  });
+
+  it("a misspelled theme key is caught by strict", () => {
+    expect(() =>
+      parseAppYaml(
+        `app: { id: a, title: A, theme: { primaryColour: "#1B5E20" } }`,
+        { strict: true },
+      ),
+    ).toThrow(UnknownKeysError);
   });
 });
 

@@ -112,25 +112,14 @@ class _MaterialDetailPage extends StatelessWidget {
     return value?.toString() ?? '';
   }
 
-  Future<void> _runAction(BuildContext context, ActionDefinition action) async {
-    if (action.type == ActionTypes.navigate) {
-      _navigateAction(context, action, record: controller.record);
-      return;
-    }
-    final registry = HatakeScope.of(context).actions;
-    final handler =
-        action.plugin == null ? null : registry.resolve(action.plugin!);
-    if (handler == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('アクション "${action.id}" のハンドラが未登録です')),
-      );
-      return;
-    }
-    await handler(ActionContext(
-      buildContext: context,
-      controller: controller,
-      action: action,
+  /// One dispatcher for every page kind (see `_runPageAction`). A detail page has
+  /// no rows, so an `export` action there reports that instead of pretending.
+  Future<void> _runAction(BuildContext context, ActionDefinition action) {
+    return _runPageAction(
+      context,
+      action,
+      controller,
       record: controller.record,
-    ));
+    );
   }
 }
