@@ -7,7 +7,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "hatake": "dist/cli.js"
+    "hatake": "dist/cli.js",
+    "hatake-mcp": "dist/mcp.js"
   },
   "repository": {
     "type": "git",

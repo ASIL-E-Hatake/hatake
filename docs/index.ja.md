@@ -20,6 +20,7 @@
 | 検証を足す／メッセージを変える | [入力検証](guide/validation.ja.md) | 独自ルール・i18n |
 | 独自の型/バリデータ/描画を足す | [Plugin ガイド](../flutter/docs/plugins.ja.md) | 本体を fork せず拡張する |
 | バックエンド（Java / TS）で使う | [バックエンド連携](guide/backend.ja.md) | 詳細は [java](../java/README.md) / [typescript](../typescript/README.md) |
+| **AI エージェントに定義を書かせる** | [MCP サーバ](guide/mcp.ja.md) | 仕様の引き当て・例の取得・検証を道具として渡す |
 | 対応状況・今後の方針を知る | [ロードマップ](roadmap.ja.md) / [utils ロードマップ](roadmap-utils.ja.md) | 実装状況はここが正 |
 | 思想・背景を読む | [紹介記事](blog/introducing-hatake.md) | 読み物 |
 
@@ -31,6 +32,7 @@
 | [ページ種別の選び方](guide/page-types.ja.md) | crud / master / search / detail / form の判断表 |
 | [入力検証](guide/validation.ja.md) | 実行順・空値の扱い・独自ルール・メッセージ差し替え |
 | [バックエンド連携](guide/backend.ja.md) | サーバ検証・`QuerySpec`・JPA アダプタ |
+| [MCP サーバ](guide/mcp.ja.md) | エージェントへの繋ぎ方・道具5つ・使う順番 |
 
 ## cookbook（写経用サンプル）
 
@@ -60,7 +62,9 @@
 
 `llms.txt`（[リポジトリ直下](../llms.txt)）が LLM 向けの入口。**実装（`src/`）は読ませない**。渡すのは「[チートシート](api-cheatsheet.ja.md) 1枚」＋必要なら「[例](../spec/examples/README.md)」で足りる。
 
-書いている途中で詰まったら、仕様書を全部読ませるのではなく**引かせる**:
+対応クライアント（Claude Code / Claude Desktop 等）なら [MCP サーバ](guide/mcp.ja.md)を繋ぐのが一番速い。エージェントが必要なときに自分で引いて、自分で検証して直す。
+
+繋がないときは、仕様書を全部読ませるのではなく**引かせる**:
 
 ```bash
 npx hatake reference rowsPerPage    # キー名から：型・既定値・書ける場所

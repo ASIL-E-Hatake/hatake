@@ -4,6 +4,8 @@ export * from "./definition.js";
 export * from "./parse.js";
 export * from "./strictKeys.js";
 export * from "./reference.js";
+export * from "./specDir.js";
+export * from "./mcpTools.js";
 export * from "./scaffold.js";
 export * from "./examples.js";
 export * from "./appParse.js";

@@ -67,6 +67,17 @@ FAIL page.yaml
 
 生成系（`dto` / `schema` / `openapi` / `types`）は**常に strict で読む**。書き間違いのある定義から API の形を作ると、間違いが API に焼き付くので。
 
+## MCP サーバ（`hatake-mcp`）
+
+AI エージェントに「仕様を引く・例を取る・検証する」をやらせるための MCP サーバも同梱。**依存ゼロで手書き**（stdio の JSON-RPC 2.0 で、必要なのは `initialize` / `tools/list` / `tools/call` だけなので）。
+
+```bash
+npm run build
+claude mcp add hatake -- node "$PWD/dist/mcp.js"      # Claude Code の場合
+```
+
+道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_api_shape` の5つで、CLI と同じ関数を呼んでいる（＝同じ答えになる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
+
 ## 開発（Docker）
 
 ローカルに Node を入れず、Docker で回す。

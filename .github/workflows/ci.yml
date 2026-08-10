@@ -70,7 +70,24 @@ jobs:
           node dist/cli.js examples 帳票
           # コミットしてある生成物と一致すること（vitest でも見ているが、CLI 経由でも）。
           node dist/cli.js reference --out /tmp/reference.json
-          diff -u ../spec/reference.json /tmp/reference.json
+          # --strip-trailing-cr: Windows のチェックアウトでも同じ判定にするため。
+          diff -u --strip-trailing-cr ../spec/reference.json /tmp/reference.json
+
+      - name: MCP server answers a stdio handshake
+        working-directory: typescript
+        run: |
+          set -e
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+            '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hatake_validate","arguments":{"source":"page: {type: crud, id: x, title: X, repository: xRepository}"}}}' \
+            | node dist/mcp.js > /tmp/mcp.log
+          # 通知には返事をしない = 4 送って 3 行。stdout に他のものを書いていないことも見る。
+          test "$(wc -l < /tmp/mcp.log)" -eq 3
+          grep -q '"protocolVersion":"2025-06-18"' /tmp/mcp.log
+          grep -q 'hatake_reference' /tmp/mcp.log
+          grep -q 'crud' /tmp/mcp.log
 
       - name: Scaffolds are valid definitions
         working-directory: typescript

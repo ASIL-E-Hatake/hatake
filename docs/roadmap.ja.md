@@ -38,6 +38,7 @@
 | 出力 | CSV 出力 | ✅ 3言語 | `action` の型 `export`。**その画面の列と行から CSV を組む**（一覧・帳票で同じ書き方。ロールで見えない列は出さない）。RFC 4180 の引用、BOM / CRLF / 区切り / `raw`（format を通さない）を `config` で選べる。一覧の export は**表示中のページではなく検索結果全体**を出す（`limit` まで読み直す）。**ファイルを書くのは対象外**＝`HatakeScope(exportSink:)` に渡された出力先の責務（文字コード変換も同じ理由でそちら） |
 | | 帳票の印刷（PDF/プリンタ） | ⏳ | `ReportDocument` を PDF/印刷に落とす opt-in アダプタ。`printing` / `pdf` 依存を本体に入れないため別パッケージ |
 | 定義の品質 | `hatake` CLI | ✅ TS 同梱 | `npx hatake validate <file...>`（strict 既定・`--json`・**問題があれば終了コード 1** なので CI に置ける）、`new <kind>`（8種別の雛形。全部が strict とスキーマを通ることを CI で確認）、`dto` / `schema` / `openapi` / `types --out`（ネイティブ型のファイル出力の入口）。生成系は常に strict で読む（書き間違いを API に焼き付けないため）。→ [使い方](../typescript/README.md#cli) |
+| 定義の品質 | MCP サーバ（`hatake-mcp`） | ✅ TS 同梱 | AI エージェントに「仕様の引き当て・例の取得・検証・雛形・API の形」を道具として渡す（`hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_api_shape`）。**依存ゼロで手書き**（stdio の JSON-RPC 2.0 で必要なのは `initialize` / `tools/list` / `tools/call` だけ。CLI と同じ判断で `@modelcontextprotocol/sdk` を入れない）。プロトコル `mcp.ts` と道具 `mcpTools.ts` を分離。名乗るバージョンは `2025-06-18` / `2025-03-26` / `2024-11-05`。**知らない道具はプロトコルのエラー、道具の中の失敗は結果として返す**（後者はモデルに読ませて直させる）。`initialize` の `instructions` に使う順番（例を探す→雛形→キーを引く→検証）を載せてある。CI で stdio の往復を実際に流す。→ [使い方](guide/mcp.ja.md) |
 | 定義の品質 | 機械可読な DSL リファレンス | ✅ spec + TS | [`spec/reference.json`](../spec/reference.json)＝**全キーの索引**（ノードごとのキー・型・既定値・取れる値・親ノード・**どのページ種別で有効か**＋`keyIndex`）。JSON Schema から機械生成（`npx hatake reference [name] [--page-kind k]`、`--out` でファイル）。`values` は `open: true` なら「組み込みの一覧」＝Registry で足せる、`false` なら enum。**嘘をつかないことが唯一の価値**なので、①strict のキー表と1キーずつ一致 ②組み込みの一覧が実装のレジストリと一致（フォーマッタ/コンバータ/バリデータ/集約/計算/フィールド型/列型/アクション型/演算子）③説明文の「Built-ins:」と機械可読な値が一致 ④条件の演算子は conformance に実例がある ⑤コミット済み生成物が最新、を CI で確認 |
 | 定義の品質 | 例のカタログ | ✅ spec + TS | [`spec/examples/index.json`](../spec/examples/index.json)＋[人向けの表](../spec/examples/README.md) で「やりたいこと → 例」を引ける（`npx hatake examples <query>`）。ディレクトリと1対1・`kind`/`title` が定義と一致・`keys` が実在して実際に使われている・全例が strict を通る、を CI で確認 |
 | 定義の品質 | 未知キーの検出（strict パース） | ✅ 3言語 | パーサの厳格モード。`parsePageYaml(source, strict: true)` で**知らないキーを全部まとめて**エラーにする（近い既知キーの提案つき: `pagesize` → `pageSize` / `visible_when` → `visibleWhen`）。厳しさは JSON Schema と同一＝`additionalProperties: false` のノードだけを閉じ、`config` / `validators` / `computed` の中は見ない。既定は従来どおり寛容（後方互換）だが、デモと CI は strict。**各版のキー表がスキーマとズレていないことも機械で確認**。詳細は [DSL 仕様](../spec/dsl-spec.ja.md#未知キーの検出strict) |
@@ -55,6 +56,7 @@
 | 定義モデル + YAML/JSON パーサ | ✅ | ✅ | ✅(※) | ✅（8種別すべて） |
 | 未知キーの検出（strict パース） | ✅ | ✅ | ✅ | ✅ |
 | CLI（`hatake validate` / `new` / 生成 / `reference` / `examples`） | — | — | — | ✅（`npx hatake`） |
+| MCP サーバ（`hatake-mcp`） | — | — | — | ✅（依存ゼロ・道具5つ） |
 | 機械可読な DSL リファレンス（`reference.json`） | ✅ | 対象外(※3) | 対象外(※3) | ✅（生成元） |
 | YAML↔JSON↔DSL 収束テスト | — | ✅ | ✅(YAML↔JSON) | ✅(YAML↔JSON) |
 | FormValidator（サーバ側） | ✅ | ✅ | ✅ | ✅ |
@@ -118,7 +120,7 @@
 | TypeScript | npm | `@hatake/core`（スコープ確保が要る） | TODO |
 | Java | JitPack / GitHub Packages →（本格化で）Maven Central | `io.github.asil-e-hatake:hatake-core`（下記注意） | TODO |
 
-- **TS (npm)**: `tsc` で `dist/`（JS + `.d.ts`）を吐いて `npm publish --access public`。consumer は `npm i @hatake/core`。npm スコープ `@hatake` が取れなければ `@asil-e-hatake/*` か 無スコープ `hatake-core`。README は npmjs にそのまま出る。
+- **TS (npm)**: `tsc` で `dist/`（JS + `.d.ts`）を吐いて `npm publish --access public`。consumer は `npm i @hatake/core`。**`spec/` を同梱すること**（`hatake reference` と MCP サーバが実行時に `spec/hatake-page.schema.json` と `spec/examples/` を読む。今はリポジトリを持っている前提で上へ探しに行き、無ければ場所を渡してもらう作り）。npm スコープ `@hatake` が取れなければ `@asil-e-hatake/*` か 無スコープ `hatake-core`。README は npmjs にそのまま出る。
 - **Java**: モノレポの `java/` から publish。
   - 早期は **JitPack**（GitHub タグから即配布・publisher 設定ほぼゼロ。※モノレポの subdir 指定が要る）か **GitHub Packages (Maven)**（publisher は楽・consumer 側が認証設定を要する＝フリクションあり）。
   - 本格化で **Maven Central**（consumer フリクション最小だが、名前空間検証＋GPG 署名＋sources/javadoc jar が必要）。
@@ -169,11 +171,14 @@
 >   引く口は `npx hatake reference <キー名>` / `npx hatake examples <やりたいこと>`。
 >   リファレンスがスキーマ・strict のキー表・実装のレジストリとズレないことは CI で確認。
 >   → [DSL 仕様](../spec/dsl-spec.ja.md#機械可読なリファレンス) / [例のカタログ](../spec/examples/README.md)
+> - **MCP サーバ** … ✅ TS 版に同梱（`hatake-mcp`）。エージェントが**手元に仕様を持たずに**
+>   引ける（`hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` /
+>   `hatake_api_shape`）。依存ゼロで手書き。`initialize` の `instructions` で使う順番も渡す。
+>   → [MCP ガイド](guide/mcp.ja.md)
 
 | 項目 | 内容 | なぜ | 規模感 |
 |---|---|---|---|
-| **hatake MCP サーバ** | 仕様の検索・定義の検証・例の取得を MCP ツールとして提供（土台はできた＝`reference.json` の引き当て・`examples` の絞り込み・strict 検証は関数として揃っているので、MCP の口を付けるだけ） | エージェントが**手元に仕様を持たなくても**正しい定義を書ける | 中 |
-| 英語版の最小資料 | `docs/api-cheatsheet.md`（英語）＋ llms.txt の英語版（[ドキュメント配布 TODO](#ドキュメント配布-todo) と同じ話） | 英語で学習したモデルに効く。日本語のみだと確度が落ちる | 小 |
+| **英語版の最小資料** | `docs/api-cheatsheet.md`（英語）＋ llms.txt の英語版（[ドキュメント配布 TODO](#ドキュメント配布-todo) と同じ話） | 英語で学習したモデルに効く。日本語のみだと確度が落ちる | 小 |
 | リファレンスの次段 | 「よくある間違い → 正しい書き方」の対照表を機械可読で持つ（`pagesize` のような綴り違いは strict が拾うが、**構造の間違い**＝`search` に `form` を書く、`report` に `key` を書く、は今は落ちるだけ） | AI が転ぶのは綴りより構造。直し方まで機械で出せると往復が減る | 小〜中 |
 
 ### 3. 人が使うための道具・資料

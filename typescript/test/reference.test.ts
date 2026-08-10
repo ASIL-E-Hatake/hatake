@@ -317,7 +317,11 @@ describe("spec/reference.json", () => {
     // 生の URL で取れる形で置いてあるので、古いままだと AI が古い仕様を読む。
     // 直し方: cd typescript && npm run build && node dist/cli.js reference \
     //         --out ../spec/reference.json
-    const committed = readFileSync("../spec/reference.json", "utf8");
+    // 改行は Windows のチェックアウト（core.autocrlf）で CRLF になるので揃えて比べる。
+    const committed = readFileSync("../spec/reference.json", "utf8").replace(
+      /\r\n/g,
+      "\n",
+    );
     expect(committed).toEqual(`${JSON.stringify(reference, null, 2)}\n`);
   });
 });
