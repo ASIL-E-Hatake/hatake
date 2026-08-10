@@ -113,8 +113,17 @@ page:
     - { id: openOrders, type: navigate, label: 受注照会, page: order_search }
 ```
 
-集約（`aggregate`）: `count` / `sum` / `avg` / `min` / `max`。チャート種別（`kind`）: `bar` / `line` / `pie`。
-`chart.aggregate` を省くと**1行=1点**（集計済みエンドポイント向け）。`count` だけは Repository の総件数を使う。
+### 集約（`value.aggregate` / `chart.aggregate` / 帳票の `totals`）
+<!-- vocab: dashboardValue.aggregate -->
+`count` `sum` `avg` `min` `max`
+
+`count` だけは Repository の総件数を使い `field` を見ない。それ以外は `field` 必須。
+
+### チャート種別（`chart.kind`）
+<!-- vocab: chart.kind -->
+`bar` `line` `pie`
+
+`chart.aggregate` を省くと**1行=1点**（集計済みエンドポイント向け）。
 
 ```yaml
 # 帳票: 明細の列は table から取る。グループはコントロールブレイクなので sort が要る。
@@ -129,7 +138,7 @@ page:
       - { field: orderNo, label: 受注番号 }
       - { field: amount, label: 金額, type: number, format: currency }
   report:
-    paper: { size: A4, orientation: portrait }   # A4/A3/B5/letter × portrait/landscape
+    paper: { size: A4, orientation: portrait }   # 用紙（下記）
     rowsPerPage: 30            # 見出し・小計も1行として数える
     sort: { field: customer }  # groupBy はこの並びに依存
     groupBy: [ { field: customer, label: 顧客, pageBreak: true } ]
@@ -138,25 +147,35 @@ page:
     - { id: csv, type: export, label: CSV出力, config: { filename: 売上明細, bom: true } }
 ```
 
+### 用紙（`paper.size`）
+<!-- vocab: paper.size -->
+`A4` `A3` `B5` `letter`
+
+`orientation` は `portrait` / `landscape`。
+
 **CSV 出力（`type: export`）**: その画面の列と行から組む（一覧・帳票で同じ。ロールで見えない列は出ない）。
 `config` は `filename` / `header` / `delimiter` / `newline`(crlf|lf) / `bom` / `raw`(format を通さない) / `limit`。
 一覧の export は表示中のページではなく**検索結果全体**（`limit` まで）。
 **ファイルを書くのは利用者側**＝`HatakeScope(exportSink: (req) async {...})` に登録した出力先が受け取る。
 
 ## フィールド型（`field.type` / `filter.type`）
-`text` `textarea` `number` `select` `multiSelect` `checkbox` `radio` `date` `dateTime` `time`
-（`select`/`radio`/`multiSelect` は `options: [{value,label}]` を付ける）
-`field.type` はこれに加えて `subTable`（親子・明細。検索条件には使えない）
+<!-- vocab: field.type -->
+`text` `textarea` `number` `select` `multiSelect` `checkbox` `radio` `date` `dateTime` `time` `subTable`
+
+`select`/`radio`/`multiSelect` は `options: [{value,label}]` を付ける。`subTable`（親子・明細）は field 専用で、検索条件には使えない。
 
 ## カラム型（`column.type`）
+<!-- vocab: column.type -->
 `text` `number` `badge` `boolean` `date` `dateTime`
 
 ## フィルタ演算子（`filter.operator`）
+<!-- vocab: filter.operator -->
 `equals` `notEquals` `contains` `startsWith` `endsWith` `gt` `gte` `lt` `lte` `between` `in`
-（`isEmpty` `isNotEmpty` は値を取らないので条件専用。逆に `between` `startsWith` `endsWith` は検索専用）
+
+`isEmpty` `isNotEmpty` は値を取らないので条件専用。逆に `between` `startsWith` `endsWith` は検索専用。
 
 ## フォーマッタ（`format:` で指定。オプションは同じ要素の `config`）
-
+<!-- vocab: field.format -->
 | name | 例 | 主なオプション |
 |---|---|---|
 | `currency` | `1234567 → 1,234,567` / `-1234 → △1,234` | `symbol`(例`¥`), `decimals`, `negative`(`minus`/`triangle`/`blackTriangle`/`paren`) |
@@ -167,6 +186,7 @@ page:
 | `mask` | `000012341234 → ********1234` | `keep`(残す桁), `char` |
 
 ## コンバータ（`normalize: [...]` で入力前に適用）
+<!-- vocab: field.normalize -->
 `toHankaku` `toZenkaku` `hiraToKata` `kataToHira` `trim` `collapseSpaces` `parseNumber`
 
 ## 条件表示・計算項目（field に付与）
@@ -183,8 +203,15 @@ page:
 - { field: total, label: 合計, computed: { op: sum, fields: [price, tax] } }
 ```
 
-演算子: `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty`。
-計算 `op`: `concat` `sum` `subtract` `product`（`ComputedRegistry` で追加可）。
+条件の演算子（`visibleWhen` / `enabledWhen`）:
+<!-- vocab: condition.operator -->
+`equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty`
+
+計算の `op`:
+<!-- vocab: field.computed.op -->
+`concat` `sum` `subtract` `product`
+
+`ComputedRegistry` で追加可。
 
 ## 権限（ロールで表示出し分け）
 
@@ -199,7 +226,7 @@ actions:
 ※ **表示制御のみ**。実際のアクセス制御（データ保護）はバックエンドで行う（Framework は認証・認可を持たない）。
 
 ## バリデータ（`validators: [{ type, ...params, message? }]`）
-
+<!-- vocab: validator.type -->
 | type | params | 意味 |
 |---|---|---|
 | `required` | — | 必須（`field.required: true` でも可） |
@@ -212,9 +239,10 @@ actions:
 `message` を足すと既定（日本語）メッセージを上書き。全体のロケール切替・文言差し替えは `MessageResolver`（既定 `ja`）を `ValidatorRegistry(custom, messages)` に注入する（Dart/TS/Java の3言語で同名・同挙動）。
 
 ## アクション（`actions: [...]` / `table.rowActions`）
-`type`: `create` `edit` `delete` `plugin`。`plugin` は `plugin: <key>` で登録ハンドラにディスパッチ。
+<!-- vocab: action.type -->
+`create` `edit` `delete` `navigate` `plugin` `export`
 
----
+`plugin` は `plugin: <key>` で登録ハンドラにディスパッチ。`navigate` は `page` と `params`、`export` は CSV 出力（上記）。`table.rowActions` は**アクション id の文字列配列**（`edit` / `delete` は組み込みなので宣言不要）。
 
 ## Dart から直接使う場合（実装は読まなくていい）
 

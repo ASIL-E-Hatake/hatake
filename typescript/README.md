@@ -54,6 +54,7 @@ npx hatake examples 帳票                      # 近い例を探す
 | `types <file> --lang ts\|java [--out dir]` | ネイティブ型。Java は**1レコード＝1ファイル**で書き出す |
 | `reference [name] [--page-kind k]` | 機械可読な [DSL リファレンス](../spec/reference.json)（JSON）。`name` にキー名・ノード名・ページ種別を渡すとその1件だけ。綴り違いは候補を出す |
 | `examples [query] [--json]` | [例のカタログ](../spec/examples/README.md)を「やりたいこと」で引く |
+| `pitfalls [query] [--lang ja\|en]` | [よくある間違い](../spec/pitfalls.json) → なぜ駄目か → 正しい書き方。`validate` も未知キーからこれを引いてヒントを出す |
 
 `reference` / `examples` は `spec/` を実行時に探す（`--spec <dir>` で明示もできる）。
 リファレンスは**その場でスキーマから生成する**ので、古い写しを配ることがない。
@@ -63,6 +64,14 @@ npx hatake examples 帳票                      # 近い例を探す
 ```
 FAIL page.yaml
      page.table.columns[0]: 知らないキー "witdh"（width の間違い？）
+```
+
+**構造の間違い**（書ける場所を間違えた・別の種別のキーを使った）には、[対照表](../spec/pitfalls.json)から直し方も添える:
+
+```
+FAIL page.yaml
+     page: 知らないキー "form"
+     ヒント: `search` / `wizard` / `dashboard` / `report` に `form` を書く → 入力もさせたいなら `crud`（または `master`）にする。…
 ```
 
 生成系（`dto` / `schema` / `openapi` / `types`）は**常に strict で読む**。書き間違いのある定義から API の形を作ると、間違いが API に焼き付くので。

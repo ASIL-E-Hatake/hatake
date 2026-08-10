@@ -879,6 +879,22 @@ npx hatake reference --page-kind report   # only what that page kind can reach
 (`config` / `validators` / `computed` / `visibleWhen`), which strict parsing also
 leaves alone.
 
+## Common mistakes
+
+Strict parsing catches misspellings, but neither **writing a key in the wrong
+place** (`columns` directly on the page, `fields` directly under `form`) nor
+**what parses yet does not mean what you wanted** (`groupBy` without `sort`, a
+`metric` that counts instead of summing) can be fixed from a key name alone.
+Those live in [`pitfalls.json`](pitfalls.json), in Japanese and English.
+
+```bash
+npx hatake pitfalls groupBy --lang en   # wrong form → why → correct form
+npx hatake validate page.yaml           # unknown keys pull the matching fix in automatically
+```
+
+Every entry is verified in CI: the wrong form really fails strict parsing and the
+correct form really passes, so the table cannot lie.
+
 ## Complete example
 
 An index by task lives in [`examples/README.md`](examples/README.md) (machine

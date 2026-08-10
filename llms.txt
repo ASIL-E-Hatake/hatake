@@ -8,6 +8,7 @@
 - [AI チートシート](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/api-cheatsheet.ja.md): ページ種別・フィールド型・フォーマッタ/コンバータ/バリデータの一覧＋オプション＋最小例
 - [DSL リファレンス（機械可読）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/reference.json): **全キーの索引**。ノードごとのキー・型・既定値・取れる値・どのページ種別で有効か＋`keyIndex`（キー名 → 書ける場所）。仕様書を読む代わりにここを引く。JSON Schema から生成しているので仕様とズレない
 - [例のカタログ（機械可読）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/index.json): 「やりたいこと → 例」。近い例を1つ選んで直すのが一番速い（[人向けの表](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/README.md)）
+- [よくある間違い（機械可読）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/pitfalls.json): 「間違い → なぜ駄目か → 正しい書き方」。書ける場所を間違える系（ページ直下に `columns`／`form` の直下に `fields`）と、**落ちないけど意図と違う**系（`groupBy` に `sort` が無い／`metric` が件数になる）。各項目は CI で検証済み（間違いは本当に落ち、正しい方は本当に通る）
 - [DSL 仕様書](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/dsl-spec.ja.md): 定義の全仕様（読み物）
 - [JSON Schema](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json): 定義の機械検証用（YAML に `# yaml-language-server: $schema=<この URL>` を書くと補完・検証が効く）
 
@@ -22,6 +23,7 @@ npx hatake validate page.yaml     # strict（知らないキーを弾く）。--
 npx hatake new <kind> --id <id> --title <title>   # 雛形（crud/search/master/detail/form/wizard/dashboard/report）
 npx hatake reference <キー名>      # そのキーの型・既定値・書ける場所（--page-kind で絞る）
 npx hatake examples <やりたいこと> # 近い例を引く
+npx hatake pitfalls <キー名>       # よくある間違い → 正しい書き方
 ```
 未知キーは場所と直し方まで出る: `page.table.columns[0]: 知らないキー "witdh"（width の間違い？）`
 
@@ -47,6 +49,9 @@ npx hatake examples <やりたいこと> # 近い例を引く
 - [売上ダッシュボード / dashboard（metric・chart・table のカード）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/sales_dashboard.yaml)
 - [売上明細表 / report（帳票。グループ・小計・CSV出力）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/sales_report.yaml)
 - [販売管理アプリ / app（メニュー＋8ページ＋遷移）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/sales_app.yaml)
+
+## English
+英語で読ませたいときは [llms-en.txt](https://github.com/ASIL-E-Hatake/hatake/raw/main/llms-en.txt) と [AI cheat sheet](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/api-cheatsheet.md) を渡す（DSL 仕様は [dsl-spec.md](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/dsl-spec.md)）。リファレンス・例・落とし穴の機械可読ファイルは共通（落とし穴は ja/en 両方入っている）。
 
 ## 拡張・内部（必要なときだけ）
 - [Plugin ガイド](https://github.com/ASIL-E-Hatake/hatake/raw/main/flutter/docs/plugins.ja.md): 独自フォーマッタ/バリデータ/フィールド型/Renderer の登録

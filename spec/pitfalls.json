@@ -1,0 +1,437 @@
+{
+  "$comment": "よくある間違い → 正しい書き方の対照表。綴り間違いは strict パースが拾うが、構造の間違い（書ける場所を間違える・別の種別のキーを使う）と『落ちないけど意図と違う』間違いはここに置く。bad は strict で必ず落ち、good は必ず通ることを CI で確認している（＝この表は嘘をつけない）。keys は hatake_validate / hatake pitfalls が未知キーから引くための索引。",
+  "pitfalls": [
+    {
+      "id": "columns-outside-table",
+      "keys": ["columns"],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "ページ直下に `columns` を書く",
+        "en": "Putting `columns` directly on the page"
+      },
+      "why": {
+        "ja": "列は一覧（`table`）の持ち物。`columns` が有効なのは `table` / `dashboardItem` / `field`（明細）の中だけ。",
+        "en": "Columns belong to a table. `columns` is only valid inside `table`, a dashboard card, or a subTable `field`."
+      },
+      "fix": {
+        "ja": "`table.columns` に入れる。`layout.columns`（1行あたりの項目数）とは別物なので混同しないこと。",
+        "en": "Nest it under `table.columns`. Do not confuse it with `layout.columns`, which is the number of items per row."
+      },
+      "bad": [
+        "page:",
+        "  type: search",
+        "  id: order_search",
+        "  title: 受注照会",
+        "  repository: orderRepository",
+        "  columns:",
+        "    - { field: orderNo, label: 受注番号 }"
+      ],
+      "good": [
+        "page:",
+        "  type: search",
+        "  id: order_search",
+        "  title: 受注照会",
+        "  repository: orderRepository",
+        "  table:",
+        "    columns:",
+        "      - { field: orderNo, label: 受注番号 }"
+      ]
+    },
+    {
+      "id": "fields-outside-sections",
+      "keys": ["fields"],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "`form` の直下に `fields` を書く",
+        "en": "Putting `fields` directly under `form`"
+      },
+      "why": {
+        "ja": "フォームは必ず section で区切る（`form` が持てるキーは `sections` だけ）。見出しが要らなければ `title` を省いた section を1つ置く。",
+        "en": "A form is always divided into sections — `sections` is the only key `form` accepts. If you do not want a heading, use one section without a `title`."
+      },
+      "fix": {
+        "ja": "`form.sections[].fields` に入れる。",
+        "en": "Nest it under `form.sections[].fields`."
+      },
+      "bad": [
+        "page:",
+        "  type: form",
+        "  id: customer_form",
+        "  title: 顧客入力",
+        "  repository: customerRepository",
+        "  form:",
+        "    fields:",
+        "      - { field: code, label: コード }"
+      ],
+      "good": [
+        "page:",
+        "  type: form",
+        "  id: customer_form",
+        "  title: 顧客入力",
+        "  repository: customerRepository",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - { field: code, label: コード }"
+      ]
+    },
+    {
+      "id": "filters-outside-search",
+      "keys": ["filters"],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "ページ直下に `filters` を書く",
+        "en": "Putting `filters` directly on the page"
+      },
+      "why": {
+        "ja": "検索条件は `search` の持ち物。ページ直下の `filters` は無い（ダッシュボードのカードの `filters` は「固定の絞り込み値」で別物）。",
+        "en": "Filters belong to `search`. There is no page-level `filters`; a dashboard card's `filters` is a different thing (fixed filter values)."
+      },
+      "fix": {
+        "ja": "`search.filters` に入れる。",
+        "en": "Nest it under `search.filters`."
+      },
+      "bad": [
+        "page:",
+        "  type: search",
+        "  id: order_search",
+        "  title: 受注照会",
+        "  repository: orderRepository",
+        "  filters:",
+        "    - { field: status, label: 状態 }"
+      ],
+      "good": [
+        "page:",
+        "  type: search",
+        "  id: order_search",
+        "  title: 受注照会",
+        "  repository: orderRepository",
+        "  search:",
+        "    filters:",
+        "      - { field: status, label: 状態 }"
+      ]
+    },
+    {
+      "id": "form-on-page-without-form",
+      "keys": ["form"],
+      "pageKinds": ["search", "wizard", "dashboard", "report"],
+      "wrong": {
+        "ja": "`search` / `wizard` / `dashboard` / `report` に `form` を書く",
+        "en": "Adding `form` to a `search` / `wizard` / `dashboard` / `report` page"
+      },
+      "why": {
+        "ja": "`form` を持つのは `crud` / `master` / `detail` / `form` だけ。`search` は読み取り専用、`wizard` は `form` ではなく `steps`、`dashboard` と `report` は入力しない。",
+        "en": "Only `crud` / `master` / `detail` / `form` have a `form`. A `search` page is read-only, a `wizard` uses `steps` instead, and dashboards and reports do not take input."
+      },
+      "fix": {
+        "ja": "入力もさせたいなら `crud`（または `master`）にする。照会と入力を分けたいなら `search` ページ＋`detail`／`form` ページにして `navigate` で繋ぐ。",
+        "en": "Use `crud` (or `master`) if the page should also edit. To keep them apart, use a `search` page plus a `detail` / `form` page and link them with a `navigate` action."
+      },
+      "bad": [
+        "page:",
+        "  type: search",
+        "  id: order_search",
+        "  title: 受注照会",
+        "  repository: orderRepository",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - { field: orderNo, label: 受注番号 }"
+      ],
+      "good": [
+        "page:",
+        "  type: crud",
+        "  id: order_master",
+        "  title: 受注保守",
+        "  repository: orderRepository",
+        "  table:",
+        "    columns:",
+        "      - { field: orderNo, label: 受注番号 }",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - { field: orderNo, label: 受注番号 }"
+      ]
+    },
+    {
+      "id": "table-on-page-without-table",
+      "keys": ["table"],
+      "pageKinds": ["detail", "form", "wizard", "dashboard"],
+      "wrong": {
+        "ja": "`form` / `detail` / `wizard` / `dashboard` に `table` を書く",
+        "en": "Adding `table` to a `form` / `detail` / `wizard` / `dashboard` page"
+      },
+      "why": {
+        "ja": "`table`（一覧）を持つのは `crud` / `master` / `search` / `report` だけ。単票やステップ入力は1件を扱うので一覧を持たない。",
+        "en": "Only `crud` / `master` / `search` / `report` have a `table`. Single-record and stepped pages address one record, so they have no list."
+      },
+      "fix": {
+        "ja": "一覧も要るなら `crud` にする。1件の中に明細行を持ちたいだけなら、`field` を `type: subTable` にして `columns` を書く（親子・明細）。",
+        "en": "Use `crud` if you need a list. If you only want child rows inside one record, make a `field` of `type: subTable` and give it `columns` (master-detail)."
+      },
+      "bad": [
+        "page:",
+        "  type: form",
+        "  id: order_entry",
+        "  title: 受注入力",
+        "  repository: orderRepository",
+        "  table:",
+        "    columns:",
+        "      - { field: productName, label: 商品 }"
+      ],
+      "good": [
+        "page:",
+        "  type: form",
+        "  id: order_entry",
+        "  title: 受注入力",
+        "  repository: orderRepository",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - field: lines",
+        "            label: 明細",
+        "            type: subTable",
+        "            columns:",
+        "              - { field: productName, label: 商品 }",
+        "              - { field: qty, label: 数量, type: number }"
+      ]
+    },
+    {
+      "id": "steps-on-page-without-steps",
+      "keys": ["steps"],
+      "pageKinds": ["crud", "master", "search", "detail", "form", "dashboard", "report"],
+      "wrong": {
+        "ja": "`wizard` 以外に `steps` を書く",
+        "en": "Adding `steps` to a page that is not a `wizard`"
+      },
+      "why": {
+        "ja": "`steps` は `wizard` だけのキー。逆に `wizard` は `form` を持たない（`steps` が section の役をする）。",
+        "en": "`steps` belongs to `wizard` only. Conversely a `wizard` has no `form` — its steps play the part of sections."
+      },
+      "fix": {
+        "ja": "入力をステップに分けたいなら `type: wizard` にして、`steps` に `id` と `title` を持つステップを並べる。",
+        "en": "Use `type: wizard` and list steps, each with an `id` and a `title`."
+      },
+      "bad": [
+        "page:",
+        "  type: form",
+        "  id: customer_wizard",
+        "  title: 顧客登録",
+        "  repository: customerRepository",
+        "  steps:",
+        "    - { id: basic, title: 基本情報 }"
+      ],
+      "good": [
+        "page:",
+        "  type: wizard",
+        "  id: customer_wizard",
+        "  title: 顧客登録",
+        "  repository: customerRepository",
+        "  steps:",
+        "    - id: basic",
+        "      title: 基本情報",
+        "      fields:",
+        "        - { field: code, label: コード, required: true }"
+      ]
+    },
+    {
+      "id": "key-on-page-without-record",
+      "keys": ["key"],
+      "pageKinds": ["dashboard", "report"],
+      "wrong": {
+        "ja": "`dashboard` / `report` に `key` を書く",
+        "en": "Adding `key` to a `dashboard` or `report` page"
+      },
+      "why": {
+        "ja": "`key` は「1件のレコードの主キー項目名」。ダッシュボードと帳票は単一レコードを指さないので持たない。",
+        "en": "`key` names the primary-key field of one record. Dashboards and reports do not address a single record, so they have none."
+      },
+      "fix": {
+        "ja": "消す。行から1件を開きたいなら `navigate` アクションで `detail` ページへ渡す（`params: { id: \"$row.id\" }`）。",
+        "en": "Remove it. To open one record from a row, use a `navigate` action to a `detail` page with `params: { id: \"$row.id\" }`."
+      },
+      "bad": [
+        "page:",
+        "  type: report",
+        "  id: sales_report",
+        "  title: 売上明細表",
+        "  repository: orderRepository",
+        "  key: id",
+        "  table:",
+        "    columns:",
+        "      - { field: amount, label: 金額, type: number }"
+      ],
+      "good": [
+        "page:",
+        "  type: report",
+        "  id: sales_report",
+        "  title: 売上明細表",
+        "  repository: orderRepository",
+        "  table:",
+        "    columns:",
+        "      - { field: amount, label: 金額, type: number }"
+      ]
+    },
+    {
+      "id": "groupby-without-sort",
+      "keys": ["groupBy"],
+      "pageKinds": ["report"],
+      "wrong": {
+        "ja": "`groupBy` を書いて `sort` を書かない",
+        "en": "Using `groupBy` without `sort`"
+      },
+      "why": {
+        "ja": "グループはコントロールブレイク（並んで来た行を上から見て、キーが変わったら小計）。Framework は並べ替えないので、同じ顧客が離れて届くとグループが分裂して小計が何度も出る。",
+        "en": "Grouping is a control break: rows are read in order and a subtotal is emitted when the key changes. The framework never sorts, so if rows of the same group arrive apart, the group splits and its subtotal repeats."
+      },
+      "fix": {
+        "ja": "`report.sort` に「印刷したい並び」を書く（Repository に渡る）。並べ替えは DB の責務。",
+        "en": "Declare the print order in `report.sort` — it is passed to the repository. Sorting is the database's job."
+      },
+      "good": [
+        "page:",
+        "  type: report",
+        "  id: sales_report",
+        "  title: 売上明細表",
+        "  repository: orderRepository",
+        "  table:",
+        "    columns:",
+        "      - { field: customer, label: 顧客名 }",
+        "      - { field: amount, label: 金額, type: number, format: currency }",
+        "  report:",
+        "    sort: { field: customer }",
+        "    groupBy: [ { field: customer, label: 顧客 } ]",
+        "    totals: [ { field: amount, aggregate: sum } ]"
+      ]
+    },
+    {
+      "id": "metric-without-aggregate",
+      "keys": ["value"],
+      "pageKinds": ["dashboard"],
+      "wrong": {
+        "ja": "合計を出したいのに `value` を省く",
+        "en": "Omitting `value` when you want a sum"
+      },
+      "why": {
+        "ja": "`value` を省いた `metric` カードは **件数（count）**。金額を足したいのに件数が出る、という間違いは画面を見ても気づきにくい。",
+        "en": "A `metric` card without `value` counts rows. Getting a count where you wanted a sum is hard to notice by looking at the screen."
+      },
+      "fix": {
+        "ja": "`value: { aggregate: sum, field: amount }` のように、畳み込み方と対象項目を書く。`count` 以外は `field` が必須。",
+        "en": "Declare the reduction and the field, e.g. `value: { aggregate: sum, field: amount }`. Everything except `count` needs a `field`."
+      },
+      "good": [
+        "page:",
+        "  type: dashboard",
+        "  id: sales_dashboard",
+        "  title: 売上ダッシュボード",
+        "  repository: orderRepository",
+        "  items:",
+        "    - { id: orderCount, title: 受注件数 }",
+        "    - id: total",
+        "      title: 受注金額",
+        "      value: { aggregate: sum, field: amount }",
+        "      format: currency"
+      ]
+    },
+    {
+      "id": "between-in-condition",
+      "keys": ["visibleWhen", "enabledWhen"],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "条件（`visibleWhen` / `enabledWhen`）で `between` を使う",
+        "en": "Using `between` in a condition (`visibleWhen` / `enabledWhen`)"
+      },
+      "why": {
+        "ja": "`between` は検索条件専用の演算子。条件式が知っているのは `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty` だけで、知らない演算子は**黙って false**になる（＝項目が出てこない）。",
+        "en": "`between` is a search-only operator. A condition understands only `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty`; an unknown operator silently evaluates to false, so the field never appears."
+      },
+      "fix": {
+        "ja": "`all` で `gte` と `lte` を組み合わせる。",
+        "en": "Combine `gte` and `lte` with `all`."
+      },
+      "good": [
+        "page:",
+        "  type: form",
+        "  id: customer_form",
+        "  title: 顧客入力",
+        "  repository: customerRepository",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - { field: age, label: 年齢, type: number }",
+        "          - field: note",
+        "            label: 備考",
+        "            type: textarea",
+        "            visibleWhen:",
+        "              all:",
+        "                - { field: age, operator: gte, value: 20 }",
+        "                - { field: age, operator: lte, value: 65 }"
+      ]
+    },
+    {
+      "id": "rowactions-as-objects",
+      "keys": ["rowActions"],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "`rowActions` にオブジェクトを並べる",
+        "en": "Listing objects in `rowActions`"
+      },
+      "why": {
+        "ja": "`rowActions` は**アクション id の文字列配列**。中身（ラベル・型）は `actions` に1回書く。`edit` / `delete` は組み込みなので宣言も要らない。",
+        "en": "`rowActions` is an array of action *ids* as strings. The action itself is declared once in `actions`. `edit` and `delete` are built in and need no declaration."
+      },
+      "fix": {
+        "ja": "`rowActions: [edit, delete]` のように書く。独自の行アクションは `actions` に `{ id, type, label }` を足して、その `id` を並べる。",
+        "en": "Write `rowActions: [edit, delete]`. For your own row action, add `{ id, type, label }` to `actions` and list that `id`."
+      },
+      "good": [
+        "page:",
+        "  type: crud",
+        "  id: customer_master",
+        "  title: 顧客マスタ",
+        "  repository: customerRepository",
+        "  table:",
+        "    rowActions: [edit, delete, openDetail]",
+        "    columns:",
+        "      - { field: code, label: コード }",
+        "  actions:",
+        "    - { id: openDetail, type: navigate, label: 詳細, page: customer_detail,",
+        "        params: { id: \"$row.id\" } }"
+      ]
+    },
+    {
+      "id": "required-as-validator-only",
+      "keys": ["validators", "required"],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "`validators` に文字列を並べる（`validators: [required, email]`）",
+        "en": "Listing bare strings in `validators` (`validators: [required, email]`)"
+      },
+      "why": {
+        "ja": "`validators` の要素は `{ type, ...params }` のオブジェクト。文字列だけ書いても検証は増えない（`validators` の中は自由な入れ物なので strict でも落ちない＝気づけない）。",
+        "en": "Each entry in `validators` is an object `{ type, ...params }`. Bare strings add no validation, and because `validators` is a free-form container even strict parsing will not complain."
+      },
+      "fix": {
+        "ja": "`- { type: email }` の形で書く。必須は `required: true`（項目直下）でも `- { type: required }` でもよい。",
+        "en": "Write `- { type: email }`. For required you may use either `required: true` on the field or `- { type: required }`."
+      },
+      "good": [
+        "page:",
+        "  type: form",
+        "  id: customer_form",
+        "  title: 顧客入力",
+        "  repository: customerRepository",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - field: mail",
+        "            label: メール",
+        "            required: true",
+        "            validators:",
+        "              - { type: email }",
+        "              - { type: maxLength, value: 120 }"
+      ]
+    }
+  ]
+}

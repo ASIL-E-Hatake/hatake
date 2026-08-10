@@ -80,13 +80,14 @@ describe("MCP プロトコル", () => {
     expect(unknown?.error?.message).toContain("tools/list");
   });
 
-  it("tools/list は5つの道具を、説明と入力スキーマ付きで出す", () => {
+  it("tools/list は道具を、説明と入力スキーマ付きで出す", () => {
     const list = (send("tools/list")?.result as any).tools;
     expect(list.map((t: any) => t.name)).toEqual([
       "hatake_reference",
       "hatake_examples",
       "hatake_validate",
       "hatake_new_page",
+      "hatake_pitfalls",
       "hatake_api_shape",
     ]);
     for (const tool of list) {
@@ -190,6 +191,24 @@ page:
     ]);
   });
 
+  it("構造の間違いには直し方まで添える", () => {
+    // 「知らないキー form」だけでは直せない。どの種別なら書けるのかを渡す。
+    const report = json(
+      call("hatake_validate", {
+        source: [
+          "page:",
+          "  type: search",
+          "  id: order_search",
+          "  title: 受注照会",
+          "  repository: orderRepository",
+          "  form: { sections: [] }",
+        ].join("\n"),
+      }).text,
+    );
+    expect(report.ok).toBe(false);
+    expect(report.hints.join("\n")).toContain("crud");
+  });
+
   it("app 定義も受ける", () => {
     const app = readFileSync("../spec/examples/sales_app.yaml", "utf8");
     expect(json(call("hatake_validate", { source: app }).text).kind).toContain(
@@ -222,6 +241,27 @@ describe("hatake_new_page", () => {
       title: "X",
     });
     expect(bad.isError).toBe(true);
+  });
+});
+
+describe("hatake_pitfalls", () => {
+  it("キー名で引くと、なぜ駄目か・正しい書き方が返る", () => {
+    const found = json(call("hatake_pitfalls", { query: "groupBy" }).text);
+    expect(found).toHaveLength(1);
+    expect(found[0].id).toBe("groupby-without-sort");
+    expect(found[0].why).toContain("コントロールブレイク");
+    expect(found[0].good).toContain("sort:");
+  });
+
+  it("英語でも出せる", () => {
+    const found = json(
+      call("hatake_pitfalls", { query: "groupBy", lang: "en" }).text,
+    );
+    expect(found[0].why).toContain("control break");
+  });
+
+  it("全件でも引ける", () => {
+    expect(json(call("hatake_pitfalls").text).length).toBeGreaterThan(8);
   });
 });
 

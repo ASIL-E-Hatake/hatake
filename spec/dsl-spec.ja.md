@@ -807,6 +807,21 @@ npx hatake reference --page-kind report   # その画面で使える所だけに
 `closed: false` のノードは「中身が自由な入れ物」（`config` / `validators` / `computed` /
 `visibleWhen`）。strict パースもここは見ない。
 
+## よくある間違い
+
+綴り間違いは strict パースが拾うが、**書ける場所を間違える**（ページ直下に `columns`、
+`form` の直下に `fields`）と、**落ちないけど意図と違う**（`groupBy` に `sort` が無い、
+`metric` が件数になる）は名前を見ても直せない。対照表を
+[`pitfalls.json`](pitfalls.json) に置いてある。
+
+```bash
+npx hatake pitfalls groupBy        # 間違い → なぜ駄目か → 正しい書き方（--lang en で英語）
+npx hatake validate page.yaml      # 未知キーからも自動で引いてヒントを出す
+```
+
+各項目は「間違いの例は本当に strict で落ち、正しい例は本当に通る」ことを CI で確認して
+いる（＝この表は嘘をつけない）。日本語と英語の両方が入っている。
+
 ## 完全な例
 
 用途から引く索引は [`examples/README.md`](examples/README.md)（機械可読版は

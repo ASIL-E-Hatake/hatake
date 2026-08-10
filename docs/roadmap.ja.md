@@ -38,6 +38,8 @@
 | 出力 | CSV 出力 | ✅ 3言語 | `action` の型 `export`。**その画面の列と行から CSV を組む**（一覧・帳票で同じ書き方。ロールで見えない列は出さない）。RFC 4180 の引用、BOM / CRLF / 区切り / `raw`（format を通さない）を `config` で選べる。一覧の export は**表示中のページではなく検索結果全体**を出す（`limit` まで読み直す）。**ファイルを書くのは対象外**＝`HatakeScope(exportSink:)` に渡された出力先の責務（文字コード変換も同じ理由でそちら） |
 | | 帳票の印刷（PDF/プリンタ） | ⏳ | `ReportDocument` を PDF/印刷に落とす opt-in アダプタ。`printing` / `pdf` 依存を本体に入れないため別パッケージ |
 | 定義の品質 | `hatake` CLI | ✅ TS 同梱 | `npx hatake validate <file...>`（strict 既定・`--json`・**問題があれば終了コード 1** なので CI に置ける）、`new <kind>`（8種別の雛形。全部が strict とスキーマを通ることを CI で確認）、`dto` / `schema` / `openapi` / `types --out`（ネイティブ型のファイル出力の入口）。生成系は常に strict で読む（書き間違いを API に焼き付けないため）。→ [使い方](../typescript/README.md#cli) |
+| 定義の品質 | よくある間違いの対照表 | ✅ spec + TS | [`spec/pitfalls.json`](../spec/pitfalls.json)＝「間違い → なぜ駄目か → 正しい書き方」（ja/en）。strict が拾えない2種類を埋める＝**構造の間違い**（ページ直下に `columns`／`form` 直下に `fields`／`search` に `form`／`report` に `key`）と**落ちないけど意図と違う**（`groupBy` に `sort` 無し／`metric` が件数／条件で `between`／`rowActions` にオブジェクト）。`hatake validate` と `hatake_validate` は**未知キーからこの表を引いてヒントを出す**（名前だけでは構造の間違いは直せないので）。`hatake pitfalls` / `hatake_pitfalls` でも引ける。**各項目は「間違いの例が本当に落ち、正しい例が本当に通り、自分の例で自分が引ける」ことを CI で確認**＝表が嘘をつけない |
+| 定義の品質 | 英語版の AI 資料 | ✅ | [`docs/api-cheatsheet.md`](api-cheatsheet.md)＋[`llms-en.txt`](../llms-en.txt)。日本語のみの文書には `(ja)` を明記（読めると思って読ませて確度を落とさないため）。**両版の組み込み一覧はスキーマと機械的に突き合わせる**（`<!-- vocab: <ノード>.<キー> -->` の印を付けた一覧をテストが拾って比較。過去に日本語版のフィルタ演算子から `notEquals`、アクション型から `navigate`/`export` が落ちていたのを検出） |
 | 定義の品質 | MCP サーバ（`hatake-mcp`） | ✅ TS 同梱 | AI エージェントに「仕様の引き当て・例の取得・検証・雛形・API の形」を道具として渡す（`hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_api_shape`）。**依存ゼロで手書き**（stdio の JSON-RPC 2.0 で必要なのは `initialize` / `tools/list` / `tools/call` だけ。CLI と同じ判断で `@modelcontextprotocol/sdk` を入れない）。プロトコル `mcp.ts` と道具 `mcpTools.ts` を分離。名乗るバージョンは `2025-06-18` / `2025-03-26` / `2024-11-05`。**知らない道具はプロトコルのエラー、道具の中の失敗は結果として返す**（後者はモデルに読ませて直させる）。`initialize` の `instructions` に使う順番（例を探す→雛形→キーを引く→検証）を載せてある。CI で stdio の往復を実際に流す。→ [使い方](guide/mcp.ja.md) |
 | 定義の品質 | 機械可読な DSL リファレンス | ✅ spec + TS | [`spec/reference.json`](../spec/reference.json)＝**全キーの索引**（ノードごとのキー・型・既定値・取れる値・親ノード・**どのページ種別で有効か**＋`keyIndex`）。JSON Schema から機械生成（`npx hatake reference [name] [--page-kind k]`、`--out` でファイル）。`values` は `open: true` なら「組み込みの一覧」＝Registry で足せる、`false` なら enum。**嘘をつかないことが唯一の価値**なので、①strict のキー表と1キーずつ一致 ②組み込みの一覧が実装のレジストリと一致（フォーマッタ/コンバータ/バリデータ/集約/計算/フィールド型/列型/アクション型/演算子）③説明文の「Built-ins:」と機械可読な値が一致 ④条件の演算子は conformance に実例がある ⑤コミット済み生成物が最新、を CI で確認 |
 | 定義の品質 | 例のカタログ | ✅ spec + TS | [`spec/examples/index.json`](../spec/examples/index.json)＋[人向けの表](../spec/examples/README.md) で「やりたいこと → 例」を引ける（`npx hatake examples <query>`）。ディレクトリと1対1・`kind`/`title` が定義と一致・`keys` が実在して実際に使われている・全例が strict を通る、を CI で確認 |
@@ -58,6 +60,7 @@
 | CLI（`hatake validate` / `new` / 生成 / `reference` / `examples`） | — | — | — | ✅（`npx hatake`） |
 | MCP サーバ（`hatake-mcp`） | — | — | — | ✅（依存ゼロ・道具5つ） |
 | 機械可読な DSL リファレンス（`reference.json`） | ✅ | 対象外(※3) | 対象外(※3) | ✅（生成元） |
+| よくある間違いの対照表（`pitfalls.json`） | ✅ | 対象外(※3) | 対象外(※3) | ✅（検証・引き当て） |
 | YAML↔JSON↔DSL 収束テスト | — | ✅ | ✅(YAML↔JSON) | ✅(YAML↔JSON) |
 | FormValidator（サーバ側） | ✅ | ✅ | ✅ | ✅ |
 | Validator 拡張レジストリ | ✅ | ✅ | ✅ | ✅ |
@@ -128,7 +131,8 @@
 - **共通**: 各 subdir から個別 publish。バージョンは当面各エディション自走 or 揃える方針を決める。pub.dev/npm は README を表示するが Maven 系は出ないので、Java は GitHub / Pages のドキュメントに誘導。
 
 ### ドキュメント配布 TODO
-- **英語版チートシート**（`docs/api-cheatsheet.md`）: 日本企業向け優先のため後回し。需要が出たら追加（構成は日本語版 `api-cheatsheet.ja.md` を踏襲）。
+- **英語版チートシート**（[`docs/api-cheatsheet.md`](api-cheatsheet.md)）＋ **[`llms-en.txt`](../llms-en.txt)** … ✅ 追加済み。組み込みの名前一覧は日本語版と同じ印（`<!-- vocab: … -->`）でスキーマと突き合わせているので、片方だけ古くなることはない。日本語のみの文書へのリンクには `(ja)` を明記。
+- 英語版のガイド（`guide/*.md`）・レシピは未。需要が出てから（チートシート＋機械可読ファイルで定義は書けるので優先度は低い）。
 - 各パッケージ公開時、README にチートシート要約 or リンクを入れる。
 
 ## これから（優先度つき）
@@ -173,13 +177,21 @@
 >   → [DSL 仕様](../spec/dsl-spec.ja.md#機械可読なリファレンス) / [例のカタログ](../spec/examples/README.md)
 > - **MCP サーバ** … ✅ TS 版に同梱（`hatake-mcp`）。エージェントが**手元に仕様を持たずに**
 >   引ける（`hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` /
->   `hatake_api_shape`）。依存ゼロで手書き。`initialize` の `instructions` で使う順番も渡す。
->   → [MCP ガイド](guide/mcp.ja.md)
+>   `hatake_pitfalls` / `hatake_api_shape`）。依存ゼロで手書き。`initialize` の
+>   `instructions` で使う順番も渡す。→ [MCP ガイド](guide/mcp.ja.md)
+> - **よくある間違いの対照表**＋**英語版の最小資料** … ✅
+>   [`spec/pitfalls.json`](../spec/pitfalls.json)（間違い → 正しい書き方。`validate` が
+>   未知キーから自動で引く）と [`docs/api-cheatsheet.md`](api-cheatsheet.md) /
+>   [`llms-en.txt`](../llms-en.txt)。どちらも「spec 由来で二重管理しない」＝対照表は
+>   例が本当に落ちる/通ることを、チートシートは組み込み一覧がスキーマと一致することを
+>   CI で確認。
+
+**この節は空になった**（AI First の具体項目は一通り入った）。次に足すなら下の候補から。
 
 | 項目 | 内容 | なぜ | 規模感 |
 |---|---|---|---|
-| **英語版の最小資料** | `docs/api-cheatsheet.md`（英語）＋ llms.txt の英語版（[ドキュメント配布 TODO](#ドキュメント配布-todo) と同じ話） | 英語で学習したモデルに効く。日本語のみだと確度が落ちる | 小 |
-| リファレンスの次段 | 「よくある間違い → 正しい書き方」の対照表を機械可読で持つ（`pagesize` のような綴り違いは strict が拾うが、**構造の間違い**＝`search` に `form` を書く、`report` に `key` を書く、は今は落ちるだけ） | AI が転ぶのは綴りより構造。直し方まで機械で出せると往復が減る | 小〜中 |
+| 構造の間違いの静的検出 | 対照表の「落ちない類」（`groupBy` に `sort` 無し・`metric` が件数）を**定義を見て警告する**（`hatake validate --warn`）。今は人/AI が対照表を読む前提 | 落ちない間違いは誰も気づけない。警告なら気づける | 中 |
+| 定義の diff / 影響範囲 | 定義を変えたときに「API の形がどう変わるか」を出す（`DtoSpec` の差分） | 後方互換を壊したかどうかを機械で言える | 中 |
 
 ### 3. 人が使うための道具・資料
 

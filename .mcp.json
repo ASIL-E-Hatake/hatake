@@ -1,0 +1,9 @@
+{
+  "$comment": "このリポジトリを開いた人が hatake MCP サーバをすぐ試せるようにするための設定。事前に `cd typescript && npm install && npm run build` が必要。ローカルに Node を入れていない場合は docs/guide/mcp.ja.md の Docker 版を使う。",
+  "mcpServers": {
+    "hatake": {
+      "command": "node",
+      "args": ["typescript/dist/mcp.js"]
+    }
+  }
+}

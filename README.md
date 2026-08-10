@@ -110,7 +110,7 @@ npx hatake examples 帳票                    # やりたいことから近い�
 
 書き間違いは場所と直し方まで出る（`page.table.columns[0]: 知らないキー "witdh"（width の間違い？）`）。生成（`dto` / `schema` / `openapi` / `types`）も同じ CLI から。→ [使い方](typescript/README.md#cli)
 
-仕様を「読ませる」のではなく「引かせる」ための機械可読な資料も置いてある: [DSL リファレンス](spec/reference.json)（全キーの索引。JSON Schema から生成）と [例のカタログ](spec/examples/README.md)（やりたいこと → 例）。
+仕様を「読ませる」のではなく「引かせる」ための機械可読な資料も置いてある: [DSL リファレンス](spec/reference.json)（全キーの索引。JSON Schema から生成）、[例のカタログ](spec/examples/README.md)（やりたいこと → 例）、[よくある間違い](spec/pitfalls.json)（間違い → 正しい書き方。ja/en）。英語で渡すなら [llms-en.txt](llms-en.txt) と [AI cheat sheet](docs/api-cheatsheet.md)。
 
 ### MCP サーバ（`hatake-mcp`）
 AI エージェント（Claude Code / Claude Desktop 等）に繋ぐと、**仕様を読ませずに引かせられる**。道具は「キーを引く / 近い例を取る / 検証する / 雛形を出す / API の形を出す」の5つ。依存ゼロで手書き。

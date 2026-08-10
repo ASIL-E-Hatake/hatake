@@ -10,7 +10,19 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { CATALOG_PATH, findSpecDir, SCHEMA_FILE } from "./specDir.js";
+import {
+  CATALOG_PATH,
+  findSpecDir,
+  PITFALLS_FILE,
+  SCHEMA_FILE,
+} from "./specDir.js";
+import {
+  describePitfall,
+  filterPitfalls,
+  type PitfallCatalog,
+  pitfallsForKeys,
+  snippet,
+} from "./pitfalls.js";
 import { deriveDto } from "./dto.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import {
@@ -78,6 +90,9 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
 
   hatake examples [query] [--json]
       例のカタログ（やりたいこと → 例）。query で絞り込む。
+
+  hatake pitfalls [query] [--json] [--lang ja|en]
+      よくある間違い → 正しい書き方の対照表。validate も未知キーからこれを引く。
 
   hatake --help / --version
 
@@ -170,6 +185,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return reference(positional, flags, io);
       case "examples":
         return examples(positional, flags, io);
+      case "pitfalls":
+        return pitfalls(positional, flags, io);
       default:
         io.err(`知らないコマンド "${command}" です。--help を見てください。`);
         return 1;
@@ -201,16 +218,46 @@ function validate(files: string[], flags: Args["flags"], io: CliIo): number {
       }
     } catch (error) {
       failures++;
+      const hints = hintsFor(error, flags, io);
       if (asJson) {
-        results.push({ file, ok: false, ...problem(error) });
+        results.push({
+          file,
+          ok: false,
+          ...problem(error),
+          ...(hints.length > 0 ? { hints } : {}),
+        });
       } else {
         io.out(`FAIL ${file}`);
         for (const line of problemLines(error)) io.err(`     ${line}`);
+        for (const hint of hints) io.err(`     ヒント: ${hint}`);
       }
     }
   }
   if (asJson) io.out(JSON.stringify(results, null, 2));
   return failures === 0 ? 0 : 1;
+}
+
+/**
+ * 未知キーに当てはまる「よくある間違い」の助言。
+ *
+ * 助言は**あれば出すもの**なので、spec/ が無くても読めなくても検証自体は成立させる
+ * （`hatake validate` は spec/ を持たない場所でも動く必要がある）。
+ */
+function hintsFor(error: unknown, flags: Args["flags"], io: CliIo): string[] {
+  if (!(error instanceof UnknownKeysError)) return [];
+  const dir = findSpecDir(str(flags, "spec"));
+  if (dir === null) return [];
+  try {
+    const catalog = JSON.parse(
+      io.readFile(join(dir, PITFALLS_FILE)),
+    ) as PitfallCatalog;
+    return pitfallsForKeys(
+      catalog,
+      error.keys.map((k) => k.key),
+    ).map((pitfall) => describePitfall(pitfall));
+  } catch {
+    return [];
+  }
 }
 
 /** `page:` と `app:` のどちらでも受ける（どちらを渡されるか AI は迷うので）。 */
@@ -389,6 +436,42 @@ function examples(
     io.out(`${example.file}  [${example.kind}]  ${example.title}`);
     io.out(`    ${example.task}`);
     io.out(`    キー: ${example.keys.join(" ")}`);
+  }
+  return 0;
+}
+
+/** よくある間違いの対照表。書く前に眺めるのと、落ちた後に引くのの両方に使う。 */
+function pitfalls(
+  positional: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const catalog = readSpec(flags, io, PITFALLS_FILE);
+  if (catalog === null) return 1;
+  const query = positional[0];
+  const found = filterPitfalls(catalog as PitfallCatalog, query);
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(found, null, 2));
+    return found.length === 0 ? 1 : 0;
+  }
+  if (found.length === 0) {
+    io.err(`"${query}" に近い間違いは載っていません。`);
+    return 1;
+  }
+  const lang = str(flags, "lang") === "en" ? "en" : "ja";
+  // 見出しも訳す（英語で引いたのに見出しだけ日本語だと読みにくい）。
+  const label =
+    lang === "en"
+      ? { why: "Why", fix: "Fix", good: "Correct form" }
+      : { why: "なぜ", fix: "直し方", good: "正しい書き方" };
+  for (const pitfall of found) {
+    io.out(`✗ ${pitfall.wrong[lang]}`);
+    io.out(`  ${label.why}: ${pitfall.why[lang]}`);
+    io.out(`  ${label.fix}: ${pitfall.fix[lang]}`);
+    io.out(`  ${label.good}:`);
+    for (const line of snippet(pitfall.good).split("\n")) io.out(`    ${line}`);
+    io.out("");
   }
   return 0;
 }

@@ -359,6 +359,61 @@ describe("hatake examples", () => {
   });
 });
 
+describe("hatake pitfalls", () => {
+  const pitfallFiles = {
+    ...specFiles,
+    [join(SPEC, "pitfalls.json")]: readFileSync("../spec/pitfalls.json", "utf8"),
+  };
+
+  it("なぜ駄目か・直し方・正しい書き方を出す", () => {
+    const io = fakeIo(pitfallFiles);
+    expect(runCli(["pitfalls", "groupBy", "--spec", SPEC], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("コントロールブレイク");
+    expect(out).toContain("sort: { field: customer }");
+  });
+
+  it("--lang en で英語、--json で機械可読", () => {
+    const en = fakeIo(pitfallFiles);
+    runCli(["pitfalls", "groupBy", "--lang", "en", "--spec", SPEC], en);
+    expect(en.stdout.join("\n")).toContain("control break");
+    // 見出しまで英語にする（英語で引いたのに「なぜ:」が出ると読みにくい）。
+    expect(en.stdout.join("\n")).toContain("Why:");
+    expect(en.stdout.join("\n")).not.toContain("なぜ:");
+
+    const asJson = fakeIo(pitfallFiles);
+    runCli(["pitfalls", "--json", "--spec", SPEC], asJson);
+    expect(JSON.parse(asJson.stdout.join("\n")).length).toBeGreaterThan(8);
+  });
+
+  it("validate は未知キーからヒントを引く", () => {
+    // 「知らないキー form」だけでは直せないので、書ける種別まで教える。
+    const io = fakeIo({
+      ...pitfallFiles,
+      "page.yaml": `
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  form: { sections: [] }
+`,
+    });
+    expect(runCli(["validate", "page.yaml", "--spec", SPEC], io)).toBe(1);
+    const err = io.stderr.join("\n");
+    expect(err).toContain('知らないキー "form"');
+    expect(err).toContain("ヒント:");
+    expect(err).toContain("crud");
+  });
+
+  it("spec/ が無くても検証そのものは成立する（ヒントは出ないだけ）", () => {
+    const io = fakeIo({ "page.yaml": WITH_TYPOS });
+    expect(runCli(["validate", "page.yaml", "--spec", "nope"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("width の間違い？");
+    expect(io.stderr.join("\n")).not.toContain("ヒント:");
+  });
+});
+
 describe("hatake --help", () => {
   it("lists the commands", () => {
     const io = fakeIo();
@@ -373,6 +428,7 @@ describe("hatake --help", () => {
       "new",
       "reference",
       "examples",
+      "pitfalls",
     ]) {
       expect(help).toContain(`hatake ${command}`);
     }

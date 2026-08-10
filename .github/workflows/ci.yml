@@ -68,6 +68,8 @@ jobs:
           node dist/cli.js reference rowsPerPage
           node dist/cli.js reference --page-kind report --out /tmp/report-reference.json
           node dist/cli.js examples 帳票
+          node dist/cli.js pitfalls groupBy
+          node dist/cli.js pitfalls groupBy --lang en
           # コミットしてある生成物と一致すること（vitest でも見ているが、CLI 経由でも）。
           node dist/cli.js reference --out /tmp/reference.json
           # --strip-trailing-cr: Windows のチェックアウトでも同じ判定にするため。

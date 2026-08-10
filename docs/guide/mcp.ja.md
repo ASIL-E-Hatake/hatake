@@ -24,13 +24,9 @@ git clone https://github.com/ASIL-E-Hatake/hatake.git
 cd hatake/typescript && npm install && npm run build
 ```
 
-### Claude Code
+### `.mcp.json` を置く（CLI 不要・一番簡単）
 
-```bash
-claude mcp add hatake -- node /path/to/hatake/typescript/dist/mcp.js
-```
-
-プロジェクトで共有するなら `.mcp.json` に書きます。
+このリポジトリには [`.mcp.json`](../../.mcp.json) が入っているので、**clone してビルドすればそのまま**使えます。自分のプロジェクトに入れるなら、プロジェクト直下に置くだけ。
 
 ```json
 {
@@ -42,6 +38,37 @@ claude mcp add hatake -- node /path/to/hatake/typescript/dist/mcp.js
   }
 }
 ```
+
+`claude` コマンド（Claude Code の CLI）が入っているなら、ファイルを書かずにこれでも登録できます。
+
+```bash
+claude mcp add hatake -- node /path/to/hatake/typescript/dist/mcp.js
+```
+
+### ローカルに Node を入れていないとき（Docker で動かす）
+
+サーバは Node のプロセスなので、普通はローカルの Node が要ります。**入れたくない場合は Docker で包めます**（stdio なのでコンテナ越しでもそのまま動く）。
+
+```json
+{
+  "mcpServers": {
+    "hatake": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "-v", "C:\\path\\to\\hatake:/app",
+        "-w", "/app",
+        "node:22-slim",
+        "node", "typescript/dist/mcp.js"
+      ]
+    }
+  }
+}
+```
+
+* `-i` は必須（stdin を開いたままにする）。`-t` は付けない
+* マウント元はフルパスで書く（`.mcp.json` ではシェル展開が効かない）
+* `dist/` はホスト側でビルドしておく（`docker run … npm run build` でよい）
 
 ### Claude Desktop
 
@@ -63,6 +90,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 | `hatake_examples` | 定義を書き始める前に近い例を探す。`file` を渡すと YAML 全文 | `query`（日本語でよい）、`file` |
 | `hatake_validate` | 書いたら/直したら必ず通す。知らないキーを全部まとめて指摘＋綴りの提案 | `source`（中身そのもの）、`strict`（既定 true） |
 | `hatake_new_page` | 新しい画面の出発点。そのまま検証を通る雛形が出る | `kind`、`id`、`title`、`repository` |
+| `hatake_pitfalls` | よくある間違い → なぜ駄目か → 正しい書き方。書く前に眺める / 落ちて直せないとき | `query`、`lang`（ja/en） |
 | `hatake_api_shape` | 同じ定義から API の形（DtoSpec / JSON Schema / OpenAPI 3.1 / TS / Java） | `source`、`format`、`basePath`、`package` |
 
 `initialize` の応答に**使う順番**（instructions）を載せてあるので、対応クライアントなら勝手にこの順で動きます。
@@ -72,8 +100,11 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 2. 新規なら hatake_new_page で雛形
 3. 迷ったキーだけ hatake_reference で引く
 4. 書けたら必ず hatake_validate
-5. バックエンドの形が要るなら hatake_api_shape
+5. 直し方が分からない / 書く前に落とし穴を知りたいときは hatake_pitfalls
+6. バックエンドの形が要るなら hatake_api_shape
 ```
+
+`hatake_validate` は**未知キーから落とし穴を引いて、直し方を添えます**。「知らないキー `form`」だけでは直せないので、「`form` を持つのは crud/master/detail/form。照会と入力を分けるなら search＋detail を navigate で繋ぐ」まで返します。
 
 ## 実装について
 

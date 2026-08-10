@@ -1,0 +1,56 @@
+# hatake
+
+> A definition-first framework: business screens (Flutter) and backend API logic (Java / TypeScript — validation, query building, API shapes) are generated from one business definition (YAML / JSON / a builder DSL). An AI does not read the implementation (`src/`); it only needs "how to write a definition" and "the names it may use". All editions converge on the same definition, and their outputs are pinned to identical results by a conformance suite.
+
+This file is the English entry point for LLMs. The project's primary language is Japanese, so a few documents are Japanese-only — those are marked (ja).
+
+## Start here (enough to write a definition)
+- [AI cheat sheet](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/api-cheatsheet.md): page kinds, field types, formatters / converters / validators, plus minimal examples
+- [DSL reference (machine readable)](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/reference.json): **an index of every key** — per node the keys, types, defaults, allowed values, which page kinds they are valid on, plus `keyIndex` (key name → where it may be written). Generated from the JSON Schema, so it cannot drift from the spec. Look things up here instead of reading the specification
+- [Example catalog (machine readable)](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/index.json): task → example. Copying the nearest example and editing it is the fastest correct route
+- [Common mistakes (machine readable)](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/pitfalls.json): wrong form → why → correct form. Every entry is verified by CI (the wrong one really fails, the correct one really passes)
+- [DSL specification](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/dsl-spec.md): the full spec, as prose
+- [JSON Schema](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json): for machine validation (put `# yaml-language-server: $schema=<this URL>` at the top of a YAML file to get completion and validation in an editor)
+
+## MCP server (the fastest route for a capable client)
+Connecting it lets an agent look things up on demand instead of being handed documents. Tools: `hatake_reference` (look up a key), `hatake_examples` (fetch the nearest example), `hatake_validate` (validate, with fixes for structural mistakes), `hatake_new_page` (scaffold), `hatake_pitfalls` (common mistakes), `hatake_api_shape` (the API shapes a definition implies). Tool descriptions are in Japanese.
+- Setup: [MCP guide](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/mcp.ja.md) (ja) — `claude mcp add hatake -- node <repo>/typescript/dist/mcp.js`
+
+## Validate what you wrote (CLI)
+Never leave a definition unverified: unknown keys are dropped silently by default, so a typo in an optional key does nothing at all. Exit code is 1 when something is wrong.
+```bash
+npx hatake validate page.yaml     # strict by default. --json for machine-readable output
+npx hatake reference <key>        # type, default, allowed values, where it may be written
+npx hatake examples <task>        # find the nearest example
+npx hatake pitfalls <key>         # common mistake → correct form
+npx hatake new <kind> --id <id> --title <title>   # crud/search/master/detail/form/wizard/dashboard/report
+```
+An unknown key reports its location and the fix: `page.table.columns[0]: unknown key "witdh" (did you mean width?)`
+
+## Examples (copy them; all are schema-checked in CI)
+- [Customers / crud](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_master.yaml)
+- [Product search / search](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/product_search.yaml)
+- [Customer detail / detail](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_detail.yaml)
+- [Customer form / form](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_form.yaml)
+- [Registration / wizard (stepped input)](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_wizard.yaml)
+- [Order entry / master-detail (subTable)](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/order_entry.yaml)
+- [Sales dashboard / dashboard](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/sales_dashboard.yaml)
+- [Sales detail / report (groups, subtotals, CSV)](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/sales_report.yaml)
+- [Sales admin / app (menu + 8 pages + navigation)](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/sales_app.yaml)
+- Index by task: [examples/README](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/README.md) (ja)
+
+## Rules that matter when generating code
+- Write a **definition**, not Flutter widgets or API request/response classes. If a definition already exists, do not write UI code.
+- When something is missing from the DSL, propose extending the DSL or a plugin — do not modify the framework.
+- The framework holds no business logic, workflow engine, database, ORM, authentication or authorization. `roles` gates display only.
+- Repositories are implemented by the user; the framework knows only the interface.
+- Definitions must stay backward compatible (`dsl_version`).
+
+## Deeper (only when needed; Japanese)
+- [Concepts and responsibilities](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/concepts.ja.md) (ja)
+- [Choosing a page kind](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/page-types.ja.md) (ja)
+- [Validation](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/validation.ja.md) (ja)
+- [Backend integration](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/backend.ja.md) (ja)
+- [Plugin guide](https://github.com/ASIL-E-Hatake/hatake/raw/main/flutter/docs/plugins.ja.md) (ja)
+- [Roadmap](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/roadmap.ja.md) (ja)
+- Japanese entry point: [llms.txt](https://github.com/ASIL-E-Hatake/hatake/raw/main/llms.txt)

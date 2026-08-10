@@ -13,6 +13,9 @@ export const SCHEMA_FILE = "hatake-page.schema.json";
 /** 例のカタログ（`spec/examples/index.json`）への相対パス。 */
 export const CATALOG_PATH = ["examples", "index.json"];
 
+/** よくある間違いの対照表。 */
+export const PITFALLS_FILE = "pitfalls.json";
+
 /**
  * spec/ ディレクトリを返す。[explicit] があればそこだけを見る。
  * 無ければ実行時のカレント → このモジュールの位置、の順に上へ辿る。
