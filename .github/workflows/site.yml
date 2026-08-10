@@ -1,0 +1,99 @@
+name: Site
+
+# 公式サイト（GitHub Pages）の検証と公開。
+#
+# デモアプリは https://<user>.github.io/hatake/demo/ に入る（以前はここがルートだった）。
+# ルートはサイトになる。Pages のデプロイはサイト全体の置き換えなので、サイトとデモは
+# 必ずこの1つのワークフローで一緒に上げる（2本に分けると後から走った方が相手を消す）。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  # フレームワークだけを触った PR でも必ず走らせる。paths フィルタを付けると
+  # 「機能を足したのにサイトに載っていない」を検出できなくなる。
+  check:
+    name: 台帳とスキーマの整合
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: 台帳のカバレッジ（依存パッケージ不要）
+        working-directory: site
+        run: node tools/check-coverage.mjs
+      - name: フレームワークとサイトの越境
+        if: github.event_name == 'pull_request'
+        working-directory: site
+        run: node tools/check-boundary.mjs "origin/${{ github.base_ref }}"
+      - name: 未執筆の一覧（落とさない。引き継ぎの可視化）
+        working-directory: site
+        run: node tools/site-todo.mjs
+
+  build:
+    name: サイトとデモをビルド
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: サイト
+        working-directory: site
+        run: |
+          npm install
+          npm run build
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: デモ（サイトの /demo/ に入れる）
+        working-directory: flutter/packages/hatake_example
+        run: |
+          flutter pub get
+          flutter build web --release --base-href /hatake/demo/
+      - name: 成果物をまとめる
+        run: |
+          set -e
+          out=site/docs/.vitepress/dist
+          mkdir -p "$out/demo"
+          cp -r flutter/packages/hatake_example/build/web/. "$out/demo/"
+          # 既存の URL を壊さないための確認。llms.txt などはこの位置で参照されている。
+          for f in llms.txt llms-en.txt api-cheatsheet.ja.md dsl-spec.ja.md hatake-page.schema.json; do
+            test -f "$out/$f" || { echo "素材が消えている: $f"; exit 1; }
+          done
+          test -f "$out/demo/index.html"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/docs/.vitepress/dist
+
+  deploy:
+    name: 公開
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - id: deployment
+        uses: actions/deploy-pages@v4

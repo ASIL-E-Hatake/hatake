@@ -14,6 +14,20 @@ Framework の中心は DSL と Business Definition である。
 
 ---
 
+# 作業境界（フレームワーク / サイト）
+
+サイト（GitHub Pages）とフレームワークは別のチャットで進める。契約は docs/site/protocol.ja.md（正はこの1枚）。
+
+・フレームワーク側は site/ を編集しない。サイトへの申し送りは docs/site/topics.json への追記1件だけ。
+
+・サイト側は flutter/ java/ typescript/ spec/ と docs/site/topics.json を編集しない。
+
+・同じ PR で両方を変更すると CI が落ちる。
+
+役割を明示して始めるときは /framework または /site を使う。
+
+---
+
 # Vision
 
 業務システムはどの会社でも似ている。
