@@ -2,9 +2,10 @@
 //
 // 手で書くのは散文（prose/）だけ。キー表・例・よくある間違い・デモへのリンクは
 // ここで毎回作り直す。ページを手で編集させない＝生成物とスキーマがズレない。
-import { copyFileSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { assets } from './lib/assets.mjs';
+import { demoLink, demoUrl } from './lib/site.mjs';
 import {
   byKeyOverlap,
   demoAppSource,
@@ -114,12 +115,12 @@ function pitfallList(keys) {
   ].join('\n');
 }
 
-function demoLink(topic) {
+function demoSection(topic) {
   if (!topic.demo) return '';
   // 画面名はデモ定義から引く。id をそのまま出すと読み手に伝わらない。
   const title = new RegExp(`id:\\s*${topic.demo}\\b[\\s\\S]{0,200}?title:\\s*(.+)`).exec(demoAppSource);
   const name = title ? title[1].trim() : topic.demo;
-  return ['## 実物を見る', '', `デモアプリの「${name}」がこれを使っている。 [デモを開く](/demo/)`].join('\n');
+  return ['## 実物を見る', '', `デモアプリの「${name}」がこれを使っている。 ${demoLink('デモを開く')}`].join('\n');
 }
 
 function page(topic) {
@@ -150,7 +151,7 @@ function page(topic) {
     '',
     pitfallList(topic.keys ?? []),
     '',
-    demoLink(topic),
+    demoSection(topic),
     '',
   ]
     .filter((part, i, all) => !(part === '' && all[i - 1] === ''))
@@ -176,6 +177,41 @@ function sectionIndex(section) {
     '',
   ].join('\n');
 }
+
+// --- デモへのリンクが SPA ルータに乗っ取られる書き方をしていないか ---
+// 乗っ取られると 404 になるが、ビルドも リンク検査も通ってしまう（デモはページではないので
+// 検査対象外）。押すまで気づけないので、書いた時点で落とす。
+function checkDemoLinks() {
+  const bad = [];
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name);
+      if (statSync(path).isDirectory()) {
+        if (!['dsl', 'partials', 'public', '.vitepress'].includes(name)) walk(path);
+        continue;
+      }
+      if (!name.endsWith('.md')) continue;
+      const lines = readFileSync(path, 'utf8').split('\n');
+      lines.forEach((line, i) => {
+        const where = `${relative(siteRoot, path).replaceAll('\\', '/')}:${i + 1}`;
+        if (line.includes('](/demo/')) {
+          bad.push(`${where}: Markdown のリンクではデモに飛べない → ${demoLink('リンク文字')} と書く`);
+        }
+        if (/link:\s*\/demo\//.test(line) && !/target/.test(lines.slice(i, i + 3).join(' '))) {
+          bad.push(`${where}: デモへの link には target: _self を付ける`);
+        }
+      });
+    }
+  };
+  walk(join(siteRoot, 'prose'));
+  walk(docsDir);
+  if (bad.length > 0) {
+    console.error(`デモへのリンクの書き方が違う（押すと 404 になる。理由は tools/lib/site.mjs）:\n`);
+    for (const b of bad) console.error(`  - ${b}`);
+    process.exit(1);
+  }
+}
+checkDemoLinks();
 
 // --- 生成物を作り直す（毎回まるごと捨てる。手で足したファイルを残さない） ---
 for (const section of topics.sections) {

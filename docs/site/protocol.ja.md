@@ -102,6 +102,9 @@ claude "/site <トピックid> の解説を書く"
 | 迷いどころ（似ているキーとの違い） | デモへのリンク |
 
 - `#`（H1）は書かない。タイトルは台帳の `title` から入る。見出しは `##` から。
+- **デモへのリンクは `[デモ](/demo/)` と書かない。** デモは VitePress のページではないので、
+  SPA ルータに乗っ取られて 404 になる。`<a href="/hatake/demo/" target="_self">…</a>` と書く
+  （理由は `site/tools/lib/site.mjs`。間違えた書き方は `npm run gen` が落とす）。
 - キー表を手で書くと、スキーマが変わったときにズレる。**絶対に書かない**。
 - `site/docs/dsl/` `site/docs/partials/` `site/docs/public/` は生成物。手で編集しない
   （`node tools/generate.mjs` が毎回まるごと作り直すので、書いても消える）。

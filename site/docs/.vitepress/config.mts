@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitepress';
 import { staticMarkdownLinks } from '../../tools/lib/assets.mjs';
+import { base } from '../../tools/lib/site.mjs';
 
 // サイドバーと目次は台帳から作る。トピックを1件足したらナビにも自動で出る。
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -15,8 +16,7 @@ export default defineConfig({
   lang: 'ja-JP',
   title: 'hatake',
   description: '業務画面を「定義」で作る宣言型フレームワーク。UI コードを書かない。',
-  // プロジェクトページ（https://<user>.github.io/hatake/）で配信する。
-  base: '/hatake/',
+  base,
   cleanUrls: true,
   // public/ には AI 向けに複製した素材（仕様書・チートシート）が入る。そのまま配信するのが
   // 目的なので、ページとしてコンパイルさせない（外部リンクを含むためリンク検査に引っかかる）。

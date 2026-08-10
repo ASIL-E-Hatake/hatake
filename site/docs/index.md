@@ -12,7 +12,10 @@ hero:
       link: /dsl/
     - theme: alt
       text: 動くデモを見る
+      # デモは VitePress のページではないので、target が無いと SPA ルータに乗っ取られて
+      # 404 になる。理由は tools/lib/site.mjs。
       link: /demo/
+      target: _self
     - theme: alt
       text: AI に書かせる
       link: /ai
@@ -44,7 +47,7 @@ npx hatake validate dept_master.yaml
 | やりたいこと | 行き先 |
 | --- | --- |
 | 「こうしたい」から書き方を引く | [機能別の書き方](/dsl/) |
-| 動いている画面を触る | [デモ](/demo/) |
+| 動いている画面を触る | <a href="/hatake/demo/" target="_self">デモ</a> |
 | 自分の AI に hatake を書かせる | [AI に書かせる](/ai) |
 | 導入手順・仕組み・写経用サンプル | [GitHub のドキュメント](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/index.ja.md) |
 
