@@ -18,8 +18,10 @@ permissions:
   pages: write
   id-token: write
 
+# 同じブランチを続けて push したら、古い検証・ビルドは捨てる。
+# デプロイだけは別扱い（下の deploy ジョブ側で pages グループに入れる）。
 concurrency:
-  group: pages
+  group: site-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -85,9 +87,15 @@ jobs:
 
   deploy:
     name: 公開
+    # PR では公開しない。Pages のデプロイはサイト全体の置き換えなので、
+    # レビュー前の内容が本番 URL に出てしまう。main への push だけで公開する。
     if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    # 公開は同時に走らせず、走り出したものは途中で止めない（中途半端な状態で公開しないため）。
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
