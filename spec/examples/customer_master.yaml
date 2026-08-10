@@ -75,3 +75,15 @@ page:
   actions:
     - { id: create, type: create, label: 新規登録 }
     - { id: export, type: plugin, plugin: csvExport, label: CSV出力 }
+    # 削除は宣言しなくても必ず確認する。宣言するのは「業務の言葉で聞きたい」ときと、
+    # 終わったあとに何かしたいとき（confirm / onSuccess）。
+    - id: delete
+      type: delete
+      label: 削除
+      confirm:
+        title: 顧客の削除
+        message: この顧客を削除すると、受注履歴から辿れなくなります。よろしいですか？
+        okLabel: 削除する
+        danger: true
+      onSuccess:
+        message: 顧客を削除しました

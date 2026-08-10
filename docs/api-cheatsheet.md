@@ -87,6 +87,30 @@ app:
 
 Navigation is an action: `{ type: navigate, page: <id>, params: { id: "$row.id" } }` (`$row.id` / `$record.id` interpolate the current row / record).
 
+### Look and feel (`app.theme`)
+
+Brand colour, brightness, density and shape, declared once. The renderer maps it to its own equivalent (a `ThemeData` for Material). **Nothing about behaviour changes.**
+
+```yaml
+app:
+  theme:
+    primaryColor: "#1B5E20"     # #RRGGBB / #AARRGGBB — the palette is derived from it
+    secondaryColor: "#FF6F00"   # derived from the primary when omitted
+    brightness: light           # follow the device with `system`
+    density: compact            # business screens usually want compact
+    fontFamily: Noto Sans JP
+    radius: 8                   # corner radius in logical pixels
+    config: { logo: assets/logo.png }   # renderer specific extras
+```
+
+A colour that is not a colour, or an unknown `density`, is a **parse error** — silently ignoring it would mean "I wrote it and nothing happened". In Flutter, `materialThemeOf(app.theme!)` gives you the `ThemeData` if you want to apply it to your own `MaterialApp`.
+
+<!-- vocab: theme.brightness -->
+`light` `dark` `system`
+
+<!-- vocab: theme.density -->
+`comfortable` `standard` `compact`
+
 ## Dashboard
 
 The framework **never issues an aggregate query**. The repository returns rows; the definition says how to fold them.
@@ -196,6 +220,31 @@ Note the difference: `between` / `startsWith` / `endsWith` are search-only, whil
 `create` `edit` `delete` `navigate` `plugin` `export`
 
 `table.rowActions` is an array of action **ids** (strings), not objects. `edit` and `delete` are built in.
+
+### Confirming and reacting (`confirm` / `onSuccess`)
+
+"Ask before deleting" and "go back to the list once saved" are declared, not coded.
+
+```yaml
+actions:
+  - id: delete
+    type: delete
+    label: Delete
+    confirm:                      # asked before it runs
+      title: Delete customer
+      message: Orders will no longer link back to this customer. Continue?
+      okLabel: Delete
+      cancelLabel: Keep
+      danger: true                # style the confirming button as destructive
+    onSuccess:                    # only when it actually succeeded
+      message: Customer deleted
+      page: customer_list         # optional: move here afterwards
+      params: { id: "$row.id" }
+```
+
+* **A `delete` asks even without `confirm`** — it cannot be undone. Declaring `confirm` replaces the wording.
+* `onSuccess` never runs on failure (unregistered handler, no export sink, a repository that refuses).
+* `create` / `edit` only open a form, so `onSuccess` does not apply to them — whether the save worked is not known at that point.
 
 ### Aggregates (`value.aggregate`, `chart.aggregate`, report `totals`)
 <!-- vocab: dashboardValue.aggregate -->

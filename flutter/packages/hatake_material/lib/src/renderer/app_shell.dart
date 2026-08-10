@@ -16,6 +16,23 @@ class _MaterialAppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = app.theme;
+    if (theme != null) {
+      // Applied here rather than at the caller's MaterialApp so that `app.theme`
+      // works with nothing but the definition. Everything below — menu, pages,
+      // dialogs opened from them — inherits it.
+      return Theme(
+        data: materialThemeOf(
+          theme,
+          platformBrightness: MediaQuery.platformBrightnessOf(context),
+        ),
+        child: Builder(builder: _buildShell),
+      );
+    }
+    return _buildShell(context);
+  }
+
+  Widget _buildShell(BuildContext context) {
     final roles = HatakeScope.of(context).roles;
     return ListenableBuilder(
       listenable: router,

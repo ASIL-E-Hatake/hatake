@@ -78,6 +78,30 @@ app:
 
 画面遷移は `navigate` アクション：`{ type: navigate, page: <id>, params: { id: "$row.id" } }`（`$row.id`/`$record.id` で現在行・レコードを埋める）。
 
+### 見た目（`app.theme`）
+
+会社の色・明暗・密度・角丸を定義で差す。Renderer が自分の流儀に落とす（Material なら `ThemeData`）。**挙動は何も変わらない**。
+
+```yaml
+app:
+  theme:
+    primaryColor: "#1B5E20"     # #RRGGBB / #AARRGGBB。ここから配色を作る
+    secondaryColor: "#FF6F00"   # 省略時は primary から導出
+    brightness: light           # light / dark / system（端末設定に従う）
+    density: compact            # comfortable / standard / compact（業務画面は compact）
+    fontFamily: Noto Sans JP
+    radius: 8                   # 角丸（論理ピクセル）
+    config: { logo: assets/logo.png }   # Renderer 固有の追加
+```
+
+色が色でない・`density` が知らない値なら**パース時にエラー**（黙って無視されると「書いたのに変わらない」になるので）。Flutter で自分の `MaterialApp` に渡したいときは `materialThemeOf(app.theme!)`。
+
+<!-- vocab: theme.brightness -->
+`light` `dark` `system`
+
+<!-- vocab: theme.density -->
+`comfortable` `standard` `compact`
+
 ## ページ種別（`page.type`）
 
 | type | 何 | フォーム |
@@ -243,6 +267,31 @@ actions:
 `create` `edit` `delete` `navigate` `plugin` `export`
 
 `plugin` は `plugin: <key>` で登録ハンドラにディスパッチ。`navigate` は `page` と `params`、`export` は CSV 出力（上記）。`table.rowActions` は**アクション id の文字列配列**（`edit` / `delete` は組み込みなので宣言不要）。
+
+### 確認と後処理（`confirm` / `onSuccess`）
+
+「削除前に確認」「保存できたら一覧に戻る」を Dart で書かない。
+
+```yaml
+actions:
+  - id: delete
+    type: delete
+    label: 削除
+    confirm:                      # 実行前に聞く
+      title: 顧客の削除
+      message: 受注履歴から辿れなくなります。よろしいですか？
+      okLabel: 削除する           # 省略時は「削除」（danger なら）/「OK」
+      cancelLabel: やめる         # 省略時は「キャンセル」
+      danger: true                # 実行ボタンを破壊的な見た目に
+    onSuccess:                    # 成功したときだけ動く
+      message: 顧客を削除しました
+      page: customer_list         # 省略可。遷移先
+      params: { id: "$row.id" }
+```
+
+* **`delete` は宣言が無くても必ず確認する**（取り消せないので）。`confirm` を書くと文言が置き換わる
+* `onSuccess` は**失敗したら動かない**（ハンドラ未登録・出力先未登録・Repository が拒否＝全部失敗）
+* `create` / `edit` はフォームを開くだけなので `onSuccess` は動かない（保存できたかはその時点で分からない）
 
 ## Dart から直接使う場合（実装は読まなくていい）
 

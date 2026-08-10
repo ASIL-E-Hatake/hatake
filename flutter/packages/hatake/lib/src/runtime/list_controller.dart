@@ -79,8 +79,17 @@ class ListController extends ChangeNotifier {
 
   /// Deletes the record identified by [key] and reloads, stepping back a page
   /// if the current one becomes empty.
+  ///
+  /// A repository that refuses ("still referenced by an order") is reported the
+  /// same way a failed load is, rather than thrown into the void: the caller can
+  /// see it in [error], and nothing downstream may claim the delete succeeded.
   Future<void> deleteRecord(Object key) async {
-    await repository.delete(key);
+    try {
+      await repository.delete(key);
+    } catch (error) {
+      setError(error);
+      return;
+    }
     if (_items.length <= 1 && _query.page > 0) {
       _query = _query.copyWith(page: _query.page - 1);
     }

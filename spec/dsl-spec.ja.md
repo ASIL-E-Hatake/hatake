@@ -123,8 +123,33 @@ app:
 | `id` | string | ✅ | — | アプリ識別子。 |
 | `title` | string | ✅ | — | アプリタイトル（シェル表示）。 |
 | `home` | string | | 先頭の葉 | 初期ルート（[menu-item](#menu-item) の id）。 |
+| `theme` | [theme](#theme) | | — | 見た目（色・明暗・密度・角丸）。省略時は Renderer の既定。 |
 | `menu` | [menu-item](#menu-item)[] | | `[]` | ナビゲーションメニュー（葉とグループの木）。 |
 | `pages` | page[] | | `[]` | このアプリを構成するページ定義。id で `menu` / `navigate` から参照。 |
+
+### theme
+
+会社の色・明暗・密度・角丸。**Renderer 非依存**で、Material なら `ThemeData` に、別の Renderer なら別の形に落ちる。**挙動は何も変わらない**（見た目だけ）。Renderer 固有の追加は DSL を増やさず `config` に入れる。
+
+```yaml
+app:
+  theme:
+    primaryColor: "#1B5E20"
+    density: compact
+    radius: 8
+```
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `primaryColor` | string | — | ブランド色（`#RRGGBB` / `#AARRGGBB`）。ここを種に配色を作る。 |
+| `secondaryColor` | string | primary から導出 | アクセント色。 |
+| `brightness` | `light` / `dark` / `system` | `light` | `system` は端末設定に従う。 |
+| `density` | `comfortable` / `standard` / `compact` | `standard` | 行の高さと余白。業務画面は `compact` が使いやすい。 |
+| `fontFamily` | string | — | フォント名（Renderer が解決）。 |
+| `radius` | number（≥0） | — | 角丸（論理ピクセル）。 |
+| `config` | map | `{}` | Renderer 固有の追加設定。 |
+
+色が色でない・`brightness` / `density` が知らない値のときは**パース時にエラー**にする。黙って無視すると「書いたのに変わらない」になり、定義を疑う手掛かりが無くなるので。
 
 ### menu-item
 
@@ -715,8 +740,36 @@ computed: { op: sum, fields: [price, tax] }
 | `type` | string | ✅ | アクション型（[アクション型](#アクション型)参照）。 |
 | `label` | string | ✅ | ボタンラベル。 |
 | `plugin` | string | | Plugin キー（`type: plugin` のとき）。 |
+| `confirm` | [confirm](#confirm) | | 実行前に確認する。 |
+| `onSuccess` | [onSuccess](#onsuccess) | | 成功したあとの後処理。 |
 | `config` | map | | 追加設定。 |
 | `roles` | string[] | | 実行を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
+
+### confirm
+
+実行前に聞く。「削除前に確認」を毎回コードで書かないための宣言。
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `title` | string | | Renderer の既定 | ダイアログの見出し。 |
+| `message` | string | ✅ | — | 聞く内容。 |
+| `okLabel` | string | | Renderer の既定 | 実行するボタンのラベル。 |
+| `cancelLabel` | string | | Renderer の既定 | 何もしないボタンのラベル。 |
+| `danger` | bool | | `false` | 実行ボタンを破壊的な見た目にする。 |
+
+**`type: delete` は `confirm` が無くても必ず確認する**（取り消せない操作なので、既定を安全側に置く）。`confirm` を書いた場合は文言がそれに置き換わる。
+
+### onSuccess
+
+**成功したときだけ**動く。失敗時に動かないことがこの宣言の意味（呼び出しの後ろにコードを書くのとは違う）。
+
+| キー | 型 | 説明 |
+|---|---|---|
+| `message` | string | 短く出す通知（Renderer 次第。Material ならスナックバー）。 |
+| `page` | string | 遷移先のページ id。 |
+| `params` | map | `page` に渡すルート値（`$row.id` / `$record.id` を埋め込み）。 |
+
+「失敗」はハンドラ未登録・出力先未登録・Repository が拒否など。`create` / `edit` は**フォームを開くだけ**なので `onSuccess` は動かない（保存できたかはその時点で分からない）。
 
 ## option
 

@@ -7,3 +7,4 @@ library;
 export 'package:hatake/hatake.dart';
 
 export 'src/material_renderer.dart';
+export 'src/material_theme.dart';

@@ -28,10 +28,10 @@
 | | Converter（全半角…） | ✅ 3言語（P0+P1） | 同上。**入力 normalize は送信時に自動適用**（Flutter は `CrudController`/`FormController` が `FormNormalizer` を通す／TS `normalizeRecord`／Java `FormNormalizer`） |
 | | Validator 拡充 | 🚧 一部 | 郵便番号済。法人番号/相関等は未 |
 | 表現 | i18n / メッセージ多言語化 | ✅ 3言語 | `MessageResolver`（ロケール＋開いたキー、既定 ja）でバリデータ固定文言を差し替え可能に。`ValidatorRegistry(custom, messages)` で注入。Dart/TS/Java で同名・同挙動 |
-| | テーマ / スタイル定義 | ⏳ | Renderer 側 |
+| | テーマ / スタイル定義 | ✅ Flutter（3言語パーサ） | `app.theme`＝色・明暗・密度・角丸・フォント（`primaryColor` / `secondaryColor` / `brightness` / `density` / `fontFamily` / `radius` / `config`）。**Renderer 非依存で挙動は変えない**（Material は `materialThemeOf()` で `ThemeData` に落とす。`HatakeApp` が自動適用するので Dart は1行も要らない）。`brightness: system` は端末設定に従う。`density` は VisualDensity と一覧の行高・入力欄の詰め方に効く（業務画面は `compact`）。**色が色でない／未知の `density` はパース時にエラー**（黙って無視されると「書いたのに変わらない」になるので）。Java は strict のキーだけ（描画しないので値は持たない） |
 | | 条件表示・活性制御 | ✅ 3言語 | `visibleWhen` / `enabledWhen`（宣言的条件。`evaluateCondition` を3言語＋conformance、Flutter はフォームで表示/活性を反応制御） |
 | | 計算項目・派生値 | ✅ 3言語 | `computed`（`ComputedRegistry`：concat/sum/subtract/product ＋登録式。3言語＋conformance、Flutter は読み取り表示で自動再計算） |
-| 動き | Action / Workflow フック | 🚧 | plugin action 済。遷移や確認ダイアログ定義は未 |
+| 動き | Action / Workflow フック | ✅ Flutter（3言語パーサ） | `action.confirm`（`title` / `message` / `okLabel` / `cancelLabel` / `danger`）と `action.onSuccess`（`message` / `page` / `params`）。**`delete` は宣言が無くても必ず確認する**（取り消せないので既定を安全側に。`confirm` を書くと文言が置き換わる）。`onSuccess` は**成功したときだけ**動く（ハンドラ未登録・出力先未登録・Repository が拒否＝全部失敗扱い）。`create` / `edit` はフォームを開くだけなので `onSuccess` の対象外。実装は**全ページ種別で1本のディスパッチャ**に寄せた（`_runPageAction`。crud/search/detail が個別に持っていた3重実装を解消）。ワークフロー（多段承認等）は対象外 |
 | | Navigation 定義 | ✅ Flutter（3言語パーサ） | `AppDefinition`（menu＋pages）＋`HatakeApp`／`HatakeRouter`（依存ゼロ）。`navigate` で一覧→詳細（`$row.id`）、グループ見出し・レスポンシブ（サイドバー/Drawer）・ブレッドクラム対応。メニューは roles 連動。TS/Java はナビ情報＋ページ目録をパース。タブ/Web URL 同期は次段 |
 | | 権限・可視制御 | ✅ 3言語 | `roles` を field/column/action に付与＋`isAllowed`（3言語＋conformance）。Flutter は現在ユーザのロール（`HatakeScope(roles:)`）で表示出し分け。※UI 表示制御のみ、認証・認可は対象外 |
 | ページ種別 | ReportPage（帳票） | ✅ Flutter（3言語検証） | `type: report` ＝ 一覧の印刷版。明細の列は `table` から取り、`report` が紙の構造（`paper` / `rowsPerPage` / `sort` / `groupBy` / `totals`）を足す。**グループはコントロールブレイク**（並び順に見てキーが変わったら小計→見出し。並べ替えは Repository の責務なので `sort` で指定する）。集約は Dashboard と同じ `AggregateRegistry`。定義＋行 → 中立な `ReportDocument`（`QuerySpec` と同じ立ち位置）までを Framework が作り、Renderer は用紙比率でプレビューを描く（**明細行は search / master の一覧と同じ見た目**＝同じ文字サイズ・行高・区切り線・`column.width` 準拠。グループ見出しは行全幅）。**PDF 化・プリンタ送出は対象外**（opt-in アダプタ） |
@@ -74,6 +74,8 @@
 | 条件表示 `evaluateCondition` / 計算 `computed` | ✅ | ✅ | ✅ | ✅ |
 | 権限 `roles` / `isAllowed` | ✅ | ✅ | ✅ | ✅(field) |
 | ナビ定義（app/menu）パーサ | ✅ | ✅（＋描画） | ✅（目録 PageRef） | ✅（目録 PageRef） |
+| テーマ定義 `app.theme` | ✅ | ✅（＋適用） | strict のみ | ✅（モデル＋検証） |
+| アクションのフック `confirm` / `onSuccess` | ✅ | ✅（＋実行） | strict のみ | ✅（モデル＋検証） |
 | 親子・明細 `subTable`（モデル＋パーサ） | ✅ | ✅（＋描画） | ✅ | ✅ |
 | 明細行のサーバ側検証（`lines[0].qty`） | ✅ | ✅ | ✅ | ✅ |
 | 明細の `source`（子Repository方式） | ✅ | ✅（＋描画・ページング） | ✅（検証で当該項目を飛ばす） | ✅（同左） |
@@ -146,8 +148,8 @@
 | 項目 | 内容 | なぜ | 規模感 |
 |---|---|---|---|
 | **帳票の印刷アダプタ** | `ReportDocument` → PDF / プリンタ（`printing` / `pdf` 依存を本体に入れず opt-in パッケージで）。ページ番号・ヘッダフッタの体裁もここ | 帳票は「画面で見る」で終わらない。プレビューまでは入ったので残りは出力経路 | 中 |
-| テーマ / スタイル定義 | 色・余白・密度を定義から差せるようにする（`app.theme`）。Renderer 側の関心 | 「会社の色にしたい」は最初に来る要望 | 中 |
-| Action / Workflow フック | 確認ダイアログ・実行前後フック・成功時の遷移を宣言で書く（今は `plugin` に逃がしている） | 「削除前に確認」を毎回 Dart で書かせたくない | 中 |
+| テーマの次段 | ページ単位の上書き・複数テーマの切替（ダーク手動切替）・`config` で Renderer 固有の見た目を足す口の整備 | 1枚目が出た後の要望。今は app 単位＋`config` 止まり | 小〜中 |
+| アクションの次段 | `onError`（失敗時の文言差し替え）・実行前フック（入力を足す小さなダイアログ）・**複数レコードへの一括実行** | `confirm` / `onSuccess` で足りない所から。一括操作は業務でよく来る | 中 |
 | Validator 拡充 | 法人番号・マイナンバー・相関チェック（項目間の比較） | 相関チェックが無いと結局コードに落ちる | 小〜中 |
 | Web URL 同期 / タブ | ルートと URL の相互反映、複数タブ | Web で配ると必ず「URL 共有できないの？」になる | 中 |
 | ダッシュボードの次段 | 期間プリセット（今月/今年度）・カードからのドリルダウン・自動更新 | 1枚目が出た後の実運用要望 | 小〜中 |

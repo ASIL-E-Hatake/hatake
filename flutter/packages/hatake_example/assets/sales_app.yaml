@@ -6,6 +6,11 @@ app:
   id: sales_admin
   title: 販売管理
   home: dashboard
+  # 見た目も定義から。畠なので緑。業務画面は密度が高い方が使いやすい。
+  theme:
+    primaryColor: "#1B5E20"
+    density: compact
+    radius: 8
   menu:
     - { id: dashboard, label: ダッシュボード, icon: insights, page: sales_dashboard }
     - { id: customers, label: 顧客, icon: people, page: customer_master }
@@ -96,6 +101,17 @@ app:
       actions:
         - { id: create, type: create, label: 新規登録 }
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: customer_master } }
+        # 削除は宣言が無くても確認するが、業務の言葉で聞きたいので宣言する。
+        - id: delete
+          type: delete
+          label: 削除
+          confirm:
+            title: 顧客の削除
+            message: この顧客を削除すると、受注履歴から辿れなくなります。よろしいですか？
+            okLabel: 削除する
+            danger: true
+          onSuccess:
+            message: 顧客を削除しました
 
     - type: master
       id: product_master

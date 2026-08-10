@@ -18,7 +18,16 @@ import 'unknown_key.dart';
 /// そして「このノードに何が書けるか」を引く道具（リファレンス生成）に使うため。
 const Map<String, Set<String>> strictKeyTable = {
   '': {'dsl_version', 'page', 'app'},
-  'app': {'id', 'title', 'home', 'menu', 'pages'},
+  'app': {'id', 'title', 'home', 'theme', 'menu', 'pages'},
+  'theme': {
+    'primaryColor',
+    'secondaryColor',
+    'brightness',
+    'density',
+    'fontFamily',
+    'radius',
+    'config',
+  },
   'menuItem': {'id', 'label', 'group', 'icon', 'page', 'items', 'roles'},
   'crudPage': {
     'type', 'id', 'title', 'repository', 'key', 'search', 'table', 'form',
@@ -71,8 +80,11 @@ const Map<String, Set<String>> strictKeyTable = {
   },
   'subTableSource': {'repository', 'parentKey', 'key', 'pageSize'},
   'action': {
-    'id', 'type', 'label', 'plugin', 'page', 'params', 'config', 'roles',
+    'id', 'type', 'label', 'plugin', 'page', 'params', 'confirm', 'onSuccess',
+    'config', 'roles',
   },
+  'confirm': {'title', 'message', 'okLabel', 'cancelLabel', 'danger'},
+  'actionSuccess': {'message', 'page', 'params'},
   'option': {'value', 'label'},
   'layout': {'columns'},
 };
@@ -81,8 +93,9 @@ const Map<String, Set<String>> strictKeyTable = {
 /// ここに無いキーは葉、または**自由な入れ物**なので中を見ない。
 const Map<String, Map<String, String>> _children = {
   '': {'app': 'app', 'page': 'page'},
-  'app': {'menu': 'menuItem[]', 'pages': 'page[]'},
+  'app': {'theme': 'theme', 'menu': 'menuItem[]', 'pages': 'page[]'},
   'menuItem': {'items': 'menuItem[]'},
+  'action': {'confirm': 'confirm', 'onSuccess': 'actionSuccess'},
   'crudPage': {
     'search': 'search', 'table': 'table', 'form': 'form', 'actions': 'action[]',
   },

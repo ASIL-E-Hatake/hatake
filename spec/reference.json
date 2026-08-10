@@ -163,6 +163,24 @@
           ]
         },
         {
+          "key": "confirm",
+          "type": "object",
+          "required": false,
+          "description": "Ask before running the action. A `delete` action asks even without this; declaring it replaces the wording.",
+          "nodes": [
+            "confirm"
+          ]
+        },
+        {
+          "key": "onSuccess",
+          "type": "object",
+          "required": false,
+          "description": "What happens once the action succeeded. Nothing here runs when it fails.",
+          "nodes": [
+            "actionSuccess"
+          ]
+        },
+        {
           "key": "config",
           "type": "object",
           "required": false,
@@ -198,6 +216,64 @@
       ],
       "keys": []
     },
+    "actionSuccess": {
+      "description": "What happens once the action succeeded. Nothing here runs when it fails.",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "action"
+      ],
+      "keys": [
+        {
+          "key": "message",
+          "type": "string",
+          "required": false,
+          "description": "Shown briefly to the user (a snackbar / toast)."
+        },
+        {
+          "key": "page",
+          "type": "string",
+          "required": false,
+          "description": "Page id to move to afterwards."
+        },
+        {
+          "key": "params",
+          "type": "object",
+          "required": false,
+          "description": "Route params for `page`; $row.id / $record.id template against the current row/record.",
+          "nodes": [
+            "actionSuccess.params"
+          ]
+        }
+      ]
+    },
+    "actionSuccess.params": {
+      "description": "Route params for `page`; $row.id / $record.id template against the current row/record.",
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "actionSuccess"
+      ],
+      "keys": []
+    },
     "app": {
       "description": "An application: pages composed by a navigation menu.",
       "closed": true,
@@ -221,6 +297,15 @@
           "type": "string",
           "required": false,
           "description": "Initial route: a menu item id (or page id)."
+        },
+        {
+          "key": "theme",
+          "type": "object",
+          "required": false,
+          "description": "How the app looks: brand colour, brightness, density and shape. Renderer-neutral — a Material renderer maps this to a ThemeData, another renderer to its own equivalent. Nothing here changes behaviour.",
+          "nodes": [
+            "theme"
+          ]
         },
         {
           "key": "menu",
@@ -476,9 +561,60 @@
         "action",
         "column",
         "field",
-        "filter"
+        "filter",
+        "theme"
       ],
       "keys": []
+    },
+    "confirm": {
+      "description": "Ask before running the action. A `delete` action asks even without this; declaring it replaces the wording.",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "action"
+      ],
+      "keys": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": false,
+          "description": "Dialog heading. Omit for the renderer's default."
+        },
+        {
+          "key": "message",
+          "type": "string",
+          "required": true,
+          "description": "The question itself."
+        },
+        {
+          "key": "okLabel",
+          "type": "string",
+          "required": false,
+          "description": "Label of the button that runs the action."
+        },
+        {
+          "key": "cancelLabel",
+          "type": "string",
+          "required": false,
+          "description": "Label of the button that does nothing."
+        },
+        {
+          "key": "danger",
+          "type": "boolean",
+          "required": false,
+          "description": "Style the confirming button as destructive. A `delete` action is destructive by default.",
+          "default": false
+        }
+      ]
     },
     "crudPage": {
       "description": "A create/read/update/delete page over a single repository.",
@@ -2065,6 +2201,80 @@
         }
       ]
     },
+    "theme": {
+      "description": "How the app looks: brand colour, brightness, density and shape. Renderer-neutral — a Material renderer maps this to a ThemeData, another renderer to its own equivalent. Nothing here changes behaviour.",
+      "closed": true,
+      "pageKinds": [],
+      "parents": [
+        "app"
+      ],
+      "keys": [
+        {
+          "key": "primaryColor",
+          "type": "string",
+          "required": false,
+          "description": "Brand colour as #RRGGBB (or #AARRGGBB). Used as the seed the rest of the palette is derived from.",
+          "values": [
+            "#1B5E20"
+          ],
+          "open": true
+        },
+        {
+          "key": "secondaryColor",
+          "type": "string",
+          "required": false,
+          "description": "Accent colour as #RRGGBB. Derived from the primary colour when omitted."
+        },
+        {
+          "key": "brightness",
+          "type": "string",
+          "required": false,
+          "description": "`system` follows the device setting.",
+          "default": "light",
+          "values": [
+            "light",
+            "dark",
+            "system"
+          ],
+          "open": false
+        },
+        {
+          "key": "density",
+          "type": "string",
+          "required": false,
+          "description": "Row height and padding. Business screens usually want `compact`.",
+          "default": "standard",
+          "values": [
+            "comfortable",
+            "standard",
+            "compact"
+          ],
+          "open": false
+        },
+        {
+          "key": "fontFamily",
+          "type": "string",
+          "required": false,
+          "description": "Font family name; the renderer resolves it."
+        },
+        {
+          "key": "radius",
+          "type": "number",
+          "required": false,
+          "description": "Corner radius in logical pixels.",
+          "minimum": 0
+        },
+        {
+          "key": "config",
+          "type": "object",
+          "required": false,
+          "description": "Plugin / renderer specific extra settings.",
+          "nodes": [
+            "config"
+          ]
+        }
+      ]
+    },
     "validator": {
       "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters (e.g. maxLength uses 'value').",
       "closed": false,
@@ -2244,6 +2454,12 @@
       "dashboardItem.sort",
       "report.sort"
     ],
+    "brightness": [
+      "theme"
+    ],
+    "cancelLabel": [
+      "confirm"
+    ],
     "chart": [
       "dashboardItem"
     ],
@@ -2261,10 +2477,20 @@
       "column",
       "dashboardItem",
       "field",
-      "filter"
+      "filter",
+      "theme"
+    ],
+    "confirm": [
+      "action"
+    ],
+    "danger": [
+      "confirm"
     ],
     "defaultValue": [
       "field"
+    ],
+    "density": [
+      "theme"
     ],
     "description": [
       "wizardStep"
@@ -2298,6 +2524,9 @@
     "filters": [
       "dashboardItem",
       "search"
+    ],
+    "fontFamily": [
+      "theme"
     ],
     "form": [
       "crudPage",
@@ -2379,6 +2608,8 @@
       "app"
     ],
     "message": [
+      "actionSuccess",
+      "confirm",
       "validator"
     ],
     "normalize": [
@@ -2386,6 +2617,12 @@
     ],
     "not": [
       "condition"
+    ],
+    "okLabel": [
+      "confirm"
+    ],
+    "onSuccess": [
+      "action"
     ],
     "op": [
       "field.computed"
@@ -2403,6 +2640,7 @@
     ],
     "page": [
       "action",
+      "actionSuccess",
       "document",
       "menuItem"
     ],
@@ -2423,13 +2661,20 @@
       "report"
     ],
     "params": [
-      "action"
+      "action",
+      "actionSuccess"
     ],
     "parentKey": [
       "subTableSource"
     ],
     "plugin": [
       "action"
+    ],
+    "primaryColor": [
+      "theme"
+    ],
+    "radius": [
+      "theme"
     ],
     "readOnly": [
       "field"
@@ -2472,6 +2717,9 @@
       "reportPage",
       "searchPage"
     ],
+    "secondaryColor": [
+      "theme"
+    ],
     "sections": [
       "form"
     ],
@@ -2503,8 +2751,12 @@
       "reportPage",
       "searchPage"
     ],
+    "theme": [
+      "app"
+    ],
     "title": [
       "app",
+      "confirm",
       "crudPage",
       "dashboardItem",
       "dashboardPage",

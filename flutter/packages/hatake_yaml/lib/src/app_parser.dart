@@ -18,6 +18,7 @@ AppDefinition parseAppMap(Map<String, Object?> root) {
     title: app.reqString('title', at: 'app.title'),
     dslVersion: dslVersion ?? kDslVersion,
     home: app.optString('home'),
+    theme: _parseTheme(app.optMap('theme')),
     menu: [
       for (var i = 0; i < menu.length; i++)
         _parseMenu(_asMap(menu[i], 'app.menu[$i]')),
@@ -27,6 +28,51 @@ AppDefinition parseAppMap(Map<String, Object?> root) {
         parsePageMap(_asMap(pages[i], 'app.pages[$i]')),
     ],
   );
+}
+
+/// Reads `app.theme`. Colours and the two closed vocabularies are checked here:
+/// a colour or a density that is silently ignored is the worst outcome, since
+/// the definition looks right and the screen does not change.
+ThemeDefinition? _parseTheme(Map<String, Object?>? m) {
+  if (m == null) return null;
+  return ThemeDefinition(
+    primaryColor: _color(m, 'primaryColor'),
+    secondaryColor: _color(m, 'secondaryColor'),
+    brightness: _oneOf(m, 'brightness', Brightnesses.all, Brightnesses.light),
+    density: _oneOf(m, 'density', Densities.all, Densities.standard),
+    fontFamily: m.optString('fontFamily'),
+    radius: m.optDouble('radius'),
+    config: m.optMap('config') ?? const {},
+  );
+}
+
+String? _color(Map<String, Object?> m, String key) {
+  final value = m.optString(key);
+  if (value == null) return null;
+  if (argbOf(value) == null) {
+    throw DefinitionParseException(
+      'Expected a colour like #RRGGBB, got "$value"',
+      path: 'app.theme.$key',
+    );
+  }
+  return value;
+}
+
+String _oneOf(
+  Map<String, Object?> m,
+  String key,
+  Set<String> allowed,
+  String orElse,
+) {
+  final value = m.optString(key);
+  if (value == null) return orElse;
+  if (!allowed.contains(value)) {
+    throw DefinitionParseException(
+      'Expected one of ${allowed.join(" / ")}, got "$value"',
+      path: 'app.theme.$key',
+    );
+  }
+  return value;
 }
 
 MenuItem _parseMenu(Map<String, Object?> m) {

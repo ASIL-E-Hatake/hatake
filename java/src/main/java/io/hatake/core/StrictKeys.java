@@ -47,7 +47,9 @@ public final class StrictKeys {
      */
     public static final Map<String, Set<String>> TABLE = Map.ofEntries(
             Map.entry("", keys("dsl_version", "page", "app")),
-            Map.entry("app", keys("id", "title", "home", "menu", "pages")),
+            Map.entry("app", keys("id", "title", "home", "theme", "menu", "pages")),
+            Map.entry("theme", keys("primaryColor", "secondaryColor", "brightness",
+                    "density", "fontFamily", "radius", "config")),
             Map.entry("menuItem", keys("id", "label", "group", "icon", "page", "items", "roles")),
             Map.entry("crudPage", keys("type", "id", "title", "repository", "key", "search",
                     "table", "form", "actions")),
@@ -91,16 +93,19 @@ public final class StrictKeys {
                     "visibleWhen", "enabledWhen", "computed", "roles", "columns", "fields",
                     "source")),
             Map.entry("subTableSource", keys("repository", "parentKey", "key", "pageSize")),
-            Map.entry("action", keys("id", "type", "label", "plugin", "page", "params", "config",
-                    "roles")),
+            Map.entry("action", keys("id", "type", "label", "plugin", "page", "params", "confirm",
+                    "onSuccess", "config", "roles")),
+            Map.entry("confirm", keys("title", "message", "okLabel", "cancelLabel", "danger")),
+            Map.entry("actionSuccess", keys("message", "page", "params")),
             Map.entry("option", keys("value", "label")),
             Map.entry("layout", keys("columns")));
 
     /** 子ノードへの道。{@code []} 付きはそのノードの配列。無いキーは葉／自由な入れ物。 */
     private static final Map<String, Map<String, String>> CHILDREN = Map.ofEntries(
             Map.entry("", Map.of("app", "app", "page", "page")),
-            Map.entry("app", Map.of("menu", "menuItem[]", "pages", "page[]")),
+            Map.entry("app", Map.of("theme", "theme", "menu", "menuItem[]", "pages", "page[]")),
             Map.entry("menuItem", Map.of("items", "menuItem[]")),
+            Map.entry("action", Map.of("confirm", "confirm", "onSuccess", "actionSuccess")),
             Map.entry("crudPage", Map.of("search", "search", "table", "table", "form", "form",
                     "actions", "action[]")),
             Map.entry("masterPage", Map.of("search", "search", "table", "table", "form", "form",
