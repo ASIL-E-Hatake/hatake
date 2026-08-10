@@ -860,6 +860,36 @@ npx hatake reference --page-kind report   # その画面で使える所だけに
 `closed: false` のノードは「中身が自由な入れ物」（`config` / `validators` / `computed` /
 `visibleWhen`）。strict パースもここは見ない。
 
+## 構造の間違いの検出（警告）
+
+strict は「知らないキー」を、スキーマは「型と必須」を見る。どちらも通るのに**意図どおり
+動かない**定義がまだ書けるので、そこは警告として言う。
+
+```bash
+npx hatake validate page.yaml                    # 既定で警告も出す（終了コードは変えない）
+npx hatake validate page.yaml --warn-as-error    # CI で落としたいとき
+npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
+```
+
+| 規則 | 何が起きるか |
+|---|---|
+| `rowaction-not-declared` | `rowActions` の id に対応する `actions` が無い → ボタンが黙って出ない（組み込みは `edit` / `delete` のみ） |
+| `rowactions-as-objects` | `rowActions` の要素が文字列でない → 行アクションにならない |
+| `unknown-page` | `navigate` / `onSuccess.page` / メニューの行き先が `pages` に無い → 押しても何も起きない |
+| `unknown-home` | `app.home` に当たるメニュー項目もページも無い → 先頭のページが開く |
+| `unknown-action` | ダッシュボードのカードが指す `action` が無い → 押しても何も起きない |
+| `duplicate-page-id` / `duplicate-action-id` / `duplicate-field` | id や項目名の重複 → 後ろが前を隠す |
+| `condition-operator-unsupported` | 条件が理解しない演算子（`between` など）→ 常に false になり、その項目が出てこない |
+| `aggregate-without-field` | `count` 以外で `field` が無い → 集計結果が null |
+| `groupby-without-sort` | 並び順の指定が無い → グループが分裂して小計が何度も出る |
+| `total-without-column` | 合計の対象が `table.columns` に無い → 合計がどこにも表示されない |
+| `required-as-validator-only` | `validators` の要素がオブジェクトでない → 検証が増えない |
+
+**エラーではない**（Repository の実装やプラグインの登録次第で成立する書き方もあるため）。
+遷移先の検査は `app:` の定義だけ（単票の定義は他のページを知らないので判定しない）。
+警告には対応する[対照表](pitfalls.json)の id が付くものがあり、`hatake pitfalls <id>` で
+正しい書き方が引ける。**同梱の例とデモは警告ゼロ**であることを CI で確認している。
+
 ## よくある間違い
 
 綴り間違いは strict パースが拾うが、**書ける場所を間違える**（ページ直下に `columns`、

@@ -24,7 +24,9 @@ npx hatake new <kind> --id <id> --title <title>   # 雛形（crud/search/master/
 npx hatake reference <キー名>      # そのキーの型・既定値・書ける場所（--page-kind で絞る）
 npx hatake examples <やりたいこと> # 近い例を引く
 npx hatake pitfalls <キー名>       # よくある間違い → 正しい書き方
+npx hatake diff <前> <後>          # 既にある定義を直したとき：API の形と後方互換への影響
 ```
+`validate` は**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション／存在しないページへの遷移／`sort` の無い `groupBy`／条件で使えない演算子／`field` の無い集計など）。エラーではないが**画面を見ても気づけない**類なので、警告が出たら直す。`--warn-as-error` で CI を落とせる。
 未知キーは場所と直し方まで出る: `page.table.columns[0]: 知らないキー "witdh"（width の間違い？）`
 
 ## 用途別（1〜2ファイルだけ読めばいい）

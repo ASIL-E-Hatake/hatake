@@ -10,6 +10,8 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { parse as parseYamlText } from "yaml";
+import { type DefinitionWarning, findWarnings } from "./warnings.js";
 import {
   CATALOG_PATH,
   findSpecDir,
@@ -24,6 +26,7 @@ import {
   snippet,
 } from "./pitfalls.js";
 import { deriveDto } from "./dto.js";
+import { diffDto } from "./dtoDiff.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import {
   buildReference,
@@ -66,11 +69,17 @@ export const nodeIo: CliIo = {
 const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
 
 使い方:
-  hatake validate <file...> [--no-strict] [--json]
+  hatake validate <file...> [--no-strict] [--json] [--no-warn] [--warn-as-error]
       定義を解析して問題を報告する。既定は strict（知らないキーを弾く）。
+      通るけれど意図どおり動かない書き方（警告）も既定で出す。終了コードは
+      エラーだけで決まる（--warn-as-error を付けると警告でも 1）。
 
   hatake dto <file> [--json]
       API の形（DtoSpec）を出す。
+
+  hatake diff <old file> <new file> [--json]
+      定義を変えたときの影響範囲。API の形の差分と、後方互換を壊すかを出す。
+      壊す変更があれば終了コード 1。
 
   hatake schema <file>
       JSON Schema 2020-12 を出す。
@@ -106,6 +115,20 @@ interface Args {
   flags: Record<string, string | boolean>;
 }
 
+/**
+ * 値を取らないフラグ。これを知らないと `validate --warn-as-error a.yaml` で
+ * ファイル名をフラグの値として食ってしまう（＝ファイル指定なし扱いになる）。
+ */
+const BOOLEAN_FLAGS = new Set([
+  "json",
+  "no-strict",
+  "no-warn",
+  "warn-as-error",
+  "help",
+  "h",
+  "version",
+]);
+
 /** `--key value` / `--key=value` / `--flag` だけを見る素直な解析。 */
 export function parseArgs(argv: string[]): Args {
   const positional: string[] = [];
@@ -123,7 +146,11 @@ export function parseArgs(argv: string[]): Args {
       continue;
     }
     const next = argv[i + 1];
-    if (next !== undefined && !next.startsWith("--")) {
+    if (
+      !BOOLEAN_FLAGS.has(body) &&
+      next !== undefined &&
+      !next.startsWith("--")
+    ) {
       flags[body] = next;
       i++;
     } else {
@@ -177,6 +204,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
             2,
           ),
         );
+      case "diff":
+        return diff(positional, flags, io);
       case "types":
         return types(positional, flags, io);
       case "new":
@@ -207,14 +236,28 @@ function validate(files: string[], flags: Args["flags"], io: CliIo): number {
   const asJson = flags.json === true;
   const results: unknown[] = [];
   let failures = 0;
+  let warned = 0;
 
   for (const file of files) {
     try {
-      const parsed = parseDefinition(io.readFile(file), file, { strict });
+      const source = io.readFile(file);
+      const parsed = parseDefinition(source, file, { strict });
+      // 警告は「解析は通った定義」に対してだけ意味がある。
+      const warnings = flags["no-warn"] === true ? [] : warningsIn(source);
+      warned += warnings.length;
       if (asJson) {
-        results.push({ file, ok: true, kind: parsed.kind });
+        results.push({
+          file,
+          ok: true,
+          kind: parsed.kind,
+          ...(warnings.length > 0 ? { warnings } : {}),
+        });
       } else {
         io.out(`OK   ${file} (${parsed.kind})`);
+        for (const warning of warnings) {
+          io.err(`     警告 ${warning.path}: ${warning.message}`);
+          io.err(`          → ${warning.fix}`);
+        }
       }
     } catch (error) {
       failures++;
@@ -234,7 +277,21 @@ function validate(files: string[], flags: Args["flags"], io: CliIo): number {
     }
   }
   if (asJson) io.out(JSON.stringify(results, null, 2));
-  return failures === 0 ? 0 : 1;
+  if (failures > 0) return 1;
+  // 警告で終了コードを変えるかは呼び出し側が決める（既定は「見せるだけ」）。
+  return warned > 0 && flags["warn-as-error"] === true ? 1 : 0;
+}
+
+/** 素の document を見て、通るけれど意図どおり動かない書き方を拾う。 */
+function warningsIn(source: string): DefinitionWarning[] {
+  try {
+    const document = parseYamlText(source);
+    return typeof document === "object" && document !== null
+      ? findWarnings(document as Record<string, unknown>)
+      : [];
+  } catch {
+    return []; // 解析が通っている前提なので、ここには来ない
+  }
 }
 
 /**
@@ -283,6 +340,45 @@ function emit(
   if (page === null) return 1;
   io.out(render(page));
   return 0;
+}
+
+/**
+ * 定義を変えたときの影響範囲。**壊す変更があれば終了コード 1** なので、
+ * 「壊すつもりが無い変更」を CI で守れる（壊すときは意図して外す）。
+ */
+function diff(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 2) {
+    io.err("変更前と変更後の定義ファイルを2つ指定してください。");
+    return 1;
+  }
+  // 生成系と同じく常に strict で読む（書き間違いを差分として見せないため）。
+  const [before, after] = files.map((file) =>
+    deriveDto(parsePageYaml(io.readFile(file), { strict: true })),
+  );
+  const result = diffDto(before, after);
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+    return result.compatible ? 0 : 1;
+  }
+  if (result.changes.length === 0) {
+    io.out("API の形は変わりません。");
+    return 0;
+  }
+  for (const change of result.changes) {
+    const mark = change.breaking ? "✗ 破壊的" : "・互換";
+    const where =
+      change.member === undefined
+        ? change.shape
+        : `${change.shape}.${change.member}`;
+    io.out(`${mark} ${where}: ${change.message}`);
+  }
+  io.out(
+    result.compatible
+      ? "後方互換です。"
+      : "**後方互換を壊します**（既存の呼び出し側の修正が要ります）。",
+  );
+  return result.compatible ? 0 : 1;
 }
 
 function types(files: string[], flags: Args["flags"], io: CliIo): number {

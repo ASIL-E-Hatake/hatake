@@ -7,7 +7,10 @@
 // description は**AI 向けの契約**なので、ここが一番大事。「いつ使うか」を書く。
 
 import { join } from "node:path";
+import { parse as parseYamlText } from "yaml";
 import { deriveDto } from "./dto.js";
+import { diffDto } from "./dtoDiff.js";
+import { findWarnings } from "./warnings.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import { toJsonSchema } from "./jsonSchema.js";
 import { toOpenApi } from "./openApi.js";
@@ -61,6 +64,7 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 4. 書けたら必ず hatake_validate にかける（知らないキーは黙って捨てられるので、書いた気になって効いていない事故が起きる）
 5. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
 6. バックエンドの形が要るなら hatake_api_shape
+7. **既にある定義を直したときは hatake_diff**（後方互換を壊していないか）
 
 原則: Flutter の Widget や API のコードを手で書かず、定義を書く。定義に無い機能は
 DSL の拡張（プラグイン）で足す。`;
@@ -191,7 +195,11 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "定義（YAML / JSON）を解析して問題を報告する。定義を書いたら・直したら必ず通す。" +
         "既定は strict で、知らないキー（綴り間違い・存在しない機能）を全部まとめて指摘し、" +
         "近い既知キーを提案する。page: でも app: でも受ける。" +
-        "ok が false のときは problems を読んで直し、もう一度かける。",
+        "ok が false のときは problems を読んで直し、もう一度かける。" +
+        "**ok が true でも warnings があれば読むこと**＝解析は通るが意図どおり動かない書き方" +
+        "（宣言していない行アクション・存在しないページへの遷移・sort の無い groupBy・" +
+        "条件で使えない演算子・field の無い集計など）。画面を見ても気づけない類なので、" +
+        "ここで直す。",
       inputSchema: {
         type: "object",
         properties: {
@@ -214,7 +222,16 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           const kind = /^\s*app\s*:/m.test(source)
             ? `app（${parseAppYaml(source, { strict }).pages.length} ページ）`
             : parsePageYaml(source, { strict }).kind;
-          return pretty({ ok: true, kind });
+          const document = parseYamlText(source);
+          const warnings =
+            typeof document === "object" && document !== null
+              ? findWarnings(document as Record<string, unknown>)
+              : [];
+          return pretty({
+            ok: true,
+            kind,
+            ...(warnings.length > 0 ? { warnings } : {}),
+          });
         } catch (error) {
           // 未知キーには「よくある間違い」から直し方を添える。名前だけ言われても
           // 構造の間違い（書ける場所を間違えた）は直せないので。
@@ -301,6 +318,30 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             good: snippet(pitfall.good),
           })),
         );
+      },
+    },
+    {
+      name: "hatake_diff",
+      title: "定義を変えた影響を見る",
+      description:
+        "定義を変える前と後を渡すと、API の形がどう変わるかと**後方互換を壊すか**を返す。" +
+        "既にあるページの定義を直すときは、これで確認してから直し終わりにする。" +
+        "壊す例: 受け取る形に必須項目を足す / 返す形から項目を消す / 型を変える / " +
+        "文字数などの制約を厳しくする / ページ id を変える。" +
+        "compatible が false なら、呼び出し側（バックエンド実装・既存クライアント）の" +
+        "修正も要ると伝えること。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          before: { type: "string", description: "変更前の定義（1ページ分）。" },
+          after: { type: "string", description: "変更後の定義（1ページ分）。" },
+        },
+        required: ["before", "after"],
+      },
+      run(args) {
+        const shapeOf = (key: string) =>
+          deriveDto(parsePageYaml(required(args, key), { strict: true }));
+        return pretty(diffDto(shapeOf("before"), shapeOf("after")));
       },
     },
     {

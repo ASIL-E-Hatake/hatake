@@ -62,6 +62,14 @@ page:
 `;
 
 describe("parseArgs", () => {
+  it("真偽値フラグはファイル名を値として食わない", () => {
+    // `validate --warn-as-error a.yaml` を「値つきフラグ」と読むと、ファイル指定が
+    // 消えて「ファイルを指定してください」になる（実際にやった）。
+    const args = parseArgs(["validate", "--warn-as-error", "a.yaml", "--json"]);
+    expect(args.positional).toEqual(["a.yaml"]);
+    expect(args.flags).toEqual({ "warn-as-error": true, json: true });
+  });
+
   it("reads positionals, --key value, --key=value and bare flags", () => {
     const args = parseArgs([
       "types",
@@ -161,6 +169,68 @@ describe("hatake validate", () => {
   });
 });
 
+describe("hatake validate の警告", () => {
+  // strict もスキーマも通るが、実行すると意図どおり動かない定義。
+  const SLOPPY = `
+page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  table:
+    rowActions: [approve]
+    columns: [{ field: amount, label: 金額, type: number }]
+  report:
+    groupBy: [{ field: customer, label: 顧客 }]
+`;
+
+  it("既定で警告を出すが、終了コードは変えない", () => {
+    const io = fakeIo({ "page.yaml": SLOPPY });
+    expect(runCli(["validate", "page.yaml"], io)).toBe(0);
+    expect(io.stdout[0]).toBe("OK   page.yaml (report)");
+    const err = io.stderr.join("\n");
+    expect(err).toContain("警告 page.table.rowActions[0]");
+    expect(err).toContain("警告 page.report.groupBy");
+    expect(err).toContain("→ report.sort");
+  });
+
+  it("--warn-as-error で CI を落とせる", () => {
+    const io = fakeIo({ "page.yaml": SLOPPY });
+    expect(runCli(["validate", "page.yaml", "--warn-as-error"], io)).toBe(1);
+  });
+
+  it("--no-warn で黙る", () => {
+    const io = fakeIo({ "page.yaml": SLOPPY });
+    expect(runCli(["validate", "page.yaml", "--no-warn"], io)).toBe(0);
+    expect(io.stderr.join("\n")).not.toContain("警告");
+  });
+
+  it("--json では warnings として返す", () => {
+    const io = fakeIo({ "page.yaml": SLOPPY });
+    runCli(["validate", "page.yaml", "--json"], io);
+    const report = JSON.parse(io.stdout.join("\n"))[0];
+    expect(report.ok).toBe(true);
+    expect(report.warnings.map((w: { rule: string }) => w.rule)).toEqual([
+      "rowaction-not-declared",
+      "groupby-without-sort",
+    ]);
+  });
+
+  it("解析が落ちた定義には警告を出さない（順番に意味がある）", () => {
+    const io = fakeIo({ "page.yaml": WITH_TYPOS });
+    expect(runCli(["validate", "page.yaml"], io)).toBe(1);
+    expect(io.stderr.join("\n")).not.toContain("警告");
+  });
+
+  it("同梱の例は警告ゼロで通る", () => {
+    for (const file of ["customer_master", "sales_report", "sales_app"]) {
+      const path = `../spec/examples/${file}.yaml`;
+      const io = fakeIo({ [path]: readFileSync(path, "utf8") });
+      expect(runCli(["validate", path, "--warn-as-error"], io), file).toBe(0);
+    }
+  });
+});
+
 describe("hatake dto / schema / openapi", () => {
   it("dto prints the shapes the page implies", () => {
     const io = fakeIo({ "page.yaml": GOOD });
@@ -196,6 +266,50 @@ describe("hatake dto / schema / openapi", () => {
     // Generating from a typo'd definition would bake the mistake into an API.
     const io = fakeIo({ "page.yaml": WITH_TYPOS });
     expect(runCli(["dto", "page.yaml"], io)).toBe(1);
+  });
+});
+
+describe("hatake diff", () => {
+  const TIGHTENED = GOOD.replace(
+    "{ field: code, label: コード, required: true, validators: [{ type: maxLength, value: 20 }] }",
+    "{ field: code, label: コード, required: true, validators: [{ type: maxLength, value: 10 }] }",
+  );
+
+  it("何も変わらなければそう言う", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "b.yaml": GOOD });
+    expect(runCli(["diff", "a.yaml", "b.yaml"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("API の形は変わりません");
+  });
+
+  it("壊す変更があれば終了コード 1 で、何が壊れるか言う", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "b.yaml": TIGHTENED });
+    expect(runCli(["diff", "a.yaml", "b.yaml"], io)).toBe(1);
+    const out = io.stdout.join("\n");
+    // 受け取る形は壊れるが、返す形の同じ変更は互換。両方を並べて見せる。
+    expect(out).toContain("✗ 破壊的 CustomerMasterRequest.code");
+    expect(out).toContain("maxLength が 20 から 10 に");
+    expect(out).toContain("・互換 CustomerMasterResponse.code");
+    expect(out).toContain("後方互換を壊します");
+  });
+
+  it("--json は機械可読", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "b.yaml": TIGHTENED });
+    expect(runCli(["diff", "a.yaml", "b.yaml", "--json"], io)).toBe(1);
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.compatible).toBe(false);
+    expect(result.changes[0].kind).toBe("constraint-changed");
+  });
+
+  it("2ファイル要る", () => {
+    const io = fakeIo({ "a.yaml": GOOD });
+    expect(runCli(["diff", "a.yaml"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("2つ指定");
+  });
+
+  it("書き間違いのある定義は差分にしない（常に strict で読む）", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "b.yaml": WITH_TYPOS });
+    expect(runCli(["diff", "a.yaml", "b.yaml"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("witdh");
   });
 });
 

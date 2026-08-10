@@ -932,6 +932,39 @@ npx hatake reference --page-kind report   # only what that page kind can reach
 (`config` / `validators` / `computed` / `visibleWhen`), which strict parsing also
 leaves alone.
 
+## Structural warnings
+
+Strict parsing catches unknown keys and the schema checks types and required
+fields — yet a definition can pass both and still not do what it says. Those are
+reported as warnings.
+
+```bash
+npx hatake validate page.yaml                    # warnings are shown by default
+npx hatake validate page.yaml --warn-as-error    # fail CI on them
+npx hatake validate page.yaml --no-warn --json
+```
+
+| Rule | What happens |
+|---|---|
+| `rowaction-not-declared` | a `rowActions` id with no matching `actions` entry — the button silently never appears (only `edit` / `delete` are built in) |
+| `rowactions-as-objects` | a `rowActions` element that is not a string — not treated as a row action |
+| `unknown-page` | `navigate` / `onSuccess.page` / a menu target missing from `pages` — nothing happens on tap |
+| `unknown-home` | `app.home` matches no menu item or page — the first page opens instead |
+| `unknown-action` | a dashboard card pointing at an action that does not exist |
+| `duplicate-page-id` / `duplicate-action-id` / `duplicate-field` | duplicated ids or field names — the later one hides the earlier |
+| `condition-operator-unsupported` | an operator a condition does not understand (e.g. `between`) — evaluates to false forever, so the field never shows |
+| `aggregate-without-field` | anything but `count` without a `field` — the result is null |
+| `groupby-without-sort` | no print order declared — the group splits and its subtotal repeats |
+| `total-without-column` | a total on a field with no column — it is printed nowhere |
+| `required-as-validator-only` | a `validators` element that is not an object — no validation is added |
+
+These are **not errors** (some of these shapes can be made to work by a
+repository or a registered plugin). Navigation targets are only checked for `app:`
+documents, since a single page does not know the others. Warnings that map onto a
+[pitfall](pitfalls.json) carry its id, so `hatake pitfalls <id>` shows the correct
+form. **Every shipped example and the demo produce zero warnings**, which CI
+enforces.
+
 ## Common mistakes
 
 Strict parsing catches misspellings, but neither **writing a key in the wrong

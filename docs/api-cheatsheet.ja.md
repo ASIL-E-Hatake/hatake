@@ -37,7 +37,7 @@ page:
     - { id: create, type: create, label: 新規登録 }
 ```
 
-**CLI で検証する**（人も AI も同じ入口。問題があれば終了コード 1）:
+**CLI で検証する**（人も AI も同じ入口。問題があれば終了コード 1。**警告**＝解析は通るが意図どおり動かない書き方も既定で出る）:
 
 ```bash
 npx hatake validate page.yaml          # 解析 + strict。--json で機械可読

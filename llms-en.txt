@@ -13,7 +13,7 @@ This file is the English entry point for LLMs. The project's primary language is
 - [JSON Schema](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json): for machine validation (put `# yaml-language-server: $schema=<this URL>` at the top of a YAML file to get completion and validation in an editor)
 
 ## MCP server (the fastest route for a capable client)
-Connecting it lets an agent look things up on demand instead of being handed documents. Tools: `hatake_reference` (look up a key), `hatake_examples` (fetch the nearest example), `hatake_validate` (validate, with fixes for structural mistakes), `hatake_new_page` (scaffold), `hatake_pitfalls` (common mistakes), `hatake_api_shape` (the API shapes a definition implies). Tool descriptions are in Japanese.
+Connecting it lets an agent look things up on demand instead of being handed documents. Tools: `hatake_reference` (look up a key), `hatake_examples` (fetch the nearest example), `hatake_validate` (validate, with fixes for structural mistakes and warnings for definitions that parse but misbehave), `hatake_new_page` (scaffold), `hatake_pitfalls` (common mistakes), `hatake_diff` (what changing a definition does to the API shape, and whether it breaks compatibility), `hatake_api_shape` (the API shapes a definition implies). Tool descriptions are in Japanese.
 - Setup: [MCP guide](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/mcp.ja.md) (ja) — `claude mcp add hatake -- node <repo>/typescript/dist/mcp.js`
 
 ## Validate what you wrote (CLI)
@@ -25,6 +25,7 @@ npx hatake examples <task>        # find the nearest example
 npx hatake pitfalls <key>         # common mistake → correct form
 npx hatake new <kind> --id <id> --title <title>   # crud/search/master/detail/form/wizard/dashboard/report
 ```
+`validate` also warns about definitions that **parse but do not do what they say** (a row action with no matching declaration, navigation to a page that does not exist, `groupBy` without `sort`, an operator a condition cannot understand, an aggregate with no field). These are not errors, but you cannot spot them by looking at the screen — fix what it reports. `--warn-as-error` fails CI on them.
 An unknown key reports its location and the fix: `page.table.columns[0]: unknown key "witdh" (did you mean width?)`
 
 ## Examples (copy them; all are schema-checked in CI)

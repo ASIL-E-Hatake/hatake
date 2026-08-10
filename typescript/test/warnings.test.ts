@@ -1,0 +1,376 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { parse as parseYaml } from "yaml";
+import { describe, expect, it } from "vitest";
+import {
+  buildReference,
+  ConditionOperators,
+  findWarnings,
+  type PitfallCatalog,
+} from "../src/index.js";
+
+/** YAML を1つ食わせて、出た規則名を並べる。 */
+const rulesOf = (yaml: string): string[] =>
+  findWarnings(parseYaml(yaml) as Record<string, unknown>).map((w) => w.rule);
+
+const warningsOf = (yaml: string) =>
+  findWarnings(parseYaml(yaml) as Record<string, unknown>);
+
+describe("行アクション", () => {
+  it("宣言していない id は、ボタンが出ないことを指摘する", () => {
+    // strict もスキーマも通る。実行すると黙ってボタンが消えるだけ。
+    const found = warningsOf(`
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  table:
+    rowActions: [edit, approve]
+    columns: [{ field: orderNo, label: 受注番号 }]
+`);
+    expect(found.map((w) => w.rule)).toEqual(["rowaction-not-declared"]);
+    expect(found[0].path).toBe("page.table.rowActions[1]");
+    expect(found[0].message).toContain("approve");
+    expect(found[0].fix).toContain("edit / delete");
+  });
+
+  it("組み込み（edit / delete）と宣言済みは黙る", () => {
+    expect(
+      rulesOf(`
+page:
+  type: crud
+  id: customer_master
+  title: 顧客マスタ
+  repository: customerRepository
+  table:
+    rowActions: [edit, delete, detail]
+    columns: [{ field: code, label: コード }]
+  actions:
+    - { id: detail, type: plugin, plugin: openDetail, label: 詳細 }
+`),
+    ).toEqual([]);
+  });
+
+  it("文字列でない要素は行アクションにならない", () => {
+    expect(
+      rulesOf(`
+page:
+  type: search
+  id: s
+  title: S
+  repository: r
+  table:
+    rowActions: [{ id: edit, label: 編集 }]
+    columns: [{ field: a, label: A }]
+`),
+    ).toEqual(["rowactions-as-objects"]);
+  });
+});
+
+describe("遷移先", () => {
+  const app = (pages: string, extra = "") => `
+app:
+  id: sales
+  title: 販売管理
+${extra}  pages:
+${pages}
+`;
+
+  it("存在しないページへの navigate を指摘する", () => {
+    const found = warningsOf(
+      app(`    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      actions:
+        - { id: detail, type: navigate, label: 詳細, page: order_detail }`),
+    );
+    expect(found.map((w) => w.rule)).toEqual(["unknown-page"]);
+    expect(found[0].path).toBe("app.pages[0].actions[0].page");
+  });
+
+  it("onSuccess の遷移先も見る", () => {
+    expect(
+      rulesOf(
+        app(`    - type: crud
+      id: customer_master
+      title: 顧客マスタ
+      repository: customerRepository
+      actions:
+        - id: delete
+          type: delete
+          label: 削除
+          onSuccess: { message: 削除しました, page: customer_list }`),
+      ),
+    ).toEqual(["unknown-page"]);
+  });
+
+  it("メニューの行き先と初期ルートも見る", () => {
+    const found = warningsOf(
+      app(
+        `    - { type: search, id: order_search, title: 受注照会, repository: orderRepository }`,
+        `  home: nowhere
+  menu:
+    - { id: orders, label: 受注, page: missing_page }
+`,
+      ),
+    );
+    expect(found.map((w) => w.rule)).toEqual(["unknown-home", "unknown-page"]);
+  });
+
+  it("単票の定義では遷移先を判定しない（他のページを知らないので）", () => {
+    expect(
+      rulesOf(`
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  actions:
+    - { id: detail, type: navigate, label: 詳細, page: order_detail }
+`),
+    ).toEqual([]);
+  });
+
+  it("ページ id の重複を指摘する", () => {
+    expect(
+      rulesOf(
+        app(`    - { type: search, id: dup, title: A, repository: r }
+    - { type: master, id: dup, title: B, repository: r }`),
+      ),
+    ).toEqual(["duplicate-page-id"]);
+  });
+});
+
+describe("条件", () => {
+  const withCondition = (condition: string) => `
+page:
+  type: form
+  id: customer_form
+  title: 顧客入力
+  repository: customerRepository
+  form:
+    sections:
+      - fields:
+          - { field: age, label: 年齢, type: number }
+          - field: note
+            label: 備考
+            visibleWhen:
+${condition}
+`;
+
+  it("条件が理解しない演算子を指摘する（黙って false になる）", () => {
+    const found = warningsOf(
+      withCondition("              { field: age, operator: between, value: [20, 65] }"),
+    );
+    expect(found.map((w) => w.rule)).toEqual(["condition-operator-unsupported"]);
+    expect(found[0].message).toContain("常に false");
+    // 対照表を引けるようにしておく。
+    expect(found[0].pitfall).toBe("between-in-condition");
+  });
+
+  it("入れ子（all / any / not）の中も見る", () => {
+    expect(
+      rulesOf(
+        withCondition(`              all:
+                - { field: age, operator: gte, value: 20 }
+                - { field: name, operator: startsWith, value: 山 }`),
+      ),
+    ).toEqual(["condition-operator-unsupported"]);
+  });
+
+  it("使える演算子は全部黙る", () => {
+    for (const operator of ConditionOperators) {
+      expect(
+        rulesOf(withCondition(`              { field: age, operator: ${operator} }`)),
+        operator,
+      ).toEqual([]);
+    }
+  });
+});
+
+describe("集計", () => {
+  it("count 以外で field が無いと null になることを指摘する", () => {
+    const found = warningsOf(`
+page:
+  type: dashboard
+  id: sales_dashboard
+  title: 売上
+  repository: orderRepository
+  items:
+    - { id: total, title: 売上合計, value: { aggregate: sum } }
+    - { id: byCustomer, type: chart, title: 顧客別,
+        chart: { kind: bar, labelField: customer, aggregate: sum } }
+`);
+    expect(found.map((w) => w.rule)).toEqual([
+      "aggregate-without-field",
+      "aggregate-without-field",
+    ]);
+    expect(found[1].fix).toContain("valueField");
+  });
+
+  it("count は field が無くてよい", () => {
+    expect(
+      rulesOf(`
+page:
+  type: dashboard
+  id: d
+  title: D
+  repository: r
+  items:
+    - { id: count, title: 件数, value: { aggregate: count } }
+    - { id: plain, title: 件数 }
+`),
+    ).toEqual([]);
+  });
+});
+
+describe("帳票", () => {
+  const report = (body: string) => `
+page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  table:
+    columns:
+      - { field: customer, label: 顧客名 }
+      - { field: amount, label: 金額, type: number }
+  report:
+${body}
+`;
+
+  it("sort の無い groupBy を指摘する", () => {
+    const found = warningsOf(
+      report("    groupBy: [{ field: customer, label: 顧客 }]"),
+    );
+    expect(found.map((w) => w.rule)).toEqual(["groupby-without-sort"]);
+    expect(found[0].pitfall).toBe("groupby-without-sort");
+  });
+
+  it("sort があれば黙る", () => {
+    expect(
+      rulesOf(
+        report(`    sort: { field: customer }
+    groupBy: [{ field: customer, label: 顧客 }]`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("列に無い項目の合計は、どこにも出ないことを指摘する", () => {
+    const found = warningsOf(report("    totals: [{ field: tax, aggregate: sum }]"));
+    expect(found.map((w) => w.rule)).toEqual(["total-without-column"]);
+    expect(found[0].message).toContain("tax");
+  });
+});
+
+describe("フォーム", () => {
+  it("同じ項目を2回書くと片方が無かったことになる", () => {
+    const found = warningsOf(`
+page:
+  type: form
+  id: f
+  title: F
+  repository: r
+  form:
+    sections:
+      - { title: 基本, fields: [{ field: code, label: コード }] }
+      - { title: 詳細, fields: [{ field: code, label: コード（再） }] }
+`);
+    expect(found.map((w) => w.rule)).toEqual(["duplicate-field"]);
+    expect(found[0].path).toBe("page.form.sections[1].fields[0].field");
+  });
+
+  it("validators に文字列を並べても検証は増えない", () => {
+    expect(
+      rulesOf(`
+page:
+  type: form
+  id: f
+  title: F
+  repository: r
+  form:
+    sections:
+      - fields:
+          - { field: mail, label: メール, validators: [required, email] }
+`),
+    ).toEqual(["required-as-validator-only", "required-as-validator-only"]);
+  });
+
+  it("wizard のステップも同じ規則で見る", () => {
+    expect(
+      rulesOf(`
+page:
+  type: wizard
+  id: w
+  title: W
+  repository: r
+  steps:
+    - { id: a, title: A, fields: [{ field: code, label: コード }] }
+    - { id: b, title: B, fields: [{ field: code, label: コード }] }
+`),
+    ).toEqual(["duplicate-field"]);
+  });
+});
+
+describe("同梱の資料との辻褄", () => {
+  it("同梱の例はすべて警告ゼロ（＝規則がうるさすぎない証拠）", () => {
+    const dir = "../spec/examples";
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".yaml"))) {
+      const found = warningsOf(readFileSync(`${dir}/${file}`, "utf8"));
+      expect(found, `${file}: ${JSON.stringify(found, null, 2)}`).toEqual([]);
+    }
+  });
+
+  it("デモの定義も警告ゼロ", () => {
+    const demo = readFileSync(
+      "../flutter/packages/hatake_example/assets/sales_app.yaml",
+      "utf8",
+    );
+    expect(warningsOf(demo)).toEqual([]);
+  });
+
+  it("対照表の「落ちない類」は、静的検出でも拾えるものは拾う", () => {
+    // 対照表に載せた bad の無い項目のうち、定義を見れば分かるものは警告で拾いたい。
+    const catalog = JSON.parse(
+      readFileSync("../spec/pitfalls.json", "utf8"),
+    ) as PitfallCatalog;
+    const detectable = ["groupby-without-sort", "between-in-condition",
+      "rowactions-as-objects", "required-as-validator-only"];
+    for (const id of detectable) {
+      expect(catalog.pitfalls.some((p) => p.id === id), id).toBe(true);
+    }
+  });
+
+  it("警告が指す対照表の id は実在する", () => {
+    const catalog = JSON.parse(
+      readFileSync("../spec/pitfalls.json", "utf8"),
+    ) as PitfallCatalog;
+    const ids = new Set(catalog.pitfalls.map((p) => p.id));
+    const samples = [
+      `page: { type: report, id: r, title: R, repository: repo,
+        table: { columns: [{ field: a, label: A }] },
+        report: { groupBy: [{ field: a, label: A }] } }`,
+      `page: { type: form, id: f, title: F, repository: repo,
+        form: { sections: [{ fields: [{ field: a, label: A,
+          visibleWhen: { field: b, operator: between, value: 1 } }] }] } }`,
+    ];
+    for (const sample of samples) {
+      for (const warning of warningsOf(sample)) {
+        if (warning.pitfall === undefined) continue;
+        expect(ids.has(warning.pitfall), warning.pitfall).toBe(true);
+      }
+    }
+  });
+
+  it("条件の演算子一覧が spec と一致する", () => {
+    // 警告はこの一覧で判定するので、ズレると「使えるのに警告が出る」になる。
+    const reference = buildReference(
+      JSON.parse(readFileSync("../spec/hatake-page.schema.json", "utf8")),
+    );
+    const declared = reference.nodes.condition.keys.find(
+      (k) => k.key === "operator",
+    )?.values;
+    expect([...ConditionOperators].sort()).toEqual([...declared!].sort());
+  });
+});
