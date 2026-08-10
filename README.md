@@ -112,6 +112,15 @@ npx hatake examples 帳票                    # やりたいことから近い�
 
 仕様を「読ませる」のではなく「引かせる」ための機械可読な資料も置いてある: [DSL リファレンス](spec/reference.json)（全キーの索引。JSON Schema から生成）と [例のカタログ](spec/examples/README.md)（やりたいこと → 例）。
 
+### MCP サーバ（`hatake-mcp`）
+AI エージェント（Claude Code / Claude Desktop 等）に繋ぐと、**仕様を読ませずに引かせられる**。道具は「キーを引く / 近い例を取る / 検証する / 雛形を出す / API の形を出す」の5つ。依存ゼロで手書き。
+
+```bash
+claude mcp add hatake -- node /path/to/hatake/typescript/dist/mcp.js
+```
+
+→ [MCP ガイド](docs/guide/mcp.ja.md)
+
 読み物としては [紹介記事（全体）](docs/blog/introducing-hatake.md) と [Flutter 版の使い方](docs/blog/introducing-hatake-flutter.md) がある。
 
 ## ロードマップ

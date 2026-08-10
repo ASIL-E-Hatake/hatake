@@ -11,6 +11,10 @@
 - [DSL 仕様書](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/dsl-spec.ja.md): 定義の全仕様（読み物）
 - [JSON Schema](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json): 定義の機械検証用（YAML に `# yaml-language-server: $schema=<この URL>` を書くと補完・検証が効く）
 
+## MCP サーバ（対応クライアントならこれが一番速い）
+Claude Code / Claude Desktop などに繋ぐと、**このファイルを読まなくても**必要なときに仕様を引ける。道具は `hatake_reference`（キーを引く）/ `hatake_examples`（近い例を取る）/ `hatake_validate`（検証）/ `hatake_new_page`（雛形）/ `hatake_api_shape`（API の形）。
+- 入れ方: [MCP ガイド](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/mcp.ja.md)（`claude mcp add hatake -- node <repo>/typescript/dist/mcp.js`）
+
 ## 書いた定義を検証する（CLI）
 定義を書いたら、推測で終わらせずにこれで確認する。問題があれば終了コード 1。
 ```bash

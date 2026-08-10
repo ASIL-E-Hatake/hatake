@@ -9,8 +9,8 @@
 // 「業務システムを10年動かす」側の都合と合わなくなる。
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { CATALOG_PATH, findSpecDir, SCHEMA_FILE } from "./specDir.js";
 import { deriveDto } from "./dto.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import {
@@ -306,37 +306,13 @@ function scaffoldCommand(
   return 0;
 }
 
-const SCHEMA_FILE = "hatake-page.schema.json";
-
-/**
- * spec/ の場所。`--spec <dir>` / 実行時のカレント / このモジュールの位置、の順に
- * 上へ辿って探す。リポジトリを持っている前提の暫定（npm 配布時は同梱する）。
- */
-function specDir(flags: Args["flags"]): string | null {
-  const explicit = str(flags, "spec");
-  if (explicit !== undefined) {
-    return existsSync(join(explicit, SCHEMA_FILE)) ? explicit : null;
-  }
-  for (const start of [process.cwd(), dirname(fileURLToPath(import.meta.url))]) {
-    let dir = resolve(start);
-    for (let depth = 0; depth < 6; depth++) {
-      const candidate = join(dir, "spec");
-      if (existsSync(join(candidate, SCHEMA_FILE))) return candidate;
-      const parent = dirname(dir);
-      if (parent === dir) break;
-      dir = parent;
-    }
-  }
-  return null;
-}
-
 /** spec/ の中の1ファイルを読む。見つからなければ理由を出して null。 */
 function readSpec(
   flags: Args["flags"],
   io: CliIo,
   ...names: string[]
 ): unknown | null {
-  const dir = specDir(flags);
+  const dir = findSpecDir(str(flags, "spec"));
   if (dir === null) {
     io.err(
       `spec/${SCHEMA_FILE} が見つかりません（--spec <dir> で場所を渡せます）。`,
@@ -396,7 +372,7 @@ function examples(
   flags: Args["flags"],
   io: CliIo,
 ): number {
-  const catalog = readSpec(flags, io, "examples", "index.json");
+  const catalog = readSpec(flags, io, ...CATALOG_PATH);
   if (catalog === null) return 1;
   const query = positional[0];
   const found = filterExamples(catalog as ExampleCatalog, query);
@@ -461,5 +437,10 @@ const message = (error: unknown): string =>
 
 // bin として呼ばれたときだけ走る（テストからは runCli を直接呼ぶ）。
 if (process.argv[1]?.endsWith("cli.js")) {
+  // `hatake reference | head` のように受け側が先に閉じても、スタックトレースを
+  // 吐いて落ちない（JSON を出すコマンドなので、パイプで切るのは普通の使い方）。
+  process.stdout.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code !== "EPIPE") throw error;
+  });
   process.exitCode = runCli(process.argv.slice(2));
 }
