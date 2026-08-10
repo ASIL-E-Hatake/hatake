@@ -91,6 +91,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 | `hatake_validate` | 書いたら/直したら必ず通す。知らないキーを全部まとめて指摘＋綴りの提案 | `source`（中身そのもの）、`strict`（既定 true） |
 | `hatake_new_page` | 新しい画面の出発点。そのまま検証を通る雛形が出る | `kind`、`id`、`title`、`repository` |
 | `hatake_pitfalls` | よくある間違い → なぜ駄目か → 正しい書き方。書く前に眺める / 落ちて直せないとき | `query`、`lang`（ja/en） |
+| `hatake_diff` | **既にある定義を直したとき**：API の形の差分と後方互換の判定 | `before`、`after` |
 | `hatake_api_shape` | 同じ定義から API の形（DtoSpec / JSON Schema / OpenAPI 3.1 / TS / Java） | `source`、`format`、`basePath`、`package` |
 
 `initialize` の応答に**使う順番**（instructions）を載せてあるので、対応クライアントなら勝手にこの順で動きます。
@@ -102,6 +103,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 4. 書けたら必ず hatake_validate
 5. 直し方が分からない / 書く前に落とし穴を知りたいときは hatake_pitfalls
 6. バックエンドの形が要るなら hatake_api_shape
+7. 既にある定義を直したときは hatake_diff（後方互換を壊していないか）
 ```
 
 `hatake_validate` は**未知キーから落とし穴を引いて、直し方を添えます**。「知らないキー `form`」だけでは直せないので、「`form` を持つのは crud/master/detail/form。照会と入力を分けるなら search＋detail を navigate で繋ぐ」まで返します。

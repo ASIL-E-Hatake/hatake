@@ -59,7 +59,10 @@ jobs:
         working-directory: typescript
         run: |
           npm run build
-          node dist/cli.js validate ../spec/examples/*.yaml
+          # --warn-as-error: 同梱の例は「通る」だけでなく「意図どおり動く」形であること。
+          node dist/cli.js validate --warn-as-error ../spec/examples/*.yaml
+          node dist/cli.js validate --warn-as-error \
+            ../flutter/packages/hatake_example/assets/sales_app.yaml
       - name: Reference & example catalog are reachable from a real run
         working-directory: typescript
         run: |
@@ -74,6 +77,15 @@ jobs:
           node dist/cli.js reference --out /tmp/reference.json
           # --strip-trailing-cr: Windows のチェックアウトでも同じ判定にするため。
           diff -u --strip-trailing-cr ../spec/reference.json /tmp/reference.json
+
+      - name: A definition compared with itself is compatible
+        working-directory: typescript
+        run: |
+          set -e
+          # diff の判定が壊れていれば、同じ定義同士でも差分が出る。
+          for f in ../spec/examples/customer_master.yaml ../spec/examples/order_entry.yaml; do
+            node dist/cli.js diff "$f" "$f"
+          done
 
       - name: MCP server answers a stdio handshake
         working-directory: typescript

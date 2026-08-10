@@ -5,6 +5,24 @@
 export type Condition = Record<string, unknown>;
 export type Record_ = Record<string, unknown>;
 
+/**
+ * 条件が理解する演算子。**下の switch と同じ並び**で持つ（知らない演算子は false に
+ * なるだけなので、静的検査 [findWarnings] がここを見て指摘できるようにしておく）。
+ * 検索の演算子とは別物（`between` は検索専用、`isEmpty` は条件専用）。
+ */
+export const ConditionOperators = [
+  "equals",
+  "notEquals",
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+  "contains",
+  "in",
+  "isEmpty",
+  "isNotEmpty",
+] as const;
+
 function toNum(v: unknown): number | null {
   if (typeof v === "boolean") return null;
   if (typeof v === "number") return Number.isFinite(v) ? v : null;

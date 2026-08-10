@@ -88,6 +88,7 @@ describe("MCP プロトコル", () => {
       "hatake_validate",
       "hatake_new_page",
       "hatake_pitfalls",
+      "hatake_diff",
       "hatake_api_shape",
     ]);
     for (const tool of list) {
@@ -209,6 +210,28 @@ page:
     expect(report.hints.join("\n")).toContain("crud");
   });
 
+  it("通るけれど意図どおり動かない書き方は warnings で返す", () => {
+    // エージェントは画面を見ないので、これを返さないと気づく手段が無い。
+    const report = json(
+      call("hatake_validate", {
+        source: [
+          "page:",
+          "  type: report",
+          "  id: sales_report",
+          "  title: 売上明細表",
+          "  repository: orderRepository",
+          "  table:",
+          "    columns: [{ field: amount, label: 金額 }]",
+          "  report:",
+          "    groupBy: [{ field: customer, label: 顧客 }]",
+        ].join("\n"),
+      }).text,
+    );
+    expect(report.ok).toBe(true);
+    expect(report.warnings[0].rule).toBe("groupby-without-sort");
+    expect(report.warnings[0].pitfall).toBe("groupby-without-sort");
+  });
+
   it("app 定義も受ける", () => {
     const app = readFileSync("../spec/examples/sales_app.yaml", "utf8");
     expect(json(call("hatake_validate", { source: app }).text).kind).toContain(
@@ -262,6 +285,36 @@ describe("hatake_pitfalls", () => {
 
   it("全件でも引ける", () => {
     expect(json(call("hatake_pitfalls").text).length).toBeGreaterThan(8);
+  });
+});
+
+describe("hatake_diff", () => {
+  const before = readFileSync("../spec/examples/customer_master.yaml", "utf8");
+
+  it("同じ定義なら互換", () => {
+    const result = json(call("hatake_diff", { before, after: before }).text);
+    expect(result).toMatchObject({ compatible: true, changes: [] });
+  });
+
+  it("必須項目を足すと壊れることを言う", () => {
+    const after = before.replace(
+      "          - field: name",
+      "          - { field: tel, label: 電話, required: true }\n          - field: name",
+    );
+    const result = json(call("hatake_diff", { before, after }).text);
+    expect(result.compatible).toBe(false);
+    expect(
+      result.changes.some(
+        (c: { member: string; breaking: boolean }) =>
+          c.member === "tel" && c.breaking,
+      ),
+    ).toBe(true);
+  });
+
+  it("before / after のどちらかを忘れたら言う", () => {
+    const missing = call("hatake_diff", { before });
+    expect(missing.isError).toBe(true);
+    expect(missing.text).toContain("after は必須");
   });
 });
 

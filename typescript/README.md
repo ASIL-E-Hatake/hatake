@@ -46,9 +46,10 @@ npx hatake examples 帳票                      # 近い例を探す
 
 | コマンド | 何をするか |
 |---|---|
-| `validate <file...>` | 定義を解析して問題を報告。既定は strict（知らないキーを弾く／`--no-strict` で従来の寛容さ）。`--json` で機械可読。**問題があれば終了コード 1** なので CI にそのまま置ける |
+| `validate <file...>` | 定義を解析して問題を報告。既定は strict（知らないキーを弾く／`--no-strict` で従来の寛容さ）。**通るけれど意図どおり動かない書き方（警告）も既定で出す**（`--no-warn` で黙る／`--warn-as-error` で終了コード 1）。`--json` で機械可読。**問題があれば終了コード 1** なので CI にそのまま置ける |
 | `new <kind> --id --title` | ページ定義の雛形（8種別すべて。`--repository` 省略時は id から推測、`--out` でファイルへ） |
 | `dto <file>` | API の形（`DtoSpec`）を JSON で |
+| `diff <old> <new>` | 定義を変えた影響範囲。API の形の差分と後方互換の判定。**壊す変更があれば終了コード 1** |
 | `schema <file>` | JSON Schema 2020-12 |
 | `openapi <file> [--base-path /api/orders]` | OpenAPI 3.1（`--base-path` を省くと `components.schemas` だけ） |
 | `types <file> --lang ts\|java [--out dir]` | ネイティブ型。Java は**1レコード＝1ファイル**で書き出す |
@@ -74,7 +75,28 @@ FAIL page.yaml
      ヒント: `search` / `wizard` / `dashboard` / `report` に `form` を書く → 入力もさせたいなら `crud`（または `master`）にする。…
 ```
 
-生成系（`dto` / `schema` / `openapi` / `types`）は**常に strict で読む**。書き間違いのある定義から API の形を作ると、間違いが API に焼き付くので。
+**解析は通るのに意図どおり動かない**書き方は警告として出す（エラーではないので終了コードは 0 のまま）:
+
+```
+OK   page.yaml (report)
+     警告 page.table.rowActions[0]: 行アクション "approve" に対応する actions の定義がありません。ボタンが出ません。
+          → actions に { id: approve, type: …, label: … } を足してください（組み込みは edit / delete のみ）。
+     警告 page.report.groupBy: グループはコントロールブレイクなので、行がその順で届かないとグループが分裂し、小計が何度も出ます。
+          → report.sort に印刷したい並びを書いてください（並べ替えは Repository の責務）。
+```
+
+生成系（`dto` / `schema` / `openapi` / `types` / `diff`）は**常に strict で読む**。書き間違いのある定義から API の形を作ると、間違いが API に焼き付くので。
+
+定義を直したら影響範囲を見る:
+
+```
+$ npx hatake diff before.yaml after.yaml
+✗ 破壊的 CustomerMasterRequest.code: code の maxLength が 20 から 10 に変わりました。今まで通っていた値が弾かれます。
+・互換 CustomerMasterResponse.code: code の maxLength が 20 から 10 に変わりました。
+**後方互換を壊します**（既存の呼び出し側の修正が要ります）。
+```
+
+同じ変更でも**受け取る形と返す形で結論が違う**（サーバが厳しくすると呼ぶ側が壊れ、返す形が厳しくなっても読む側は困らない）。壊すこと自体は普通にあるので止めない。気づかずに壊すのを防ぐのが目的。
 
 ## MCP サーバ（`hatake-mcp`）
 
