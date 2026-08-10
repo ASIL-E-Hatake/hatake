@@ -1,0 +1,18 @@
+{
+  "name": "hatake-site",
+  "private": true,
+  "description": "hatake の公式サイト（GitHub Pages）。機能別ページは docs/site/topics.json と spec/ から生成する。",
+  "type": "module",
+  "scripts": {
+    "gen": "node tools/generate.mjs",
+    "dev": "npm run gen && vitepress dev docs",
+    "build": "npm run gen && vitepress build docs && node tools/postbuild-md.mjs",
+    "preview": "vitepress preview docs",
+    "check": "node tools/check-coverage.mjs",
+    "check:boundary": "node tools/check-boundary.mjs",
+    "todo": "node tools/site-todo.mjs"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.3"
+  }
+}
