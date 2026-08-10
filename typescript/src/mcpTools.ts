@@ -23,8 +23,15 @@ import {
   filterByPageKind,
   lookupReference,
 } from "./reference.js";
+import {
+  describePitfall,
+  filterPitfalls,
+  type PitfallCatalog,
+  pitfallsForKeys,
+  snippet,
+} from "./pitfalls.js";
 import { scaffold, scaffoldKinds } from "./scaffold.js";
-import { CATALOG_PATH, SCHEMA_FILE } from "./specDir.js";
+import { CATALOG_PATH, PITFALLS_FILE, SCHEMA_FILE } from "./specDir.js";
 import { toJavaRecords, toTypeScript } from "./types.js";
 
 /** 道具1つ。`run` は文字列を返し、入力がおかしければ例外を投げる。 */
@@ -52,7 +59,8 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 2. 新規なら hatake_new_page で雛形を出す
 3. キーの型・既定値・書ける場所に迷ったら hatake_reference で引く（仕様書は読まなくていい）
 4. 書けたら必ず hatake_validate にかける（知らないキーは黙って捨てられるので、書いた気になって効いていない事故が起きる）
-5. バックエンドの形が要るなら hatake_api_shape
+5. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
+6. バックエンドの形が要るなら hatake_api_shape
 
 原則: Flutter の Widget や API のコードを手で書かず、定義を書く。定義に無い機能は
 DSL の拡張（プラグイン）で足す。`;
@@ -80,6 +88,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
   const reference = () =>
     buildReference(readJson(SCHEMA_FILE) as Record<string, unknown>);
   const catalog = () => readJson(...CATALOG_PATH) as ExampleCatalog;
+  const pitfalls = () => readJson(PITFALLS_FILE) as PitfallCatalog;
 
   return [
     {
@@ -207,7 +216,20 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             : parsePageYaml(source, { strict }).kind;
           return pretty({ ok: true, kind });
         } catch (error) {
-          return pretty({ ok: false, ...problem(error) });
+          // 未知キーには「よくある間違い」から直し方を添える。名前だけ言われても
+          // 構造の間違い（書ける場所を間違えた）は直せないので。
+          const hints =
+            error instanceof UnknownKeysError
+              ? pitfallsForKeys(
+                  pitfalls(),
+                  error.keys.map((k) => k.key),
+                ).map((pitfall) => describePitfall(pitfall))
+              : [];
+          return pretty({
+            ok: false,
+            ...problem(error),
+            ...(hints.length > 0 ? { hints } : {}),
+          });
         }
       },
     },
@@ -238,6 +260,47 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           title: required(args, "title"),
           repository: str(args, "repository"),
         });
+      },
+    },
+    {
+      name: "hatake_pitfalls",
+      title: "よくある間違いを見る",
+      description:
+        "「よくある間違い → なぜ駄目か → 正しい書き方」の対照表。" +
+        "書ける場所を間違える（ページ直下に columns / form の直下に fields）、" +
+        "別の種別のキーを使う（search に form / report に key）、" +
+        "落ちないけど意図と違う（groupBy に sort が無い / metric が件数になる）系を集めてある。" +
+        "hatake_validate が落ちて直し方が分からないとき、または定義を書き始める前に眺める。" +
+        "query で絞れる（キー名でも日本語でもよい）。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "キー名（groupBy）や言葉（帳票 / 条件）。省略で全件。",
+          },
+          lang: { type: "string", enum: ["ja", "en"] },
+        },
+      },
+      run(args) {
+        const found = filterPitfalls(pitfalls(), str(args, "query"));
+        if (found.length === 0) {
+          throw new Error(
+            `"${str(args, "query")}" に近い間違いは載っていません。query を省くと全件出ます。`,
+          );
+        }
+        const lang = str(args, "lang") === "en" ? "en" : "ja";
+        return pretty(
+          found.map((pitfall) => ({
+            id: pitfall.id,
+            keys: pitfall.keys,
+            wrong: pitfall.wrong[lang],
+            why: pitfall.why[lang],
+            fix: pitfall.fix[lang],
+            bad: pitfall.bad === undefined ? undefined : snippet(pitfall.bad),
+            good: snippet(pitfall.good),
+          })),
+        );
       },
     },
     {

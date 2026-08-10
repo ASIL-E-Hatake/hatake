@@ -13,6 +13,8 @@
 | キーの意味・型・既定値を厳密に確認 | [DSL 仕様書](../spec/dsl-spec.ja.md) | 規範リファレンス |
 | **このキーどこに書くの？型は？既定値は？を1発で** | [DSL リファレンス](../spec/reference.json) | `npx hatake reference <キー名>`。スキーマから生成＝ズレない |
 | やりたいことに近い例を探す | [例のカタログ](../spec/examples/README.md) | `npx hatake examples <やりたいこと>` |
+| **書き方を間違えた / 間違えたくない** | [よくある間違い](../spec/pitfalls.json) | `npx hatake pitfalls <キー名>`。`validate` も自動で引く |
+| 英語で AI に読ませる | [AI cheat sheet](api-cheatsheet.md) / [llms-en.txt](../llms-en.txt) | 日本語版のみの文書には `(ja)` と明記 |
 | 定義が正しいか機械検証 | [JSON Schema](../spec/hatake-page.schema.json) | `python spec/tools/validate_schema.py <file>` |
 | 業務画面をまるごと写経したい | [cookbook](cookbook/) | 下記参照。実物は CI 検証済み |
 | **自分のコードをどこに書くか**知りたい | [仕組みと責務分担](guide/concepts.ja.md) | Framework が持たない領域も明記 |

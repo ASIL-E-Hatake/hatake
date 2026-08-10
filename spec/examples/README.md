@@ -49,7 +49,7 @@ npx hatake examples --json    # ツール向け
 npx hatake validate spec/examples/*.yaml
 ```
 
-キーの意味・型・既定値・取れる値は [DSL リファレンス](../reference.json)（`npx hatake reference <キー名>`）で引ける。仕様の読み物版は [DSL 仕様](../dsl-spec.ja.md)。
+キーの意味・型・既定値・取れる値は [DSL リファレンス](../reference.json)（`npx hatake reference <キー名>`）で引ける。間違えたときは [よくある間違い](../pitfalls.json)（`npx hatake pitfalls <キー名>`）。仕様の読み物版は [DSL 仕様](../dsl-spec.ja.md)。
 
 ## 例を足すとき
 

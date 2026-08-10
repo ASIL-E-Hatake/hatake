@@ -8,6 +8,7 @@ export * from "./specDir.js";
 export * from "./mcpTools.js";
 export * from "./scaffold.js";
 export * from "./examples.js";
+export * from "./pitfalls.js";
 export * from "./appParse.js";
 export * from "./validators.js";
 export * from "./formValidator.js";
