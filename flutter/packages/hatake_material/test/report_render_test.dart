@@ -208,6 +208,43 @@ void main() {
     expect(captured!.text, contains('SO-1,¥100'));
   });
 
+  testWidgets('a declared charset reaches the sink（変換はしない）',
+      (tester) async {
+    // Framework は文字列までで、バイト列にするのは出力先の責務。だから運ぶのは名前。
+    const sjis = ReportPageDefinition(
+      id: 'sales_report',
+      title: '売上明細表',
+      repository: 'orderRepository',
+      table: _table,
+      report: ReportDefinition(),
+      actions: [
+        ActionDefinition(
+          id: 'csv',
+          type: ActionTypes.export,
+          label: 'CSV出力',
+          // BOM も宣言しているが、UTF-8 でなければ付けない（付けると先頭が化ける）。
+          config: {'filename': '売上明細', 'bom': true, 'charset': 'cp932'},
+        ),
+      ],
+    );
+    ExportRequest? captured;
+    await tester.pumpWidget(_harness(
+      _Orders(_rows),
+      definition: sjis,
+      exportSink: (request) => captured = request,
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('hatake.action.csv')));
+    await tester.pumpAndSettle();
+
+    expect(captured!.charset, 'cp932');
+    expect(captured!.mimeType, 'text/csv; charset=cp932');
+    expect(captured!.text.startsWith('\u{FEFF}'), isFalse);
+    // 中身そのものは UTF-8 の文字列のまま（変換していない）。
+    expect(captured!.text, contains('受注番号'));
+  });
+
   testWidgets('an export with no sink registered reports itself',
       (tester) async {
     await tester.pumpWidget(_harness(_Orders(_rows)));

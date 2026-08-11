@@ -14,6 +14,8 @@ dependencies:
     sdk: flutter
   hatake_material: ^0.0.1
   hatake_yaml: ^0.0.1
+  # 文字コード変換は opt-in アダプタ。Shift_JIS で出す画面があるので入れている。
+  hatake_encoding: ^0.0.1
 
 dev_dependencies:
   flutter_test:
@@ -29,6 +31,8 @@ dependency_overrides:
     path: ../hatake_material
   hatake_yaml:
     path: ../hatake_yaml
+  hatake_encoding:
+    path: ../hatake_encoding
 
 flutter:
   # Required to bundle the MaterialIcons font. Without it FontManifest.json is

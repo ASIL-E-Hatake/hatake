@@ -1,0 +1,21 @@
+name: hatake_encoding
+description: >-
+  Charset conversion for hatake exports (cp932 / Shift_JIS / EUC-JP). An opt-in
+  adapter: the framework builds the document, the output sink writes the bytes.
+  Pure Dart, no dependencies — the tables are generated.
+version: 0.0.1
+repository: https://github.com/ASIL-E-Hatake/hatake
+homepage: https://github.com/ASIL-E-Hatake/hatake
+issue_tracker: https://github.com/ASIL-E-Hatake/hatake/issues
+topics:
+  - encoding
+  - shift-jis
+  - cp932
+  - japanese
+
+environment:
+  sdk: ^3.5.0
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0

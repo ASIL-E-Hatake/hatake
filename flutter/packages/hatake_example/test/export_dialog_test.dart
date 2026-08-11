@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,6 +35,28 @@ Widget _host() {
   );
 }
 
+/// Shift_JIS を要求された出力。デモは変換して「何バイトになるか」を見せる。
+const _sjisRequest = ExportRequest(
+  filename: '売上明細_sjis.csv',
+  mimeType: 'text/csv; charset=cp932',
+  text: '受注番号,顧客\r\nSO-1,山田商事\r\n',
+  charset: 'cp932',
+  actionId: 'csvSjis',
+);
+
+Widget _hostWith(ExportRequest request) {
+  return MaterialApp(
+    home: Scaffold(
+      body: Builder(
+        builder: (context) => TextButton(
+          onPressed: () => ExportDialog.show(context, request),
+          child: const Text('open'),
+        ),
+      ),
+    ),
+  );
+}
+
 void main() {
   testWidgets('shows the CSV without BOM or CR artefacts', (tester) async {
     await tester.pumpWidget(_host());
@@ -58,6 +82,36 @@ void main() {
     expect(find.textContaining('3 行'), findsOneWidget);
     // And it says what the real output carries, since the screen hides it.
     expect(find.textContaining('BOM'), findsOneWidget);
+  });
+
+  testWidgets('Shift_JIS を要求されたら、出力先が変換してバイト数を見せる',
+      (tester) async {
+    await tester.pumpWidget(_hostWith(_sjisRequest));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    // 「文字コード変換は出力先の担当」がデモで見えること。
+    expect(find.textContaining('cp932 を要求しています'), findsOneWidget);
+    final bytes =
+        tester.widget<Text>(find.byKey(const Key('demo.export.bytes'))).data!;
+    // 全角10文字×2 + 半角10バイト = 30。UTF-8 なら全角が3バイトなので 40 になる。
+    expect(bytes, 'cp932 で 30 バイト');
+    expect(utf8.encode(_sjisRequest.text).length, 40);
+  });
+
+  testWidgets('変換できない文字があれば、黙って化けさせず言う', (tester) async {
+    await tester.pumpWidget(_hostWith(const ExportRequest(
+      filename: 'x.csv',
+      mimeType: 'text/csv; charset=shift_jis',
+      // 髙（IBM 拡張）は JIS X 0208 の Shift_JIS には無い。
+      text: '顧客\r\n髙島屋\r\n',
+      charset: 'shift_jis',
+      actionId: 'csv',
+    )));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('変換できません（髙）'), findsOneWidget);
   });
 
   testWidgets('copying hands over the genuine bytes', (tester) async {

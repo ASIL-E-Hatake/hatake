@@ -170,6 +170,14 @@
       "demo": "sales_report"
     },
     {
+      "id": "csv-export",
+      "section": "dsl",
+      "title": "CSV で出力する",
+      "blurb": "一覧や帳票の内容を CSV で落とす。受け側が Shift_JIS 固定でも合わせられる。",
+      "keys": ["type", "config", "limit"],
+      "demo": "sales_report"
+    },
+    {
       "id": "app-and-menu",
       "section": "dsl",
       "title": "アプリ全体とメニューを定義する",

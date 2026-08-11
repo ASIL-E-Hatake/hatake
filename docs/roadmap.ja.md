@@ -36,6 +36,7 @@
 | | 権限・可視制御 | ✅ 3言語 | `roles` を field/column/action に付与＋`isAllowed`（3言語＋conformance）。Flutter は現在ユーザのロール（`HatakeScope(roles:)`）で表示出し分け。※UI 表示制御のみ、認証・認可は対象外 |
 | ページ種別 | ReportPage（帳票） | ✅ Flutter（3言語検証） | `type: report` ＝ 一覧の印刷版。明細の列は `table` から取り、`report` が紙の構造（`paper` / `rowsPerPage` / `sort` / `groupBy` / `totals`）を足す。**グループはコントロールブレイク**（並び順に見てキーが変わったら小計→見出し。並べ替えは Repository の責務なので `sort` で指定する）。集約は Dashboard と同じ `AggregateRegistry`。定義＋行 → 中立な `ReportDocument`（`QuerySpec` と同じ立ち位置）までを Framework が作り、Renderer は用紙比率でプレビューを描く（**明細行は search / master の一覧と同じ見た目**＝同じ文字サイズ・行高・区切り線・`column.width` 準拠。グループ見出しは行全幅）。**PDF 化・プリンタ送出は対象外**（opt-in アダプタ） |
 | 出力 | CSV 出力 | ✅ 3言語 | `action` の型 `export`。**その画面の列と行から CSV を組む**（一覧・帳票で同じ書き方。ロールで見えない列は出さない）。RFC 4180 の引用、BOM / CRLF / 区切り / `raw`（format を通さない）を `config` で選べる。一覧の export は**表示中のページではなく検索結果全体**を出す（`limit` まで読み直す）。**ファイルを書くのは対象外**＝`HatakeScope(exportSink:)` に渡された出力先の責務（文字コード変換も同じ理由でそちら） |
+| 出力 | 文字コード変換 | ✅ opt-in パッケージ | `export` の `config.charset`（既定 `utf-8`）で「受け側が欲しい文字コード」を宣言する。**変換するのは出力先**（バイト列を書く責務と同じ場所）なので、Framework は名前を運ぶだけ＝`ExportRequest.charset` と MIME の `charset=` に載せる。**`bom` は UTF-8 のときだけ効く**（Shift_JIS に BOM を付けると先頭のセルにゴミが3バイト入る。3言語＋`conformance/csv.json` で固定）。変換の実装は [`hatake_encoding`](../flutter/packages/hatake_encoding/)＝**cp932 / shift_jis / euc_jp**、依存ゼロ（表は Python 標準ライブラリの codec から生成）。**cp932 と shift_jis を分けているのが要点**＝実務の「Shift_JIS」はほぼ cp932（`①` `㈱` `髙` `～` が通る。JIS X 0208 の shift_jis には無い）で、汎用機向けに弾きたいときは shift_jis を選ぶ。IBM 拡張は同じ文字に2通りのバイト列があるので、**書くのは Windows / Excel と同じ方・読むのは両方**。変換できない文字は既定で例外（黙って `?` にしない）。正しさは Python（生成元）・Dart（実装）・**JVM の `Charset`（独立実装）** の3者一致で確認 |
 | | 帳票の印刷（PDF/プリンタ） | ⏳ | `ReportDocument` を PDF/印刷に落とす opt-in アダプタ。`printing` / `pdf` 依存を本体に入れないため別パッケージ |
 | 定義の品質 | `hatake` CLI | ✅ TS 同梱 | `npx hatake validate <file...>`（strict 既定・`--json`・**問題があれば終了コード 1** なので CI に置ける）、`new <kind>`（8種別の雛形。全部が strict とスキーマを通ることを CI で確認）、`dto` / `schema` / `openapi` / `types --out`（ネイティブ型のファイル出力の入口）。生成系は常に strict で読む（書き間違いを API に焼き付けないため）。→ [使い方](../typescript/README.md#cli) |
 | 定義の品質 | 定義の diff / 影響範囲 | ✅ TS 同梱 | `hatake diff <前> <後>`（＋MCP の `hatake_diff`）＝`DtoSpec` の差分と**後方互換の判定**。**壊す変更があれば終了コード 1** なので CI に置ける。判定は形の向きで非対称＝受け取る形は「必須を足す／型を変える／制約を厳しくする」で壊れ、返す形は「項目を消す／型を変える」で壊れる（同じ `maxLength` 20→10 でも request は破壊的・response は互換）。検索パラメータを消すのは**黙って絞り込みが効かなくなる**ので破壊的扱い。ページ id の変更・形そのものの増減（読み取り専用化で request が消える等）も見る。常に strict で読む |
@@ -86,6 +87,7 @@
 | 集約 `AggregateRegistry`（count/sum/avg/min/max） | ✅ | ✅ | ✅ | ✅ |
 | 帳票 `report`（モデル＋パーサ＋`buildReport`） | ✅ | ✅（＋プレビュー描画） | ✅ | ✅ |
 | CSV 出力 `toCsv` | ✅ | ✅（＋`export` アクション） | ✅ | ✅ |
+| 文字コードの宣言（`config.charset` / BOM の抑制） | ✅ | ✅（＋変換は `hatake_encoding`） | ✅ | ✅ |
 | Renderer（画面描画） | — | ✅(Material) | 対象外 | 対象外(※) |
 | table/action など画面寄りモデル | ✅ | ✅ | ⏳一部（table 追加済／action 未） | ✅ |
 
@@ -156,7 +158,7 @@
 | Web URL 同期 / タブ | ルートと URL の相互反映、複数タブ | Web で配ると必ず「URL 共有できないの？」になる | 中 |
 | ダッシュボードの次段 | 期間プリセット（今月/今年度）・カードからのドリルダウン・自動更新 | 1枚目が出た後の実運用要望 | 小〜中 |
 | 帳票の次段 | 複数レベルの改ページ制御・「以下余白」・繰越／前頁計、Excel（xlsx）出力 | 実際の業務帳票で追加要求が来る定番 | 中 |
-| 文字コード変換 | Shift_JIS / EUC への変換（出力先の責務なので opt-in アダプタ） | 受け側が Shift_JIS 固定の連携がまだ多い | 小 |
+| 文字コード変換の次段 | ISO-2022-JP（メール用。エスケープシーケンスで状態を持つので表引きでは書けない）・JIS X 0212 補助漢字・固定長との組み合わせ | ここまで来ると個別案件の話が多い。需要が出てから | 小〜中 |
 | ORM アダプタ2個目 | MyBatis（Java）か Prisma（TS） | 1個目（JPA）で形が固まったので横展開 | 中 |
 | 全銀・固定長 | 固定長レコードの入出力（全銀フォーマット等） | 金融・給与まわりで効く。帳票の後 | 大 |
 | Python / Rust エディション | **保留**（当面やらない）。やるときは [C. 対応言語を増やす](#c-対応言語を増やすpython--rust-など)の最低ラインに従う | 需要が出てから | 大 |

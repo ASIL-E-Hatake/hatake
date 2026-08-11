@@ -18,7 +18,7 @@ jobs:
       - name: Analyze & test
         run: |
           set -e
-          for pkg in hatake_core hatake_yaml hatake_dsl; do
+          for pkg in hatake_core hatake_yaml hatake_dsl hatake_encoding; do
             echo "::group::$pkg"
             (cd "flutter/packages/$pkg" && dart pub get && dart analyze && { if [ -d test ]; then dart test; fi; })
             echo "::endgroup::"
@@ -144,6 +144,14 @@ jobs:
         run: |
           pip install --quiet 'jsonschema[format]' pyyaml openapi-spec-validator
           python spec/tools/validate_schema.py
+      - name: Charset tables are up to date
+        run: |
+          set -e
+          # 生成物（変換表とフィクスチャ）が、生成器と同じ内容であること。
+          python flutter/packages/hatake_encoding/tool/generate_tables.py
+          git diff --exit-code -- flutter/packages/hatake_encoding/lib/src/tables \
+            spec/conformance/charset.json
+
       - name: Check the DTO emitter's JSON Schema output
         run: python spec/tools/check_dto_schema.py
       - name: Check the DTO emitter's OpenAPI output
