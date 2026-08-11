@@ -83,6 +83,20 @@
       "expected": "﻿受注番号\r\nSO-1\r\n"
     },
     {
+      "name": "charset が UTF-8 でなければ BOM は付けない（BOM は UTF-8 のものなので、Shift_JIS に付けると先頭のセルにゴミが入る）",
+      "columns": [{ "field": "orderNo", "label": "受注番号" }],
+      "rows": [{ "orderNo": "SO-1" }],
+      "options": { "bom": true, "charset": "cp932" },
+      "expected": "受注番号\r\nSO-1\r\n"
+    },
+    {
+      "name": "charset は変換しない（Framework は文字列までで、バイト列にするのは出力先）",
+      "columns": [{ "field": "customer", "label": "顧客" }],
+      "rows": [{ "customer": "山田商事" }],
+      "options": { "charset": "cp932" },
+      "expected": "顧客\r\n山田商事\r\n"
+    },
+    {
       "name": "欠損・null は空欄。真偽値はそのまま",
       "columns": [
         { "field": "orderNo", "label": "受注番号" },

@@ -32,17 +32,22 @@ Future<bool> _runExportAction(
       columns.where((c) => isAllowed(c.roles, scope.roles)).toList();
   final limit = action.config['limit'];
 
+  final options = CsvOptions.fromConfig(action.config);
   try {
     final data = await rows(limit is num ? limit.toInt() : 10000);
     await sink(ExportRequest(
       filename: _exportFilename(action, fallbackName),
-      mimeType: 'text/csv',
+      // 文字コードは MIME にも載せる（受け取り側がそのまま使えるように）。
+      mimeType: options.isUtf8
+          ? 'text/csv'
+          : 'text/csv; charset=${options.charset}',
       text: toCsv(
         visible,
         data,
-        options: CsvOptions.fromConfig(action.config),
+        options: options,
         formatters: formatters,
       ),
+      charset: options.charset,
       actionId: action.id,
     ));
     return true;

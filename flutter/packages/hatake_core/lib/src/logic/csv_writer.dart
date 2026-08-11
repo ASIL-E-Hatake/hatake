@@ -21,10 +21,21 @@ class CsvOptions {
   final String newline;
 
   /// 先頭に BOM を付けるか（Excel の文字化け対策）。
+  ///
+  /// UTF-8 のときだけ効く（[wantsBom]）。Shift_JIS などに BOM は無いので、
+  /// 付けると先頭のセルにゴミが3バイト入る。
   final bool bom;
 
   /// `format` を通さず生の値を書くか。
   final bool raw;
+
+  /// 出力先に渡す文字コードの名前（既定 `utf-8`）。
+  ///
+  /// **変換はここではしない。** Framework は文字列を作るところまでで、バイト列に
+  /// するのは出力先（`exportSink`）の責務。名前を運ぶことで、出力先が
+  /// `hatake_encoding` などで変換できる。実務で「Shift_JIS」と言われたら
+  /// ふつう `cp932`（Windows / Excel の Shift_JIS）を指す。
+  final String charset;
 
   const CsvOptions({
     this.header = true,
@@ -32,7 +43,11 @@ class CsvOptions {
     this.newline = 'crlf',
     this.bom = false,
     this.raw = false,
+    this.charset = utf8Charset,
   });
+
+  /// 既定の文字コード名。
+  static const String utf8Charset = 'utf-8';
 
   /// DSL の `config`（`export` アクション）から読む。
   factory CsvOptions.fromConfig(Map<String, Object?> config) {
@@ -42,8 +57,16 @@ class CsvOptions {
       newline: config['newline']?.toString() ?? 'crlf',
       bom: config['bom'] == true,
       raw: config['raw'] == true,
+      charset: config['charset']?.toString() ?? utf8Charset,
     );
   }
+
+  /// UTF-8 か（表記ゆれを吸収する）。
+  bool get isUtf8 =>
+      const {'utf-8', 'utf8', 'utf_8'}.contains(charset.toLowerCase());
+
+  /// 実際に BOM を付けるか。宣言されていて、かつ UTF-8 のときだけ。
+  bool get wantsBom => bom && isUtf8;
 
   String get lineBreak => newline == 'lf' ? '\n' : '\r\n';
 }
@@ -61,7 +84,7 @@ String toCsv(
   if (columns.isEmpty) return '';
   final registry = formatters ?? FormatterRegistry();
   final buffer = StringBuffer();
-  if (options.bom) buffer.write('\u{FEFF}');
+  if (options.wantsBom) buffer.write('\u{FEFF}');
 
   void writeLine(List<String> cells) {
     for (var i = 0; i < cells.length; i++) {

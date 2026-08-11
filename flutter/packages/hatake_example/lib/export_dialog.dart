@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:hatake_encoding/hatake_encoding.dart';
 import 'package:hatake_material/hatake_material.dart';
 
 /// Shows what an `export` action produced, with a copy button. Demo-only.
@@ -37,11 +38,28 @@ class ExportDialog extends StatelessWidget {
     return trimmed.isEmpty ? 0 : trimmed.split('\n').length;
   }
 
+  /// 出力先がやること＝文字列をバイト列にする。定義が言ってきた文字コードで。
+  ///
+  /// デモは画面に出すだけなので、ここでは「何バイトになるか」を見せる。実際のアプリ
+  /// では、このバイト列をダウンロード / 保存 / 送信に渡す。
+  static String _describeBytes(ExportRequest request) {
+    try {
+      final bytes = EncodingRegistry().encode(request.charset, request.text);
+      return '${request.charset} で ${bytes.length} バイト';
+    } on UnmappableCharacterException catch (error) {
+      // 業務データに変換できない文字が混じっていたら、黙って化けさせない。
+      return '${request.charset} に変換できません（${error.character}）';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final lines = _lineCount(request.text);
     final hasBom = request.text.startsWith('\u{FEFF}');
+    final isUtf8 = EncodingRegistry.utf8Names.contains(
+      request.charset.toLowerCase(),
+    );
     return AlertDialog(
       title: Text('出力 — ${request.filename}'),
       content: SizedBox(
@@ -55,9 +73,22 @@ class ExportDialog extends StatelessWidget {
               'ダウンロードや保存はアプリ側で登録した出力先の担当なので、'
               'このデモでは中身を見せています。'
               '${hasBom ? '実際の出力には Excel 向けに BOM と CRLF 改行が入っています'
-                  '（画面では読みやすさのため省いて表示。コピーは本物です）。' : ''}',
+                  '（画面では読みやすさのため省いて表示。コピーは本物です）。' : ''}'
+              '${isUtf8 ? '' : '文字コード変換も出力先の担当です'
+                  '（この定義は ${request.charset} を要求しています）。'}',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _describeBytes(request),
+              key: const Key('demo.export.bytes'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: isUtf8
+                    ? theme.colorScheme.outline
+                    : theme.colorScheme.primary,
+                fontWeight: isUtf8 ? null : FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 12),
             ConstrainedBox(

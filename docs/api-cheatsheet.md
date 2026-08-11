@@ -157,7 +157,14 @@ page:
     - { id: csv, type: export, label: CSV, config: { filename: sales, bom: true } }
 ```
 
-**CSV export (`type: export`)** builds the text from that page's columns and rows (columns hidden by role are not exported). `config` takes `filename` / `header` / `delimiter` / `newline` (crlf|lf) / `bom` / `raw` / `limit`. A list exports the **whole result set**, not the page on screen. Writing the file is the application's job — the framework hands the text to the export sink you registered.
+**CSV export (`type: export`)** builds the text from that page's columns and rows (columns hidden by role are not exported). `config` takes `filename` / `header` / `delimiter` / `newline` (crlf|lf) / `bom` / `raw` / `limit` / `charset`. A list exports the **whole result set**, not the page on screen. Writing the file is the application's job — the framework hands the text to the export sink you registered.
+
+**Charset (`charset`, default `utf-8`)** for receivers that only accept Shift_JIS. **The sink converts**; the definition only declares the name (it arrives as `req.charset`). `cp932` is Windows/Excel's Shift_JIS — what "please send Shift_JIS" almost always means, and the only one where `①` `㈱` `髙` `～` fit; `shift_jis` is strict JIS X 0208 (use it to *reject* extended characters); `euc_jp` also ships. **`bom` only applies to UTF-8** (a BOM in a Shift_JIS file is garbage in the first cell). The conversion lives in the opt-in `hatake_encoding` package:
+
+```dart
+final encodings = EncodingRegistry();
+exportSink: (req) async => save(req.filename, encodings.encode(req.charset, req.text));
+```
 
 ## Vocabularies
 

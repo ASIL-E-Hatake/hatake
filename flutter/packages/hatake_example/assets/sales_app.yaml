@@ -203,6 +203,12 @@ app:
           - { field: amount, aggregate: count }
       actions:
         - { id: csv, type: export, label: CSV出力, config: { filename: 売上明細, bom: true } }
+        # 受け側が Shift_JIS 固定の連携向け。変換するのは出力先（hatake_encoding）で、
+        # 定義は「どの文字コードで欲しいか」を言うだけ。BOM は UTF-8 のものなので付かない。
+        - id: csvSjis
+          type: export
+          label: CSV出力（Shift_JIS）
+          config: { filename: 売上明細_sjis, charset: cp932 }
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: sales_report } }
 
     - type: detail

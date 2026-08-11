@@ -484,6 +484,7 @@ page:
 | `bom` | boolean | `false` | 先頭に BOM を付けるか（Excel の文字化け対策）。 |
 | `raw` | boolean | `false` | `format` を通さず生の値を書くか（Excel で計算させたいとき）。 |
 | `limit` | integer | `10000` | 一覧ページで出力のために読み直す上限件数。 |
+| `charset` | string | `utf-8` | 出力先に渡す文字コードの名前（下記）。**変換はしない**。 |
 
 **書き出しの決まり**（[`conformance/csv.json`](conformance/csv.json)）: 区切り・引用符・改行を含む値は
 `"` で囲み、`"` は2つに重ねる（RFC 4180）。欠損・`null` は空欄。列が無ければ空文字。
@@ -494,7 +495,35 @@ page:
 
 **ファイルを書くのは Framework の外**。Framework は文字列（BOM 込み）までを作り、
 ダウンロード・保存ダイアログ・共有・アップロードは利用者が登録した出力先が行う。
-文字コード変換（Shift_JIS 等）も同じ理由で出力先の責務。
+
+### 文字コード（`charset`）
+
+受け側が Shift_JIS 固定、という連携は今でも多い。**変換するのは出力先**（バイト列を
+書くのはそちらの責務）なので、定義は「どの文字コードで欲しいか」を宣言するだけ。名前は
+出力先にそのまま渡る（Flutter では `ExportRequest.charset`、MIME にも
+`text/csv; charset=cp932` として載る）。
+
+```yaml
+- id: csvSjis
+  type: export
+  label: CSV出力（Shift_JIS）
+  config: { filename: 受注一覧, charset: cp932 }
+```
+
+| 名前 | 何か |
+|---|---|
+| `utf-8`（既定） | そのまま |
+| `cp932` | **Windows / Excel の Shift_JIS**（別名 windows-31j / MS932）。「Shift_JIS で下さい」はほぼこれ |
+| `shift_jis` | JIS X 0208 の Shift_JIS（厳密）。`①` `㈱` `髙` `～` は入らない＝拡張文字を弾きたいとき |
+| `euc_jp` | EUC-JP（JIS X 0208） |
+
+**`bom` は UTF-8 のときだけ効く。** BOM は UTF-8 のものなので、Shift_JIS に付けると
+先頭のセルにゴミが3バイト入る（`charset` が UTF-8 でなければ、宣言があっても付けない）。
+
+変換の実装は opt-in パッケージ [`hatake_encoding`](../flutter/packages/hatake_encoding/)
+（cp932 / Shift_JIS / EUC-JP。表は生成物で、期待値は
+[`conformance/charset.json`](conformance/charset.json) で Dart と JVM が突き合わせている）。
+名前は開いた文字列なので、独自の文字コードは出力先で自由に足せる。
 
 ## search
 

@@ -21,13 +21,25 @@ public final class Csv {
      * @param header 見出し行（列ラベル）を出すか
      * @param delimiter 区切り文字
      * @param newline 改行（{@code crlf} / {@code lf}）
-     * @param bom 先頭に BOM を付けるか（Excel の文字化け対策）
+     * @param bom 先頭に BOM を付けるか（Excel の文字化け対策。UTF-8 のときだけ効く）
      * @param raw {@code format} を通さず生の値を書くか
+     * @param charset 出力先に渡す文字コードの名前（既定 {@code utf-8}）。
+     *     <b>変換はここではしない</b>＝文字列を作るまでが Framework の仕事で、
+     *     バイト列にするのは出力先の責務
      */
     public record Options(
-            boolean header, String delimiter, String newline, boolean bom, boolean raw) {
+            boolean header,
+            String delimiter,
+            String newline,
+            boolean bom,
+            boolean raw,
+            String charset) {
 
-        public static final Options DEFAULT = new Options(true, ",", "crlf", false, false);
+        /** 既定の文字コード名。 */
+        public static final String UTF8 = "utf-8";
+
+        public static final Options DEFAULT =
+                new Options(true, ",", "crlf", false, false, UTF8);
 
         /** DSL の {@code config}（{@code export} アクション）から読む。 */
         public static Options fromConfig(Map<String, Object> config) {
@@ -39,11 +51,26 @@ public final class Csv {
                     config.get("delimiter") == null ? "," : config.get("delimiter").toString(),
                     config.get("newline") == null ? "crlf" : config.get("newline").toString(),
                     Boolean.TRUE.equals(config.get("bom")),
-                    Boolean.TRUE.equals(config.get("raw")));
+                    Boolean.TRUE.equals(config.get("raw")),
+                    config.get("charset") == null ? UTF8 : config.get("charset").toString());
         }
 
         public String lineBreak() {
             return "lf".equals(newline) ? "\n" : "\r\n";
+        }
+
+        /** UTF-8 か（表記ゆれを吸収する）。 */
+        public boolean isUtf8() {
+            String lower = charset.toLowerCase(java.util.Locale.ROOT);
+            return lower.equals("utf-8") || lower.equals("utf8") || lower.equals("utf_8");
+        }
+
+        /**
+         * 実際に BOM を付けるか。宣言されていて、かつ UTF-8 のときだけ
+         * （Shift_JIS などに BOM は無く、付けると先頭のセルにゴミが3バイト入る）。
+         */
+        public boolean wantsBom() {
+            return bom && isUtf8();
         }
     }
 
@@ -65,7 +92,7 @@ public final class Csv {
             return "";
         }
         StringBuilder out = new StringBuilder();
-        if (options.bom()) {
+        if (options.wantsBom()) {
             out.append('\uFEFF');
         }
         if (options.header()) {

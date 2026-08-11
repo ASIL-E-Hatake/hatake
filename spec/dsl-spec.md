@@ -519,6 +519,7 @@ Columns a role may not see stay out of the file.
 | `bom` | boolean | `false` | Prepend a BOM (so Excel reads UTF-8 Japanese). |
 | `raw` | boolean | `false` | Skip `format` and write raw values (to compute in Excel). |
 | `limit` | integer | `10000` | Cap on the rows a list page re-reads for the export. |
+| `charset` | string | `utf-8` | Charset name handed to the sink (below). **No conversion happens here.** |
 
 **Writing rules** ([`conformance/csv.json`](conformance/csv.json)): a value
 containing the delimiter, a quote or a line break is wrapped in `"` and its quotes
@@ -531,8 +532,38 @@ writes exactly those.
 
 **Writing the file is outside the framework.** It produces the text (BOM
 included) and stops; downloading, showing a save dialog, sharing or uploading is
-done by the sink the application registers. Character-set conversion (Shift_JIS
-and friends) belongs to the sink for the same reason.
+done by the sink the application registers.
+
+### Charset
+
+Receiving systems that only accept Shift_JIS are still common. **The sink does the
+conversion** (it writes the bytes), so a definition only declares what the other
+side wants. The name is passed through — `ExportRequest.charset` in Flutter, and on
+the MIME type as `text/csv; charset=cp932`.
+
+```yaml
+- id: csvSjis
+  type: export
+  label: CSV出力（Shift_JIS）
+  config: { filename: 受注一覧, charset: cp932 }
+```
+
+| Name | What it is |
+|---|---|
+| `utf-8` (default) | as-is |
+| `cp932` | **Windows / Excel's Shift_JIS** (a.k.a. windows-31j / MS932). "Please send Shift_JIS" almost always means this |
+| `shift_jis` | Shift_JIS as JIS X 0208 (strict). `①` `㈱` `髙` `～` are *not* in it — pick this to reject extended characters |
+| `euc_jp` | EUC-JP (JIS X 0208) |
+
+**`bom` only applies to UTF-8.** A BOM is a UTF-8 thing; prepending it to Shift_JIS
+puts three bytes of garbage in the first cell, so it is skipped whenever `charset`
+is not UTF-8 — declared or not.
+
+The conversion itself lives in the opt-in package
+[`hatake_encoding`](../flutter/packages/hatake_encoding/) (cp932 / Shift_JIS /
+EUC-JP; the tables are generated, and
+[`conformance/charset.json`](conformance/charset.json) is what Dart and the JVM are
+checked against). The name is an open string, so a sink can add its own charsets.
 
 ## search
 

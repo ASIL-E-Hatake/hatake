@@ -18,7 +18,15 @@ export interface CsvOptions {
   bom: boolean;
   /** format を通さず生の値を書くか。 */
   raw: boolean;
+  /**
+   * 出力先に渡す文字コードの名前（既定 `utf-8`）。**変換はここではしない**
+   * ＝Framework は文字列までで、バイト列にするのは出力先の責務。
+   */
+  charset: string;
 }
+
+/** 既定の文字コード名。 */
+export const UTF8_CHARSET = "utf-8";
 
 export const defaultCsvOptions: CsvOptions = {
   header: true,
@@ -26,6 +34,7 @@ export const defaultCsvOptions: CsvOptions = {
   newline: "crlf",
   bom: false,
   raw: false,
+  charset: UTF8_CHARSET,
 };
 
 /** DSL の config（export アクション）から読む。 */
@@ -38,8 +47,21 @@ export function csvOptionsFromConfig(
     newline: config.newline == null ? "crlf" : String(config.newline),
     bom: config.bom === true,
     raw: config.raw === true,
+    charset:
+      config.charset == null ? UTF8_CHARSET : String(config.charset),
   };
 }
+
+/** UTF-8 か（表記ゆれを吸収する）。 */
+export const isUtf8Charset = (charset: string): boolean =>
+  ["utf-8", "utf8", "utf_8"].includes(charset.toLowerCase());
+
+/**
+ * 実際に BOM を付けるか。宣言されていて、かつ UTF-8 のときだけ
+ * （Shift_JIS などに BOM は無く、付けると先頭のセルにゴミが3バイト入る）。
+ */
+export const wantsBom = (options: CsvOptions): boolean =>
+  options.bom && isUtf8Charset(options.charset);
 
 /**
  * rows を columns の順に CSV へ書き出す。列が無ければ空文字。
@@ -67,7 +89,7 @@ export function toCsv(
         .join(options.delimiter),
     );
   }
-  const bom = options.bom ? "\ufeff" : "";
+  const bom = wantsBom(options) ? "\ufeff" : "";
   return bom + lines.map((line) => line + lineBreak).join("");
 }
 
