@@ -203,7 +203,10 @@ class ConformanceTest {
                 () -> {
                     Map<String, Object> condition = (Map<String, Object>) c.get("condition");
                     Map<String, Object> record = (Map<String, Object>) c.get("record");
-                    assertEquals(c.get("expected"), ConditionEvaluator.evaluate(condition, record));
+                    String mode = (String) c.get("mode");
+                    assertEquals(
+                            c.get("expected"),
+                            ConditionEvaluator.evaluate(condition, record, mode));
                 }));
     }
 

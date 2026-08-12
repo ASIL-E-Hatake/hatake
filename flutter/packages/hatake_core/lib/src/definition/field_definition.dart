@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'column_definition.dart';
 import 'field_types.dart';
 import 'option_item.dart';
+import 'options_source.dart';
 import 'sub_table_source.dart';
 import 'validator_definition.dart';
 
@@ -32,6 +33,16 @@ class FieldDefinition extends Equatable {
 
   /// Options for select / radio / multiSelect field types.
   final List<OptionItem> options;
+
+  /// Parent field whose value narrows [options] (a static cascade).
+  ///
+  /// The choices offered are those whose `when` equals the parent's current
+  /// value, plus any option without a `when`. Null = every option is offered.
+  final String? optionsFrom;
+
+  /// Where to fetch the options from, instead of listing them (see
+  /// [OptionsSource]). Null = use [options].
+  final OptionsSource? optionsSource;
 
   /// Optional display formatter name (see `FormatterRegistry`). Options are
   /// read from [config].
@@ -82,6 +93,8 @@ class FieldDefinition extends Equatable {
     this.defaultValue,
     this.validators = const [],
     this.options = const [],
+    this.optionsFrom,
+    this.optionsSource,
     this.format,
     this.normalize = const [],
     this.config = const {},
@@ -104,6 +117,8 @@ class FieldDefinition extends Equatable {
         defaultValue,
         validators,
         options,
+        optionsFrom,
+        optionsSource,
         format,
         normalize,
         config,

@@ -58,9 +58,11 @@ export const strictKeyTable: Record<string, string[]> = {
   section: ["title", "layout", "fields"],
   field: [
     "field", "label", "type", "required", "readOnly", "defaultValue",
-    "validators", "options", "format", "normalize", "config", "visibleWhen",
-    "enabledWhen", "computed", "roles", "columns", "fields", "source",
+    "validators", "options", "optionsFrom", "optionsSource", "format",
+    "normalize", "config", "visibleWhen", "enabledWhen", "computed", "roles",
+    "columns", "fields", "source",
   ],
+  optionsSource: ["repository", "value", "label", "parentKey", "limit"],
   subTableSource: ["repository", "parentKey", "key", "pageSize"],
   action: [
     "id", "type", "label", "plugin", "page", "params", "confirm", "onSuccess",
@@ -68,7 +70,7 @@ export const strictKeyTable: Record<string, string[]> = {
   ],
   confirm: ["title", "message", "okLabel", "cancelLabel", "danger"],
   actionSuccess: ["message", "page", "params"],
-  option: ["value", "label"],
+  option: ["value", "label", "when"],
   layout: ["columns"],
 };
 
@@ -111,6 +113,7 @@ const children: Record<string, Record<string, string>> = {
   section: { layout: "layout", fields: "field[]" },
   field: {
     options: "option[]",
+    optionsSource: "optionsSource",
     columns: "column[]",
     fields: "field[]",
     source: "subTableSource",

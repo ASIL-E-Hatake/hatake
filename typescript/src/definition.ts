@@ -7,6 +7,28 @@ export const kDslVersion = "1.0";
 export interface OptionItem {
   value: unknown;
   label: string;
+  /**
+   * Parent value this option belongs to (see `FieldDefinition.optionsFrom`).
+   * Undefined = always offered.
+   */
+  when?: unknown;
+}
+
+/**
+ * Where a field's choices come from, when listing them in the definition is not
+ * an option. The framework knows no HTTP and no SQL: it asks the repository the
+ * application registered, passing the parent value as a filter when `parentKey`
+ * is set (that is how a cascade works).
+ */
+export interface OptionsSource {
+  repository: string;
+  /** Field of a row to store. */
+  value: string;
+  /** Field of a row to show. */
+  label: string;
+  /** Field of a row holding the parent value. Undefined = fetch every row. */
+  parentKey?: string;
+  limit: number;
 }
 
 export interface ValidatorDefinition {
@@ -24,6 +46,14 @@ export interface FieldDefinition {
   defaultValue?: unknown;
   validators: ValidatorDefinition[];
   options: OptionItem[];
+  /**
+   * Parent field whose value narrows `options` (a static cascade). The choices
+   * offered are those whose `when` equals the parent's current value, plus any
+   * option without a `when`.
+   */
+  optionsFrom?: string;
+  /** Where to fetch the options from instead of listing them. */
+  optionsSource?: OptionsSource;
   /** Display formatter name (see FormatterRegistry). */
   format?: string;
   /** Input converters applied before validation (see ConverterRegistry). */

@@ -722,6 +722,71 @@ enabledWhen:
 
 演算子（`operator`）: `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty`。数値同士は数値比較、そうでなければ文字列比較。未知の演算子は false。
 
+**新規のときだけ / 編集のときだけ**は `mode` のリーフで書く。レコードの中身では分からない
+（キー項目が入っているかを見る回避策は、読んでも意図が分からない）。
+
+```yaml
+# コードは新規のときだけ入力できる（編集では変えさせない）
+- { field: code, label: コード, enabledWhen: { mode: create } }
+# 更新者は編集のときだけ出す
+- { field: updatedBy, label: 更新者, readOnly: true, visibleWhen: { mode: edit } }
+```
+
+| `mode` | いつ true |
+|---|---|
+| `create` | 新規入力中（まだ保存されていない） |
+| `edit` | 既存レコードの編集中 |
+
+**モードが分からない場所では false**（読み取り専用の詳細画面など）。`{ mode: create }` は
+「新規のときだけ」なので、そう言えない場所では満たされない、と読む。明細（`subTable`）の
+行では、行の追加が `create`・既存行を開いたら `edit`。
+
+### 選択肢の連動（`optionsFrom` / `when` / `optionsSource`）
+
+都道府県 → 市区町村、大分類 → 中分類。**親項目の値で子項目の選択肢を絞る**。
+
+書き方は2つあり、選択肢が定義に書ける量かどうかで選ぶ。
+
+```yaml
+# ① 定義に書く（選択肢が固定で、数が知れているとき）
+- { field: prefecture, label: 都道府県, type: select,
+    options: [{ value: tokyo, label: 東京都 }, { value: osaka, label: 大阪府 }] }
+- field: city
+  label: 市区町村
+  type: select
+  optionsFrom: prefecture              # 親の項目名
+  options:
+    - { value: shibuya, label: 渋谷区, when: tokyo }   # この親の値のときだけ出る
+    - { value: kita,    label: 北区,   when: osaka }
+    - { value: other,   label: その他 }               # when 無し = 常に出る
+
+# ② Repository から引く（選択肢がデータのとき）
+- field: city
+  label: 市区町村
+  type: select
+  optionsFrom: prefecture
+  optionsSource:
+    repository: cityRepository   # 利用者が登録した Repository
+    value: code                  # 行のどの項目を値にするか（既定 code）
+    label: name                  # 行のどの項目を表示するか（既定 name）
+    parentKey: prefecture        # 行の中で親の値を持つ項目名。絞り込み条件として渡る
+    limit: 200                   # 引く件数（既定 200）
+```
+
+決まっていること:
+
+- **親が未入力なら、`when` 付きの選択肢は出ない**（親を選ぶまで子は空）。`when` を書いて
+  いない選択肢は常に出るので、「未選択」「その他」に使える
+- 値の比較は条件式と同じ**緩い比較**（`'1'` と `1` は同じ）
+- **親が変わって子の値が選べなくなったら、子の値を捨てる**。「大阪府なのに渋谷区」で
+  保存されるより、消えて選び直す方が安全
+- ②では**親が未入力のうちは引かない**（全件出すと連動の意味が無い）。`parentKey` は
+  `optionsFrom` と対で使う（親が決まらないと絞り込めない）
+- `options` と `optionsSource` の両方を書いたら**引いた方が勝つ**（`hatake validate` が警告する）
+- Framework は HTTP も SQL も知らない。②が使うのは一覧画面と同じ `Repository.search`
+
+検索条件（`filter`）の連動は未対応（今は入力項目だけ）。
+
 ### computed
 
 値をレコードから導出する計算項目。`op` で計算方法を選ぶ（組込み以外はプラグインで追加可）。

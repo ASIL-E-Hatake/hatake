@@ -184,6 +184,18 @@ Every one of these is an **open string**: the built-ins below are what ships, an
 <!-- vocab: filter.operator -->
 `equals` `notEquals` `contains` `startsWith` `endsWith` `gt` `gte` `lt` `lte` `between` `in`
 
+### Form mode (`visibleWhen`, `enabledWhen`)
+<!-- vocab: condition.mode -->
+`create` `edit`
+
+`{ mode: create }` / `{ mode: edit }` is a leaf of its own: the record cannot tell
+you which state the form is in. False wherever the mode is unknown (a read-only
+detail page has none).
+
+```yaml
+- { field: code, label: Code, enabledWhen: { mode: create } }   # never changed after creation
+```
+
 ### Condition operators (`visibleWhen`, `enabledWhen`)
 <!-- vocab: condition.operator -->
 `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty`
@@ -288,6 +300,34 @@ Computed `op`:
 `concat` `sum` `subtract` `product`
 
 Extensible via `ComputedRegistry`.
+
+## Linked options (the parent narrows the child)
+
+```yaml
+# 1. in the definition
+- { field: prefecture, label: Prefecture, type: select,
+    options: [{ value: tokyo, label: Tokyo }, { value: osaka, label: Osaka }] }
+- field: city
+  label: City
+  type: select
+  optionsFrom: prefecture                            # the parent field
+  options:
+    - { value: shibuya, label: Shibuya, when: tokyo } # offered for this parent value
+    - { value: other,   label: Other }                # no `when` = always offered
+
+# 2. from a repository
+- field: city
+  label: City
+  type: select
+  optionsFrom: prefecture
+  optionsSource: { repository: cityRepository, value: code, label: name, parentKey: prefecture }
+```
+
+* While the parent is empty, options with a `when` are not offered (and form 2 fetches nothing).
+* **A child value that is no longer offered is cleared** — losing it beats saving Shibuya under Osaka.
+* Values compare the loose way conditions do (`'1'` equals `1`).
+* Do not write both `options` and `optionsSource` (the fetched one wins; `validate` warns).
+* Linked search filters are not supported yet.
 
 ## Roles (display gating only)
 

@@ -29,7 +29,8 @@
 | | Validator 拡充 | 🚧 一部 | 郵便番号済。法人番号/相関等は未 |
 | 表現 | i18n / メッセージ多言語化 | ✅ 3言語 | `MessageResolver`（ロケール＋開いたキー、既定 ja）でバリデータ固定文言を差し替え可能に。`ValidatorRegistry(custom, messages)` で注入。Dart/TS/Java で同名・同挙動 |
 | | テーマ / スタイル定義 | ✅ Flutter（3言語パーサ） | `app.theme`＝色・明暗・密度・角丸・フォント（`primaryColor` / `secondaryColor` / `brightness` / `density` / `fontFamily` / `radius` / `config`）。**Renderer 非依存で挙動は変えない**（Material は `materialThemeOf()` で `ThemeData` に落とす。`HatakeApp` が自動適用するので Dart は1行も要らない）。`brightness: system` は端末設定に従う。`density` は VisualDensity と一覧の行高・入力欄の詰め方に効く（業務画面は `compact`）。**色が色でない／未知の `density` はパース時にエラー**（黙って無視されると「書いたのに変わらない」になるので）。Java は strict のキーだけ（描画しないので値は持たない） |
-| | 条件表示・活性制御 | ✅ 3言語 | `visibleWhen` / `enabledWhen`（宣言的条件。`evaluateCondition` を3言語＋conformance、Flutter はフォームで表示/活性を反応制御） |
+| | 条件表示・活性制御 | ✅ 3言語 | `visibleWhen` / `enabledWhen`（宣言的条件。`evaluateCondition` を3言語＋conformance、Flutter はフォームで表示/活性を反応制御）。**`{ mode: create }` / `{ mode: edit }`** で「新規のときだけ／編集のときだけ」を書ける＝キー項目の有無を見る回避策が要らない（モードは**レコードでは分からない**ので、フォームから渡す。分からない場所では false）。明細の行は追加が create・既存行が edit |
+| | 選択肢の連動（カスケード） | ✅ Flutter（Dart/TS 2言語のロジック） | 親項目の値で子項目の選択肢を絞る（都道府県→市区町村）。**2つの書き方**＝①定義に書く（`optionsFrom` ＋ 各選択肢の `when`。`when` 無しは常に出る）②`optionsSource` で **Repository から引く**（`value` / `label` / `parentKey` / `limit`。親の値が `parentKey` の名前で絞り込み条件として渡る。Framework は HTTP も SQL も知らない＝一覧と同じ `search` を呼ぶだけ）。**親が未入力なら出さない/引かない**、**親が変わって選べなくなった子の値は捨てる**（「大阪府なのに渋谷区」を保存させない）。絞り込みの判定は `visibleOptions` / `optionValueIsStale` として hatake_core と TS にあり、`conformance/option_filter.json` で一致を担保。`hatake validate` が「`when` があるのに `optionsFrom` が無い」「親がフォームに無い」「`options` と `optionsSource` の両方」を警告する。**検索条件（`filter`）の連動は未対応** |
 | | 計算項目・派生値 | ✅ 3言語 | `computed`（`ComputedRegistry`：concat/sum/subtract/product ＋登録式。3言語＋conformance、Flutter は読み取り表示で自動再計算） |
 | 動き | Action / Workflow フック | ✅ Flutter（3言語パーサ） | `action.confirm`（`title` / `message` / `okLabel` / `cancelLabel` / `danger`）と `action.onSuccess`（`message` / `page` / `params`）。**`delete` は宣言が無くても必ず確認する**（取り消せないので既定を安全側に。`confirm` を書くと文言が置き換わる）。`onSuccess` は**成功したときだけ**動く（ハンドラ未登録・出力先未登録・Repository が拒否＝全部失敗扱い）。`create` / `edit` はフォームを開くだけなので `onSuccess` の対象外。実装は**全ページ種別で1本のディスパッチャ**に寄せた（`_runPageAction`。crud/search/detail が個別に持っていた3重実装を解消）。ワークフロー（多段承認等）は対象外 |
 | | Navigation 定義 | ✅ Flutter（3言語パーサ） | `AppDefinition`（menu＋pages）＋`HatakeApp`／`HatakeRouter`（依存ゼロ）。`navigate` で一覧→詳細（`$row.id`）、グループ見出し・レスポンシブ（サイドバー/Drawer）・ブレッドクラム対応。メニューは roles 連動。TS/Java はナビ情報＋ページ目録をパース。タブ/Web URL 同期は次段 |
@@ -75,6 +76,8 @@
 | Formatter / Converter | ✅ | ✅ | ✅ | ✅ |
 | メッセージ i18n（`MessageResolver`） | — | ✅ | ✅ | ✅ |
 | 条件表示 `evaluateCondition` / 計算 `computed` | ✅ | ✅ | ✅ | ✅ |
+| 条件の `mode`（新規/編集） | ✅ | ✅（フォームが渡す） | ✅ | ✅ |
+| 選択肢の連動（`optionsFrom` / `when` / `optionsSource`） | ✅ | ✅（＋Repository から引く） | strict のみ | ✅（モデル＋絞り込み） |
 | 権限 `roles` / `isAllowed` | ✅ | ✅ | ✅ | ✅(field) |
 | ナビ定義（app/menu）パーサ | ✅ | ✅（＋描画） | ✅（目録 PageRef） | ✅（目録 PageRef） |
 | テーマ定義 `app.theme` | ✅ | ✅（＋適用） | strict のみ | ✅（モデル＋検証） |
@@ -154,6 +157,8 @@
 | **帳票の印刷アダプタ** | `ReportDocument` → PDF / プリンタ（`printing` / `pdf` 依存を本体に入れず opt-in パッケージで）。ページ番号・ヘッダフッタの体裁もここ | 帳票は「画面で見る」で終わらない。プレビューまでは入ったので残りは出力経路 | 中 |
 | テーマの次段 | ページ単位の上書き・複数テーマの切替（ダーク手動切替）・`config` で Renderer 固有の見た目を足す口の整備 | 1枚目が出た後の要望。今は app 単位＋`config` 止まり | 小〜中 |
 | アクションの次段 | `onError`（失敗時の文言差し替え）・実行前フック（入力を足す小さなダイアログ）・**複数レコードへの一括実行** | `confirm` / `onSuccess` で足りない所から。一括操作は業務でよく来る | 中 |
+| 検索条件の連動 | `filter` にも `optionsFrom` / `optionsSource` を効かせる（今は入力項目だけ）。検索欄は「絞ってから探す」のが自然なので需要はある | 入力項目で形が決まったので横展開 | 小〜中 |
+| 項目制御の次段 | `readOnlyWhen`（`enabledWhen` の逆で読みやすい場合がある）・`requiredWhen`（条件付き必須。今は `validators` で書けない）・セクション単位の条件 | 条件が項目単位で閉じているので、必須の出し分けができない | 中 |
 | Validator 拡充 | 法人番号・マイナンバー・相関チェック（項目間の比較） | 相関チェックが無いと結局コードに落ちる | 小〜中 |
 | Web URL 同期 / タブ | ルートと URL の相互反映、複数タブ | Web で配ると必ず「URL 共有できないの？」になる | 中 |
 | ダッシュボードの次段 | 期間プリセット（今月/今年度）・カードからのドリルダウン・自動更新 | 1枚目が出た後の実運用要望 | 小〜中 |

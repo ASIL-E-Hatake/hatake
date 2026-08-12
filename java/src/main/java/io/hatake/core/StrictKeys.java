@@ -89,15 +89,17 @@ public final class StrictKeys {
             Map.entry("form", keys("sections")),
             Map.entry("section", keys("title", "layout", "fields")),
             Map.entry("field", keys("field", "label", "type", "required", "readOnly",
-                    "defaultValue", "validators", "options", "format", "normalize", "config",
-                    "visibleWhen", "enabledWhen", "computed", "roles", "columns", "fields",
-                    "source")),
+                    "defaultValue", "validators", "options", "optionsFrom", "optionsSource",
+                    "format", "normalize", "config", "visibleWhen", "enabledWhen", "computed",
+                    "roles", "columns", "fields", "source")),
             Map.entry("subTableSource", keys("repository", "parentKey", "key", "pageSize")),
             Map.entry("action", keys("id", "type", "label", "plugin", "page", "params", "confirm",
                     "onSuccess", "config", "roles")),
             Map.entry("confirm", keys("title", "message", "okLabel", "cancelLabel", "danger")),
             Map.entry("actionSuccess", keys("message", "page", "params")),
-            Map.entry("option", keys("value", "label")),
+            Map.entry("option", keys("value", "label", "when")),
+            Map.entry("optionsSource", keys("repository", "value", "label", "parentKey",
+                    "limit")),
             Map.entry("layout", keys("columns")));
 
     /** 子ノードへの道。{@code []} 付きはそのノードの配列。無いキーは葉／自由な入れ物。 */
@@ -129,8 +131,8 @@ public final class StrictKeys {
             Map.entry("table", Map.of("columns", "column[]", "pagination", "pagination")),
             Map.entry("form", Map.of("sections", "section[]")),
             Map.entry("section", Map.of("layout", "layout", "fields", "field[]")),
-            Map.entry("field", Map.of("options", "option[]", "columns", "column[]",
-                    "fields", "field[]", "source", "subTableSource")));
+            Map.entry("field", Map.of("options", "option[]", "optionsSource", "optionsSource",
+                    "columns", "column[]", "fields", "field[]", "source", "subTableSource")));
 
     /** {@code page.type} → 閉じたページノード名。未知の種別は null（種別エラーの領分）。 */
     private static final Map<String, String> PAGE_NODES = Map.of(

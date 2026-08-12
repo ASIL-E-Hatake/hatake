@@ -44,6 +44,12 @@ function isEmptyValue(v: unknown): boolean {
   );
 }
 
+/**
+ * 値が「同じ」か。数値として読めれば数値で、それ以外は文字列で比べる
+ * （`'1'` と `1` は同じ）。条件式と選択肢の絞り込みで同じ判定を使うために公開。
+ */
+export const looseEquals = (a: unknown, b: unknown): boolean => eq(a, b);
+
 function eq(a: unknown, b: unknown): boolean {
   const na = toNum(a);
   const nb = toNum(b);
@@ -61,7 +67,11 @@ function compare(a: unknown, b: unknown): number {
   return sa < sb ? -1 : sa > sb ? 1 : 0;
 }
 
-function leaf(cond: Condition, record: Record_): boolean {
+function leaf(cond: Condition, record: Record_, mode?: string): boolean {
+  // `{ mode: create }` は「新規のときだけ」。レコードの中身では分からないので
+  // 呼び出し側（フォーム）から渡す。分からない場所では false。
+  const wanted = cond.mode;
+  if (typeof wanted === "string") return mode !== undefined && mode === wanted;
   const field = cond.field;
   if (typeof field !== "string") return false;
   const operator = typeof cond.operator === "string" ? cond.operator : "equals";
@@ -94,20 +104,34 @@ function leaf(cond: Condition, record: Record_): boolean {
   }
 }
 
-/** condition を record に対して評価する。null/空条件は true。 */
+/**
+ * condition を record に対して評価する。null/空条件は true。
+ * `mode` はフォームの状態（[ConditionModes]）で、`{ mode: create }` の判定に使う。
+ */
 export function evaluateCondition(
   condition: Condition | null | undefined,
   record: Record_,
+  mode?: string,
 ): boolean {
   if (condition == null || Object.keys(condition).length === 0) return true;
   if (Array.isArray(condition.all)) {
-    return condition.all.every((c) => evaluateCondition(c as Condition, record));
+    return condition.all.every((c) =>
+      evaluateCondition(c as Condition, record, mode),
+    );
   }
   if (Array.isArray(condition.any)) {
-    return condition.any.some((c) => evaluateCondition(c as Condition, record));
+    return condition.any.some((c) =>
+      evaluateCondition(c as Condition, record, mode),
+    );
   }
   if (condition.not != null && typeof condition.not === "object") {
-    return !evaluateCondition(condition.not as Condition, record);
+    return !evaluateCondition(condition.not as Condition, record, mode);
   }
-  return leaf(condition, record);
+  return leaf(condition, record, mode);
 }
+
+/** `{ mode: ... }` に書ける値。フォームが新規入力中か、既存レコードの編集中か。 */
+export const ConditionModes = {
+  create: "create",
+  edit: "edit",
+} as const;

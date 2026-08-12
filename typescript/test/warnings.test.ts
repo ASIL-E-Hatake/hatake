@@ -313,6 +313,82 @@ page:
   });
 });
 
+describe("選択肢の連動", () => {
+  const form = (fields: string) => `
+page:
+  type: form
+  id: customer_form
+  title: 顧客入力
+  repository: customerRepository
+  form:
+    sections:
+      - fields:
+${fields}
+`;
+
+  it("when があるのに optionsFrom が無いと、絞り込みが効かない", () => {
+    expect(
+      rulesOf(
+        form(`          - field: city
+            label: 市区町村
+            type: select
+            options:
+              - { value: shibuya, label: 渋谷区, when: tokyo }`),
+      ),
+    ).toEqual(["option-when-without-optionsfrom"]);
+  });
+
+  it("親に指定した項目がフォームに無いと、子の選択肢が出ない", () => {
+    const found = warningsOf(
+      form(`          - field: city
+            label: 市区町村
+            type: select
+            optionsFrom: prefecture
+            options:
+              - { value: shibuya, label: 渋谷区, when: tokyo }`),
+    );
+    expect(found.map((w) => w.rule)).toEqual(["optionsfrom-unknown-field"]);
+    expect(found[0].message).toContain("prefecture");
+  });
+
+  it("親が同じフォームにあれば黙る", () => {
+    expect(
+      rulesOf(
+        form(`          - { field: prefecture, label: 都道府県, type: select }
+          - field: city
+            label: 市区町村
+            type: select
+            optionsFrom: prefecture
+            options:
+              - { value: shibuya, label: 渋谷区, when: tokyo }`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("parentKey があるのに optionsFrom が無いと、全件引いてしまう", () => {
+    expect(
+      rulesOf(
+        form(`          - field: city
+            label: 市区町村
+            type: select
+            optionsSource: { repository: cityRepository, parentKey: prefecture }`),
+      ),
+    ).toEqual(["optionssource-parentkey-without-optionsfrom"]);
+  });
+
+  it("options と optionsSource の両方は書けない（引いた方が勝つ）", () => {
+    expect(
+      rulesOf(
+        form(`          - field: city
+            label: 市区町村
+            type: select
+            options: [{ value: shibuya, label: 渋谷区 }]
+            optionsSource: { repository: cityRepository }`),
+      ),
+    ).toEqual(["options-and-optionssource"]);
+  });
+});
+
 describe("同梱の資料との辻褄", () => {
   it("同梱の例はすべて警告ゼロ（＝規則がうるさすぎない証拠）", () => {
     const dir = "../spec/examples";

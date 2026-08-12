@@ -349,6 +349,74 @@
       ]
     },
     {
+      "id": "edit-detected-by-key",
+      "keys": ["enabledWhen", "visibleWhen", "mode"],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "「編集のとき」をキー項目の有無で判定する",
+        "en": "Detecting \"while editing\" by looking at the key field"
+      },
+      "why": {
+        "ja": "`{ field: id, operator: isEmpty }` は動くが、**なぜ id を見ているのかが定義から読み取れない**。キー項目名を変えたら黙って壊れるし、`key` を持たないページでは成り立たない。",
+        "en": "`{ field: id, operator: isEmpty }` works, but **nothing in the definition says why `id` is being inspected**. Rename the key field and it breaks silently, and pages without a `key` cannot do it at all."
+      },
+      "fix": {
+        "ja": "`{ mode: create }` / `{ mode: edit }` と書く。フォームの状態そのものなので、キー項目に依存しない。",
+        "en": "Write `{ mode: create }` / `{ mode: edit }` — it is the form's own state, independent of the key field."
+      },
+      "good": [
+        "page:",
+        "  type: crud",
+        "  id: customer_master",
+        "  title: 顧客マスタ",
+        "  repository: customerRepository",
+        "  table:",
+        "    columns: [{ field: code, label: コード }]",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - { field: code, label: コード, enabledWhen: { mode: create } }",
+        "          - { field: updatedBy, label: 更新者, readOnly: true,",
+        "              visibleWhen: { mode: edit } }"
+      ]
+    },
+    {
+      "id": "cascade-by-visiblewhen",
+      "keys": ["optionsFrom", "when", "optionsSource"],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "選択肢の連動を、子の項目を親の値ごとに並べて `visibleWhen` で出し分けて作る",
+        "en": "Building a cascade by repeating the child field once per parent value and switching with `visibleWhen`"
+      },
+      "why": {
+        "ja": "親の値が3つなら項目が3つになり、保存される項目名も3つに分かれる（`cityTokyo` / `cityOsaka` …）。組み合わせが増えると破綻し、データの形まで歪む。",
+        "en": "Three parent values mean three fields and three stored names (`cityTokyo`, `cityOsaka`, …). It collapses as combinations grow, and it distorts the data shape."
+      },
+      "fix": {
+        "ja": "子は1項目のままにして、`optionsFrom` で親を指し、各選択肢に `when` を書く。選択肢がデータなら `optionsSource` で Repository から引く。",
+        "en": "Keep one child field: point at the parent with `optionsFrom` and mark each option with `when`. When the choices are data, fetch them with `optionsSource`."
+      },
+      "good": [
+        "page:",
+        "  type: form",
+        "  id: customer_form",
+        "  title: 顧客入力",
+        "  repository: customerRepository",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - { field: prefecture, label: 都道府県, type: select,",
+        "              options: [{ value: tokyo, label: 東京都 }, { value: osaka, label: 大阪府 }] }",
+        "          - field: city",
+        "            label: 市区町村",
+        "            type: select",
+        "            optionsFrom: prefecture",
+        "            options:",
+        "              - { value: shibuya, label: 渋谷区, when: tokyo }",
+        "              - { value: kita,    label: 北区,   when: osaka }"
+      ]
+    },
+    {
       "id": "groupby-without-sort",
       "keys": ["groupBy"],
       "pageKinds": ["report"],

@@ -16,8 +16,11 @@ import {
   isAllowed,
   isBusinessDay,
   nextBusinessDay,
+  optionValueIsStale,
   prevBusinessDay,
   tenure,
+  visibleOptions,
+  type FieldDefinition,
   ValidatorRegistry,
 } from "../src/index.js";
 
@@ -156,8 +159,38 @@ describe("conformance: invoice", () => {
 
 describe("conformance: conditions", () => {
   for (const c of load("conditions.json")) {
-    it(`${JSON.stringify(c.condition)} on ${JSON.stringify(c.record)}`, () => {
-      expect(evaluateCondition(c.condition, c.record)).toBe(c.expected);
+    it(`${JSON.stringify(c.condition)} on ${JSON.stringify(c.record)} (mode: ${c.mode})`, () => {
+      expect(evaluateCondition(c.condition, c.record, c.mode)).toBe(c.expected);
+    });
+  }
+});
+
+describe("conformance: option filter", () => {
+  // 選択肢の連動。Dart 版と同じ fixture を食う（定義だけで決まる純粋なロジック）。
+  const fixture = JSON.parse(
+    readFileSync(`${DIR}/option_filter.json`, "utf8"),
+  ) as { cases: any[] };
+  for (const c of fixture.cases) {
+    it(c.name, () => {
+      const field = {
+        field: c.field.field,
+        label: c.field.field,
+        type: "select",
+        required: false,
+        readOnly: false,
+        validators: [],
+        options: c.field.options,
+        optionsFrom: c.field.optionsFrom,
+        normalize: [],
+        config: {},
+        roles: [],
+        columns: [],
+        rowFields: [],
+      } as FieldDefinition;
+      expect(visibleOptions(field, c.record).map((o) => o.value)).toEqual(
+        c.visible,
+      );
+      expect(optionValueIsStale(field, c.record)).toBe(c.stale);
     });
   }
 });

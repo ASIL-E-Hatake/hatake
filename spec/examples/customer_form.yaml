@@ -20,7 +20,32 @@ page:
             normalize: [toHankaku, trim]
             validators:
               - { type: maxLength, value: 20 }
+            # コードは新規のときだけ入力できる（編集では変えさせない）。
+            # キー項目が入っているかを見る回避策ではなく、mode をそのまま書く。
+            enabledWhen: { mode: create }
           - { field: name,   label: 顧客名,     type: text,   required: true }
           - { field: status, label: ステータス, type: select, required: true,
               options: [ { value: active, label: 有効 }, { value: inactive, label: 無効 } ] }
-          - { field: note,   label: 備考,       type: textarea }
+
+      - title: 住所
+        layout: { columns: 2 }
+        fields:
+          # 選択肢の連動: 親（都道府県）の値で子（市区町村）の選択肢を絞る。
+          - { field: prefecture, label: 都道府県, type: select,
+              options: [ { value: tokyo, label: 東京都 }, { value: osaka, label: 大阪府 } ] }
+          - field: city
+            label: 市区町村
+            type: select
+            optionsFrom: prefecture          # 親の項目名
+            options:
+              - { value: shibuya,  label: 渋谷区,   when: tokyo }
+              - { value: setagaya, label: 世田谷区, when: tokyo }
+              - { value: kita,     label: 北区,     when: osaka }
+              - { value: other,    label: その他 }   # when 無し = 常に出る
+
+      - title: その他
+        fields:
+          - { field: note, label: 備考, type: textarea }
+          # 更新者は編集のときだけ見せる（新規の時点では存在しない）。
+          - { field: updatedBy, label: 更新者, type: text, readOnly: true,
+              visibleWhen: { mode: edit } }

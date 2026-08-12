@@ -6,88 +6,273 @@
       "kind": "crud",
       "title": "顧客マスタ",
       "task": "検索して一覧に出して、その場で登録・修正・削除まで面倒を見る画面が欲しい",
-      "keys": ["search", "filters", "table", "columns", "pagination", "form", "sections", "validators", "actions", "rowActions", "confirm", "onSuccess"],
-      "keywords": ["CRUD", "マスタメンテ", "一覧", "検索", "入力", "ページング", "削除前の確認", "まず最初に見る例"]
+      "keys": [
+        "search",
+        "filters",
+        "table",
+        "columns",
+        "pagination",
+        "form",
+        "sections",
+        "validators",
+        "actions",
+        "rowActions",
+        "confirm",
+        "onSuccess"
+      ],
+      "keywords": [
+        "CRUD",
+        "マスタメンテ",
+        "一覧",
+        "検索",
+        "入力",
+        "ページング",
+        "削除前の確認",
+        "まず最初に見る例"
+      ]
     },
     {
       "file": "dept_master.yaml",
       "kind": "master",
       "title": "部門マスタ",
       "task": "コードと名前だけの小さなマスタを、最小の定義でメンテしたい",
-      "keys": ["table", "columns", "form", "sections", "actions", "rowActions"],
-      "keywords": ["マスタメンテ", "最小構成", "コードマスタ"]
+      "keys": [
+        "table",
+        "columns",
+        "form",
+        "sections",
+        "actions",
+        "rowActions"
+      ],
+      "keywords": [
+        "マスタメンテ",
+        "最小構成",
+        "コードマスタ"
+      ]
     },
     {
       "file": "product_search.yaml",
       "kind": "search",
       "title": "商品照会",
       "task": "検索して一覧を見るだけ（登録も更新もさせない）画面が欲しい",
-      "keys": ["search", "filters", "layout", "operator", "table", "pagination", "rowActions"],
-      "keywords": ["照会", "読み取り専用", "一覧", "検索条件", "複数条件", "詳細へ遷移"]
+      "keys": [
+        "search",
+        "filters",
+        "layout",
+        "operator",
+        "table",
+        "pagination",
+        "rowActions"
+      ],
+      "keywords": [
+        "照会",
+        "読み取り専用",
+        "一覧",
+        "検索条件",
+        "複数条件",
+        "詳細へ遷移"
+      ]
     },
     {
       "file": "customer_detail.yaml",
       "kind": "detail",
       "title": "顧客詳細",
       "task": "1件の内容を読み取り専用で表示したい（一覧から開く先）",
-      "keys": ["key", "form", "sections", "fields", "format"],
-      "keywords": ["詳細", "読み取り専用", "1件表示", "一覧→詳細"]
+      "keys": [
+        "key",
+        "form",
+        "sections",
+        "fields",
+        "format"
+      ],
+      "keywords": [
+        "詳細",
+        "読み取り専用",
+        "1件表示",
+        "一覧→詳細"
+      ]
     },
     {
       "file": "customer_form.yaml",
       "kind": "form",
       "title": "顧客入力",
       "task": "一覧を持たない単票の入力画面が欲しい（新規と編集を1枚で）",
-      "keys": ["form", "sections", "fields", "required", "validators", "normalize", "options"],
-      "keywords": ["単票", "入力フォーム", "必須", "全角半角", "選択肢", "郵便番号"]
+      "keys": [
+        "form",
+        "sections",
+        "fields",
+        "required",
+        "validators",
+        "normalize",
+        "options",
+        "optionsFrom",
+        "when",
+        "visibleWhen",
+        "enabledWhen"
+      ],
+      "keywords": [
+        "単票",
+        "入力フォーム",
+        "必須",
+        "全角半角",
+        "選択肢",
+        "郵便番号",
+        "新規と編集の出し分け",
+        "選択肢の連動",
+        "カスケード"
+      ]
     },
     {
       "file": "customer_wizard.yaml",
       "kind": "wizard",
       "title": "顧客登録",
       "task": "項目が多いので入力をステップに分けて、1ステップずつ検証したい",
-      "keys": ["steps", "description", "layout", "fields", "validators", "normalize", "visibleWhen", "computed"],
-      "keywords": ["ウィザード", "ステップ入力", "条件表示", "計算項目", "保存は最後に1回"]
+      "keys": [
+        "steps",
+        "description",
+        "layout",
+        "fields",
+        "validators",
+        "normalize",
+        "visibleWhen",
+        "computed"
+      ],
+      "keywords": [
+        "ウィザード",
+        "ステップ入力",
+        "条件表示",
+        "計算項目",
+        "保存は最後に1回"
+      ]
     },
     {
       "file": "order_entry.yaml",
       "kind": "form",
       "title": "受注入力",
       "task": "ヘッダと明細行を1画面で入力して、まとめて保存したい",
-      "keys": ["fields", "columns", "computed", "actions"],
-      "keywords": ["親子", "明細", "master-detail", "subTable", "行内計算", "まとめて保存"]
+      "keys": [
+        "fields",
+        "columns",
+        "computed",
+        "actions"
+      ],
+      "keywords": [
+        "親子",
+        "明細",
+        "master-detail",
+        "subTable",
+        "行内計算",
+        "まとめて保存"
+      ]
     },
     {
       "file": "order_entry_paged.yaml",
       "kind": "form",
       "title": "受注入力（明細別テーブル）",
       "task": "明細が何百行もあるので、子テーブルから外部キーで引いてページングしたい",
-      "keys": ["source", "parentKey", "pageSize", "columns", "fields"],
-      "keywords": ["親子", "明細", "subTable", "子Repository", "ページング", "行ごとに保存", "大量明細"]
+      "keys": [
+        "source",
+        "parentKey",
+        "pageSize",
+        "columns",
+        "fields"
+      ],
+      "keywords": [
+        "親子",
+        "明細",
+        "subTable",
+        "子Repository",
+        "ページング",
+        "行ごとに保存",
+        "大量明細"
+      ]
     },
     {
       "file": "sales_dashboard.yaml",
       "kind": "dashboard",
       "title": "売上ダッシュボード",
       "task": "件数・金額・グラフのカードを並べて、まず数字を見せたい",
-      "keys": ["items", "value", "chart", "columns", "span", "limit", "sort", "filters", "format", "action"],
-      "keywords": ["ダッシュボード", "KPI", "集計", "aggregate", "グラフ", "bar", "line", "pie", "カード", "ドリルダウン"]
+      "keys": [
+        "items",
+        "value",
+        "chart",
+        "columns",
+        "span",
+        "limit",
+        "sort",
+        "filters",
+        "format",
+        "action"
+      ],
+      "keywords": [
+        "ダッシュボード",
+        "KPI",
+        "集計",
+        "aggregate",
+        "グラフ",
+        "bar",
+        "line",
+        "pie",
+        "カード",
+        "ドリルダウン"
+      ]
     },
     {
       "file": "sales_report.yaml",
       "kind": "report",
       "title": "売上明細表",
       "task": "一覧の印刷版が欲しい。顧客ごとに小計を出して、CSV も落としたい",
-      "keys": ["report", "paper", "rowsPerPage", "sort", "groupBy", "totals", "limit", "table", "columns", "actions"],
-      "keywords": ["帳票", "印刷", "グループ", "小計", "合計", "コントロールブレイク", "CSV出力", "export"]
+      "keys": [
+        "report",
+        "paper",
+        "rowsPerPage",
+        "sort",
+        "groupBy",
+        "totals",
+        "limit",
+        "table",
+        "columns",
+        "actions"
+      ],
+      "keywords": [
+        "帳票",
+        "印刷",
+        "グループ",
+        "小計",
+        "合計",
+        "コントロールブレイク",
+        "CSV出力",
+        "export"
+      ]
     },
     {
       "file": "sales_app.yaml",
       "kind": "app",
       "title": "販売管理",
       "task": "複数の画面をメニューで束ねて、1つのアプリにしたい。会社の色にもしたい",
-      "keys": ["app", "menu", "pages", "home", "theme", "group", "items", "page", "params"],
-      "keywords": ["アプリ", "メニュー", "ナビゲーション", "画面遷移", "navigate", "グループ見出し", "テーマ", "色", "density", "全部入り"]
+      "keys": [
+        "app",
+        "menu",
+        "pages",
+        "home",
+        "theme",
+        "group",
+        "items",
+        "page",
+        "params"
+      ],
+      "keywords": [
+        "アプリ",
+        "メニュー",
+        "ナビゲーション",
+        "画面遷移",
+        "navigate",
+        "グループ見出し",
+        "テーマ",
+        "色",
+        "density",
+        "全部入り"
+      ]
     }
   ]
 }

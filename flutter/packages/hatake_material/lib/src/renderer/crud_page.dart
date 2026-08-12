@@ -37,6 +37,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
         formatters: _formatters,
         validators: HatakeScope.of(context).validators,
         subTables: HatakeScope.of(context).subTableController,
+        repositories: HatakeScope.of(context).repositories,
       ),
     );
   }
@@ -260,6 +261,10 @@ class _FormDialog extends StatefulWidget {
   final ValidatorRegistry validators;
   final SubTableControllerFactory subTables;
 
+  /// 選択肢を Repository から引く項目（`optionsSource`）のため。ダイアログは
+  /// HatakeScope の外なので、開く側から渡してもらう。
+  final RepositoryRegistry repositories;
+
   const _FormDialog({
     required this.definition,
     required this.controller,
@@ -268,6 +273,7 @@ class _FormDialog extends StatefulWidget {
     required this.formatters,
     required this.validators,
     required this.subTables,
+    required this.repositories,
   });
 
   @override
@@ -312,6 +318,9 @@ class _FormDialogState extends State<_FormDialog> {
                 formatters: widget.formatters,
                 validators: widget.validators,
                 subTables: widget.subTables,
+                repositories: widget.repositories,
+                // 条件式の `{ mode: create }` / `{ mode: edit }` 用。
+                mode: isCreate ? ConditionModes.create : ConditionModes.edit,
                 // Child rows need the parent key; null while creating.
                 recordKey: isCreate
                     ? null
