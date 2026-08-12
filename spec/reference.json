@@ -474,7 +474,7 @@
       ]
     },
     "condition": {
-      "description": "A conditional expression evaluated against a record. Either a leaf {field, operator, value} or a combinator {all|any: [..]} / {not: {..}}.",
+      "description": "A conditional expression evaluated against a record. Either a leaf {field, operator, value}, a leaf {mode: create|edit}, or a combinator {all|any: [..]} / {not: {..}}.",
       "closed": false,
       "pageKinds": [
         "crud",
@@ -488,6 +488,17 @@
         "field"
       ],
       "keys": [
+        {
+          "key": "mode",
+          "type": "string",
+          "required": false,
+          "description": "True while the form is in this mode. Use it for \"only when creating\" / \"only when editing\" instead of inspecting the key field. False wherever the mode is unknown (a read-only detail page has none).",
+          "values": [
+            "create",
+            "edit"
+          ],
+          "open": false
+        },
         {
           "key": "field",
           "type": "string",
@@ -537,7 +548,7 @@
           "key": "not",
           "type": "object",
           "required": false,
-          "description": "A conditional expression evaluated against a record. Either a leaf {field, operator, value} or a combinator {all|any: [..]} / {not: {..}}.",
+          "description": "A conditional expression evaluated against a record. Either a leaf {field, operator, value}, a leaf {mode: create|edit}, or a combinator {all|any: [..]} / {not: {..}}.",
           "nodes": [
             "condition"
           ]
@@ -1178,6 +1189,21 @@
           ]
         },
         {
+          "key": "optionsFrom",
+          "type": "string",
+          "required": false,
+          "description": "Parent field name. The options shown are those whose `when` matches the parent's current value (plus any option without a `when`). Changing the parent clears a child value that is no longer offered."
+        },
+        {
+          "key": "optionsSource",
+          "type": "object",
+          "required": false,
+          "description": "Fetch a field's options from a repository instead of listing them. The framework knows no HTTP or SQL: it asks the repository the application registered, passing the parent value as a filter when `parentKey` is set.",
+          "nodes": [
+            "optionsSource"
+          ]
+        },
+        {
           "key": "format",
           "type": "string",
           "required": false,
@@ -1681,6 +1707,62 @@
           "key": "label",
           "type": "string",
           "required": true
+        },
+        {
+          "key": "when",
+          "type": "string|number|boolean",
+          "required": false,
+          "description": "Show this option only while the parent field (`optionsFrom`) holds this value. Options without `when` always show."
+        }
+      ]
+    },
+    "optionsSource": {
+      "description": "Fetch a field's options from a repository instead of listing them. The framework knows no HTTP or SQL: it asks the repository the application registered, passing the parent value as a filter when `parentKey` is set.",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "detail",
+        "form",
+        "master",
+        "wizard"
+      ],
+      "parents": [
+        "field"
+      ],
+      "keys": [
+        {
+          "key": "repository",
+          "type": "string",
+          "required": true,
+          "description": "Repository key holding the choices."
+        },
+        {
+          "key": "value",
+          "type": "string",
+          "required": false,
+          "description": "Field of a row to store.",
+          "default": "code"
+        },
+        {
+          "key": "label",
+          "type": "string",
+          "required": false,
+          "description": "Field of a row to show.",
+          "default": "name"
+        },
+        {
+          "key": "parentKey",
+          "type": "string",
+          "required": false,
+          "description": "Field of a row holding the parent value; passed as the filter { parentKey: <parent value> }. Omit to always fetch every row."
+        },
+        {
+          "key": "limit",
+          "type": "integer",
+          "required": false,
+          "description": "Rows to fetch (a select is not a list screen).",
+          "default": 200,
+          "minimum": 1
         }
       ]
     },
@@ -2589,6 +2671,7 @@
       "filter",
       "menuItem",
       "option",
+      "optionsSource",
       "reportGroup"
     ],
     "labelField": [
@@ -2602,6 +2685,7 @@
     ],
     "limit": [
       "dashboardItem",
+      "optionsSource",
       "report"
     ],
     "menu": [
@@ -2611,6 +2695,9 @@
       "actionSuccess",
       "confirm",
       "validator"
+    ],
+    "mode": [
+      "condition"
     ],
     "normalize": [
       "field"
@@ -2634,6 +2721,12 @@
     "options": [
       "field",
       "filter"
+    ],
+    "optionsFrom": [
+      "field"
+    ],
+    "optionsSource": [
+      "field"
     ],
     "orientation": [
       "paper"
@@ -2665,6 +2758,7 @@
       "actionSuccess"
     ],
     "parentKey": [
+      "optionsSource",
       "subTableSource"
     ],
     "plugin": [
@@ -2689,6 +2783,7 @@
       "detailPage",
       "formPage",
       "masterPage",
+      "optionsSource",
       "reportPage",
       "searchPage",
       "subTableSource",
@@ -2794,13 +2889,17 @@
     "value": [
       "condition",
       "dashboardItem",
-      "option"
+      "option",
+      "optionsSource"
     ],
     "valueField": [
       "chart"
     ],
     "visibleWhen": [
       "field"
+    ],
+    "when": [
+      "option"
     ],
     "width": [
       "column"

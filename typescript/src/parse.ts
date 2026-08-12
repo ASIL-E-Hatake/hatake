@@ -5,6 +5,7 @@ import {
   type ActionDefinition,
   type ActionSuccessDefinition,
   type ConfirmDefinition,
+  type OptionsSource,
   type ChartDefinition,
   type ColumnDefinition,
   type DashboardItemDefinition,
@@ -460,6 +461,8 @@ function parseField(m: Dict): FieldDefinition {
       parseValidator(asDict(v, `field.validators[${i}]`)),
     ),
     options: parseOptions(optList(m, "options")),
+    optionsFrom: optString(m, "optionsFrom"),
+    optionsSource: parseOptionsSource(optDict(m, "optionsSource")),
     format: optString(m, "format"),
     normalize: optList(m, "normalize").map(String),
     config: optDict(m, "config") ?? {},
@@ -505,8 +508,24 @@ function parseValidator(m: Dict): ValidatorDefinition {
 function parseOptions(raw: unknown[]): OptionItem[] {
   return raw.map((o, i) => {
     const m = asDict(o, `options[${i}]`);
-    return { value: m["value"], label: reqString(m, "label", "option.label") };
+    return {
+      value: m["value"],
+      label: reqString(m, "label", "option.label"),
+      when: m["when"],
+    };
   });
+}
+
+/** `optionsSource`（選択肢を Repository から引く）。 */
+function parseOptionsSource(m: Dict | undefined): OptionsSource | undefined {
+  if (m === undefined) return undefined;
+  return {
+    repository: reqString(m, "repository", "optionsSource.repository"),
+    value: optString(m, "value") ?? "code",
+    label: optString(m, "label") ?? "name",
+    parentKey: optString(m, "parentKey"),
+    limit: optNumber(m, "limit") ?? 200,
+  };
 }
 
 function parseAction(m: Dict): ActionDefinition {

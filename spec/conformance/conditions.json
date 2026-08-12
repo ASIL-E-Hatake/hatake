@@ -23,5 +23,15 @@
   { "condition": { "all": [ { "field": "type", "operator": "equals", "value": "corporate" }, { "field": "age", "operator": "gte", "value": 20 } ] }, "record": { "type": "corporate", "age": 10 }, "expected": false },
   { "condition": { "any": [ { "field": "a", "operator": "equals", "value": 1 }, { "field": "b", "operator": "equals", "value": 2 } ] }, "record": { "a": 9, "b": 2 }, "expected": true },
   { "condition": { "not": { "field": "type", "operator": "equals", "value": "corporate" } }, "record": { "type": "personal" }, "expected": true },
-  { "condition": {}, "record": {}, "expected": true }
+  { "condition": {}, "record": {}, "expected": true },
+
+  { "condition": { "mode": "create" }, "record": {}, "mode": "create", "expected": true },
+  { "condition": { "mode": "create" }, "record": {}, "mode": "edit", "expected": false },
+  { "condition": { "mode": "edit" }, "record": {}, "mode": "edit", "expected": true },
+  { "condition": { "mode": "create" }, "record": {}, "expected": false },
+  { "condition": { "not": { "mode": "create" } }, "record": {}, "mode": "edit", "expected": true },
+  { "condition": { "all": [ { "mode": "edit" }, { "field": "type", "operator": "equals", "value": "corporate" } ] },
+    "record": { "type": "corporate" }, "mode": "edit", "expected": true },
+  { "condition": { "all": [ { "mode": "edit" }, { "field": "type", "operator": "equals", "value": "corporate" } ] },
+    "record": { "type": "corporate" }, "mode": "create", "expected": false }
 ]

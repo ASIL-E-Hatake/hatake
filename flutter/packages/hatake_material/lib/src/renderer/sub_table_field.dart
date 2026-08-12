@@ -39,6 +39,9 @@ class _SubTableField extends StatelessWidget {
   final String? errorText;
   final ValueChanged<List<DataRecord>> onChanged;
 
+  /// 行の項目が `optionsSource` で選択肢を引くときのため（親から流す）。
+  final RepositoryRegistry? repositories;
+
   const _SubTableField({
     required this.field,
     required this.rows,
@@ -49,6 +52,7 @@ class _SubTableField extends StatelessWidget {
     required this.readOnly,
     required this.errorText,
     required this.onChanged,
+    this.repositories,
   });
 
   Future<void> _editRow(BuildContext context, {int? index}) async {
@@ -61,6 +65,7 @@ class _SubTableField extends StatelessWidget {
         fieldBuilders: fieldBuilders,
         roles: roles,
         validators: validators,
+        repositories: repositories,
       ),
     );
     if (edited == null) return;
@@ -214,6 +219,7 @@ class _SubTableRowDialog extends StatefulWidget {
   final Map<String, MaterialFieldBuilder> fieldBuilders;
   final Set<String> roles;
   final ValidatorRegistry validators;
+  final RepositoryRegistry? repositories;
 
   const _SubTableRowDialog({
     required this.field,
@@ -221,6 +227,7 @@ class _SubTableRowDialog extends StatefulWidget {
     required this.fieldBuilders,
     required this.roles,
     required this.validators,
+    this.repositories,
   });
 
   @override
@@ -260,6 +267,11 @@ class _SubTableRowDialogState extends State<_SubTableRowDialog> {
             fieldBuilders: widget.fieldBuilders,
             roles: widget.roles,
             validators: widget.validators,
+            repositories: widget.repositories,
+            // 行の追加なら create、既にある行を開いたなら edit。
+            mode: widget.initial.isEmpty
+                ? ConditionModes.create
+                : ConditionModes.edit,
           ),
         ),
       ),

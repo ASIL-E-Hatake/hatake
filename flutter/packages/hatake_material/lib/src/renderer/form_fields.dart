@@ -28,6 +28,15 @@ class _HatakeFormFields extends StatefulWidget {
   /// Repository-backed child rows need it as their foreign key.
   final Object? recordKey;
 
+  /// Form state for `{ mode: create }` / `{ mode: edit }` conditions
+  /// ([ConditionModes]). The caller knows it; the record does not.
+  final String mode;
+
+  /// Repositories, for fields whose options come from one (`optionsSource`).
+  /// Passed in for the same reason as [validators]: a dialog route sits outside
+  /// the `HatakeScope` subtree.
+  final RepositoryRegistry? repositories;
+
   const _HatakeFormFields({
     super.key,
     required this.form,
@@ -39,6 +48,8 @@ class _HatakeFormFields extends StatefulWidget {
     this.validators,
     this.subTables,
     this.recordKey,
+    required this.mode,
+    this.repositories,
   });
 
   @override
@@ -48,6 +59,13 @@ class _HatakeFormFields extends StatefulWidget {
 class _HatakeFormFieldsState extends State<_HatakeFormFields> {
   final Map<String, TextEditingController> _text = {};
   final Map<String, Object?> _values = {};
+
+  /// `optionsSource` で引いた選択肢。キーは「項目名＋親の値」なので、親が変われば
+  /// 引き直す（同じ親のままなら1回だけ引く）。
+  final Map<String, List<OptionItem>> _fetched = {};
+
+  /// いま引いている最中のキー（毎フレーム投げないため）。
+  final Set<String> _fetching = {};
   final ComputedRegistry _computeds = ComputedRegistry();
   late final FormatterRegistry _formatters =
       widget.formatters ?? FormatterRegistry();
@@ -131,7 +149,9 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
   @override
   Widget build(BuildContext context) {
     // Live record (inputs + computed) drives visibleWhen / enabledWhen.
-    final record = collect();
+    var record = collect();
+    // 親が変わって選べない値が残っていたら捨てる（「大阪府なのに渋谷区」で保存させない）。
+    if (_clearStaleChildValues(record)) record = collect();
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -142,12 +162,94 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
     );
   }
 
+  /// この項目がいま出すべき選択肢。
+  ///
+  /// `optionsSource` があれば Repository から引いたもの、無ければ定義に書いた
+  /// 選択肢を親の値で絞ったもの（[visibleOptions]）。**絞り込みの判定は
+  /// hatake_core にある**（Renderer 固有の話ではないので）。
+  List<OptionItem> _optionsFor(FieldDefinition field, DataRecord record) {
+    final source = field.optionsSource;
+    if (source == null) return visibleOptions(field, record);
+    final parentValue =
+        field.optionsFrom == null ? null : record[field.optionsFrom!];
+    final key = '${field.field}#$parentValue';
+    final fetched = _fetched[key];
+    if (fetched != null) return fetched;
+    _fetchOptions(field, source, parentValue, key);
+    return const []; // 引けるまでは空（選択肢が出ないだけで、画面は出る）
+  }
+
+  /// 選択肢を Repository から引く。Framework は HTTP も SQL も知らないので、
+  /// 一覧画面と同じ契約（`search`）で頼むだけ。
+  Future<void> _fetchOptions(
+    FieldDefinition field,
+    OptionsSource source,
+    Object? parentValue,
+    String key,
+  ) async {
+    if (_fetching.contains(key)) return;
+    final registry = widget.repositories;
+    if (registry == null || !registry.contains(source.repository)) return;
+    // 親を見る指定なのに親が空なら、まだ引かない（全件出すと連動の意味がない）。
+    if (source.parentKey != null &&
+        field.optionsFrom != null &&
+        (parentValue == null || parentValue.toString().isEmpty)) {
+      _fetched[key] = const [];
+      return;
+    }
+    _fetching.add(key);
+    try {
+      final result = await registry.resolve(source.repository).search(
+            RepositoryQuery(
+              filters: {
+                if (source.parentKey != null && parentValue != null)
+                  source.parentKey!: parentValue,
+              },
+              pageSize: source.limit,
+            ),
+          );
+      final options = [
+        for (final row in result.items)
+          OptionItem(
+            value: row[source.value],
+            label: row[source.label]?.toString() ?? '',
+          ),
+      ];
+      if (!mounted) return;
+      setState(() => _fetched[key] = options);
+    } catch (_) {
+      // 引けなかったことは画面では言わない（選択肢が空になるだけ）。Repository の
+      // 失敗は一覧と同じくアプリ側のログの話。
+      if (mounted) setState(() => _fetched[key] = const []);
+    } finally {
+      _fetching.remove(key);
+    }
+  }
+
+  /// 親が変わって選べなくなった子の値を捨てる。捨てたら true。
+  ///
+  /// build の中で `_values` を直接直す（setState は呼ばない）。このフレームで
+  /// 正しい状態が描かれるので、1フレーム古い値が見えることがない。
+  bool _clearStaleChildValues(DataRecord record) {
+    var changed = false;
+    for (final field in widget.form.fields) {
+      if (field.optionsFrom == null) continue;
+      if (field.optionsSource != null) continue; // 引いてくる側は空振りが普通
+      if (optionValueIsStale(field, record)) {
+        _values[field.field] = null;
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
   List<Widget> _buildSection(SectionDefinition section, DataRecord record) {
     final visible = [
       for (final field in section.fields)
         if (isAllowed(field.roles, widget.roles) &&
             (field.visibleWhen == null ||
-                evaluateCondition(field.visibleWhen, record)))
+                evaluateCondition(field.visibleWhen, record,
+                    mode: widget.mode)))
           field,
     ];
     if (visible.isEmpty) return const [];
@@ -201,7 +303,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
     }
 
     final enabled = field.enabledWhen == null ||
-        evaluateCondition(field.enabledWhen, record);
+        evaluateCondition(field.enabledWhen, record, mode: widget.mode);
     final readOnly = field.readOnly || !enabled;
 
     Widget input;
@@ -230,6 +332,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
           roles: widget.roles,
           readOnly: readOnly,
           errorText: errorText,
+          repositories: widget.repositories,
           onChanged: (next) => setState(() => _values[field.field] = next),
         );
       case FieldTypes.select:
@@ -242,7 +345,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
             errorText: errorText,
           ),
           items: [
-            for (final option in field.options)
+            for (final option in _optionsFor(field, record))
               DropdownMenuItem<Object?>(
                 value: option.value,
                 child: Text(option.label),
@@ -283,7 +386,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final option in field.options)
+                for (final option in _optionsFor(field, record))
                   RadioListTile<Object?>(
                     key: Key('hatake.form.${field.field}.${option.value}'),
                     title: Text(option.label),
@@ -306,7 +409,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
           child: Wrap(
             spacing: 8,
             children: [
-              for (final option in field.options)
+              for (final option in _optionsFor(field, record))
                 FilterChip(
                   key: Key('hatake.form.${field.field}.${option.value}'),
                   label: Text(option.label),

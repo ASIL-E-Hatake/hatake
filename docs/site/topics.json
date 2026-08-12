@@ -14,7 +14,13 @@
       "section": "dsl",
       "title": "画面を1枚定義する",
       "blurb": "どの画面にも要る4つのキーと、レコードを1件に絞る key。",
-      "keys": ["type", "id", "title", "repository", "key"],
+      "keys": [
+        "type",
+        "id",
+        "title",
+        "repository",
+        "key"
+      ],
       "demo": "customer_master"
     },
     {
@@ -22,7 +28,14 @@
       "section": "dsl",
       "title": "一覧に列を出す",
       "blurb": "表示する列、幅、並べ替え、値の見せ方。",
-      "keys": ["table", "columns", "label", "width", "sortable", "format"],
+      "keys": [
+        "table",
+        "columns",
+        "label",
+        "width",
+        "sortable",
+        "format"
+      ],
       "demo": "order_search"
     },
     {
@@ -30,7 +43,11 @@
       "section": "dsl",
       "title": "一覧をページングする",
       "blurb": "1ページの件数と、ページングを切る指定。",
-      "keys": ["pagination", "enabled", "pageSize"],
+      "keys": [
+        "pagination",
+        "enabled",
+        "pageSize"
+      ],
       "demo": "order_search"
     },
     {
@@ -38,7 +55,13 @@
       "section": "dsl",
       "title": "検索条件を出す",
       "blurb": "検索欄に並べる条件と、比較のしかた（等値・部分一致・範囲）。",
-      "keys": ["search", "filters", "operator", "options", "layout"],
+      "keys": [
+        "search",
+        "filters",
+        "operator",
+        "options",
+        "layout"
+      ],
       "demo": "order_search"
     },
     {
@@ -46,7 +69,9 @@
       "section": "dsl",
       "title": "行ごとの操作を付ける",
       "blurb": "編集・削除など、一覧の各行に出すボタン。",
-      "keys": ["rowActions"],
+      "keys": [
+        "rowActions"
+      ],
       "demo": "customer_master"
     },
     {
@@ -54,7 +79,11 @@
       "section": "dsl",
       "title": "ボタンと処理を定義する",
       "blurb": "画面上部のアクション、組み込みの処理、独自処理の差し込み。",
-      "keys": ["actions", "params", "plugin"],
+      "keys": [
+        "actions",
+        "params",
+        "plugin"
+      ],
       "demo": "order_entry"
     },
     {
@@ -62,7 +91,14 @@
       "section": "dsl",
       "title": "確認ダイアログと成功後の動き",
       "blurb": "「本当に削除しますか」と「保存できたら一覧に戻る」を定義で書く。",
-      "keys": ["confirm", "okLabel", "cancelLabel", "danger", "message", "onSuccess"],
+      "keys": [
+        "confirm",
+        "okLabel",
+        "cancelLabel",
+        "danger",
+        "message",
+        "onSuccess"
+      ],
       "demo": "customer_master"
     },
     {
@@ -70,7 +106,10 @@
       "section": "dsl",
       "title": "画面から画面へ遷移する",
       "blurb": "遷移先の指定と、渡す値。",
-      "keys": ["page", "home"],
+      "keys": [
+        "page",
+        "home"
+      ],
       "demo": "order_detail"
     },
     {
@@ -78,7 +117,11 @@
       "section": "dsl",
       "title": "入力フォームを組む",
       "blurb": "フォームをセクションに分け、項目を並べる。",
-      "keys": ["form", "sections", "fields"],
+      "keys": [
+        "form",
+        "sections",
+        "fields"
+      ],
       "demo": "order_entry"
     },
     {
@@ -86,7 +129,9 @@
       "section": "dsl",
       "title": "項目の並べ方を変える",
       "blurb": "1行あたり何項目並べるか。table の columns とは別物。",
-      "keys": ["layout"],
+      "keys": [
+        "layout"
+      ],
       "demo": "customer_master"
     },
     {
@@ -94,7 +139,24 @@
       "section": "dsl",
       "title": "入力項目の型と見せ方",
       "blurb": "項目の型、初期値、読み取り専用、選択肢。",
-      "keys": ["field", "defaultValue", "readOnly"],
+      "keys": [
+        "field",
+        "defaultValue",
+        "readOnly"
+      ],
+      "demo": "order_entry"
+    },
+    {
+      "id": "linked-options",
+      "section": "dsl",
+      "title": "選択肢を連動させる",
+      "blurb": "親の項目で子の選択肢を絞る（都道府県→市区町村）。定義に書くか、Repository から引く。",
+      "keys": [
+        "optionsFrom",
+        "when",
+        "optionsSource",
+        "options"
+      ],
       "demo": "order_entry"
     },
     {
@@ -102,7 +164,10 @@
       "section": "dsl",
       "title": "必須と入力検証を付ける",
       "blurb": "必須、組み込みバリデータ、メッセージの差し替え。",
-      "keys": ["required", "validators"],
+      "keys": [
+        "required",
+        "validators"
+      ],
       "demo": "order_entry"
     },
     {
@@ -110,7 +175,9 @@
       "section": "dsl",
       "title": "入力値を正規化する",
       "blurb": "全角→半角、トリムなど、保存前に値を整える。",
-      "keys": ["normalize"],
+      "keys": [
+        "normalize"
+      ],
       "demo": "customer_master"
     },
     {
@@ -118,15 +185,28 @@
       "section": "dsl",
       "title": "他の項目から計算する",
       "blurb": "金額＝単価×数量のような、自動で埋まる項目。",
-      "keys": ["computed", "op", "separator"],
+      "keys": [
+        "computed",
+        "op",
+        "separator"
+      ],
       "demo": "order_entry"
     },
     {
       "id": "conditional-fields",
       "section": "dsl",
       "title": "条件で出したり隠したりする",
-      "blurb": "他の項目の値に応じて、表示・入力可否を切り替える。",
-      "keys": ["visibleWhen", "enabledWhen", "all", "any", "not", "field", "value"],
+      "blurb": "他の項目の値、または新規／編集の状態に応じて、表示・入力可否を切り替える。",
+      "keys": [
+        "visibleWhen",
+        "enabledWhen",
+        "all",
+        "any",
+        "not",
+        "field",
+        "value",
+        "mode"
+      ],
       "demo": "order_entry"
     },
     {
@@ -134,7 +214,10 @@
       "section": "dsl",
       "title": "明細を表で入力する",
       "blurb": "1件の伝票に複数行の明細を持たせる。別テーブルから引く場合も。",
-      "keys": ["source", "parentKey"],
+      "keys": [
+        "source",
+        "parentKey"
+      ],
       "demo": "order_entry_paged"
     },
     {
@@ -142,7 +225,10 @@
       "section": "dsl",
       "title": "入力を数ステップに分ける",
       "blurb": "長い入力をウィザード形式にする。",
-      "keys": ["steps", "description"],
+      "keys": [
+        "steps",
+        "description"
+      ],
       "demo": null
     },
     {
@@ -150,7 +236,17 @@
       "section": "dsl",
       "title": "ダッシュボードに数字を並べる",
       "blurb": "件数・合計のカード、並べ方、絞り込み、押したときの遷移。",
-      "keys": ["items", "span", "value", "aggregate", "limit", "sort", "ascending", "filters", "action"],
+      "keys": [
+        "items",
+        "span",
+        "value",
+        "aggregate",
+        "limit",
+        "sort",
+        "ascending",
+        "filters",
+        "action"
+      ],
       "demo": "sales_dashboard"
     },
     {
@@ -158,7 +254,12 @@
       "section": "dsl",
       "title": "ダッシュボードにグラフを出す",
       "blurb": "棒・円などのグラフと、軸に使う項目。",
-      "keys": ["chart", "kind", "labelField", "valueField"],
+      "keys": [
+        "chart",
+        "kind",
+        "labelField",
+        "valueField"
+      ],
       "demo": "sales_dashboard"
     },
     {
@@ -166,7 +267,16 @@
       "section": "dsl",
       "title": "帳票を出力する",
       "blurb": "用紙、グループごとの小計、総合計、改ページ。",
-      "keys": ["report", "paper", "size", "orientation", "rowsPerPage", "groupBy", "pageBreak", "totals"],
+      "keys": [
+        "report",
+        "paper",
+        "size",
+        "orientation",
+        "rowsPerPage",
+        "groupBy",
+        "pageBreak",
+        "totals"
+      ],
       "demo": "sales_report"
     },
     {
@@ -174,7 +284,11 @@
       "section": "dsl",
       "title": "CSV で出力する",
       "blurb": "一覧や帳票の内容を CSV で落とす。受け側が Shift_JIS 固定でも合わせられる。",
-      "keys": ["type", "config", "limit"],
+      "keys": [
+        "type",
+        "config",
+        "limit"
+      ],
       "demo": "sales_report"
     },
     {
@@ -182,7 +296,14 @@
       "section": "dsl",
       "title": "アプリ全体とメニューを定義する",
       "blurb": "複数の画面をまとめて1つのアプリにする。メニュー階層と初期表示。",
-      "keys": ["app", "dsl_version", "pages", "menu", "group", "icon"],
+      "keys": [
+        "app",
+        "dsl_version",
+        "pages",
+        "menu",
+        "group",
+        "icon"
+      ],
       "demo": "sales_dashboard"
     },
     {
@@ -190,7 +311,15 @@
       "section": "dsl",
       "title": "見た目を変える",
       "blurb": "色、明暗、フォント、余白、角丸。",
-      "keys": ["theme", "brightness", "primaryColor", "secondaryColor", "fontFamily", "density", "radius"],
+      "keys": [
+        "theme",
+        "brightness",
+        "primaryColor",
+        "secondaryColor",
+        "fontFamily",
+        "density",
+        "radius"
+      ],
       "demo": null
     },
     {
@@ -198,7 +327,9 @@
       "section": "dsl",
       "title": "権限で出し分ける",
       "blurb": "ロールに応じてボタン・列・項目・メニューを出す／出さない。",
-      "keys": ["roles"],
+      "keys": [
+        "roles"
+      ],
       "demo": null
     },
     {
@@ -206,7 +337,9 @@
       "section": "dsl",
       "title": "拡張を差し込む（config）",
       "blurb": "本体を直さずに、独自の描画・処理・型をプラグインで足す。",
-      "keys": ["config"],
+      "keys": [
+        "config"
+      ],
       "demo": null
     }
   ]

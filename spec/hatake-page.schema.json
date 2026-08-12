@@ -777,6 +777,13 @@
             "$ref": "#/$defs/option"
           }
         },
+        "optionsFrom": {
+          "type": "string",
+          "description": "Parent field name. The options shown are those whose `when` matches the parent's current value (plus any option without a `when`). Changing the parent clears a child value that is no longer offered."
+        },
+        "optionsSource": {
+          "$ref": "#/$defs/optionsSource"
+        },
         "format": {
           "type": "string",
           "description": "Display formatter name (open string). Built-ins: currency, percent, date, wareki, postal, mask.",
@@ -904,8 +911,16 @@
     },
     "condition": {
       "type": "object",
-      "description": "A conditional expression evaluated against a record. Either a leaf {field, operator, value} or a combinator {all|any: [..]} / {not: {..}}.",
+      "description": "A conditional expression evaluated against a record. Either a leaf {field, operator, value}, a leaf {mode: create|edit}, or a combinator {all|any: [..]} / {not: {..}}.",
       "properties": {
+        "mode": {
+          "type": "string",
+          "description": "True while the form is in this mode. Use it for \"only when creating\" / \"only when editing\" instead of inspecting the key field. False wherever the mode is unknown (a read-only detail page has none).",
+          "enum": [
+            "create",
+            "edit"
+          ]
+        },
         "field": {
           "type": "string"
         },
@@ -1092,6 +1107,48 @@
         },
         "label": {
           "type": "string"
+        },
+        "when": {
+          "description": "Show this option only while the parent field (`optionsFrom`) holds this value. Options without `when` always show.",
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        }
+      }
+    },
+    "optionsSource": {
+      "type": "object",
+      "description": "Fetch a field's options from a repository instead of listing them. The framework knows no HTTP or SQL: it asks the repository the application registered, passing the parent value as a filter when `parentKey` is set.",
+      "required": [
+        "repository"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "Repository key holding the choices."
+        },
+        "value": {
+          "type": "string",
+          "description": "Field of a row to store.",
+          "default": "code"
+        },
+        "label": {
+          "type": "string",
+          "description": "Field of a row to show.",
+          "default": "name"
+        },
+        "parentKey": {
+          "type": "string",
+          "description": "Field of a row holding the parent value; passed as the filter { parentKey: <parent value> }. Omit to always fetch every row."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 200,
+          "description": "Rows to fetch (a select is not a list screen)."
         }
       }
     },

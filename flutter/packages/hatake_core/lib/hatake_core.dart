@@ -16,6 +16,7 @@ export 'src/definition/validator_types.dart';
 
 // Value objects.
 export 'src/definition/option_item.dart';
+export 'src/definition/options_source.dart';
 export 'src/definition/validator_definition.dart';
 export 'src/definition/layout_definition.dart';
 export 'src/definition/pagination_definition.dart';
@@ -67,6 +68,7 @@ export 'src/i18n/message_resolver.dart';
 // Logic (conditional display / computed fields / role-based access).
 export 'src/logic/aggregate.dart';
 export 'src/logic/condition_evaluator.dart';
+export 'src/logic/options.dart';
 
 // Output (CSV / report document — neutral, like QuerySpec).
 export 'src/logic/csv_writer.dart';

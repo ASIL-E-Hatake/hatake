@@ -174,10 +174,46 @@ void main() {
   group('conformance: conditions', () {
     for (final raw in _load('conditions.json')) {
       final c = raw as Map<String, dynamic>;
-      test('${c['condition']} on ${c['record']}', () {
+      test('${c['condition']} on ${c['record']} (mode: ${c['mode']})', () {
         final cond = (c['condition'] as Map).cast<String, Object?>();
         final record = (c['record'] as Map).cast<String, Object?>();
-        expect(evaluateCondition(cond, record), c['expected']);
+        expect(
+          evaluateCondition(cond, record, mode: c['mode'] as String?),
+          c['expected'],
+        );
+      });
+    }
+  });
+
+  group('conformance: option filter', () {
+    // 選択肢の連動。定義の書き方（when / optionsFrom）だけで決まる純粋なロジックなので、
+    // TypeScript 版と同じ fixture を食わせて一致を確認する。
+    final fixture = jsonDecode(
+      File('../../../spec/conformance/option_filter.json').readAsStringSync(),
+    ) as Map<String, Object?>;
+    for (final raw in fixture['cases'] as List<Object?>) {
+      final c = raw as Map<String, Object?>;
+      final spec = (c['field'] as Map).cast<String, Object?>();
+      final field = FieldDefinition(
+        field: spec['field'] as String,
+        label: spec['field'] as String,
+        optionsFrom: spec['optionsFrom'] as String?,
+        options: [
+          for (final o in (spec['options'] as List).cast<Map>())
+            OptionItem(
+              value: o['value'],
+              label: o['label'] as String,
+              when: o['when'],
+            ),
+        ],
+      );
+      final record = (c['record'] as Map).cast<String, Object?>();
+      test(c['name'] as String, () {
+        expect(
+          visibleOptions(field, record).map((o) => o.value).toList(),
+          c['visible'],
+        );
+        expect(optionValueIsStale(field, record), c['stale']);
       });
     }
   });

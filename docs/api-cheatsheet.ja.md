@@ -234,6 +234,18 @@ exportSink: (req) async => save(req.filename, encodings.encode(req.charset, req.
 - { field: total, label: 合計, computed: { op: sum, fields: [price, tax] } }
 ```
 
+新規/編集で出し分ける（`mode` のリーフ。レコードでは分からないので専用に持つ）:
+
+```yaml
+- { field: code, label: コード, enabledWhen: { mode: create } }      # 編集では変えさせない
+- { field: updatedBy, label: 更新者, visibleWhen: { mode: edit } }   # 編集のときだけ出す
+```
+
+<!-- vocab: condition.mode -->
+`create` `edit`
+
+モードが分からない場所（読み取り専用の詳細画面など）では false。
+
 条件の演算子（`visibleWhen` / `enabledWhen`）:
 <!-- vocab: condition.operator -->
 `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty`
@@ -243,6 +255,34 @@ exportSink: (req) async => save(req.filename, encodings.encode(req.charset, req.
 `concat` `sum` `subtract` `product`
 
 `ComputedRegistry` で追加可。
+
+## 選択肢の連動（親の値で子の選択肢を絞る）
+
+```yaml
+# ① 定義に書く（選択肢が固定のとき）
+- { field: prefecture, label: 都道府県, type: select,
+    options: [{ value: tokyo, label: 東京都 }, { value: osaka, label: 大阪府 }] }
+- field: city
+  label: 市区町村
+  type: select
+  optionsFrom: prefecture                              # 親の項目名
+  options:
+    - { value: shibuya, label: 渋谷区, when: tokyo }    # この親の値のときだけ出る
+    - { value: other,   label: その他 }                # when 無し = 常に出る
+
+# ② Repository から引く（選択肢がデータのとき）
+- field: city
+  label: 市区町村
+  type: select
+  optionsFrom: prefecture
+  optionsSource: { repository: cityRepository, value: code, label: name, parentKey: prefecture }
+```
+
+* 親が未入力なら `when` 付きは出ない（親を選ぶまで子は空）。②も引かない
+* **親が変わって子の値が選べなくなったら捨てる**（「大阪府なのに渋谷区」で保存させない）
+* 値の比較は条件式と同じ緩い比較（`'1'` と `1` は同じ）
+* `options` と `optionsSource` の両方は書かない（引いた方が勝つ。`validate` が警告する）
+* 検索条件（`filter`）の連動は未対応
 
 ## 権限（ロールで表示出し分け）
 

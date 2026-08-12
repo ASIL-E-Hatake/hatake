@@ -60,7 +60,13 @@ public final class ConditionEvaluator {
     }
 
     @SuppressWarnings("unchecked")
-    private static boolean leaf(Map<String, Object> cond, Map<String, Object> record) {
+    private static boolean leaf(
+            Map<String, Object> cond, Map<String, Object> record, String mode) {
+        // `{ mode: create }` は「新規のときだけ」。レコードの中身では分からないので
+        // 呼び出し側（フォーム）から渡す。分からない場所では false。
+        if (cond.get("mode") instanceof String wanted) {
+            return wanted.equals(mode);
+        }
         if (!(cond.get("field") instanceof String field)) {
             return false;
         }
@@ -109,14 +115,25 @@ public final class ConditionEvaluator {
     }
 
     /** condition を record に対して評価する。null/空条件は true。 */
-    @SuppressWarnings("unchecked")
     public static boolean evaluate(Map<String, Object> condition, Map<String, Object> record) {
+        return evaluate(condition, record, null);
+    }
+
+    /**
+     * condition を record に対して評価する。null/空条件は true。
+     *
+     * @param mode フォームの状態（{@code create} / {@code edit}）。
+     *     {@code { mode: create }} の判定に使う。渡さなければ mode のリーフは false
+     */
+    @SuppressWarnings("unchecked")
+    public static boolean evaluate(
+            Map<String, Object> condition, Map<String, Object> record, String mode) {
         if (condition == null || condition.isEmpty()) {
             return true;
         }
         if (condition.get("all") instanceof List<?> all) {
             for (Object c : all) {
-                if (!evaluate(asCond(c), record)) {
+                if (!evaluate(asCond(c), record, mode)) {
                     return false;
                 }
             }
@@ -124,16 +141,16 @@ public final class ConditionEvaluator {
         }
         if (condition.get("any") instanceof List<?> any) {
             for (Object c : any) {
-                if (evaluate(asCond(c), record)) {
+                if (evaluate(asCond(c), record, mode)) {
                     return true;
                 }
             }
             return false;
         }
         if (condition.get("not") instanceof Map) {
-            return !evaluate(asCond(condition.get("not")), record);
+            return !evaluate(asCond(condition.get("not")), record, mode);
         }
-        return leaf(condition, record);
+        return leaf(condition, record, mode);
     }
 
     @SuppressWarnings("unchecked")

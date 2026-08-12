@@ -16,6 +16,7 @@ export * from "./formValidator.js";
 export * from "./messageResolver.js";
 export * from "./conditionEvaluator.js";
 export * from "./computed.js";
+export * from "./options.js";
 export * from "./access.js";
 export * from "./aggregate.js";
 export * from "./csv.js";

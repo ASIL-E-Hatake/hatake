@@ -412,6 +412,8 @@ FieldDefinition _parseField(Map<String, Object?> m) {
         ),
     ],
     options: _parseOptions(m.optList('options')),
+    optionsFrom: m.optString('optionsFrom'),
+    optionsSource: _parseOptionsSource(m.optMap('optionsSource')),
     format: m.optString('format'),
     normalize: [for (final n in m.optList('normalize')) n.toString()],
     config: m.optMap('config') ?? const {},
@@ -507,6 +509,19 @@ OptionItem _parseOption(Map<String, Object?> m) {
   return OptionItem(
     value: m['value'],
     label: m.reqString('label', at: 'option.label'),
+    when: m['when'],
+  );
+}
+
+/// `optionsSource`（選択肢を Repository から引く）。
+OptionsSource? _parseOptionsSource(Map<String, Object?>? m) {
+  if (m == null) return null;
+  return OptionsSource(
+    repository: m.reqString('repository', at: 'optionsSource.repository'),
+    value: m.optString('value') ?? 'code',
+    label: m.optString('label') ?? 'name',
+    parentKey: m.optString('parentKey'),
+    limit: m.optInt('limit') ?? 200,
   );
 }
 

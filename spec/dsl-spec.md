@@ -794,6 +794,75 @@ Operators: `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty`
 `isNotEmpty`. Two numbers compare numerically, anything else compares as
 strings. An unknown operator evaluates to false.
 
+**"only while creating" / "only while editing"** is a `mode` leaf. The record
+cannot tell you which one it is, and inspecting the key field instead leaves the
+intent unreadable.
+
+```yaml
+# the code may be typed while creating, never changed afterwards
+- { field: code, label: コード, enabledWhen: { mode: create } }
+- { field: updatedBy, label: 更新者, readOnly: true, visibleWhen: { mode: edit } }
+```
+
+| `mode` | True while |
+|---|---|
+| `create` | creating (nothing saved yet) |
+| `edit` | editing an existing record |
+
+**False wherever the mode is unknown** (a read-only detail page has none):
+`{ mode: create }` asks for a specific state, so it is not satisfied where that
+state cannot be told. In a `subTable`, adding a row is `create` and opening an
+existing row is `edit`.
+
+### Linked options (`optionsFrom` / `when` / `optionsSource`)
+
+Prefecture → city, category → subcategory: **the parent's value narrows the
+child's choices**. There are two ways to write it, and which one you want depends
+on whether the choices fit in a definition.
+
+```yaml
+# 1. in the definition (a fixed, knowable set)
+- { field: prefecture, label: 都道府県, type: select,
+    options: [{ value: tokyo, label: 東京都 }, { value: osaka, label: 大阪府 }] }
+- field: city
+  label: 市区町村
+  type: select
+  optionsFrom: prefecture              # the parent field
+  options:
+    - { value: shibuya, label: 渋谷区, when: tokyo }   # offered for this parent value
+    - { value: kita,    label: 北区,   when: osaka }
+    - { value: other,   label: その他 }               # no `when` = always offered
+
+# 2. from a repository (when the choices are data)
+- field: city
+  label: 市区町村
+  type: select
+  optionsFrom: prefecture
+  optionsSource:
+    repository: cityRepository   # registered by the application
+    value: code                  # row field to store (default `code`)
+    label: name                  # row field to show (default `name`)
+    parentKey: prefecture        # row field holding the parent value; passed as a filter
+    limit: 200
+```
+
+Settled behaviour:
+
+- **While the parent is empty, options with a `when` are not offered** (the child
+  stays empty until the parent is chosen). Options without a `when` always show,
+  which is what "none" / "other" wants.
+- Values compare the same loose way conditions do (`'1'` equals `1`).
+- **When the parent changes and the child's value is no longer offered, it is
+  cleared.** Losing the choice beats saving 渋谷区 under 大阪府.
+- In form 2 nothing is fetched while the parent is empty (fetching everything
+  would defeat the cascade). `parentKey` goes together with `optionsFrom`.
+- Writing both `options` and `optionsSource` lets the fetched one win, and
+  `hatake validate` warns about it.
+- The framework knows no HTTP and no SQL: form 2 uses the same
+  `Repository.search` a list screen uses.
+
+Linked search filters are not supported yet — this is about input fields.
+
 ### computed
 
 A derived field, calculated from the record. `op` selects the calculation

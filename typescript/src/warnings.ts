@@ -273,6 +273,17 @@ function checkForm(page: Dict, path: string, found: DefinitionWarning[]): void {
     }
   });
 
+  // フォーム全体の項目名。`optionsFrom` の指す先があるかを見るために先に集める
+  // （親が子より後ろに書かれていることもある）。
+  const names = new Set<string>();
+  for (const group of groups) {
+    for (const raw of group.fields) {
+      if (!isDict(raw)) continue;
+      const name = str(raw.field);
+      if (name !== undefined) names.add(name);
+    }
+  }
+
   // 同じ項目名が2回あると、後ろが前を上書きして片方は無かったことになる。
   const seen = new Map<string, string>();
   for (const group of groups) {
@@ -294,7 +305,7 @@ function checkForm(page: Dict, path: string, found: DefinitionWarning[]): void {
           seen.set(name, at);
         }
       }
-      checkFieldEntry(raw, at, found);
+      checkFieldEntry(raw, at, found, names);
     });
   }
 }
@@ -303,7 +314,9 @@ function checkFieldEntry(
   field: Dict,
   path: string,
   found: DefinitionWarning[],
+  siblings: Set<string> = new Set(),
 ): void {
+  checkOptions(field, path, found, siblings);
   list(field.validators).forEach((raw, i) => {
     if (isDict(raw)) return;
     warn(
@@ -319,10 +332,71 @@ function checkFieldEntry(
     const condition = field[key];
     if (isDict(condition)) checkCondition(condition, `${path}.${key}`, found);
   }
-  // 明細（subTable）の行の項目も同じ規則で見る。
+  // 明細（subTable）の行の項目も同じ規則で見る（親子は行の中で閉じている）。
+  const rowFields = new Set(
+    list(field.fields)
+      .filter(isDict)
+      .map((raw) => str(raw.field))
+      .filter((name): name is string => name !== undefined),
+  );
   list(field.fields).forEach((raw, i) => {
-    if (isDict(raw)) checkFieldEntry(raw, `${path}.fields[${i}]`, found);
+    if (isDict(raw)) {
+      checkFieldEntry(raw, `${path}.fields[${i}]`, found, rowFields);
+    }
   });
+}
+
+/** 選択肢の連動（`optionsFrom` / `when` / `optionsSource`）の辻褄。 */
+function checkOptions(
+  field: Dict,
+  path: string,
+  found: DefinitionWarning[],
+  siblings: Set<string>,
+): void {
+  const parent = str(field.optionsFrom);
+  const hasWhen = list(field.options)
+    .filter(isDict)
+    .some((option) => option.when !== undefined);
+
+  if (parent === undefined && hasWhen) {
+    warn(
+      found,
+      "option-when-without-optionsfrom",
+      `${path}.options`,
+      "選択肢に `when` があるのに `optionsFrom` が無いので、どの項目と連動するのか決まりません。全部の選択肢がそのまま出ます。",
+      "`optionsFrom: <親の項目名>` を足してください。",
+    );
+  }
+  if (parent !== undefined && siblings.size > 0 && !siblings.has(parent)) {
+    warn(
+      found,
+      "optionsfrom-unknown-field",
+      `${path}.optionsFrom`,
+      `親に指定した "${parent}" がこのフォームにありません。親の値が取れないので、\`when\` 付きの選択肢は出ません。`,
+      "同じフォームにある項目名を書いてください（別のフォームの項目は見えません）。",
+    );
+  }
+
+  const source = isDict(field.optionsSource) ? field.optionsSource : undefined;
+  if (source === undefined) return;
+  if (str(source.parentKey) !== undefined && parent === undefined) {
+    warn(
+      found,
+      "optionssource-parentkey-without-optionsfrom",
+      `${path}.optionsSource.parentKey`,
+      "絞り込みに使う親の値が決まらないので、`parentKey` が効きません（全件を引きます）。",
+      "`optionsFrom: <親の項目名>` を足してください（親の値が `parentKey` の名前で Repository に渡ります）。",
+    );
+  }
+  if (list(field.options).length > 0) {
+    warn(
+      found,
+      "options-and-optionssource",
+      `${path}.optionsSource`,
+      "`options` と `optionsSource` の両方があります。引いてくる方が勝つので、書いた `options` は出ません。",
+      "どちらかにしてください（静的な選択肢だけなら `optionsSource` を消す）。",
+    );
+  }
 }
 
 /** 条件は結合（all / any / not）で入れ子になる。葉の演算子だけを見る。 */

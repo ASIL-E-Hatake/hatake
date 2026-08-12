@@ -162,6 +162,10 @@ class _MaterialWizardPageState extends State<_MaterialWizardPage> {
           formatters: widget.formatters,
           validators: HatakeScope.of(context).validators,
           subTables: HatakeScope.of(context).subTableController,
+          repositories: HatakeScope.of(context).repositories,
+          mode: _controller.recordKey == null
+              ? ConditionModes.create
+              : ConditionModes.edit,
           recordKey: _controller.recordKey,
         ),
       ],
