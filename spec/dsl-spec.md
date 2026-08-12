@@ -581,6 +581,8 @@ checked against). The name is an open string, so a sink can add its own charsets
 | `type` | string | | `text` | Input type (see [field types](#field-types)). |
 | `operator` | string | | `contains` | Match operator (see [operators](#filter-operators)). |
 | `options` | [option](#option)[] | | `[]` | For select-style filters. |
+| `optionsFrom` | string | | — | Parent filter name; its value narrows the options (see [linked options](#linked-options-optionsfrom--when--optionssource)). |
+| `optionsSource` | [optionsSource](#linked-options-optionsfrom--when--optionssource) | | — | Fetch the options from a repository. |
 | `config` | map | | `{}` | Extra settings. |
 
 **How each input appears** (the renderer decides from `type`):
@@ -646,6 +648,7 @@ so a blank condition never narrows the result set.
 | `title` | string | — | Optional heading. |
 | `layout` | [layout](#layout) | `{columns: 1}` | Field arrangement. |
 | `fields` | [field](#field)[] | `[]` | Input fields. |
+| `visibleWhen` | [condition](#condition) | — | Show the **whole section** only while the condition holds. A hidden section's fields are not validated either (see [controlling a field](#controlling-a-field-visiblewhen--enabledwhen--readonlywhen--requiredwhen)). |
 
 ### field
 
@@ -655,7 +658,9 @@ so a blank condition never narrows the result set.
 | `label` | string | ✅ | — | Display label. |
 | `type` | string | | `text` | Field type (see [field types](#field-types)). |
 | `required` | boolean | | `false` | Adds a `required` validator + marker. |
+| `requiredWhen` | [condition](#condition) | | — | Required only while the condition holds (**also enforced server-side**). |
 | `readOnly` | boolean | | `false` | Whether the field is read-only. |
+| `readOnlyWhen` | [condition](#condition) | | — | Read-only while the condition holds (the input keeps its ordinary look). |
 | `defaultValue` | any | | — | Value applied on create. |
 | `validators` | [validator](#validator)[] | | `[]` | Validation rules. |
 | `options` | [option](#option)[] | | `[]` | For select/radio/multiSelect. |
@@ -663,7 +668,7 @@ so a blank condition never narrows the result set.
 | `normalize` | string[] | | `[]` | Input converters applied before validation (see [converters](#converters)). |
 | `config` | map | | `{}` | Extra settings. |
 | `visibleWhen` | [condition](#condition) | | — | Show only while the condition holds. Absent = always visible. |
-| `enabledWhen` | [condition](#condition) | | — | Enable only while the condition holds. Absent = always enabled. |
+| `enabledWhen` | [condition](#condition) | | — | Enable only while the condition holds (**greyed out** otherwise). Absent = always enabled. |
 | `computed` | [computed](#computed) | | — | Derive the value from the record (shown read-only). |
 | `roles` | string[] | | `[]` | Roles allowed to see it (see [access control](#access-control-roles)). Empty = everyone. |
 | `columns` | [column](#column)[] | | `[]` | Child-row grid columns (for `type: subTable`; see [child rows](#child-rows-subtable)). |
@@ -814,6 +819,57 @@ intent unreadable.
 state cannot be told. In a `subTable`, adding a row is `create` and opening an
 existing row is `edit`.
 
+### Controlling a field (`visibleWhen` / `enabledWhen` / `readOnlyWhen` / `requiredWhen`)
+
+Four keys drive a field from a condition. Because they mix *looks* with
+*validation*, how far each one reaches is settled up front:
+
+| Key | Effect | Server-side validation |
+|---|---|---|
+| `visibleWhen` | shown / hidden | **yes** (a hidden field is not validated) |
+| `enabledWhen` | enabled / **disabled (greyed out)** | no |
+| `readOnlyWhen` | read-only (**looks unchanged**) | no |
+| `requiredWhen` | required / optional | **yes** |
+
+```yaml
+# a personal customer may not edit the member number (but should read it)
+- { field: memberNo,  label: 会員番号, readOnlyWhen: { field: kind, value: personal } }
+# the registration number is required for companies only
+- { field: invoiceNo, label: 登録番号, requiredWhen: { field: kind, value: corp } }
+```
+
+**`enabledWhen` vs `readOnlyWhen`**: both stop editing, but a disabled input says
+"not something you touch now" with its colour, while a read-only one still looks
+like something to read. Use `readOnlyWhen` when the value matters to the reader.
+`enabledWhen: { not: … }` expresses the same thing, but reading an inverted
+condition adds a step, so the plain direction has its own key.
+
+**A hidden field is not validated.** A field removed by `visibleWhen` (or living
+in a section removed by `visibleWhen`) skips `required` and every other
+validator, because requiring input nobody can give produces a form that cannot be
+saved or fixed. Conversely a **visible** field's `required` still applies, so
+"required once shown" is `visibleWhen` + `required: true`. `requiredWhen` is for
+the other case: **visible, but required only sometimes**.
+
+Hide a whole group with `section.visibleWhen` — heading included, and its fields
+are not validated:
+
+```yaml
+sections:
+  - title: 請求先
+    visibleWhen: { field: kind, value: corp }
+    fields:
+      - { field: billingCode, label: 請求先コード, required: true }
+```
+
+`requiredWhen` runs off the same definition on the server (`FormValidator` in all
+three editions). If the condition mentions `{ mode: … }`, pass the mode when you
+validate (POST / PUT knows it). Without it a mode leaf is false, so **validation
+errs on the lenient side**.
+
+Note that a hidden field's leftover value is still **saved** — validation is
+skipped, values are not cleared.
+
 ### Linked options (`optionsFrom` / `when` / `optionsSource`)
 
 Prefecture → city, category → subcategory: **the parent's value narrows the
@@ -861,7 +917,10 @@ Settled behaviour:
 - The framework knows no HTTP and no SQL: form 2 uses the same
   `Repository.search` a list screen uses.
 
-Linked search filters are not supported yet — this is about input fields.
+**Search filters (`search.filters`) take the same keys with the same meaning.**
+The only difference is what "the current values" are: whatever is typed into the
+search area rather than a record — the narrowing itself is shared code. A range
+filter (`operator: between`) holds two values, so it cannot be a parent.
 
 ### computed
 

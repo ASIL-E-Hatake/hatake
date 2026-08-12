@@ -53,6 +53,25 @@
 
 両方書いた場合は引いてきた方が勝つ。書いた `options` が黙って無視される形になるので、`hatake validate` が警告する。
 
-## 検索条件はまだ連動しない
+## 検索条件でも同じ
 
-いまは入力項目（`form` の中）だけ。検索欄（`search.filters`）の選択肢は絞られない。同じ仕組みを持ち込む予定だが、まだ入っていない。
+検索欄（`search.filters`）でも同じキーが同じ意味で使える。「絞ってから探す」は入力より先に欲しがられるやつ。
+
+```yaml
+search:
+  filters:
+    - { field: category, label: カテゴリ, type: select, operator: equals,
+        options: [ { value: food, label: 食品 }, { value: drink, label: 飲料 } ] }
+    - field: subCategory
+      label: 細目
+      type: select
+      operator: equals
+      optionsFrom: category
+      options:
+        - { value: vegetable, label: 野菜,     when: food }
+        - { value: juice,     label: ジュース, when: drink }
+```
+
+判定は入力項目とまったく同じものを使っている（違うのは「いまの値」がレコードか検索欄かだけ）。親を変えて選べなくなった条件は捨てられるので、**絞った先に無い条件で検索してしまうことがない**。
+
+範囲指定（`operator: between`）の条件は値を2つ持つので、親にはできない。

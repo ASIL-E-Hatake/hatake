@@ -93,7 +93,14 @@ class SubTableController extends ChangeNotifier {
   /// creating when it carries no key, updating otherwise. Returns the validation
   /// result so the caller can keep the row editor open on failure.
   Future<ValidationResult> saveRow(DataRecord row) async {
-    final result = _validator.validate(_rowForm, row);
+    // 行の mode は行のキーで決まる（親が編集中でも、足した行は新規）。
+    final result = _validator.validate(
+      _rowForm,
+      row,
+      mode: row[source.keyField] == null
+          ? ConditionModes.create
+          : ConditionModes.edit,
+    );
     if (!result.isValid) return result;
 
     _saving = true;

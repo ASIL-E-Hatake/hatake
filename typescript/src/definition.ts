@@ -42,7 +42,18 @@ export interface FieldDefinition {
   label: string;
   type: string;
   required: boolean;
+  /**
+   * Required only while this condition matches the record. Unlike
+   * visibleWhen / enabledWhen this one is **not UI-only**: the validator
+   * evaluates it, on the client and on the server alike.
+   */
+  requiredWhen?: Record<string, unknown>;
   readOnly: boolean;
+  /**
+   * Read-only while this condition matches: the value stays plainly readable,
+   * only editing is blocked. Compare enabledWhen, which greys the input out.
+   */
+  readOnlyWhen?: Record<string, unknown>;
   defaultValue?: unknown;
   validators: ValidatorDefinition[];
   options: OptionItem[];
@@ -102,6 +113,14 @@ export interface FilterDefinition {
   type: string;
   operator: string;
   options: OptionItem[];
+  /**
+   * Parent filter whose value narrows `options` (a static cascade). Same rule
+   * as on a form field, applied to the values currently typed in the search
+   * area instead of to a record.
+   */
+  optionsFrom?: string;
+  /** Where to fetch the options from instead of listing them. */
+  optionsSource?: OptionsSource;
   config: Record<string, unknown>;
 }
 
@@ -122,6 +141,11 @@ export interface SectionDefinition {
   title?: string;
   columns: number;
   fields: FieldDefinition[];
+  /**
+   * Show the whole section only when this condition matches the record. A
+   * hidden section's fields are not validated either.
+   */
+  visibleWhen?: Record<string, unknown>;
 }
 
 export interface SearchDefinition {

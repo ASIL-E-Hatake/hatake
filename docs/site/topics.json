@@ -150,7 +150,7 @@
       "id": "linked-options",
       "section": "dsl",
       "title": "選択肢を連動させる",
-      "blurb": "親の項目で子の選択肢を絞る（都道府県→市区町村）。定義に書くか、Repository から引く。",
+      "blurb": "親の項目で子の選択肢を絞る（都道府県→市区町村）。定義に書くか、Repository から引く。検索条件でも同じ。",
       "keys": [
         "optionsFrom",
         "when",
@@ -195,8 +195,8 @@
     {
       "id": "conditional-fields",
       "section": "dsl",
-      "title": "条件で出したり隠したりする",
-      "blurb": "他の項目の値、または新規／編集の状態に応じて、表示・入力可否を切り替える。",
+      "title": "条件で出し隠し・必須・読み取り専用を切り替える",
+      "blurb": "他の項目の値や新規／編集の状態で、表示・入力可否・必須を切り替える。区画ごとの出し分けも。",
       "keys": [
         "visibleWhen",
         "enabledWhen",
@@ -205,7 +205,9 @@
         "not",
         "field",
         "value",
-        "mode"
+        "mode",
+        "requiredWhen",
+        "readOnlyWhen"
       ],
       "demo": "order_entry"
     },

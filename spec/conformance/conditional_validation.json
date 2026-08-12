@@ -1,0 +1,149 @@
+{
+  "_comment": "条件つきの検証。各言語が `page` を解析し、case ごとに `record`（と任意の `mode`）をフォームで検証する。エラーは {field,message} の順不同の集合で比べる。ここで固定したいのは3つ: (1) `visibleWhen` で隠れている項目は検証しない（項目も区画も）、(2) `requiredWhen` が成立したら必須になる、(3) mode が分からない場所では mode の条件が false になるので、検証は緩む方に倒れる。",
+  "page": {
+    "dsl_version": "1.0",
+    "page": {
+      "type": "form",
+      "id": "customer_form",
+      "title": "顧客入力",
+      "repository": "customerRepository",
+      "key": "id",
+      "form": {
+        "sections": [
+          {
+            "title": "基本情報",
+            "fields": [
+              { "field": "code", "label": "コード", "required": true },
+              {
+                "field": "kind",
+                "label": "区分",
+                "type": "select",
+                "options": [
+                  { "value": "personal", "label": "個人" },
+                  { "value": "corp", "label": "法人" }
+                ]
+              },
+              {
+                "field": "companyName",
+                "label": "会社名",
+                "required": true,
+                "validators": [{ "type": "maxLength", "value": 5 }],
+                "visibleWhen": { "field": "kind", "value": "corp" }
+              },
+              {
+                "field": "invoiceNo",
+                "label": "登録番号",
+                "requiredWhen": { "field": "kind", "value": "corp" }
+              },
+              {
+                "field": "approvedBy",
+                "label": "承認者",
+                "required": true,
+                "visibleWhen": { "mode": "edit" }
+              },
+              {
+                "field": "reason",
+                "label": "変更理由",
+                "requiredWhen": {
+                  "all": [
+                    { "field": "kind", "value": "corp" },
+                    { "mode": "edit" }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "title": "請求先",
+            "visibleWhen": { "field": "kind", "value": "corp" },
+            "fields": [
+              { "field": "billingCode", "label": "請求先コード", "required": true }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "個人なら、法人向けの項目も請求先の区画も求められない",
+      "record": { "code": "C001", "kind": "personal" },
+      "expected": []
+    },
+    {
+      "name": "法人だと、隠れていた必須・条件つき必須・区画の必須がまとめて効く",
+      "record": { "code": "C001", "kind": "corp" },
+      "expected": [
+        { "field": "companyName", "message": "必須項目です" },
+        { "field": "invoiceNo", "message": "必須項目です" },
+        { "field": "billingCode", "message": "必須項目です" }
+      ]
+    },
+    {
+      "name": "見えている項目は required 以外の検証も効く",
+      "record": {
+        "code": "C001",
+        "kind": "corp",
+        "companyName": "株式会社ほげほげ",
+        "invoiceNo": "T1",
+        "billingCode": "B1"
+      },
+      "expected": [
+        { "field": "companyName", "message": "5文字以内で入力してください" }
+      ]
+    },
+    {
+      "name": "隠れている項目は required だけでなく検証まるごと飛ばす（値が残っていても落ちない）",
+      "record": {
+        "code": "C001",
+        "kind": "personal",
+        "companyName": "株式会社ほげほげ"
+      },
+      "expected": []
+    },
+    {
+      "name": "新規では mode: edit の項目が隠れているので求められない",
+      "mode": "create",
+      "record": {
+        "code": "C001",
+        "kind": "corp",
+        "companyName": "ほげ商事",
+        "invoiceNo": "T1",
+        "billingCode": "B1"
+      },
+      "expected": []
+    },
+    {
+      "name": "編集では mode: edit の項目が出るので必須になり、mode を含む条件つき必須も効く",
+      "mode": "edit",
+      "record": {
+        "code": "C001",
+        "kind": "corp",
+        "companyName": "ほげ商事",
+        "invoiceNo": "T1",
+        "billingCode": "B1"
+      },
+      "expected": [
+        { "field": "approvedBy", "message": "必須項目です" },
+        { "field": "reason", "message": "必須項目です" }
+      ]
+    },
+    {
+      "name": "編集でも個人なら、mode と区分の両方を求める条件つき必須は成立しない",
+      "mode": "edit",
+      "record": { "code": "C001", "kind": "personal", "approvedBy": "山田" },
+      "expected": []
+    },
+    {
+      "name": "mode を渡さない呼び出しでは mode の条件が false になり、検証は緩む方に倒れる",
+      "record": {
+        "code": "C001",
+        "kind": "corp",
+        "companyName": "ほげ商事",
+        "invoiceNo": "T1",
+        "billingCode": "B1"
+      },
+      "expected": []
+    }
+  ]
+}

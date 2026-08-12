@@ -60,12 +60,14 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
   final Map<String, TextEditingController> _text = {};
   final Map<String, Object?> _values = {};
 
-  /// `optionsSource` で引いた選択肢。キーは「項目名＋親の値」なので、親が変われば
-  /// 引き直す（同じ親のままなら1回だけ引く）。
-  final Map<String, List<OptionItem>> _fetched = {};
+  /// 選択肢の連動（定義に書いた絞り込み＋`optionsSource` で引く方）。検索欄と共有。
+  late final _OptionsFetcher _options = _OptionsFetcher(
+    repositories: widget.repositories,
+    onFetched: () {
+      if (mounted) setState(() {});
+    },
+  );
 
-  /// いま引いている最中のキー（毎フレーム投げないため）。
-  final Set<String> _fetching = {};
   final ComputedRegistry _computeds = ComputedRegistry();
   late final FormatterRegistry _formatters =
       widget.formatters ?? FormatterRegistry();
@@ -162,70 +164,6 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
     );
   }
 
-  /// この項目がいま出すべき選択肢。
-  ///
-  /// `optionsSource` があれば Repository から引いたもの、無ければ定義に書いた
-  /// 選択肢を親の値で絞ったもの（[visibleOptions]）。**絞り込みの判定は
-  /// hatake_core にある**（Renderer 固有の話ではないので）。
-  List<OptionItem> _optionsFor(FieldDefinition field, DataRecord record) {
-    final source = field.optionsSource;
-    if (source == null) return visibleOptions(field, record);
-    final parentValue =
-        field.optionsFrom == null ? null : record[field.optionsFrom!];
-    final key = '${field.field}#$parentValue';
-    final fetched = _fetched[key];
-    if (fetched != null) return fetched;
-    _fetchOptions(field, source, parentValue, key);
-    return const []; // 引けるまでは空（選択肢が出ないだけで、画面は出る）
-  }
-
-  /// 選択肢を Repository から引く。Framework は HTTP も SQL も知らないので、
-  /// 一覧画面と同じ契約（`search`）で頼むだけ。
-  Future<void> _fetchOptions(
-    FieldDefinition field,
-    OptionsSource source,
-    Object? parentValue,
-    String key,
-  ) async {
-    if (_fetching.contains(key)) return;
-    final registry = widget.repositories;
-    if (registry == null || !registry.contains(source.repository)) return;
-    // 親を見る指定なのに親が空なら、まだ引かない（全件出すと連動の意味がない）。
-    if (source.parentKey != null &&
-        field.optionsFrom != null &&
-        (parentValue == null || parentValue.toString().isEmpty)) {
-      _fetched[key] = const [];
-      return;
-    }
-    _fetching.add(key);
-    try {
-      final result = await registry.resolve(source.repository).search(
-            RepositoryQuery(
-              filters: {
-                if (source.parentKey != null && parentValue != null)
-                  source.parentKey!: parentValue,
-              },
-              pageSize: source.limit,
-            ),
-          );
-      final options = [
-        for (final row in result.items)
-          OptionItem(
-            value: row[source.value],
-            label: row[source.label]?.toString() ?? '',
-          ),
-      ];
-      if (!mounted) return;
-      setState(() => _fetched[key] = options);
-    } catch (_) {
-      // 引けなかったことは画面では言わない（選択肢が空になるだけ）。Repository の
-      // 失敗は一覧と同じくアプリ側のログの話。
-      if (mounted) setState(() => _fetched[key] = const []);
-    } finally {
-      _fetching.remove(key);
-    }
-  }
-
   /// 親が変わって選べなくなった子の値を捨てる。捨てたら true。
   ///
   /// build の中で `_values` を直接直す（setState は呼ばない）。このフレームで
@@ -244,6 +182,12 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
   }
 
   List<Widget> _buildSection(SectionDefinition section, DataRecord record) {
+    // セクションごと隠す（「法人のときだけ請求先の枠を出す」）。中の項目は検証も
+    // されない（FormValidator も同じ条件を見る）。
+    if (section.visibleWhen != null &&
+        !evaluateCondition(section.visibleWhen, record, mode: widget.mode)) {
+      return const [];
+    }
     final visible = [
       for (final field in section.fields)
         if (isAllowed(field.roles, widget.roles) &&
@@ -302,9 +246,16 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
       );
     }
 
+    // 「非活性」と「読み取り専用」は別物として描く:
+    //   enabledWhen が false … グレーになる（いま触れるものではない、と見て分かる）
+    //   readOnly / readOnlyWhen … 見た目は普通のまま、直せないだけ（値は読ませたい）
+    // 触れないという結果は同じなので、入力の可否は locked でまとめて見る。
     final enabled = field.enabledWhen == null ||
         evaluateCondition(field.enabledWhen, record, mode: widget.mode);
-    final readOnly = field.readOnly || !enabled;
+    final readOnly = field.readOnly ||
+        (field.readOnlyWhen != null &&
+            evaluateCondition(field.readOnlyWhen, record, mode: widget.mode));
+    final locked = readOnly || !enabled;
 
     Widget input;
     switch (field.type) {
@@ -320,7 +271,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
           validators: _validators,
           fieldBuilders: widget.fieldBuilders,
           roles: widget.roles,
-          readOnly: readOnly,
+          readOnly: locked,
         );
       case FieldTypes.subTable:
         input = _SubTableField(
@@ -330,7 +281,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
           validators: _validators,
           fieldBuilders: widget.fieldBuilders,
           roles: widget.roles,
-          readOnly: readOnly,
+          readOnly: locked,
           errorText: errorText,
           repositories: widget.repositories,
           onChanged: (next) => setState(() => _values[field.field] = next),
@@ -343,15 +294,16 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
             labelText: label,
             border: const OutlineInputBorder(),
             errorText: errorText,
+            enabled: enabled,
           ),
           items: [
-            for (final option in _optionsFor(field, record))
+            for (final option in _options.optionsFor(field, record))
               DropdownMenuItem<Object?>(
                 value: option.value,
                 child: Text(option.label),
               ),
           ],
-          onChanged: readOnly
+          onChanged: locked
               ? null
               : (value) => setState(() => _values[field.field] = value),
         );
@@ -366,7 +318,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
           value: _values[field.field] == true,
-          onChanged: readOnly
+          onChanged: locked
               ? null
               : (value) => setState(() => _values[field.field] = value),
         );
@@ -376,17 +328,18 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
             labelText: label,
             border: InputBorder.none,
             errorText: errorText,
+            enabled: enabled,
           ),
           child: RadioGroup<Object?>(
             groupValue: _values[field.field],
             onChanged: (value) {
-              if (readOnly) return;
+              if (locked) return;
               setState(() => _values[field.field] = value);
             },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final option in _optionsFor(field, record))
+                for (final option in _options.optionsFor(field, record))
                   RadioListTile<Object?>(
                     key: Key('hatake.form.${field.field}.${option.value}'),
                     title: Text(option.label),
@@ -405,16 +358,17 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
             labelText: label,
             border: const OutlineInputBorder(),
             errorText: errorText,
+            enabled: enabled,
           ),
           child: Wrap(
             spacing: 8,
             children: [
-              for (final option in _optionsFor(field, record))
+              for (final option in _options.optionsFor(field, record))
                 FilterChip(
                   key: Key('hatake.form.${field.field}.${option.value}'),
                   label: Text(option.label),
                   selected: selected.contains(option.value),
-                  onSelected: readOnly
+                  onSelected: locked
                       ? null
                       : (on) => setState(() {
                             final next = [...selected];
@@ -433,13 +387,14 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
       case FieldTypes.dateTime:
         input = InkWell(
           key: Key('hatake.form.${field.field}'),
-          onTap: readOnly ? null : () => _pickDate(field),
+          onTap: locked ? null : () => _pickDate(field),
           child: InputDecorator(
             decoration: InputDecoration(
               labelText: label,
               border: const OutlineInputBorder(),
               errorText: errorText,
               suffixIcon: const Icon(Icons.calendar_today),
+              enabled: enabled,
             ),
             child: Text('${_values[field.field] ?? ''}'),
           ),
@@ -448,6 +403,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
         input = TextField(
           key: Key('hatake.form.${field.field}'),
           controller: _text[field.field],
+          enabled: enabled,
           readOnly: readOnly,
           maxLines: field.type == FieldTypes.textarea ? 3 : 1,
           keyboardType:

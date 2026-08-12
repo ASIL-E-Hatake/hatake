@@ -246,6 +246,28 @@ exportSink: (req) async => save(req.filename, encodings.encode(req.charset, req.
 
 モードが分からない場所（読み取り専用の詳細画面など）では false。
 
+読み取り専用・条件つき必須・区画ごとの出し分け:
+
+```yaml
+- { field: memberNo,  label: 会員番号, readOnlyWhen: { field: kind, value: personal } }  # 見た目は変えず直せない
+- { field: invoiceNo, label: 登録番号, requiredWhen: { field: kind, value: corp } }      # 条件つき必須
+sections:
+  - title: 請求先
+    visibleWhen: { field: kind, value: corp }   # 区画ごと（見出しも消える）
+    fields: [ { field: billingCode, label: 請求先コード, required: true } ]
+```
+
+| キー | 効き方 | サーバ側の検証 |
+|---|---|---|
+| `visibleWhen` | 出す / 出さない | **効く**（隠れている項目は検証しない） |
+| `enabledWhen` | 活性 / 非活性（グレー） | 効かない |
+| `readOnlyWhen` | 読み取り専用（見た目は変えない） | 効かない |
+| `requiredWhen` | 必須 / 任意 | **効く** |
+
+* **隠れている項目は検証まるごと飛ぶ**ので、「出たら必須」は `visibleWhen` ＋ `required: true` で書ける。`requiredWhen` が要るのは「出ているのに条件で必須が変わる」とき
+* 隠れている項目の値は**保存はされる**（検証を飛ばすだけ）
+* サーバ側で `{ mode: … }` を含む条件を使うなら、検証にモードを渡す（渡さないと false ＝緩む方に倒れる）
+
 条件の演算子（`visibleWhen` / `enabledWhen`）:
 <!-- vocab: condition.operator -->
 `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty`
@@ -282,7 +304,7 @@ exportSink: (req) async => save(req.filename, encodings.encode(req.charset, req.
 * **親が変わって子の値が選べなくなったら捨てる**（「大阪府なのに渋谷区」で保存させない）
 * 値の比較は条件式と同じ緩い比較（`'1'` と `1` は同じ）
 * `options` と `optionsSource` の両方は書かない（引いた方が勝つ。`validate` が警告する）
-* 検索条件（`filter`）の連動は未対応
+* **検索条件（`search.filters`）でも同じキーが同じ意味で使える**（判定は共有）。範囲（`between`）は値を2つ持つので親にはできない
 
 ## 権限（ロールで表示出し分け）
 

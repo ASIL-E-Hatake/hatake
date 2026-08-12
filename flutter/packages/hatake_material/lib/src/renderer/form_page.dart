@@ -72,9 +72,8 @@ class _MaterialFormPageState extends State<_MaterialFormPage> {
                       validators: HatakeScope.of(context).validators,
                       subTables: HatakeScope.of(context).subTableController,
                       repositories: HatakeScope.of(context).repositories,
-                      mode: controller.isEdit
-                          ? ConditionModes.edit
-                          : ConditionModes.create,
+                      // 検証と同じものを使う（出どころはコントローラ1つ）。
+                      mode: controller.formMode,
                       // Not `recordKey`: after a create the record exists, and
                       // repository-backed child rows need that new key.
                       recordKey: controller.effectiveKey,

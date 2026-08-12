@@ -3,13 +3,15 @@ import 'package:equatable/equatable.dart';
 import 'column_definition.dart';
 import 'field_types.dart';
 import 'option_item.dart';
+import 'options_owner.dart';
 import 'options_source.dart';
 import 'sub_table_source.dart';
 import 'validator_definition.dart';
 
 /// A single input field within a form.
-class FieldDefinition extends Equatable {
+class FieldDefinition extends Equatable implements OptionsOwner {
   /// The backing data key (matches keys in a record `Map`).
+  @override
   final String field;
 
   /// Display label.
@@ -22,8 +24,20 @@ class FieldDefinition extends Equatable {
   /// may also use it to show a required marker.
   final bool required;
 
+  /// Required only while this condition matches the record. Null = follow
+  /// [required] alone.
+  ///
+  /// Unlike [visibleWhen] / [enabledWhen] this one is **not UI-only**: the
+  /// validator evaluates it, on the client and on the server alike.
+  final Map<String, Object?>? requiredWhen;
+
   /// Whether the field is read-only.
   final bool readOnly;
+
+  /// Read-only while this condition matches the record: the value stays
+  /// plainly readable, only editing is blocked. Compare [enabledWhen], which
+  /// greys the input out. Null = follow [readOnly] alone.
+  final Map<String, Object?>? readOnlyWhen;
 
   /// Default value applied when creating a new record.
   final Object? defaultValue;
@@ -32,16 +46,19 @@ class FieldDefinition extends Equatable {
   final List<ValidatorDefinition> validators;
 
   /// Options for select / radio / multiSelect field types.
+  @override
   final List<OptionItem> options;
 
   /// Parent field whose value narrows [options] (a static cascade).
   ///
   /// The choices offered are those whose `when` equals the parent's current
   /// value, plus any option without a `when`. Null = every option is offered.
+  @override
   final String? optionsFrom;
 
   /// Where to fetch the options from, instead of listing them (see
   /// [OptionsSource]). Null = use [options].
+  @override
   final OptionsSource? optionsSource;
 
   /// Optional display formatter name (see `FormatterRegistry`). Options are
@@ -89,7 +106,9 @@ class FieldDefinition extends Equatable {
     required this.label,
     this.type = FieldTypes.text,
     this.required = false,
+    this.requiredWhen,
     this.readOnly = false,
+    this.readOnlyWhen,
     this.defaultValue,
     this.validators = const [],
     this.options = const [],
@@ -113,7 +132,9 @@ class FieldDefinition extends Equatable {
         label,
         type,
         required,
+        requiredWhen,
         readOnly,
+        readOnlyWhen,
         defaultValue,
         validators,
         options,

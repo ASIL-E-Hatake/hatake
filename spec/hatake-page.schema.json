@@ -583,6 +583,13 @@
             "$ref": "#/$defs/option"
           }
         },
+        "optionsFrom": {
+          "type": "string",
+          "description": "Parent filter name in the same search area. The options shown are those whose `when` matches the parent's current value (plus any option without a `when`). Changing the parent clears a child value that is no longer offered."
+        },
+        "optionsSource": {
+          "$ref": "#/$defs/optionsSource"
+        },
         "config": {
           "$ref": "#/$defs/config"
         }
@@ -705,6 +712,10 @@
         "title": {
           "type": "string"
         },
+        "visibleWhen": {
+          "$ref": "#/$defs/condition",
+          "description": "Show this whole section only when the condition matches the current record. A hidden section's fields are not validated either."
+        },
         "layout": {
           "$ref": "#/$defs/layout"
         },
@@ -752,9 +763,17 @@
           "type": "boolean",
           "default": false
         },
+        "requiredWhen": {
+          "$ref": "#/$defs/condition",
+          "description": "Required only when the condition matches the current record. Unlike visibleWhen / enabledWhen this is also checked server-side, by the same validator."
+        },
         "readOnly": {
           "type": "boolean",
           "default": false
+        },
+        "readOnlyWhen": {
+          "$ref": "#/$defs/condition",
+          "description": "Read-only while the condition matches: the value stays readable, only editing is blocked. Compare enabledWhen, which greys the input out."
         },
         "defaultValue": {
           "description": "Value applied when creating a new record.",
@@ -821,7 +840,7 @@
         },
         "enabledWhen": {
           "$ref": "#/$defs/condition",
-          "description": "Enable this field only when the condition matches the current record."
+          "description": "Enable this field only when the condition matches the current record. A disabled field is greyed out; use readOnlyWhen when the value should stay plainly readable."
         },
         "computed": {
           "type": "object",

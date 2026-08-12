@@ -319,8 +319,9 @@ class _FormDialogState extends State<_FormDialog> {
                 validators: widget.validators,
                 subTables: widget.subTables,
                 repositories: widget.repositories,
-                // 条件式の `{ mode: create }` / `{ mode: edit }` 用。
-                mode: isCreate ? ConditionModes.create : ConditionModes.edit,
+                // 条件式の `{ mode: create }` / `{ mode: edit }` 用。検証と同じ
+                // ものを使う（ズレると「見えているのに検証されない項目」になる）。
+                mode: controller.formMode,
                 // Child rows need the parent key; null while creating.
                 recordKey: isCreate
                     ? null

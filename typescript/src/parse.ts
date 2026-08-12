@@ -395,6 +395,8 @@ function parseFilter(m: Dict): FilterDefinition {
     type: optString(m, "type") ?? "text",
     operator: optString(m, "operator") ?? "contains",
     options: parseOptions(optList(m, "options")),
+    optionsFrom: optString(m, "optionsFrom"),
+    optionsSource: parseOptionsSource(optDict(m, "optionsSource")),
     config: optDict(m, "config") ?? {},
   };
 }
@@ -443,6 +445,7 @@ function parseSection(m: Dict): SectionDefinition {
   return {
     title: optString(m, "title"),
     columns: optNumber(optDict(m, "layout") ?? {}, "columns") ?? 1,
+    visibleWhen: optDict(m, "visibleWhen"),
     fields: optList(m, "fields").map((f, i) =>
       parseField(asDict(f, `section.fields[${i}]`)),
     ),
@@ -455,7 +458,9 @@ function parseField(m: Dict): FieldDefinition {
     label: reqString(m, "label", "field.label"),
     type: optString(m, "type") ?? "text",
     required: optBool(m, "required"),
+    requiredWhen: optDict(m, "requiredWhen"),
     readOnly: optBool(m, "readOnly"),
+    readOnlyWhen: optDict(m, "readOnlyWhen"),
     defaultValue: m["defaultValue"],
     validators: optList(m, "validators").map((v, i) =>
       parseValidator(asDict(v, `field.validators[${i}]`)),

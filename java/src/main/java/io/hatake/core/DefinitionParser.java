@@ -79,7 +79,7 @@ public final class DefinitionParser {
         FormDefinition form = steps.isEmpty()
                 ? parseForm(page.get("form"))
                 : new FormDefinition(steps.stream()
-                        .map(s -> new SectionDefinition(s.title(), s.fields()))
+                        .map(s -> new SectionDefinition(s.title(), s.fields(), null))
                         .toList());
         boolean dashboard = PageDefinition.DASHBOARD.equals(type);
 
@@ -299,7 +299,7 @@ public final class DefinitionParser {
                 fields.add(parseField((Map<String, Object>) f));
             }
         }
-        return new SectionDefinition(title, fields);
+        return new SectionDefinition(title, fields, optMap(m.get("visibleWhen")));
     }
 
     @SuppressWarnings("unchecked")
@@ -340,7 +340,9 @@ public final class DefinitionParser {
                 reqStr(m, "label"),
                 m.get("type") instanceof String t ? t : "text",
                 Boolean.TRUE.equals(m.get("required")),
+                optMap(m.get("requiredWhen")),
                 Boolean.TRUE.equals(m.get("readOnly")),
+                optMap(m.get("readOnlyWhen")),
                 validators,
                 m.get("format") instanceof String f ? f : null,
                 normalize,

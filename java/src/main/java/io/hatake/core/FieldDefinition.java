@@ -6,6 +6,10 @@ import java.util.Map;
 /**
  * フォームの入力項目 1 件。
  *
+ * <p>{@code requiredWhen} は条件付き必須。表示に関する条件（{@code visibleWhen} /
+ * {@code enabledWhen} / {@code readOnlyWhen}）と違って**サーバ側でも効く**
+ * （{@link FormValidator} が同じ条件を評価する）。
+ *
  * <p>{@code type} が {@link #SUB_TABLE} のときは明細（親子）項目で、値は行レコードの
  * リストになる。{@code columns} は子グリッドの表示形状（DSL キー {@code columns}）、
  * {@code rowFields} は 1 行分の入力項目（DSL キー {@code fields}）。
@@ -17,7 +21,9 @@ public record FieldDefinition(
         String label,
         String type,
         boolean required,
+        Map<String, Object> requiredWhen,
         boolean readOnly,
+        Map<String, Object> readOnlyWhen,
         List<ValidatorDefinition> validators,
         String format,
         List<String> normalize,
@@ -34,7 +40,7 @@ public record FieldDefinition(
 
     /**
      * 明細に関係しない普通の項目を組み立てる短縮コンストラクタ。
-     * 明細用の枠（{@code visibleWhen} 以降）は空で埋める。
+     * 条件と明細用の枠は空で埋める。
      *
      * <p>正式コンストラクタは項目が増えるたびに全呼び出し元を壊すので、
      * 明細を使わない箇所（テスト・単純な組み立て）はこちらを使う。
@@ -48,8 +54,8 @@ public record FieldDefinition(
             List<ValidatorDefinition> validators,
             String format,
             List<String> normalize) {
-        this(field, label, type, required, readOnly, validators, format, normalize,
-                null, null, null, List.of(), List.of(), List.of(), null);
+        this(field, label, type, required, null, readOnly, null, validators, format,
+                normalize, null, null, null, List.of(), List.of(), List.of(), null);
     }
 
     /** この項目が明細かどうか。 */
