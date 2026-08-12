@@ -1033,11 +1033,50 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `groupby-without-sort` | 並び順の指定が無い → グループが分裂して小計が何度も出る |
 | `total-without-column` | 合計の対象が `table.columns` に無い → 合計がどこにも表示されない |
 | `required-as-validator-only` | `validators` の要素がオブジェクトでない → 検証が増えない |
+| `requiredwhen-with-required` / `readonlywhen-with-readonly` | 常に効く指定と条件つきの指定の両方 → 条件が意味を持たない |
+| `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | 選択肢の連動の辻褄（入力項目・検索条件の両方） |
 
 **エラーではない**（Repository の実装やプラグインの登録次第で成立する書き方もあるため）。
 遷移先の検査は `app:` の定義だけ（単票の定義は他のページを知らないので判定しない）。
 警告には対応する[対照表](pitfalls.json)の id が付くものがあり、`hatake pitfalls <id>` で
 正しい書き方が引ける。**同梱の例とデモは警告ゼロ**であることを CI で確認している。
+
+### 画面の外との辻褄（登録済み一覧を渡したとき）
+
+上の規則は**定義の中だけ**で閉じている。実際にはもう一段あって、`repository: orderRepository`
+と書いてもアプリ側がその名前で登録していなければ**画面は出るがデータが来ない**。`format` /
+`plugin` / 独自の項目型も同じで、名前が合っていなければ黙って効かない。
+
+strict もスキーマもここは見られない（**登録済みの一覧を知らない**ので）。なので2つに分けた。
+
+```bash
+npx hatake refs page.yaml --needs-registration    # 定義が外に要求しているものを列挙する
+npx hatake validate page.yaml --registry reg.json # 渡した一覧と突き合わせる
+```
+
+`refs` は判断せずに列挙し、`validate` は**渡されたカテゴリだけ**を突き合わせる。一覧を
+渡さなければ何も言わない（今までと同じ検査に戻る）。組み込みの名前は自動で足されるので、
+一覧に書くのは自分で登録したものだけでよい。
+
+| 規則 | 何が起きるか |
+|---|---|
+| `unknown-repository` | 画面は出るがデータが来ない |
+| `unknown-plugin` | ボタンは出るが押しても何も起きない |
+| `unknown-validator` / `unknown-converter` | その検証・正規化が**黙って行われない** |
+| `unknown-formatter` | 整形されず素の値が出る |
+| `unknown-computed-op` / `unknown-aggregate` | 計算・集計されず値が空になる |
+| `unknown-field-type` / `unknown-column-type` / `unknown-action-type` / `unknown-dashboard-item-type` / `unknown-chart-kind` | 組み込みでも登録済みでもない → その型として扱われない |
+| `unknown-page-ref` | 単票の定義から遷移先が引けない（`app:` の中は `unknown-page` の担当） |
+
+一覧（`--registry` に渡す JSON）は `refs --needs-registration --json` の出力と同じ形。
+
+```json
+{ "repositories": ["orderRepository"], "plugins": ["csvExport"] }
+```
+
+`--registry` を省いても、定義の隣（無ければカレント）の `hatake-registry.json` があれば
+黙って拾う。同じ名前が何箇所から参照されていても**警告は1件**（直す所は登録する側の1つなので、
+件数だけ添える）。
 
 ## よくある間違い
 

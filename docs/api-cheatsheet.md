@@ -9,7 +9,13 @@ npx hatake reference <key>      # type, default, allowed values, where it may be
 npx hatake examples <task>      # nearest example to copy
 npx hatake pitfalls <key>       # common mistake → correct form
 npx hatake validate page.yaml   # exit code 1 if anything is wrong
+npx hatake refs page.yaml --needs-registration   # what the application must register
+npx hatake diff old.yaml new.yaml                # what a change breaks / what to confirm
 ```
+
+`refs` lists the names the definition expects from outside (repositories, plugins, custom
+formatters). Pass that list to `validate --registry <file>` and a mismatched name is
+reported instead of failing silently at runtime.
 
 - Full spec: [DSL specification](../spec/dsl-spec.md) · machine-checkable: [JSON Schema](../spec/hatake-page.schema.json)
 - Machine-readable index of every key: [`spec/reference.json`](../spec/reference.json)

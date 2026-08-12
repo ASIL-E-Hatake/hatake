@@ -278,7 +278,7 @@ describe("hatake diff", () => {
   it("何も変わらなければそう言う", () => {
     const io = fakeIo({ "a.yaml": GOOD, "b.yaml": GOOD });
     expect(runCli(["diff", "a.yaml", "b.yaml"], io)).toBe(0);
-    expect(io.stdout.join("\n")).toContain("API の形は変わりません");
+    expect(io.stdout.join("\n")).toContain("変わりません");
   });
 
   it("壊す変更があれば終了コード 1 で、何が壊れるか言う", () => {
@@ -286,9 +286,9 @@ describe("hatake diff", () => {
     expect(runCli(["diff", "a.yaml", "b.yaml"], io)).toBe(1);
     const out = io.stdout.join("\n");
     // 受け取る形は壊れるが、返す形の同じ変更は互換。両方を並べて見せる。
-    expect(out).toContain("✗ 破壊的 CustomerMasterRequest.code");
+    expect(out).toContain("✗ 破壊的 [api] page.CustomerMasterRequest.code");
     expect(out).toContain("maxLength が 20 から 10 に");
-    expect(out).toContain("・互換 CustomerMasterResponse.code");
+    expect(out).toContain("・安全  [api] page.CustomerMasterResponse.code");
     expect(out).toContain("後方互換を壊します");
   });
 
@@ -310,6 +310,123 @@ describe("hatake diff", () => {
     const io = fakeIo({ "a.yaml": GOOD, "b.yaml": WITH_TYPOS });
     expect(runCli(["diff", "a.yaml", "b.yaml"], io)).toBe(1);
     expect(io.stderr.join("\n")).toContain("witdh");
+  });
+});
+
+describe("hatake refs", () => {
+  it("外に要求しているものを種類ごとに並べる", () => {
+    const io = fakeIo({ "a.yaml": GOOD });
+    expect(runCli(["refs", "a.yaml", "--json"], io)).toBe(0);
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.repositories).toEqual(["customerRepository"]);
+    expect(result.validators).toEqual(["maxLength"]);
+  });
+
+  it("登録が要るものだけに絞れる（組み込みは出ない）", () => {
+    const io = fakeIo({ "a.yaml": GOOD });
+    expect(runCli(["refs", "a.yaml", "--json", "--needs-registration"], io)).toBe(0);
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.repositories).toEqual(["customerRepository"]);
+    // maxLength は組み込みなので「登録が要るもの」には出ない。
+    expect(result.validators).toBeUndefined();
+  });
+
+  it("人が読む形では、登録が要るものに印を付ける", () => {
+    const io = fakeIo({ "a.yaml": GOOD });
+    expect(runCli(["refs", "a.yaml"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("customerRepository   ← 登録が要る");
+    expect(out).toContain("maxLength");
+    expect(out).not.toContain("maxLength   ←");
+  });
+
+  it("ファイルが要る", () => {
+    expect(runCli(["refs"], fakeIo())).toBe(1);
+  });
+});
+
+describe("hatake validate --registry", () => {
+  const REGISTRY = JSON.stringify({ repositories: ["orderRepository"] });
+
+  it("渡した一覧に無い名前を警告する", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "reg.json": REGISTRY });
+    expect(runCli(["validate", "a.yaml", "--registry", "reg.json"], io)).toBe(0);
+    const err = io.stderr.join("\n");
+    expect(err).toContain("customerRepository");
+    expect(err).toContain("データが来ません");
+  });
+
+  it("--warn-as-error なら終了コード 1", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "reg.json": REGISTRY });
+    expect(
+      runCli(
+        ["validate", "a.yaml", "--registry", "reg.json", "--warn-as-error"],
+        io,
+      ),
+    ).toBe(1);
+  });
+
+  it("定義の隣の hatake-registry.json は黙って拾う", () => {
+    const io = fakeIo({
+      "app/a.yaml": GOOD,
+      "app/hatake-registry.json": REGISTRY,
+    });
+    expect(runCli(["validate", "app/a.yaml"], io)).toBe(0);
+    expect(io.stderr.join("\n")).toContain("customerRepository");
+  });
+
+  it("一覧が無ければ、外との辻褄は見ない（今までどおり）", () => {
+    const io = fakeIo({ "a.yaml": GOOD });
+    expect(runCli(["validate", "a.yaml"], io)).toBe(0);
+    expect(io.stderr.join("\n")).toBe("");
+  });
+
+  it("--registry を指定したのに読めないのは指定間違いとして落とす", () => {
+    const io = fakeIo({ "a.yaml": GOOD });
+    expect(runCli(["validate", "a.yaml", "--registry", "nope.json"], io)).toBe(1);
+  });
+});
+
+describe("hatake diff（画面・権限・アプリ構成）", () => {
+  const WITHOUT_COLUMN = GOOD.replace(
+    "      - { field: code, label: コード }",
+    "      - { field: name, label: 顧客名 }",
+  );
+
+  it("画面の話と契約の話が area で分かれて出る", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "b.yaml": WITHOUT_COLUMN });
+    runCli(["diff", "a.yaml", "b.yaml"], io);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("[ui]");
+    expect(out).toContain("[api]");
+  });
+
+  it("--api-only なら契約の話だけ", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "b.yaml": WITHOUT_COLUMN });
+    runCli(["diff", "a.yaml", "b.yaml", "--api-only"], io);
+    const out = io.stdout.join("\n");
+    expect(out).not.toContain("[ui]");
+    expect(out).toContain("[api]");
+  });
+
+  it("要確認だけなら終了コード 0、--caution-as-error で 1", () => {
+    // 選択肢を減らすのは画面の話だけ（api の形は変わらない）。
+    const withOptions = (options: string) =>
+      GOOD.replace(
+        "          - { field: code, label: コード, required: true, validators: [{ type: maxLength, value: 20 }] }",
+        `          - { field: code, label: コード, type: select, options: [${options}] }`,
+      );
+    const before = withOptions("{ value: a, label: A }, { value: b, label: B }");
+    const after = withOptions("{ value: a, label: A }");
+
+    const io = fakeIo({ "a.yaml": before, "b.yaml": after });
+    expect(runCli(["diff", "a.yaml", "b.yaml"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("△ 要確認");
+
+    const strict = fakeIo({ "a.yaml": before, "b.yaml": after });
+    expect(
+      runCli(["diff", "a.yaml", "b.yaml", "--caution-as-error"], strict),
+    ).toBe(1);
   });
 });
 

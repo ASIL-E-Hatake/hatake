@@ -26,7 +26,13 @@ import {
   snippet,
 } from "./pitfalls.js";
 import { deriveDto } from "./dto.js";
-import { diffDto } from "./dtoDiff.js";
+import { diffDefinitions, type DefinitionChange } from "./defDiff.js";
+import {
+  collectRefs,
+  type DefinitionRegistry,
+  groupRefs,
+  refsNeedingRegistration,
+} from "./refs.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import {
   buildReference,
@@ -70,16 +76,26 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
 
 使い方:
   hatake validate <file...> [--no-strict] [--json] [--no-warn] [--warn-as-error]
+                            [--registry hatake-registry.json]
       定義を解析して問題を報告する。既定は strict（知らないキーを弾く）。
       通るけれど意図どおり動かない書き方（警告）も既定で出す。終了コードは
       エラーだけで決まる（--warn-as-error を付けると警告でも 1）。
+      --registry に「アプリ側で登録済みのもの」の一覧を渡すと、画面の外との
+      辻褄（Repository / プラグイン / 独自の型の名前）も見る。省略しても
+      定義の隣の hatake-registry.json があれば拾う。
+
+  hatake refs <file...> [--json] [--needs-registration]
+      その定義が外に要求しているもの（Repository・プラグイン・フォーマッタ…）を
+      種類ごとに並べる。--needs-registration で「組み込みに無い＝自分で登録が
+      要るもの」だけ。出力はそのまま --registry に渡せる形。
 
   hatake dto <file> [--json]
       API の形（DtoSpec）を出す。
 
-  hatake diff <old file> <new file> [--json]
-      定義を変えたときの影響範囲。API の形の差分と、後方互換を壊すかを出す。
-      壊す変更があれば終了コード 1。
+  hatake diff <old file> <new file> [--json] [--caution-as-error] [--api-only]
+      定義を変えたときの影響範囲。API の形（壊すか）と、画面・権限・アプリ構成の
+      変化（確かめてほしいか）を出す。app: どうしの比較にも対応。
+      壊す変更があれば終了コード 1（--caution-as-error で「要確認」でも 1）。
 
   hatake schema <file>
       JSON Schema 2020-12 を出す。
@@ -124,6 +140,9 @@ const BOOLEAN_FLAGS = new Set([
   "no-strict",
   "no-warn",
   "warn-as-error",
+  "caution-as-error",
+  "api-only",
+  "needs-registration",
   "help",
   "h",
   "version",
@@ -206,6 +225,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         );
       case "diff":
         return diff(positional, flags, io);
+      case "refs":
+        return refs(positional, flags, io);
       case "types":
         return types(positional, flags, io);
       case "new":
@@ -242,8 +263,11 @@ function validate(files: string[], flags: Args["flags"], io: CliIo): number {
     try {
       const source = io.readFile(file);
       const parsed = parseDefinition(source, file, { strict });
+      // 登録済み一覧は「渡されたら見る」もの。無ければ定義の中だけで閉じた検査。
+      const registry = loadRegistry(file, flags, io);
       // 警告は「解析は通った定義」に対してだけ意味がある。
-      const warnings = flags["no-warn"] === true ? [] : warningsIn(source);
+      const warnings =
+        flags["no-warn"] === true ? [] : warningsIn(source, registry);
       warned += warnings.length;
       if (asJson) {
         results.push({
@@ -283,15 +307,87 @@ function validate(files: string[], flags: Args["flags"], io: CliIo): number {
 }
 
 /** 素の document を見て、通るけれど意図どおり動かない書き方を拾う。 */
-function warningsIn(source: string): DefinitionWarning[] {
+function warningsIn(
+  source: string,
+  registry?: DefinitionRegistry,
+): DefinitionWarning[] {
   try {
     const document = parseYamlText(source);
     return typeof document === "object" && document !== null
-      ? findWarnings(document as Record<string, unknown>)
+      ? findWarnings(document as Record<string, unknown>, { registry })
       : [];
   } catch {
     return []; // 解析が通っている前提なので、ここには来ない
   }
+}
+
+/** 登録済み一覧の既定の置き場所（定義の隣にあれば黙って拾う）。 */
+const REGISTRY_FILE = "hatake-registry.json";
+
+/**
+ * アプリ側で登録済みのものの一覧を読む。
+ *
+ * `--registry` で明示するか、定義の隣（無ければカレント）の
+ * `hatake-registry.json`。**無くても検証は成立する**ので、見つからないのは
+ * エラーにしない（一覧を渡せない場所でも `validate` は動く必要がある）。
+ * ただし明示されたのに読めないのは指定間違いなので投げる。
+ */
+function loadRegistry(
+  file: string,
+  flags: Args["flags"],
+  io: CliIo,
+): DefinitionRegistry | undefined {
+  const explicit = str(flags, "registry");
+  if (explicit !== undefined) {
+    return JSON.parse(io.readFile(explicit)) as DefinitionRegistry;
+  }
+  for (const candidate of [join(dirname(file), REGISTRY_FILE), REGISTRY_FILE]) {
+    try {
+      return JSON.parse(io.readFile(candidate)) as DefinitionRegistry;
+    } catch {
+      // 無ければ次の候補へ。全部無ければ「外との辻褄は見ない」。
+    }
+  }
+  return undefined;
+}
+
+/** 定義が外に要求しているものを並べる。出力はそのまま --registry に渡せる形。 */
+function refs(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length === 0) {
+    io.err("定義ファイルを指定してください。");
+    return 1;
+  }
+  const collected = files.flatMap((file) => {
+    const document = parseYamlText(io.readFile(file));
+    return typeof document === "object" && document !== null
+      ? collectRefs(document as Record<string, unknown>)
+      : [];
+  });
+  const grouped =
+    flags["needs-registration"] === true
+      ? refsNeedingRegistration(collected)
+      : groupRefs(collected);
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(grouped, null, 2));
+    return 0;
+  }
+  const kinds = Object.keys(grouped);
+  if (kinds.length === 0) {
+    io.out("外に要求しているものはありません。");
+    return 0;
+  }
+  for (const kind of kinds) {
+    const names = grouped[kind as keyof typeof grouped] ?? [];
+    io.out(`${kind}:`);
+    for (const name of names) {
+      const needs = collected.some(
+        (r) => r.kind === kind && r.name === name && !r.builtIn,
+      );
+      io.out(`  ${name}${needs ? "   ← 登録が要る" : ""}`);
+    }
+  }
+  return 0;
 }
 
 /**
@@ -352,33 +448,56 @@ function diff(files: string[], flags: Args["flags"], io: CliIo): number {
     return 1;
   }
   // 生成系と同じく常に strict で読む（書き間違いを差分として見せないため）。
-  const [before, after] = files.map((file) =>
-    deriveDto(parsePageYaml(io.readFile(file), { strict: true })),
-  );
-  const result = diffDto(before, after);
+  const [before, after] = files.map((file) => readDocument(file, io));
+  const result = diffDefinitions(before, after);
+  const changes =
+    flags["api-only"] === true
+      ? result.changes.filter((c) => c.area === "api")
+      : result.changes;
+  // 壊す変更が出ないようにするのが目的なので、終了コードは breaking で決める。
+  const failed =
+    !result.compatible ||
+    (flags["caution-as-error"] === true && !result.quiet);
 
   if (flags.json === true) {
-    io.out(JSON.stringify(result, null, 2));
-    return result.compatible ? 0 : 1;
+    io.out(JSON.stringify({ ...result, changes }, null, 2));
+    return failed ? 1 : 0;
   }
-  if (result.changes.length === 0) {
-    io.out("API の形は変わりません。");
+  if (changes.length === 0) {
+    io.out("変わりません。");
     return 0;
   }
-  for (const change of result.changes) {
-    const mark = change.breaking ? "✗ 破壊的" : "・互換";
-    const where =
-      change.member === undefined
-        ? change.shape
-        : `${change.shape}.${change.member}`;
-    io.out(`${mark} ${where}: ${change.message}`);
+  for (const change of changes) {
+    io.out(`${mark(change)} [${change.area}] ${change.path}: ${change.message}`);
   }
   io.out(
     result.compatible
-      ? "後方互換です。"
+      ? result.quiet
+        ? "後方互換です。"
+        : "後方互換ですが、**目で見て確かめてほしい変更**があります（上の「要確認」）。"
       : "**後方互換を壊します**（既存の呼び出し側の修正が要ります）。",
   );
-  return result.compatible ? 0 : 1;
+  return failed ? 1 : 0;
+}
+
+const mark = (change: DefinitionChange): string =>
+  change.impact === "breaking"
+    ? "✗ 破壊的"
+    : change.impact === "caution"
+      ? "△ 要確認"
+      : "・安全 ";
+
+/**
+ * strict で読んで、素の document をそのまま返す。
+ *
+ * 差分は**書いてあるとおり**を比べたいので、解析後のモデルではなく素の document を
+ * 使う（既定値で埋まったものと書いた指定の区別が付かなくなるため）。strict に通すのは
+ * 「書き間違いを差分として見せない」ための門番。
+ */
+function readDocument(file: string, io: CliIo): Record<string, unknown> {
+  const source = io.readFile(file);
+  parseDefinition(source, file, { strict: true });
+  return parseYamlText(source) as Record<string, unknown>;
 }
 
 function types(files: string[], flags: Args["flags"], io: CliIo): number {

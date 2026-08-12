@@ -1116,6 +1116,8 @@ npx hatake validate page.yaml --no-warn --json
 | `groupby-without-sort` | no print order declared — the group splits and its subtotal repeats |
 | `total-without-column` | a total on a field with no column — it is printed nowhere |
 | `required-as-validator-only` | a `validators` element that is not an object — no validation is added |
+| `requiredwhen-with-required` / `readonlywhen-with-readonly` | an unconditional flag next to its conditional twin — the condition cannot matter |
+| `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | linked options that do not line up (input fields and search filters alike) |
 
 These are **not errors** (some of these shapes can be made to work by a
 repository or a registered plugin). Navigation targets are only checked for `app:`
@@ -1123,6 +1125,47 @@ documents, since a single page does not know the others. Warnings that map onto 
 [pitfall](pitfalls.json) carry its id, so `hatake pitfalls <id>` shows the correct
 form. **Every shipped example and the demo produce zero warnings**, which CI
 enforces.
+
+### Names the definition expects from outside
+
+The rules above stay **inside** the definition. One layer out, `repository:
+orderRepository` only works if the application registered a repository under that
+name — otherwise the screen renders and no data arrives. The same goes for
+`format`, `plugin` and custom field types: a name that does not match fails
+silently.
+
+Neither strict parsing nor the schema can see this, because **neither knows what
+is registered**. So it is split in two:
+
+```bash
+npx hatake refs page.yaml --needs-registration    # list what the definition demands
+npx hatake validate page.yaml --registry reg.json # check those names against a list
+```
+
+`refs` lists without judging; `validate` compares **only the categories you
+pass** (pass nothing and the check is exactly as before). Built-in names are added
+automatically, so the list only needs what you registered yourself.
+
+| Rule | What happens |
+|---|---|
+| `unknown-repository` | the screen renders, no data arrives |
+| `unknown-plugin` | the button appears, tapping it does nothing |
+| `unknown-validator` / `unknown-converter` | that validation / normalization is **silently skipped** |
+| `unknown-formatter` | the raw value is shown unformatted |
+| `unknown-computed-op` / `unknown-aggregate` | nothing is computed; the value stays empty |
+| `unknown-field-type` / `unknown-column-type` / `unknown-action-type` / `unknown-dashboard-item-type` / `unknown-chart-kind` | neither built in nor registered — not handled as that type |
+| `unknown-page-ref` | a single-page definition cannot resolve its navigation target (`unknown-page` covers `app:`) |
+
+The list passed to `--registry` has the same shape `refs --needs-registration
+--json` prints:
+
+```json
+{ "repositories": ["orderRepository"], "plugins": ["csvExport"] }
+```
+
+Omit `--registry` and a `hatake-registry.json` next to the definition (or in the
+current directory) is picked up silently. A name referenced from many places is
+reported **once**, with the count — the fix is one registration either way.
 
 ## Common mistakes
 

@@ -7,6 +7,10 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
 - ここに無いキーは**引く**: `npx hatake reference <キー名>`（[DSL リファレンス](../spec/reference.json)）／
   近い例を探す: `npx hatake examples <やりたいこと>`（[例のカタログ](../spec/examples/README.md)）／
   書けたら `npx hatake validate <file>`
+- アプリに組み込むとき: `npx hatake refs <file> --needs-registration`（Repository / プラグインの名前を
+  何を登録すればいいか）／その一覧を `validate --registry <file>` に渡すと**名前の食い違い**も見る
+- 定義を直したとき: `npx hatake diff <前> <後>`（`✗ 破壊的`＝呼び出し側が壊れる／`△ 要確認`＝壊れないが
+  確かめてほしい＝列・ボタン・選択肢が消えた・権限が変わった・ページが消えた）
 
 ## 最小の書き方（定義ファースト）
 

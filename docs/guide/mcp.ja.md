@@ -88,10 +88,11 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 |---|---|---|
 | `hatake_reference` | キーの型・既定値・書ける場所・取れる値を知りたい。仕様書を読む代わり | `name`（キー名/ノード名/ページ種別）、`pageKind`（その画面の分だけに絞る） |
 | `hatake_examples` | 定義を書き始める前に近い例を探す。`file` を渡すと YAML 全文 | `query`（日本語でよい）、`file` |
-| `hatake_validate` | 書いたら/直したら必ず通す。知らないキーを全部まとめて指摘＋綴りの提案 | `source`（中身そのもの）、`strict`（既定 true） |
+| `hatake_validate` | 書いたら/直したら必ず通す。知らないキーを全部まとめて指摘＋綴りの提案 | `source`（中身そのもの）、`strict`（既定 true）、`registry`（アプリ側で登録済みのもの＝外との辻褄も見る） |
 | `hatake_new_page` | 新しい画面の出発点。そのまま検証を通る雛形が出る | `kind`、`id`、`title`、`repository` |
 | `hatake_pitfalls` | よくある間違い → なぜ駄目か → 正しい書き方。書く前に眺める / 落ちて直せないとき | `query`、`lang`（ja/en） |
-| `hatake_diff` | **既にある定義を直したとき**：API の形の差分と後方互換の判定 | `before`、`after` |
+| `hatake_diff` | **既にある定義を直したとき**：契約（api）を壊すか＋画面・権限・アプリ構成の**確かめてほしい**変化 | `before`、`after` |
+| `hatake_refs` | アプリに組み込むとき：定義が要求している Repository / プラグイン名などの一覧 | `source` |
 | `hatake_api_shape` | 同じ定義から API の形（DtoSpec / JSON Schema / OpenAPI 3.1 / TS / Java） | `source`、`format`、`basePath`、`package` |
 
 `initialize` の応答に**使う順番**（instructions）を載せてあるので、対応クライアントなら勝手にこの順で動きます。
@@ -103,8 +104,13 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 4. 書けたら必ず hatake_validate
 5. 直し方が分からない / 書く前に落とし穴を知りたいときは hatake_pitfalls
 6. バックエンドの形が要るなら hatake_api_shape
-7. 既にある定義を直したときは hatake_diff（後方互換を壊していないか）
+7. 既にある定義を直したときは hatake_diff（壊していないか・確かめてほしい変化はないか）
+8. アプリに組み込むときは hatake_refs（何を登録すればいいか）
 ```
+
+`hatake_diff` は変更を **area**（api / ui / access / app）と **impact**（breaking / caution / safe）で返します。`compatible: false` は呼び出し側の修正が要る話、`quiet: false` は「壊れないが人に確かめてほしい」話（列やボタンや選択肢が消えた・権限が変わった・ページやメニューが消えた）。エージェントには**後者を黙って進めず列挙させる**ようにしてあります。
+
+`hatake_refs` → `hatake_validate` の `registry` は繋がっています。前者が「何を登録すればいいか」を出し、それを人が確かめて後者に渡すと、名前の食い違いを機械で拾えます。
 
 `hatake_validate` は**未知キーから落とし穴を引いて、直し方を添えます**。「知らないキー `form`」だけでは直せないので、「`form` を持つのは crud/master/detail/form。照会と入力を分けるなら search＋detail を navigate で繋ぐ」まで返します。
 

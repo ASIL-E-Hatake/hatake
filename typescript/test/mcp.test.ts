@@ -89,6 +89,7 @@ describe("MCP プロトコル", () => {
       "hatake_new_page",
       "hatake_pitfalls",
       "hatake_diff",
+      "hatake_refs",
       "hatake_api_shape",
     ]);
     for (const tool of list) {
@@ -305,8 +306,24 @@ describe("hatake_diff", () => {
     expect(result.compatible).toBe(false);
     expect(
       result.changes.some(
-        (c: { member: string; breaking: boolean }) =>
-          c.member === "tel" && c.breaking,
+        (c: { path: string; area: string; impact: string }) =>
+          c.area === "api" && c.path.endsWith(".tel") && c.impact === "breaking",
+      ),
+    ).toBe(true);
+  });
+
+  it("画面から消えたものは、壊れなくても「要確認」として言う", () => {
+    // 列を1つ落とす（一覧から消える）。
+    const after = before
+      .split("\n")
+      .filter((line) => !(line.includes("顧客名") && line.includes("sortable")))
+      .join("\n");
+    const result = json(call("hatake_diff", { before, after }).text);
+    expect(result.quiet).toBe(false);
+    expect(
+      result.changes.some(
+        (c: { area: string; kind: string }) =>
+          c.area === "ui" && c.kind === "column-removed",
       ),
     ).toBe(true);
   });
@@ -315,6 +332,25 @@ describe("hatake_diff", () => {
     const missing = call("hatake_diff", { before });
     expect(missing.isError).toBe(true);
     expect(missing.text).toContain("after は必須");
+  });
+});
+
+describe("hatake_refs", () => {
+  const source = readFileSync("../spec/examples/customer_master.yaml", "utf8");
+
+  it("登録が要るものと、要求している全部を分けて返す", () => {
+    const result = json(call("hatake_refs", { source }).text);
+    // Repository には組み込みが無いので、必ず登録が要る側に出る。
+    expect(result.needsRegistration.repositories).toEqual(["customerRepository"]);
+    // 組み込みのバリデータは「全部」にはあるが「登録が要る」には出ない。
+    expect(result.all.validators).toContain("maxLength");
+    expect(result.needsRegistration.validators).toBeUndefined();
+  });
+
+  it("source を忘れたら言う", () => {
+    const missing = call("hatake_refs", {});
+    expect(missing.isError).toBe(true);
+    expect(missing.text).toContain("source は必須");
   });
 });
 
