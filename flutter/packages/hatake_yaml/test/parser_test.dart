@@ -209,4 +209,56 @@ page:
       );
     });
   });
+
+  group('decodeDefinition*', () {
+    // 素の document を取り出す口。findUnknownKeys はこの Map を取るので、これが
+    // 無いと「未知キーを自分で報告するツール」を外から書けない（プレイグラウンド）。
+    const yaml = '''
+page:
+  type: crud
+  id: customer_master
+  title: 顧客マスタ
+  repository: customerRepository
+  table:
+    columns:
+      - { field: code, label: コード, sortble: true }
+''';
+
+    test('書かれたとおりの Map を返す（既定値で埋めない）', () {
+      final document = decodeDefinitionYaml(yaml);
+      final page = document['page'] as Map<String, Object?>;
+      expect(page['id'], 'customer_master');
+      // 綴り間違いも「書かれたまま」残っている。
+      final columns = (page['table'] as Map<String, Object?>)['columns'] as List;
+      expect((columns.first as Map)['sortble'], isTrue);
+      expect((columns.first as Map).containsKey('sortable'), isFalse);
+    });
+
+    test('その Map をそのまま findUnknownKeys に渡せる', () {
+      final unknown = findUnknownKeys(decodeDefinitionYaml(yaml));
+      expect(unknown.single.key, 'sortble');
+      expect(unknown.single.suggestion, 'sortable');
+      expect(unknown.single.path, 'page.table.columns[0]');
+    });
+
+    test('YAML と JSON は同じ Map になる', () {
+      expect(
+        decodeDefinitionJson(
+          '{"page":{"type":"crud","id":"x","title":"X","repository":"r"}}',
+        ),
+        decodeDefinitionYaml('page: { type: crud, id: x, title: X, repository: r }'),
+      );
+    });
+
+    test('読めないものは理由つきで落ちる', () {
+      // 閉じていない引用符は YAML として壊れている。
+      expect(() => decodeDefinitionYaml('page: "unterminated'),
+          throwsA(isA<DefinitionParseException>()));
+      // 読めても「一番外が map でない」なら定義ではない。
+      expect(() => decodeDefinitionJson('[1, 2]'),
+          throwsA(isA<DefinitionParseException>()));
+      expect(() => decodeDefinitionYaml('- a\n- b'),
+          throwsA(isA<DefinitionParseException>()));
+    });
+  });
 }

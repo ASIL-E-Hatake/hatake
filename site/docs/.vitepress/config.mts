@@ -33,6 +33,8 @@ export default defineConfig({
       { text: '機能別の書き方', link: '/dsl/' },
       { text: 'AI に書かせる', link: '/ai' },
       { text: 'デモ', link: '/demo/', target: '_self' },
+      // 定義を貼るとその場で描画される場。デモアプリの中にある（同じ成果物）。
+      { text: '触ってみる', link: '/demo/?playground=1', target: '_self' },
       {
         text: 'ドキュメント',
         items: [

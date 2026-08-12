@@ -101,6 +101,8 @@ app:
       actions:
         - { id: create, type: create, label: 新規登録 }
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: customer_master } }
+        # 定義を持ってプレイグラウンドへ（触って壊せる場）。
+        - { id: playground, type: plugin, plugin: openPlayground, label: 触ってみる, config: { page: customer_master } }
         # 削除は宣言が無くても確認するが、業務の言葉で聞きたいので宣言する。
         - id: delete
           type: delete

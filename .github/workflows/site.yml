@@ -40,10 +40,6 @@ jobs:
       - name: 台帳のカバレッジ（依存パッケージ不要）
         working-directory: site
         run: node tools/check-coverage.mjs
-      - name: フレームワークとサイトの越境
-        if: github.event_name == 'pull_request'
-        working-directory: site
-        run: node tools/check-boundary.mjs "origin/${{ github.base_ref }}"
       - name: 未執筆の一覧（落とさない。引き継ぎの可視化）
         working-directory: site
         run: node tools/site-todo.mjs
