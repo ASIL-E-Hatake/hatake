@@ -9,7 +9,6 @@
     "build": "npm run gen && vitepress build docs && node tools/postbuild-md.mjs",
     "preview": "vitepress preview docs",
     "check": "node tools/check-coverage.mjs",
-    "check:boundary": "node tools/check-boundary.mjs",
     "todo": "node tools/site-todo.mjs"
   },
   "devDependencies": {

@@ -1,38 +1,41 @@
 # フレームワーク拡張とサイト拡張の契約
 
-> **中身**: 2つの作業（フレームワークを拡張する／サイトを書く）をどう分けて、どう引き継ぐか。
+> **中身**: 実装とサイトの解説をどう繋ぐか。何を手で書き、何を生成するか。
 > **読むとき**: どちらの作業を始めるときも最初に。**この1枚が正**で、役割ごとに文書は分けない。
-> **なぜ分けるか**: 説明文と実装を同じ流れで書くと、どちらが正か分からなくなる。分けたうえで、
-> 繋ぎ目を機械が検証する形にする。
 
 ## 全体像
 
 ```
-フレームワーク拡張        docs/site/topics.json        サイト拡張
-（実装 + spec/）    ──→    に1行足す           ──→    散文を書く（prose/）
-                              ↑                          ↓
-                       CI が網羅を検証          キー表・例・間違いは
-                       （漏れたら落ちる）        spec/ から自動生成
+機能を追加・修正する
+  ├─ 実装（flutter/ java/ typescript/）
+  ├─ spec/（スキーマ・reference.json・例・pitfalls）
+  ├─ docs/site/topics.json に1行足す ──→ CI が網羅を検証（漏れたら落ちる）
+  └─ site/prose/<section>/<id>.ja.md に散文を書く
+                                  ↓
+                    キー表・例・間違い・デモへのリンクは
+                    spec/ と台帳から自動生成
 ```
+
+**1つの機能は1つのブランチ・1つの PR にまとめる**（実装・spec・サイトの解説を分けない）。
+分けると「片方だけ main に入った状態」が生まれて、どちらが正か分からなくなる。
 
 散文以外は全部生成物。**同じ内容を人間向けと AI 向けで書き分けない**（1つの内容を HTML と `.md` の2つの形で出す）。
 
-## 担当ファイル
+## 手で書く場所・書かない場所
 
-| 対象 | フレームワーク拡張 | サイト拡張 |
-| --- | --- | --- |
-| `flutter/` `java/` `typescript/` `spec/` | ○ | **×** |
-| `docs/site/topics.json`（台帳） | ○ 追記する | **×** |
-| `site/prose/**`（散文） | **×** | ○ |
-| `site/docs/**`（手書きページ・テーマ設定） | **×** | ○ |
-| `site/tools/**`（生成・検証） | **×** | ○ |
-| `.github/workflows/ci.yml` | ○ | **×** |
-| `.github/workflows/site.yml` | **×** | ○ |
+| 対象 | 手で書くか |
+| --- | --- |
+| `flutter/` `java/` `typescript/` | ○ 実装 |
+| `spec/`（スキーマ・例・pitfalls） | ○ ただし `spec/reference.json` は生成物（再生成する） |
+| `docs/site/topics.json`（台帳） | ○ 1機能につき1件足す |
+| `site/prose/**`（散文） | ○ ここだけが散文 |
+| `site/docs/index.md` `site/docs/ai.md`（手書きページ） | ○ 必要なら |
+| `site/docs/dsl/` `site/docs/partials/` `site/docs/public/` | **×** 生成物（`npm run gen` が毎回作り直す） |
+| `site/tools/**`（生成・検証） | ○ 仕組みを変えるときだけ |
 
-同じ PR で両方を触ると CI（`site/tools/check-boundary.mjs`）が落ちる。どうしても同時に
-変える必要があるとき（キー名の改名など）は `ALLOW_CROSS_BOUNDARY=1`。
-
-**フレームワーク側の PR が先に main へ入る。** 台帳が main に無いと、サイト側のキューに出てこない。
+> 以前は「フレームワークとサイトを同じ PR で触ると CI で落とす」運用だった
+> （`check-boundary.mjs`）。**1つの機能を1つの PR にまとめる**方針に変えたので、この
+> チェックは外した。
 
 ## フレームワーク拡張の手順
 
@@ -40,11 +43,10 @@
 2. `spec/hatake-page.schema.json` を更新し、`spec/reference.json` を再生成する
 3. 例（`spec/examples/`）と、間違えやすいなら `spec/pitfalls.json` に項目を足す
 4. **`docs/site/topics.json` にトピックを1件足す**（下記）
-5. `cd site && node tools/check-coverage.mjs` が通ることを確認する
-6. `cd site && node tools/site-todo.mjs` を実行し、残件があれば
-   **サイト拡張のチャットを起動する**（下記）
-
-散文（説明文）はここで書かない。書くと担当が二重になる。
+5. **`site/prose/<section>/<id>.ja.md` に散文を書く**（下記。同じブランチで）
+6. `cd site && node tools/check-coverage.mjs` と `node tools/site-todo.mjs` が
+   「未執筆ゼロ」になることを確認する
+7. `cd site && npm run build` が通ることを確認する
 
 ### 台帳に足すもの
 
@@ -114,7 +116,6 @@ claude "/site <トピックid> の解説を書く"
 | チェック | 落ちる条件 |
 | --- | --- |
 | `check-coverage.mjs` | `reference.json` のキーが、どのトピックにも `internal` にも無い／台帳の参照（キー名・section・demo）が解決しない／`id` 重複 |
-| `check-boundary.mjs` | フレームワークとサイトを同じ PR で変更している |
 | `npm run build` | リンク切れ、生成ページの構文エラー |
 | `site-todo.mjs` | 落とさない（未執筆は正常）。ログに残件が出る |
 
@@ -126,10 +127,13 @@ claude "/site <トピックid> の解説を書く"
   日本語を出すには spec 側に日本語の説明を持たせる必要がある（フレームワーク側の作業）。
 - `llms.txt` のリンク先は GitHub raw のまま。Pages の URL に向け替えるとブランチ名から
   切り離せる（フレームワーク側の作業）。
-- `llms-full.txt`（全文を1枚に連結）、Playground（貼ると検証）、`/en/` の英語セクションは未着手。
+- `llms-full.txt`（全文を1枚に連結）と `/en/` の英語セクションは未着手。
+- **Playground は入った**（デモアプリの中。`/hatake/demo/?playground=1`、定義を載せた
+  共有リンクは `?yaml=<base64>`）。サイトからは手書きページからリンクする。
 - **`ci.yml` の Actions が Node 20 廃止の警告を出している**（`actions/checkout@v4`
   `actions/setup-node@v4` `actions/setup-java@v4` `actions/setup-python@v5`）。
   `site.yml` 側は上げ済み（checkout/setup-node は `@v7`）。**`ci.yml` はフレームワーク側の担当**
   なので、そちらの PR で上げる。
-- デモへのリンクは `/demo/` のトップまで。画面を URL で直接指せるようにするには
-  デモアプリ側の対応が必要（フレームワーク側の作業）。
+- デモへのリンクは `/demo/` のトップまで。**プレイグラウンドだけは URL で直接指せる**
+  （`?playground=1` / `?yaml=<base64>`）。各画面を URL で指すには、デモアプリのルータを
+  URL に同期させる必要がある（ロードマップの「Web URL 同期」）。

@@ -17,6 +17,12 @@ hero:
       link: /demo/
       target: _self
     - theme: alt
+      text: 貼って試す
+      # プレイグラウンドはデモアプリの中（同じ成果物）。target が無いと SPA ルータに
+      # 乗っ取られて 404 になるのはデモと同じ理由。
+      link: /demo/?playground=1
+      target: _self
+    - theme: alt
       text: AI に書かせる
       link: /ai
 features:
@@ -42,12 +48,23 @@ features:
 npx hatake validate dept_master.yaml
 ```
 
+## インストールせずに触る
+
+上の YAML を貼って、その場で画面にできる場がある。<a href="/hatake/demo/?playground=1" target="_self">プレイグラウンド</a>。
+
+- 直すと**その場で描き変わる**。データは定義から作った仮のもの（Repository を書かなくていい）
+- 綴りを間違えたら**その場で理由が出る**（`sortble` → `sortable の間違い？`）
+- 作った定義は URL で渡せる（`?yaml=` に載る）ので、そのままレビューに貼れる
+
+ブラウザだけで動く（Flutter Web）。インストールも登録も要らない。
+
 ## 次にどこを見るか
 
 | やりたいこと | 行き先 |
 | --- | --- |
 | 「こうしたい」から書き方を引く | [機能別の書き方](/dsl/) |
 | 動いている画面を触る | <a href="/hatake/demo/" target="_self">デモ</a> |
+| 自分で書いた定義を試す | <a href="/hatake/demo/?playground=1" target="_self">プレイグラウンド</a> |
 | 自分の AI に hatake を書かせる | [AI に書かせる](/ai) |
 | 導入手順・仕組み・写経用サンプル | [GitHub のドキュメント](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/index.ja.md) |
 

@@ -14,6 +14,12 @@ Business Definition (YAML / JSON / 各言語DSL)
    UI（Flutter / …）
 ```
 
+## まず触る（インストール不要）
+
+- **[プレイグラウンド](https://asil-e-hatake.github.io/hatake/demo/?playground=1)** — 定義（YAML）を貼るとその場で画面になる。直すと描き変わる。データは定義から作った仮のものなので、Repository も要らない。綴りを間違えたらその場で理由が出る。作った定義は URL で渡せる（`?yaml=` に載る）
+- **[デモ](https://asil-e-hatake.github.io/hatake/demo/)** — 8画面のアプリ（ダッシュボード / 一覧 / 帳票 / 親子明細 / マスタ）。各画面の「定義を見る」でその画面の YAML が出る
+- **[サイト](https://asil-e-hatake.github.io/hatake/)** — 機能別の書き方
+
 ## 何を大事にしてるか
 
 - **Business First** — UI を作るんじゃなくて業務を書く

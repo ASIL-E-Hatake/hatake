@@ -49,6 +49,17 @@ void _checkKeys(Map<String, Object?> root) {
   if (unknown.isNotEmpty) throw UnknownKeysException(unknown);
 }
 
+/// Decodes a YAML definition document into the plain map the parser works on.
+///
+/// Public because [findUnknownKeys] takes that map: tooling that wants to report
+/// unknown keys (or to look at the document as written, before defaults are
+/// filled in) needs a way to get one. `parsePageYaml` is the normal entry point;
+/// this is the one below it.
+Map<String, Object?> decodeDefinitionYaml(String source) => _decodeYaml(source);
+
+/// Same as [decodeDefinitionYaml] for JSON.
+Map<String, Object?> decodeDefinitionJson(String source) => _decodeJson(source);
+
 Map<String, Object?> _decodeYaml(String source) {
   final Object? decoded;
   try {
