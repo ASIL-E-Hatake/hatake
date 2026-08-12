@@ -21,6 +21,18 @@ page:
           - { value: food,    label: 食品 }
           - { value: drink,   label: 飲料 }
           - { value: daily,   label: 日用品 }
+      # 検索条件の連動: カテゴリを選ぶと、細目の選択肢がそのカテゴリのものだけになる。
+      # 入力項目と同じ書き方（optionsFrom ＋ 各選択肢の when）。
+      - field: subCategory
+        label: 細目
+        type: select
+        operator: equals
+        optionsFrom: category
+        options:
+          - { value: vegetable, label: 野菜,     when: food }
+          - { value: meat,      label: 精肉,     when: food }
+          - { value: juice,     label: ジュース, when: drink }
+          - { value: detergent, label: 洗剤,     when: daily }
 
   table:
     pagination: { pageSize: 50 }

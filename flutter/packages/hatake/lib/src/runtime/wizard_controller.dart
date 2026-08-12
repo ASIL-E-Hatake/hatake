@@ -24,6 +24,11 @@ class WizardController extends ChangeNotifier {
 
   bool get isEdit => recordKey != null;
 
+  /// Form state for `{ mode: create }` / `{ mode: edit }` conditions
+  /// ([ConditionModes]). Renderer と検証で同じものを使うため、出どころはここ1つ。
+  String get formMode =>
+      isEdit ? ConditionModes.edit : ConditionModes.create;
+
   int _stepIndex = 0;
   int get stepIndex => _stepIndex;
 
@@ -88,7 +93,7 @@ class WizardController extends ChangeNotifier {
   /// Returns true when the wizard advanced.
   bool next(DataRecord values) {
     _draft = {..._draft, ...values};
-    final result = _validator.validate(step.form, _draft);
+    final result = _validator.validate(step.form, _draft, mode: formMode);
     if (!result.isValid) {
       _validation = result;
       notifyListeners();
@@ -116,7 +121,8 @@ class WizardController extends ChangeNotifier {
   Future<DataRecord?> submit(DataRecord values) async {
     _draft = {..._draft, ...values};
 
-    final stepResult = _validator.validate(step.form, _draft);
+    final stepResult =
+        _validator.validate(step.form, _draft, mode: formMode);
     if (!stepResult.isValid) {
       _validation = stepResult;
       notifyListeners();
@@ -124,7 +130,8 @@ class WizardController extends ChangeNotifier {
     }
 
     final normalized = _normalizer.normalize(definition.form, _draft);
-    final whole = _validator.validate(definition.form, normalized);
+    final whole =
+        _validator.validate(definition.form, normalized, mode: formMode);
     if (!whole.isValid) {
       _draft = normalized;
       _validation = whole;

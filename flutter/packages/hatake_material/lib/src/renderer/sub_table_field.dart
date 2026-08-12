@@ -238,13 +238,18 @@ class _SubTableRowDialogState extends State<_SubTableRowDialog> {
   final GlobalKey<_HatakeFormFieldsState> _fields = GlobalKey();
   ValidationResult _validation = ValidationResult.valid;
 
+  /// 行の追加なら create、既にある行を開いたなら edit。描画と検証で同じものを使う。
+  String get _mode =>
+      widget.initial.isEmpty ? ConditionModes.create : ConditionModes.edit;
+
   late final FormDefinition _rowForm = FormDefinition(
     sections: [SectionDefinition(fields: _rowEditorFields(widget.field))],
   );
 
   void _save() {
     final row = _fields.currentState!.collect();
-    final result = FormValidator(widget.validators).validate(_rowForm, row);
+    final result = FormValidator(widget.validators)
+        .validate(_rowForm, row, mode: _mode);
     if (!result.isValid) {
       setState(() => _validation = result);
       return;
@@ -268,10 +273,7 @@ class _SubTableRowDialogState extends State<_SubTableRowDialog> {
             roles: widget.roles,
             validators: widget.validators,
             repositories: widget.repositories,
-            // 行の追加なら create、既にある行を開いたなら edit。
-            mode: widget.initial.isEmpty
-                ? ConditionModes.create
-                : ConditionModes.edit,
+            mode: _mode,
           ),
         ),
       ),

@@ -27,6 +27,12 @@ class CrudController extends ListController {
   CrudMode _mode = CrudMode.list;
   CrudMode get mode => _mode;
 
+  /// Form state for `{ mode: create }` / `{ mode: edit }` conditions
+  /// ([ConditionModes]). Renderer と検証で同じものを使うため、出どころはここ1つ。
+  /// （ズレると「見えているのに検証されない項目」ができてしまう）
+  String get formMode =>
+      _mode == CrudMode.edit ? ConditionModes.edit : ConditionModes.create;
+
   Object? _editingKey;
 
   DataRecord _draft = const {};
@@ -76,7 +82,8 @@ class CrudController extends ListController {
     // Normalize input (e.g. full-width → half-width, trim) before validating
     // and persisting, driven by each field's `normalize` chain.
     final normalized = _normalizer.normalize(definition.form, values);
-    final result = _formValidator.validate(definition.form, normalized);
+    final result =
+        _formValidator.validate(definition.form, normalized, mode: formMode);
     if (!result.isValid) {
       _validation = result;
       notifyListeners();

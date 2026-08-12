@@ -36,6 +36,8 @@ npx hatake examples --json    # ツール向け
 | バリデーション・必須 | customer_form / customer_master |
 | 全角半角などの入力正規化（`normalize`） | customer_form / customer_wizard |
 | 条件表示（`visibleWhen`） | customer_wizard |
+| 項目の制御（`readOnlyWhen` / `requiredWhen` / 区画ごとの `visibleWhen`） | customer_form |
+| 選択肢の連動（`optionsFrom` / `when`） | customer_form（入力）/ product_search（検索条件） |
 | 計算項目（`computed`） | customer_wizard / order_entry |
 | 親子・明細（`subTable`） | order_entry / order_entry_paged |
 | 集計・グラフ（`aggregate` / `chart`） | sales_dashboard |

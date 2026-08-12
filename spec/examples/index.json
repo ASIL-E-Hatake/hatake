@@ -62,7 +62,9 @@
         "operator",
         "table",
         "pagination",
-        "rowActions"
+        "rowActions",
+        "optionsFrom",
+        "when"
       ],
       "keywords": [
         "照会",
@@ -70,7 +72,9 @@
         "一覧",
         "検索条件",
         "複数条件",
-        "詳細へ遷移"
+        "詳細へ遷移",
+        "検索条件の連動",
+        "カスケード"
       ]
     },
     {
@@ -108,7 +112,9 @@
         "optionsFrom",
         "when",
         "visibleWhen",
-        "enabledWhen"
+        "enabledWhen",
+        "requiredWhen",
+        "readOnlyWhen"
       ],
       "keywords": [
         "単票",
@@ -119,7 +125,10 @@
         "郵便番号",
         "新規と編集の出し分け",
         "選択肢の連動",
-        "カスケード"
+        "カスケード",
+        "条件つき必須",
+        "読み取り専用",
+        "区画ごとの出し分け"
       ]
     },
     {

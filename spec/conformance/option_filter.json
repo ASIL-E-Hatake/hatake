@@ -1,17 +1,26 @@
 {
-  "$comment": "選択肢の連動（カスケード）。親項目（optionsFrom）の現在値で、子項目の選択肢を絞る。`when` を書いていない選択肢は常に出る。値の比較は条件式と同じ緩い比較（'1' と 1 は同じ）。stale は「親が変わって、子が持っている値が選べなくなった」＝フォームが値を捨てる合図。Dart（visibleOptions / optionValueIsStale）と TypeScript が同じ結果になることを確認する。",
+  "$comment": "選択肢の連動（カスケード）。親項目（optionsFrom）の現在値で、子項目の選択肢を絞る。`when` を書いていない選択肢は常に出る。値の比較は条件式と同じ緩い比較（'1' と 1 は同じ）。stale は「親が変わって、子が持っている値が選べなくなった」＝フォームが値を捨てる合図。Dart（visibleOptions / optionValueIsStale）と TypeScript が同じ結果になることを確認する。 `as: filter` のケースは同じ判定を検索条件（search.filters）の形で確認する＝入力用と検索用で判定を2つ持っていないことの証明。",
   "cases": [
     {
       "name": "optionsFrom が無ければ全部出る",
       "field": {
         "field": "city",
         "options": [
-          { "value": "shibuya", "label": "渋谷区" },
-          { "value": "kita", "label": "北区" }
+          {
+            "value": "shibuya",
+            "label": "渋谷区"
+          },
+          {
+            "value": "kita",
+            "label": "北区"
+          }
         ]
       },
       "record": {},
-      "visible": ["shibuya", "kita"],
+      "visible": [
+        "shibuya",
+        "kita"
+      ],
       "stale": false
     },
     {
@@ -20,13 +29,30 @@
         "field": "city",
         "optionsFrom": "prefecture",
         "options": [
-          { "value": "shibuya", "label": "渋谷区", "when": "tokyo" },
-          { "value": "setagaya", "label": "世田谷区", "when": "tokyo" },
-          { "value": "kita", "label": "北区", "when": "osaka" }
+          {
+            "value": "shibuya",
+            "label": "渋谷区",
+            "when": "tokyo"
+          },
+          {
+            "value": "setagaya",
+            "label": "世田谷区",
+            "when": "tokyo"
+          },
+          {
+            "value": "kita",
+            "label": "北区",
+            "when": "osaka"
+          }
         ]
       },
-      "record": { "prefecture": "tokyo" },
-      "visible": ["shibuya", "setagaya"],
+      "record": {
+        "prefecture": "tokyo"
+      },
+      "visible": [
+        "shibuya",
+        "setagaya"
+      ],
       "stale": false
     },
     {
@@ -35,12 +61,21 @@
         "field": "city",
         "optionsFrom": "prefecture",
         "options": [
-          { "value": "shibuya", "label": "渋谷区", "when": "tokyo" },
-          { "value": "unknown", "label": "不明" }
+          {
+            "value": "shibuya",
+            "label": "渋谷区",
+            "when": "tokyo"
+          },
+          {
+            "value": "unknown",
+            "label": "不明"
+          }
         ]
       },
       "record": {},
-      "visible": ["unknown"],
+      "visible": [
+        "unknown"
+      ],
       "stale": false
     },
     {
@@ -49,12 +84,23 @@
         "field": "city",
         "optionsFrom": "prefecture",
         "options": [
-          { "value": "shibuya", "label": "渋谷区", "when": "tokyo" },
-          { "value": "other", "label": "その他" }
+          {
+            "value": "shibuya",
+            "label": "渋谷区",
+            "when": "tokyo"
+          },
+          {
+            "value": "other",
+            "label": "その他"
+          }
         ]
       },
-      "record": { "prefecture": "osaka" },
-      "visible": ["other"],
+      "record": {
+        "prefecture": "osaka"
+      },
+      "visible": [
+        "other"
+      ],
       "stale": false
     },
     {
@@ -63,12 +109,24 @@
         "field": "child",
         "optionsFrom": "parent",
         "options": [
-          { "value": "a", "label": "A", "when": 1 },
-          { "value": "b", "label": "B", "when": 2 }
+          {
+            "value": "a",
+            "label": "A",
+            "when": 1
+          },
+          {
+            "value": "b",
+            "label": "B",
+            "when": 2
+          }
         ]
       },
-      "record": { "parent": "1" },
-      "visible": ["a"],
+      "record": {
+        "parent": "1"
+      },
+      "visible": [
+        "a"
+      ],
       "stale": false
     },
     {
@@ -77,12 +135,25 @@
         "field": "city",
         "optionsFrom": "prefecture",
         "options": [
-          { "value": "shibuya", "label": "渋谷区", "when": "tokyo" },
-          { "value": "kita", "label": "北区", "when": "osaka" }
+          {
+            "value": "shibuya",
+            "label": "渋谷区",
+            "when": "tokyo"
+          },
+          {
+            "value": "kita",
+            "label": "北区",
+            "when": "osaka"
+          }
         ]
       },
-      "record": { "prefecture": "osaka", "city": "shibuya" },
-      "visible": ["kita"],
+      "record": {
+        "prefecture": "osaka",
+        "city": "shibuya"
+      },
+      "visible": [
+        "kita"
+      ],
       "stale": true
     },
     {
@@ -91,12 +162,25 @@
         "field": "city",
         "optionsFrom": "prefecture",
         "options": [
-          { "value": "shibuya", "label": "渋谷区", "when": "tokyo" },
-          { "value": "kita", "label": "北区", "when": "osaka" }
+          {
+            "value": "shibuya",
+            "label": "渋谷区",
+            "when": "tokyo"
+          },
+          {
+            "value": "kita",
+            "label": "北区",
+            "when": "osaka"
+          }
         ]
       },
-      "record": { "prefecture": "tokyo", "city": "shibuya" },
-      "visible": ["shibuya"],
+      "record": {
+        "prefecture": "tokyo",
+        "city": "shibuya"
+      },
+      "visible": [
+        "shibuya"
+      ],
       "stale": false
     },
     {
@@ -104,11 +188,85 @@
       "field": {
         "field": "city",
         "optionsFrom": "prefecture",
-        "options": [{ "value": "shibuya", "label": "渋谷区", "when": "tokyo" }]
+        "options": [
+          {
+            "value": "shibuya",
+            "label": "渋谷区",
+            "when": "tokyo"
+          }
+        ]
       },
-      "record": { "prefecture": "osaka", "city": "" },
+      "record": {
+        "prefecture": "osaka",
+        "city": ""
+      },
       "visible": [],
       "stale": false
+    },
+    {
+      "name": "検索条件でも同じ判定で絞る（入力用と判定を2つ持たない）",
+      "as": "filter",
+      "field": {
+        "field": "city",
+        "optionsFrom": "prefecture",
+        "options": [
+          {
+            "value": "shibuya",
+            "label": "渋谷区",
+            "when": "tokyo"
+          },
+          {
+            "value": "kita",
+            "label": "北区",
+            "when": "osaka"
+          },
+          {
+            "value": "other",
+            "label": "その他"
+          }
+        ]
+      },
+      "record": {
+        "prefecture": "osaka"
+      },
+      "visible": [
+        "kita",
+        "other"
+      ],
+      "stale": false
+    },
+    {
+      "name": "検索条件でも、選べなくなった値は捨てる合図が出る",
+      "as": "filter",
+      "field": {
+        "field": "city",
+        "optionsFrom": "prefecture",
+        "options": [
+          {
+            "value": "shibuya",
+            "label": "渋谷区",
+            "when": "tokyo"
+          },
+          {
+            "value": "kita",
+            "label": "北区",
+            "when": "osaka"
+          },
+          {
+            "value": "other",
+            "label": "その他"
+          }
+        ]
+      },
+      "record": {
+        "prefecture": "osaka",
+        "city": "shibuya"
+      },
+      "visible": [
+        "kita",
+        "other"
+      ],
+      "stale": true
     }
   ]
 }

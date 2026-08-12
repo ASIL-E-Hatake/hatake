@@ -23,6 +23,11 @@ class FormController extends ChangeNotifier {
   /// Whether the form was *opened* on an existing record.
   bool get isEdit => recordKey != null;
 
+  /// Form state for `{ mode: create }` / `{ mode: edit }` conditions
+  /// ([ConditionModes]). Renderer と検証で同じものを使うため、出どころはここ1つ。
+  String get formMode =>
+      isEdit ? ConditionModes.edit : ConditionModes.create;
+
   /// The key of the record this form is working on — [recordKey], or the key of
   /// the record a successful create produced.
   ///
@@ -80,7 +85,8 @@ class FormController extends ChangeNotifier {
   /// [validation] and stays. On success, persists and exposes [savedRecord].
   Future<DataRecord?> submit(DataRecord values) async {
     final normalized = _normalizer.normalize(definition.form, values);
-    final result = _validator.validate(definition.form, normalized);
+    final result =
+        _validator.validate(definition.form, normalized, mode: formMode);
     if (!result.isValid) {
       _validation = result;
       notifyListeners();

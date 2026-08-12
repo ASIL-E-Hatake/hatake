@@ -163,9 +163,8 @@ class _MaterialWizardPageState extends State<_MaterialWizardPage> {
           validators: HatakeScope.of(context).validators,
           subTables: HatakeScope.of(context).subTableController,
           repositories: HatakeScope.of(context).repositories,
-          mode: _controller.recordKey == null
-              ? ConditionModes.create
-              : ConditionModes.edit,
+          // 検証と同じものを使う（出どころはコントローラ1つ）。
+          mode: _controller.formMode,
           recordKey: _controller.recordKey,
         ),
       ],

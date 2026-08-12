@@ -334,6 +334,8 @@ FilterDefinition _parseFilter(Map<String, Object?> m) {
     type: m.optString('type') ?? FieldTypes.text,
     operator: m.optString('operator') ?? FilterOperators.contains,
     options: _parseOptions(m.optList('options')),
+    optionsFrom: m.optString('optionsFrom'),
+    optionsSource: _parseOptionsSource(m.optMap('optionsSource')),
     config: m.optMap('config') ?? const {},
   );
 }
@@ -390,6 +392,7 @@ SectionDefinition _parseSection(Map<String, Object?> m) {
   return SectionDefinition(
     title: m.optString('title'),
     layout: _parseLayout(m.optMap('layout')),
+    visibleWhen: m.optMap('visibleWhen'),
     fields: [
       for (var i = 0; i < fields.length; i++)
         _parseField(_asMap(fields[i], 'section.fields[$i]')),
@@ -403,7 +406,9 @@ FieldDefinition _parseField(Map<String, Object?> m) {
     label: m.reqString('label', at: 'field.label'),
     type: m.optString('type') ?? FieldTypes.text,
     required: m.optBool('required'),
+    requiredWhen: m.optMap('requiredWhen'),
     readOnly: m.optBool('readOnly'),
+    readOnlyWhen: m.optMap('readOnlyWhen'),
     defaultValue: m['defaultValue'],
     validators: [
       for (var i = 0; i < m.optList('validators').length; i++)

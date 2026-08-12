@@ -194,19 +194,28 @@ void main() {
     for (final raw in fixture['cases'] as List<Object?>) {
       final c = raw as Map<String, Object?>;
       final spec = (c['field'] as Map).cast<String, Object?>();
-      final field = FieldDefinition(
-        field: spec['field'] as String,
-        label: spec['field'] as String,
-        optionsFrom: spec['optionsFrom'] as String?,
-        options: [
-          for (final o in (spec['options'] as List).cast<Map>())
-            OptionItem(
-              value: o['value'],
-              label: o['label'] as String,
-              when: o['when'],
-            ),
-        ],
-      );
+      final options = [
+        for (final o in (spec['options'] as List).cast<Map>())
+          OptionItem(
+            value: o['value'],
+            label: o['label'] as String,
+            when: o['when'],
+          ),
+      ];
+      // `as: filter` のケースは検索条件の形で確認する（判定は共有＝OptionsOwner）。
+      final OptionsOwner field = c['as'] == 'filter'
+          ? FilterDefinition(
+              field: spec['field'] as String,
+              label: spec['field'] as String,
+              optionsFrom: spec['optionsFrom'] as String?,
+              options: options,
+            )
+          : FieldDefinition(
+              field: spec['field'] as String,
+              label: spec['field'] as String,
+              optionsFrom: spec['optionsFrom'] as String?,
+              options: options,
+            );
       final record = (c['record'] as Map).cast<String, Object?>();
       test(c['name'] as String, () {
         expect(

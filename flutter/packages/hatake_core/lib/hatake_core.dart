@@ -16,6 +16,7 @@ export 'src/definition/validator_types.dart';
 
 // Value objects.
 export 'src/definition/option_item.dart';
+export 'src/definition/options_owner.dart';
 export 'src/definition/options_source.dart';
 export 'src/definition/validator_definition.dart';
 export 'src/definition/layout_definition.dart';

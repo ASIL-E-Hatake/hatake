@@ -21,6 +21,8 @@ import {
   tenure,
   visibleOptions,
   type FieldDefinition,
+  type FilterDefinition,
+  type OptionsOwner,
   ValidatorRegistry,
 } from "../src/index.js";
 
@@ -172,21 +174,33 @@ describe("conformance: option filter", () => {
   ) as { cases: any[] };
   for (const c of fixture.cases) {
     it(c.name, () => {
-      const field = {
-        field: c.field.field,
-        label: c.field.field,
-        type: "select",
-        required: false,
-        readOnly: false,
-        validators: [],
-        options: c.field.options,
-        optionsFrom: c.field.optionsFrom,
-        normalize: [],
-        config: {},
-        roles: [],
-        columns: [],
-        rowFields: [],
-      } as FieldDefinition;
+      // `as: filter` のケースは検索条件の形で確認する（判定は共有＝OptionsOwner）。
+      const field: OptionsOwner =
+        c.as === "filter"
+          ? ({
+              field: c.field.field,
+              label: c.field.field,
+              type: "select",
+              operator: "equals",
+              options: c.field.options,
+              optionsFrom: c.field.optionsFrom,
+              config: {},
+            } satisfies FilterDefinition)
+          : ({
+              field: c.field.field,
+              label: c.field.field,
+              type: "select",
+              required: false,
+              readOnly: false,
+              validators: [],
+              options: c.field.options,
+              optionsFrom: c.field.optionsFrom,
+              normalize: [],
+              config: {},
+              roles: [],
+              columns: [],
+              rowFields: [],
+            } satisfies FieldDefinition);
       expect(visibleOptions(field, c.record).map((o) => o.value)).toEqual(
         c.visible,
       );

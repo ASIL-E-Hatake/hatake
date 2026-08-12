@@ -24,8 +24,17 @@ page:
             # キー項目が入っているかを見る回避策ではなく、mode をそのまま書く。
             enabledWhen: { mode: create }
           - { field: name,   label: 顧客名,     type: text,   required: true }
+          - { field: kind,   label: 区分,       type: select, required: true,
+              options: [ { value: personal, label: 個人 }, { value: corp, label: 法人 } ] }
           - { field: status, label: ステータス, type: select, required: true,
               options: [ { value: active, label: 有効 }, { value: inactive, label: 無効 } ] }
+          # 個人は会員番号を直せない。値は読ませたいので、非活性ではなく読み取り専用。
+          - { field: memberNo, label: 会員番号, type: text,
+              readOnlyWhen: { field: kind, value: personal } }
+          # 法人のときだけ登録番号が必須（見えてはいるが、条件で必須が変わる）。
+          # 条件つき必須はサーバ側の検証でも同じ定義が効く。
+          - { field: invoiceNo, label: 登録番号, type: text,
+              requiredWhen: { field: kind, value: corp } }
 
       - title: 住所
         layout: { columns: 2 }
@@ -42,6 +51,12 @@ page:
               - { value: setagaya, label: 世田谷区, when: tokyo }
               - { value: kita,     label: 北区,     when: osaka }
               - { value: other,    label: その他 }   # when 無し = 常に出る
+
+      # 区分ごと（法人のときだけ）出す枠。中の必須は、隠れているあいだ求められない。
+      - title: 請求先
+        visibleWhen: { field: kind, value: corp }
+        fields:
+          - { field: billingCode, label: 請求先コード, type: text, required: true }
 
       - title: その他
         fields:

@@ -47,13 +47,59 @@ visibleWhen: { all: [ { field: age, operator: gte, value: 20 },
 
 条件が見るのは、その画面で入力中・表示中のレコードの値。**他の画面の値やログイン情報は見られない**。ロールで出し分けたいなら `roles` を使う（「権限で出し分ける」参照）。
 
-## 隠れている項目の検証
+## 隠れている項目は検証しない
 
-隠れている項目に `required: true` が付いていると、保存できないのに理由が見えない画面になりうる。**条件表示する項目には `required` を付けない**か、付けるなら条件と必須の条件を揃える。
+`visibleWhen` で消えている項目は、`required` も他の検証も飛ばす。入力できない項目を必須にすると「直せないのに保存できない画面」になってしまうので、そちら側に倒してある。
+
+なので **「出たときだけ必須」は素直に書ける**。条件を2回書く必要はない。
+
+```yaml
+- field: registryNo
+  label: 法人番号
+  required: true
+  visibleWhen: { field: kind, operator: equals, value: corporate }
+```
+
+ただし、隠れている項目に値が残っていた場合、**その値は保存される**。検証を飛ばすだけで、値を消しには行かない（消したつもりのデータが残るより、勝手に消えるほうが事故が大きいので）。
+
+## 見た目は変えずに、直せなくする
+
+`enabledWhen` は灰色になる。「値は読ませたいが直させたくない」ときはこれだと目立ちすぎるので、`readOnlyWhen` を使う。見た目は普通の入力欄のまま、編集だけできなくなる。
+
+```yaml
+# 個人には会員番号を直させない（でも読ませたい）
+- { field: memberNo, label: 会員番号, readOnlyWhen: { field: kind, value: personal } }
+```
+
+`enabledWhen: { not: ... }` と書いても同じことはできるが、条件を反転させて読むぶん1枚挟まる。素直な向きで書けるようにしてある。
+
+## 条件によって必須にする
+
+「法人のときだけ登録番号が必須」のように、**項目は出ているのに必須かどうかだけ変わる**場合は `requiredWhen`。
+
+```yaml
+- { field: invoiceNo, label: 登録番号, requiredWhen: { field: kind, value: corp } }
+```
+
+必須の条件を `validators` の中に書こうとしても効かない。`validators` の要素はその項目の値しか見ないので、他の項目の値では分岐できない（そして余分なキーは黙って捨てられる）。
+
+## 枠ごと出し分ける
+
+項目が何個も同じ条件で出たり消えたりするなら、セクションに `visibleWhen` を書けば見出しごと消える。中の項目も検証されない。
+
+```yaml
+sections:
+  - title: 請求先
+    visibleWhen: { field: kind, value: corp }
+    fields:
+      - { field: billingCode, label: 請求先コード, required: true }
+```
 
 ## 同じ判定がバックエンドでも動く
 
 条件の評価は Dart / TypeScript / Java の3言語に同名で用意されている。画面で隠した項目をサーバ側でも「無いもの」として扱えるので、判定ロジックを書き直さなくていい。
+
+サーバ側の検証が見るのは `visibleWhen` と `requiredWhen` の2つ（`enabledWhen` と `readOnlyWhen` は見た目の話なので見ない）。`{ mode: ... }` を含む条件を使うなら、検証を呼ぶときにモードを渡すこと。渡さないと mode の判定が false になり、**検証が緩む方に倒れる**。
 
 ## 新規のときだけ／編集のときだけ
 

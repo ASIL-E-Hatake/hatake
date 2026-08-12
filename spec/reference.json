@@ -485,7 +485,8 @@
       ],
       "parents": [
         "condition",
-        "field"
+        "field",
+        "section"
       ],
       "keys": [
         {
@@ -1161,10 +1162,28 @@
           "default": false
         },
         {
+          "key": "requiredWhen",
+          "type": "object",
+          "required": false,
+          "description": "Required only when the condition matches the current record. Unlike visibleWhen / enabledWhen this is also checked server-side, by the same validator.",
+          "nodes": [
+            "condition"
+          ]
+        },
+        {
           "key": "readOnly",
           "type": "boolean",
           "required": false,
           "default": false
+        },
+        {
+          "key": "readOnlyWhen",
+          "type": "object",
+          "required": false,
+          "description": "Read-only while the condition matches: the value stays readable, only editing is blocked. Compare enabledWhen, which greys the input out.",
+          "nodes": [
+            "condition"
+          ]
         },
         {
           "key": "defaultValue",
@@ -1257,7 +1276,7 @@
           "key": "enabledWhen",
           "type": "object",
           "required": false,
-          "description": "Enable this field only when the condition matches the current record.",
+          "description": "Enable this field only when the condition matches the current record. A disabled field is greyed out; use readOnlyWhen when the value should stay plainly readable.",
           "nodes": [
             "condition"
           ]
@@ -1418,6 +1437,21 @@
           "description": "Options for select-style filters.",
           "nodes": [
             "option"
+          ]
+        },
+        {
+          "key": "optionsFrom",
+          "type": "string",
+          "required": false,
+          "description": "Parent filter name in the same search area. The options shown are those whose `when` matches the parent's current value (plus any option without a `when`). Changing the parent clears a child value that is no longer offered."
+        },
+        {
+          "key": "optionsSource",
+          "type": "object",
+          "required": false,
+          "description": "Fetch a field's options from a repository instead of listing them. The framework knows no HTTP or SQL: it asks the repository the application registered, passing the parent value as a filter when `parentKey` is set.",
+          "nodes": [
+            "optionsSource"
           ]
         },
         {
@@ -1721,13 +1755,17 @@
       "closed": true,
       "pageKinds": [
         "crud",
+        "dashboard",
         "detail",
         "form",
         "master",
+        "report",
+        "search",
         "wizard"
       ],
       "parents": [
-        "field"
+        "field",
+        "filter"
       ],
       "keys": [
         {
@@ -2175,6 +2213,15 @@
           "key": "title",
           "type": "string",
           "required": false
+        },
+        {
+          "key": "visibleWhen",
+          "type": "object",
+          "required": false,
+          "description": "Show this whole section only when the condition matches the current record. A hidden section's fields are not validated either.",
+          "nodes": [
+            "condition"
+          ]
         },
         {
           "key": "layout",
@@ -2723,10 +2770,12 @@
       "filter"
     ],
     "optionsFrom": [
-      "field"
+      "field",
+      "filter"
     ],
     "optionsSource": [
-      "field"
+      "field",
+      "filter"
     ],
     "orientation": [
       "paper"
@@ -2773,6 +2822,9 @@
     "readOnly": [
       "field"
     ],
+    "readOnlyWhen": [
+      "field"
+    ],
     "report": [
       "reportPage"
     ],
@@ -2790,6 +2842,9 @@
       "wizardPage"
     ],
     "required": [
+      "field"
+    ],
+    "requiredWhen": [
       "field"
     ],
     "roles": [
@@ -2896,7 +2951,8 @@
       "chart"
     ],
     "visibleWhen": [
-      "field"
+      "field",
+      "section"
     ],
     "when": [
       "option"

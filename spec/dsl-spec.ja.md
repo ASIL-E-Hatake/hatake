@@ -541,6 +541,8 @@ page:
 | `type` | string | | `text` | 入力型（[フィールド型](#フィールド型)参照）。 |
 | `operator` | string | | `contains` | 突合演算子（[演算子](#フィルタ演算子)参照）。 |
 | `options` | [option](#option)[] | | `[]` | セレクト系フィルタ用。 |
+| `optionsFrom` | string | | — | 親の条件名。その値で選択肢を絞る（[選択肢の連動](#選択肢の連動optionsfrom--when--optionssource)参照）。 |
+| `optionsSource` | [optionsSource](#選択肢の連動optionsfrom--when--optionssource) | | — | 選択肢を Repository から引く。 |
 | `config` | map | | `{}` | 追加設定。 |
 
 **入力の出方**（Renderer が `type` で決める）:
@@ -602,6 +604,7 @@ page:
 | `title` | string | — | 任意の見出し。 |
 | `layout` | [layout](#layout) | `{columns: 1}` | フィールド配置。 |
 | `fields` | [field](#field)[] | `[]` | 入力フィールド。 |
+| `visibleWhen` | [condition](#condition) | — | 条件が真のときだけ**区画ごと**表示。隠れている区画の項目は検証もされない（[項目の制御](#項目の制御visiblewhen--enabledwhen--readonlywhen--requiredwhen)参照）。 |
 
 ### field
 
@@ -611,7 +614,9 @@ page:
 | `label` | string | ✅ | — | 表示ラベル。 |
 | `type` | string | | `text` | フィールド型（[フィールド型](#フィールド型)参照）。 |
 | `required` | boolean | | `false` | `required` バリデータ + 必須マーカーを付与。 |
+| `requiredWhen` | [condition](#condition) | | — | 条件が真のときだけ必須（**サーバ側でも効く**）。 |
 | `readOnly` | boolean | | `false` | 読み取り専用か。 |
+| `readOnlyWhen` | [condition](#condition) | | — | 条件が真のあいだ読み取り専用（見た目は変えない）。 |
 | `defaultValue` | any | | — | 新規作成時の初期値。 |
 | `validators` | [validator](#validator)[] | | `[]` | バリデーション規則。 |
 | `options` | [option](#option)[] | | `[]` | select/radio/multiSelect 用。 |
@@ -619,7 +624,7 @@ page:
 | `normalize` | string[] | | `[]` | 入力前に適用するコンバータ（[コンバータ](#コンバータ)参照）。 |
 | `config` | map | | `{}` | 追加設定。 |
 | `visibleWhen` | [condition](#condition) | | — | 条件が真のときだけ表示。省略時は常に表示。 |
-| `enabledWhen` | [condition](#condition) | | — | 条件が真のときだけ活性。省略時は常に活性。 |
+| `enabledWhen` | [condition](#condition) | | — | 条件が真のときだけ活性（偽なら**非活性＝グレー**）。省略時は常に活性。 |
 | `computed` | [computed](#computed) | | — | 値をレコードから導出（読み取り専用表示）。 |
 | `roles` | string[] | | `[]` | 表示を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
 | `columns` | [column](#column)[] | | `[]` | 子行グリッドの表示列（`type: subTable` のとき。[明細](#明細subtable)参照）。 |
@@ -741,6 +746,53 @@ enabledWhen:
 「新規のときだけ」なので、そう言えない場所では満たされない、と読む。明細（`subTable`）の
 行では、行の追加が `create`・既存行を開いたら `edit`。
 
+### 項目の制御（`visibleWhen` / `enabledWhen` / `readOnlyWhen` / `requiredWhen`）
+
+条件を使った項目の出し分けは4つ。**見た目の話と検証の話が混ざるので、どれがどこまで
+効くのかを先に決めてある**。
+
+| キー | 効き方 | サーバ側の検証 |
+|---|---|---|
+| `visibleWhen` | 出す / 出さない | **効く**（隠れている項目は検証しない） |
+| `enabledWhen` | 活性 / **非活性（グレー）** | 効かない |
+| `readOnlyWhen` | 読み取り専用（**見た目は変えない**） | 効かない |
+| `requiredWhen` | 必須 / 任意 | **効く** |
+
+```yaml
+# 個人のときは会員番号を直させない（値は読ませたい）
+- { field: memberNo,  label: 会員番号, readOnlyWhen: { field: kind, value: personal } }
+# 法人のときだけ登録番号が必須
+- { field: invoiceNo, label: 登録番号, requiredWhen: { field: kind, value: corp } }
+```
+
+**`enabledWhen` と `readOnlyWhen` の使い分け**: どちらも直せなくなるが、非活性は
+「いま触るものではない」を色で示し、読み取り専用は「読むものだ」という顔のまま直せない。
+値を読ませたいなら `readOnlyWhen`。`enabledWhen: { not: … }` と書けば同じことはできるが、
+条件を反転させて読むのは間に1枚入るので、素直な向きのキーを用意してある。
+
+**隠れている項目は検証しない。** `visibleWhen` で消えている項目（と `visibleWhen` で
+消えている区画の項目）は、`required` も他のバリデータも飛ばす。入力できない項目を必須に
+すると「保存できないが直せない画面」になってしまうため。逆に、**出ている項目の必須は
+そのまま効く**ので、「出たら必須」は `visibleWhen` ＋ `required: true` で書ける。
+`requiredWhen` が要るのは「**出ているのに、条件によって必須が変わる**」ときだけ。
+
+**区画ごとの出し分け**は `section.visibleWhen`。見出しごと消え、中の項目も検証されない。
+
+```yaml
+sections:
+  - title: 請求先
+    visibleWhen: { field: kind, value: corp }
+    fields:
+      - { field: billingCode, label: 請求先コード, required: true }
+```
+
+`requiredWhen` は**サーバ側の検証でも同じ定義が使われる**（3言語の `FormValidator`）。
+`{ mode: … }` を含む条件を使うなら、検証を呼ぶときにモードを渡すこと（POST / PUT で
+分かる）。渡さないと mode のリーフは false になり、**検証は緩む方に倒れる**。
+
+なお、隠れている項目に値が残っていた場合、**その値は保存される**（検証を飛ばすだけで、
+値を消すことはしない）。消えていてほしいなら、値を持たせない側で作ること。
+
 ### 選択肢の連動（`optionsFrom` / `when` / `optionsSource`）
 
 都道府県 → 市区町村、大分類 → 中分類。**親項目の値で子項目の選択肢を絞る**。
@@ -785,7 +837,10 @@ enabledWhen:
 - `options` と `optionsSource` の両方を書いたら**引いた方が勝つ**（`hatake validate` が警告する）
 - Framework は HTTP も SQL も知らない。②が使うのは一覧画面と同じ `Repository.search`
 
-検索条件（`filter`）の連動は未対応（今は入力項目だけ）。
+**検索条件（`search.filters`）でも同じキーが同じ意味で使える。** 「いまの値の集まり」が
+レコードではなく検索欄に入っている値になるだけで、絞り込みの判定は共有している
+（`optionsFrom` / `when` / `optionsSource` の書き方は上と同じ）。範囲（`operator: between`）
+は値を2つ持つので、親には使えない。
 
 ### computed
 

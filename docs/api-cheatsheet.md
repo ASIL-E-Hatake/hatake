@@ -196,6 +196,28 @@ detail page has none).
 - { field: code, label: Code, enabledWhen: { mode: create } }   # never changed after creation
 ```
 
+### Read-only, conditional required, whole sections
+
+```yaml
+- { field: memberNo,  label: Member no., readOnlyWhen: { field: kind, value: personal } }
+- { field: invoiceNo, label: Reg. no.,   requiredWhen: { field: kind, value: corp } }
+sections:
+  - title: Billing
+    visibleWhen: { field: kind, value: corp }   # the heading goes too
+    fields: [ { field: billingCode, label: Billing code, required: true } ]
+```
+
+| Key | Effect | Server-side validation |
+|---|---|---|
+| `visibleWhen` | shown / hidden | **yes** (a hidden field is not validated) |
+| `enabledWhen` | enabled / disabled (greyed out) | no |
+| `readOnlyWhen` | read-only (looks unchanged) | no |
+| `requiredWhen` | required / optional | **yes** |
+
+* A hidden field skips **every** validator, so "required once shown" is `visibleWhen` + `required: true`. `requiredWhen` is for "visible, but required only sometimes".
+* A hidden field's leftover value is still saved (validation is skipped, values are not cleared).
+* Pass the mode when validating server-side if a condition mentions `{ mode: … }` — without it the leaf is false, so validation errs on the lenient side.
+
 ### Condition operators (`visibleWhen`, `enabledWhen`)
 <!-- vocab: condition.operator -->
 `equals` `notEquals` `gt` `gte` `lt` `lte` `contains` `in` `isEmpty` `isNotEmpty`
@@ -327,7 +349,7 @@ Extensible via `ComputedRegistry`.
 * **A child value that is no longer offered is cleared** — losing it beats saving Shibuya under Osaka.
 * Values compare the loose way conditions do (`'1'` equals `1`).
 * Do not write both `options` and `optionsSource` (the fetched one wins; `validate` warns).
-* Linked search filters are not supported yet.
+* **Search filters (`search.filters`) take the same keys** with the same meaning (shared code). A range filter (`between`) holds two values, so it cannot be a parent.
 
 ## Roles (display gating only)
 

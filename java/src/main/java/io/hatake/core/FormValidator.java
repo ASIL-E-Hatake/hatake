@@ -15,6 +15,18 @@ import java.util.Map;
  * <p>ただし {@code source} 付きの明細（子行が別 Repository にある）は
  * <b>項目まるごと検証対象外</b>。値がこのレコードに無いので、項目自身の
  * {@code required} も含めて検証しても意味が無い。
+ *
+ * <p>条件も見る（ここだけ「条件は UI の話」から外れる）:
+ * <ul>
+ *   <li>{@code visibleWhen} で隠れている項目は<b>検証しない</b>。区画
+ *       （{@code section.visibleWhen}）で隠れているときも同じ。見えない項目を必須に
+ *       すると、入力できないのに保存できない画面になってしまう。</li>
+ *   <li>{@code requiredWhen} が成立する項目は必須として扱う。</li>
+ * </ul>
+ *
+ * <p>{@code mode} は {@code { mode: create }} / {@code { mode: edit }} の判定に使う状態。
+ * POST / PUT で分かるので渡せる。渡さないと mode の条件は false になる＝その条件で
+ * 隠れている扱いになり、検証は緩む方に倒れる。
  */
 public final class FormValidator {
 
@@ -34,35 +46,71 @@ public final class FormValidator {
         this.registry = registry;
     }
 
+    /** モードを問わない検証（{@code mode} の条件は false になる）。 */
     public ValidationResult validate(FormDefinition form, Map<String, Object> record) {
+        return validate(form, record, null);
+    }
+
+    public ValidationResult validate(
+            FormDefinition form, Map<String, Object> record, String mode) {
         List<ValidationError> errors = new ArrayList<>();
-        for (FieldDefinition field : form.fields()) {
-            // 子行が別 Repository にある明細は、このレコードの一部ではない。
-            if (field.isSubTable() && field.hasSubTableSource()) {
+        for (SectionDefinition section : form.sections()) {
+            // 隠れている区画の項目は、この画面には無いものとして扱う。
+            if (!matches(section.visibleWhen(), record, mode)) {
                 continue;
             }
-            Object value = record.get(field.field());
-            List<ValidatorDefinition> rules = new ArrayList<>();
-            if (field.required()) {
-                rules.add(new ValidatorDefinition("required", Map.of(), null));
-            }
-            rules.addAll(field.validators());
-            for (ValidatorDefinition rule : rules) {
-                String message = registry.run(value, rule);
-                if (message != null) {
-                    errors.add(new ValidationError(
-                            field.field(),
-                            rule.message() != null ? rule.message() : message));
-                    break; // one error per field
-                }
-            }
-
-            // 明細（master-detail）: 各行を rowFields で検証する。
-            if (field.isSubTable() && !field.rowFields().isEmpty()) {
-                errors.addAll(validateRows(field, value));
+            for (FieldDefinition field : section.fields()) {
+                validateField(field, record, mode, errors);
             }
         }
         return new ValidationResult(errors.isEmpty(), errors);
+    }
+
+    private void validateField(
+            FieldDefinition field,
+            Map<String, Object> record,
+            String mode,
+            List<ValidationError> errors) {
+        // 子行が別 Repository にある明細は、このレコードの一部ではない。
+        if (field.isSubTable() && field.hasSubTableSource()) {
+            return;
+        }
+        // 隠れている項目は検証しない（入力できないものは求められない）。
+        if (!matches(field.visibleWhen(), record, mode)) {
+            return;
+        }
+        Object value = record.get(field.field());
+        List<ValidatorDefinition> rules = new ArrayList<>();
+        if (field.required() || isRequiredByCondition(field, record, mode)) {
+            rules.add(new ValidatorDefinition("required", Map.of(), null));
+        }
+        rules.addAll(field.validators());
+        for (ValidatorDefinition rule : rules) {
+            String message = registry.run(value, rule);
+            if (message != null) {
+                errors.add(new ValidationError(
+                        field.field(),
+                        rule.message() != null ? rule.message() : message));
+                break; // one error per field
+            }
+        }
+
+        // 明細（master-detail）: 各行を rowFields で検証する。
+        if (field.isSubTable() && !field.rowFields().isEmpty()) {
+            errors.addAll(validateRows(field, value));
+        }
+    }
+
+    private boolean isRequiredByCondition(
+            FieldDefinition field, Map<String, Object> record, String mode) {
+        return field.requiredWhen() != null
+                && ConditionEvaluator.evaluate(field.requiredWhen(), record, mode);
+    }
+
+    /** 条件が無ければ true（＝制限なし）。 */
+    private static boolean matches(
+            Map<String, Object> condition, Map<String, Object> record, String mode) {
+        return condition == null || ConditionEvaluator.evaluate(condition, record, mode);
     }
 
     @SuppressWarnings("unchecked")
@@ -76,6 +124,8 @@ public final class FormValidator {
         int index = 0;
         for (Object row : rows) {
             if (row instanceof Map<?, ?> map) {
+                // 行の条件は行のレコードで判定する。行の追加/編集は親のモードとは
+                // 別物なので、mode は行には渡さない。
                 for (ValidationError e : validate(rowForm, (Map<String, Object>) map).errors()) {
                     errors.add(new ValidationError(
                             field.field() + "[" + index + "]." + e.field(),

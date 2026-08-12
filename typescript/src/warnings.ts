@@ -165,6 +165,7 @@ function checkPage(
 
   checkActions(actions, `${path}.actions`, pageIds, found);
   checkTable(page, actionIds, path, found);
+  checkSearch(page, path, found);
   checkForm(page, path, found);
   checkDashboard(page, actionIds, path, found);
   checkReport(page, path, found);
@@ -253,6 +254,22 @@ function checkTable(
   });
 }
 
+/** 検索欄の条件を見る（選択肢の連動は入力項目と同じ規則）。 */
+function checkSearch(page: Dict, path: string, found: DefinitionWarning[]): void {
+  const search = isDict(page.search) ? page.search : undefined;
+  if (search === undefined) return;
+  const filters = list(search.filters).filter(isDict);
+  // 親は自分より後ろに書かれていることもあるので、先に全部の名前を集める。
+  const names = new Set(
+    filters
+      .map((f) => str(f.field))
+      .filter((name): name is string => name !== undefined),
+  );
+  filters.forEach((filter, i) => {
+    checkOptions(filter, `${path}.search.filters[${i}]`, found, names, "検索欄");
+  });
+}
+
 /** フォーム（と wizard のステップ）の中の項目を見る。 */
 function checkForm(page: Dict, path: string, found: DefinitionWarning[]): void {
   const groups: { fields: unknown[]; path: string }[] = [];
@@ -260,6 +277,13 @@ function checkForm(page: Dict, path: string, found: DefinitionWarning[]): void {
   if (form !== undefined) {
     list(form.sections).forEach((section, i) => {
       if (isDict(section)) {
+        if (isDict(section.visibleWhen)) {
+          checkCondition(
+            section.visibleWhen,
+            `${path}.form.sections[${i}].visibleWhen`,
+            found,
+          );
+        }
         groups.push({
           fields: list(section.fields),
           path: `${path}.form.sections[${i}].fields`,
@@ -328,9 +352,28 @@ function checkFieldEntry(
       "required-as-validator-only",
     );
   });
-  for (const key of ["visibleWhen", "enabledWhen"]) {
+  for (const key of ["visibleWhen", "enabledWhen", "requiredWhen", "readOnlyWhen"]) {
     const condition = field[key];
     if (isDict(condition)) checkCondition(condition, `${path}.${key}`, found);
+  }
+  // 常に効く指定と条件付きの指定を両方書くと、条件の方が意味を持たない。
+  if (field.required === true && isDict(field.requiredWhen)) {
+    warn(
+      found,
+      "requiredwhen-with-required",
+      `${path}.requiredWhen`,
+      "`required: true` があるので常に必須です。`requiredWhen` は効きません。",
+      "条件付きにしたいなら `required: true` を消してください（両方なら常に必須）。",
+    );
+  }
+  if (field.readOnly === true && isDict(field.readOnlyWhen)) {
+    warn(
+      found,
+      "readonlywhen-with-readonly",
+      `${path}.readOnlyWhen`,
+      "`readOnly: true` があるので常に読み取り専用です。`readOnlyWhen` は効きません。",
+      "条件付きにしたいなら `readOnly: true` を消してください。",
+    );
   }
   // 明細（subTable）の行の項目も同じ規則で見る（親子は行の中で閉じている）。
   const rowFields = new Set(
@@ -352,6 +395,7 @@ function checkOptions(
   path: string,
   found: DefinitionWarning[],
   siblings: Set<string>,
+  scope: string = "フォーム",
 ): void {
   const parent = str(field.optionsFrom);
   const hasWhen = list(field.options)
@@ -372,8 +416,8 @@ function checkOptions(
       found,
       "optionsfrom-unknown-field",
       `${path}.optionsFrom`,
-      `親に指定した "${parent}" がこのフォームにありません。親の値が取れないので、\`when\` 付きの選択肢は出ません。`,
-      "同じフォームにある項目名を書いてください（別のフォームの項目は見えません）。",
+      `親に指定した "${parent}" がこの${scope}にありません。親の値が取れないので、\`when\` 付きの選択肢は出ません。`,
+      `同じ${scope}にある項目名を書いてください（別の場所の項目は見えません）。`,
     );
   }
 

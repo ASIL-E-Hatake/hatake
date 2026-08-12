@@ -208,7 +208,9 @@ void main() {
       final code =
           tester.widget<TextField>(find.byKey(const Key('hatake.form.code')));
       // キー項目を見る回避策ではなく、定義に mode と書いてこうなる。
-      expect(code.readOnly, isTrue);
+      // enabledWhen が false なので**非活性**（グレー）。読めるまま直せないだけの
+      // readOnlyWhen とは見た目で区別する。
+      expect(code.enabled, isFalse);
       expect(find.byKey(const Key('hatake.form.note')), findsOneWidget);
     });
   });

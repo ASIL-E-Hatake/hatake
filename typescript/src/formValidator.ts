@@ -1,7 +1,8 @@
+import { evaluateCondition } from "./conditionEvaluator.js";
 import {
   FieldTypes,
-  formFields,
   ValidatorTypes,
+  type FieldDefinition,
   type FormDefinition,
   type ValidatorDefinition,
 } from "./definition.js";
@@ -32,48 +33,93 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
  * A `subTable` with a `source` (repository-backed rows) is skipped entirely:
  * its rows live in another repository, not in this record, so validating them
  * here — including the field's own `required` — would be meaningless.
+ *
+ * 条件も見る（ここだけ「条件は UI の話」から外れる）:
+ *
+ * - `visibleWhen` で隠れている項目は**検証しない**。セクションの `visibleWhen`
+ *   で隠れているときも同じ。見えない項目を必須にすると、入力できないのに保存
+ *   できない画面になってしまう。
+ * - `requiredWhen` が成立する項目は必須として扱う。
+ *
+ * `mode` は `{ mode: create }` / `{ mode: edit }` を判定するための状態。POST /
+ * PUT で分かるので渡せる。渡さないと mode の条件は false になる＝その条件で隠れて
+ * いる扱いになり、検証は緩む方に倒れる。
  */
 export class FormValidator {
   constructor(private readonly registry: ValidatorRegistry = new ValidatorRegistry()) {}
 
-  validate(form: FormDefinition, record: Record<string, unknown>): ValidationResult {
+  validate(
+    form: FormDefinition,
+    record: Record<string, unknown>,
+    mode?: string,
+  ): ValidationResult {
     const errors: ValidationError[] = [];
-    for (const field of formFields(form)) {
-      // Repository-backed child rows are not part of this record.
-      if (field.type === FieldTypes.subTable && field.source) continue;
-
-      const value = record[field.field];
-      const rules: ValidatorDefinition[] = [
-        ...(field.required
-          ? [{ type: ValidatorTypes.required, params: {} } as ValidatorDefinition]
-          : []),
-        ...field.validators,
-      ];
-      for (const rule of rules) {
-        const message = this.registry.run(value, rule);
-        if (message !== null) {
-          errors.push({ field: field.field, message: rule.message ?? message });
-          break; // one error per field
-        }
-      }
-
-      // Child rows (master-detail): validate each row against rowFields.
-      if (field.type === FieldTypes.subTable && field.rowFields.length > 0) {
-        const rowForm: FormDefinition = {
-          sections: [{ columns: 1, fields: field.rowFields }],
-        };
-        const rows = Array.isArray(value) ? value : [];
-        rows.forEach((row, index) => {
-          if (!isRecord(row)) return;
-          for (const error of this.validate(rowForm, row).errors) {
-            errors.push({
-              field: `${field.field}[${index}].${error.field}`,
-              message: error.message,
-            });
-          }
-        });
+    for (const section of form.sections) {
+      // 隠れているセクションの項目は、この画面には無いものとして扱う。
+      if (!matches(section.visibleWhen, record, mode)) continue;
+      for (const field of section.fields) {
+        this.validateField(field, record, mode, errors);
       }
     }
     return { valid: errors.length === 0, errors };
   }
+
+  private validateField(
+    field: FieldDefinition,
+    record: Record<string, unknown>,
+    mode: string | undefined,
+    errors: ValidationError[],
+  ): void {
+    // Repository-backed child rows are not part of this record.
+    if (field.type === FieldTypes.subTable && field.source) return;
+    // 隠れている項目は検証しない（入力できないものは求められない）。
+    if (!matches(field.visibleWhen, record, mode)) return;
+
+    const value = record[field.field];
+    const requiredNow =
+      field.required ||
+      (field.requiredWhen !== undefined &&
+        evaluateCondition(field.requiredWhen, record, mode));
+    const rules: ValidatorDefinition[] = [
+      ...(requiredNow
+        ? [{ type: ValidatorTypes.required, params: {} } as ValidatorDefinition]
+        : []),
+      ...field.validators,
+    ];
+    for (const rule of rules) {
+      const message = this.registry.run(value, rule);
+      if (message !== null) {
+        errors.push({ field: field.field, message: rule.message ?? message });
+        break; // one error per field
+      }
+    }
+
+    // Child rows (master-detail): validate each row against rowFields.
+    if (field.type === FieldTypes.subTable && field.rowFields.length > 0) {
+      const rowForm: FormDefinition = {
+        sections: [{ columns: 1, fields: field.rowFields }],
+      };
+      const rows = Array.isArray(value) ? value : [];
+      rows.forEach((row, index) => {
+        if (!isRecord(row)) return;
+        // 行の条件は行のレコードで判定する。行の追加/編集は親のモードとは
+        // 別物なので、mode は行には渡さない。
+        for (const error of this.validate(rowForm, row).errors) {
+          errors.push({
+            field: `${field.field}[${index}].${error.field}`,
+            message: error.message,
+          });
+        }
+      });
+    }
+  }
+}
+
+/** 条件が無ければ true（＝制限なし）。 */
+function matches(
+  condition: Record<string, unknown> | undefined,
+  record: Record<string, unknown>,
+  mode: string | undefined,
+): boolean {
+  return condition === undefined || evaluateCondition(condition, record, mode);
 }

@@ -3,7 +3,9 @@
   "pitfalls": [
     {
       "id": "columns-outside-table",
-      "keys": ["columns"],
+      "keys": [
+        "columns"
+      ],
       "pageKinds": [],
       "wrong": {
         "ja": "ページ直下に `columns` を書く",
@@ -39,7 +41,9 @@
     },
     {
       "id": "fields-outside-sections",
-      "keys": ["fields"],
+      "keys": [
+        "fields"
+      ],
       "pageKinds": [],
       "wrong": {
         "ja": "`form` の直下に `fields` を書く",
@@ -77,7 +81,9 @@
     },
     {
       "id": "filters-outside-search",
-      "keys": ["filters"],
+      "keys": [
+        "filters"
+      ],
       "pageKinds": [],
       "wrong": {
         "ja": "ページ直下に `filters` を書く",
@@ -113,8 +119,15 @@
     },
     {
       "id": "form-on-page-without-form",
-      "keys": ["form"],
-      "pageKinds": ["search", "wizard", "dashboard", "report"],
+      "keys": [
+        "form"
+      ],
+      "pageKinds": [
+        "search",
+        "wizard",
+        "dashboard",
+        "report"
+      ],
       "wrong": {
         "ja": "`search` / `wizard` / `dashboard` / `report` に `form` を書く",
         "en": "Adding `form` to a `search` / `wizard` / `dashboard` / `report` page"
@@ -155,8 +168,15 @@
     },
     {
       "id": "table-on-page-without-table",
-      "keys": ["table"],
-      "pageKinds": ["detail", "form", "wizard", "dashboard"],
+      "keys": [
+        "table"
+      ],
+      "pageKinds": [
+        "detail",
+        "form",
+        "wizard",
+        "dashboard"
+      ],
       "wrong": {
         "ja": "`form` / `detail` / `wizard` / `dashboard` に `table` を書く",
         "en": "Adding `table` to a `form` / `detail` / `wizard` / `dashboard` page"
@@ -198,8 +218,18 @@
     },
     {
       "id": "steps-on-page-without-steps",
-      "keys": ["steps"],
-      "pageKinds": ["crud", "master", "search", "detail", "form", "dashboard", "report"],
+      "keys": [
+        "steps"
+      ],
+      "pageKinds": [
+        "crud",
+        "master",
+        "search",
+        "detail",
+        "form",
+        "dashboard",
+        "report"
+      ],
       "wrong": {
         "ja": "`wizard` 以外に `steps` を書く",
         "en": "Adding `steps` to a page that is not a `wizard`"
@@ -236,8 +266,13 @@
     },
     {
       "id": "key-on-page-without-record",
-      "keys": ["key"],
-      "pageKinds": ["dashboard", "report"],
+      "keys": [
+        "key"
+      ],
+      "pageKinds": [
+        "dashboard",
+        "report"
+      ],
       "wrong": {
         "ja": "`dashboard` / `report` に `key` を書く",
         "en": "Adding `key` to a `dashboard` or `report` page"
@@ -274,7 +309,9 @@
     },
     {
       "id": "theme-on-page",
-      "keys": ["theme"],
+      "keys": [
+        "theme"
+      ],
       "pageKinds": [],
       "wrong": {
         "ja": "ページに `theme` を書く",
@@ -313,7 +350,10 @@
     },
     {
       "id": "confirm-written-in-code",
-      "keys": ["confirm", "onSuccess"],
+      "keys": [
+        "confirm",
+        "onSuccess"
+      ],
       "pageKinds": [],
       "wrong": {
         "ja": "確認ダイアログや「保存できたら戻る」を Dart / プラグインで書く",
@@ -350,7 +390,11 @@
     },
     {
       "id": "edit-detected-by-key",
-      "keys": ["enabledWhen", "visibleWhen", "mode"],
+      "keys": [
+        "enabledWhen",
+        "visibleWhen",
+        "mode"
+      ],
       "pageKinds": [],
       "wrong": {
         "ja": "「編集のとき」をキー項目の有無で判定する",
@@ -382,7 +426,11 @@
     },
     {
       "id": "cascade-by-visiblewhen",
-      "keys": ["optionsFrom", "when", "optionsSource"],
+      "keys": [
+        "optionsFrom",
+        "when",
+        "optionsSource"
+      ],
       "pageKinds": [],
       "wrong": {
         "ja": "選択肢の連動を、子の項目を親の値ごとに並べて `visibleWhen` で出し分けて作る",
@@ -418,8 +466,12 @@
     },
     {
       "id": "groupby-without-sort",
-      "keys": ["groupBy"],
-      "pageKinds": ["report"],
+      "keys": [
+        "groupBy"
+      ],
+      "pageKinds": [
+        "report"
+      ],
       "wrong": {
         "ja": "`groupBy` を書いて `sort` を書かない",
         "en": "Using `groupBy` without `sort`"
@@ -450,8 +502,12 @@
     },
     {
       "id": "metric-without-aggregate",
-      "keys": ["value"],
-      "pageKinds": ["dashboard"],
+      "keys": [
+        "value"
+      ],
+      "pageKinds": [
+        "dashboard"
+      ],
       "wrong": {
         "ja": "合計を出したいのに `value` を省く",
         "en": "Omitting `value` when you want a sum"
@@ -480,7 +536,10 @@
     },
     {
       "id": "between-in-condition",
-      "keys": ["visibleWhen", "enabledWhen"],
+      "keys": [
+        "visibleWhen",
+        "enabledWhen"
+      ],
       "pageKinds": [],
       "wrong": {
         "ja": "条件（`visibleWhen` / `enabledWhen`）で `between` を使う",
@@ -515,7 +574,9 @@
     },
     {
       "id": "rowactions-as-objects",
-      "keys": ["rowActions"],
+      "keys": [
+        "rowActions"
+      ],
       "pageKinds": [],
       "wrong": {
         "ja": "`rowActions` にオブジェクトを並べる",
@@ -546,7 +607,10 @@
     },
     {
       "id": "required-as-validator-only",
-      "keys": ["validators", "required"],
+      "keys": [
+        "validators",
+        "required"
+      ],
       "pageKinds": [],
       "wrong": {
         "ja": "`validators` に文字列を並べる（`validators: [required, email]`）",
@@ -575,6 +639,79 @@
         "            validators:",
         "              - { type: email }",
         "              - { type: maxLength, value: 120 }"
+      ]
+    },
+    {
+      "id": "conditional-required-by-validators",
+      "keys": [
+        "requiredWhen",
+        "validators",
+        "required"
+      ],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "条件によって必須にしたいので、`validators` に条件を書こうとする（`- { type: required, when: ... }`）",
+        "en": "Trying to express a conditional requirement inside `validators` (`- { type: required, when: ... }`)"
+      },
+      "why": {
+        "ja": "`validators` の要素はその項目の値だけを見る規則で、他の項目は見えない。`when` のような余分なキーは黙って無視されるので、**いつでも必須**になる（`validators` は自由な入れ物なので strict でも落ちない＝気づけない）。",
+        "en": "A `validators` entry only looks at that field's own value; it cannot see other fields. An extra key like `when` is silently ignored, so the field ends up **always required** — and because `validators` is a free-form container, strict parsing will not complain."
+      },
+      "fix": {
+        "ja": "項目直下の `requiredWhen` に条件を書く。判定は3言語の `FormValidator` が同じ定義で行うので、サーバ側でも効く。",
+        "en": "Put the condition in `requiredWhen` on the field. The same definition drives `FormValidator` in all three editions, so it holds server-side too."
+      },
+      "good": [
+        "page:",
+        "  type: form",
+        "  id: customer_form",
+        "  title: 顧客入力",
+        "  repository: customerRepository",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - { field: kind, label: 区分, type: select,",
+        "              options: [{ value: personal, label: 個人 }, { value: corp, label: 法人 }] }",
+        "          - field: invoiceNo",
+        "            label: 登録番号",
+        "            requiredWhen: { field: kind, value: corp }"
+      ]
+    },
+    {
+      "id": "hidden-field-still-required",
+      "keys": [
+        "visibleWhen",
+        "required",
+        "requiredWhen"
+      ],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "条件で隠す項目に `required: true` を残したまま、必須が効き続けると思っている（あるいは効かないように条件を二重に書く）",
+        "en": "Assuming `required: true` still applies to a field hidden by a condition — or writing the condition twice to work around it"
+      },
+      "why": {
+        "ja": "**隠れている項目は検証しない**（`required` も他のバリデータも飛ぶ）。入力できない項目を必須にすると、直せないのに保存できない画面になるため。この規則を知らないと、`requiredWhen` に同じ条件を書き足して二重管理になる。",
+        "en": "**A hidden field is not validated** — `required` and every other validator are skipped, because requiring input nobody can give produces a form that cannot be saved or fixed. Not knowing this leads to duplicating the condition into `requiredWhen`."
+      },
+      "fix": {
+        "ja": "「出たら必須」は `visibleWhen` ＋ `required: true` でよい（条件は1回だけ）。`requiredWhen` は「**出ているのに**条件で必須が変わる」ときに使う。",
+        "en": "\"Required once shown\" is just `visibleWhen` + `required: true` — the condition appears once. `requiredWhen` is for a field that is **visible** but only sometimes required."
+      },
+      "good": [
+        "page:",
+        "  type: form",
+        "  id: customer_form",
+        "  title: 顧客入力",
+        "  repository: customerRepository",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - { field: kind, label: 区分, type: select,",
+        "              options: [{ value: personal, label: 個人 }, { value: corp, label: 法人 }] }",
+        "          - field: corpName",
+        "            label: 法人名",
+        "            required: true",
+        "            visibleWhen: { field: kind, value: corp }"
       ]
     }
   ]

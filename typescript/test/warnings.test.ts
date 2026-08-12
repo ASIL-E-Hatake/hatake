@@ -387,6 +387,119 @@ ${fields}
       ),
     ).toEqual(["options-and-optionssource"]);
   });
+
+  it("検索条件でも同じ規則で見る（親は同じ検索欄の条件）", () => {
+    const search = (filters: string) => `
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  search:
+    filters:
+${filters}
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+`;
+    const found = warningsOf(
+      search(`      - field: city
+        label: 市区町村
+        type: select
+        optionsFrom: prefecture
+        options:
+          - { value: shibuya, label: 渋谷区, when: tokyo }`),
+    );
+    expect(found.map((w) => w.rule)).toEqual(["optionsfrom-unknown-field"]);
+    expect(found[0].message).toContain("検索欄");
+    // 親を足せば黙る。
+    expect(
+      rulesOf(
+        search(`      - { field: prefecture, label: 都道府県, type: select }
+      - field: city
+        label: 市区町村
+        type: select
+        optionsFrom: prefecture
+        options:
+          - { value: shibuya, label: 渋谷区, when: tokyo }`),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("項目制御の条件", () => {
+  const form = (field: string) => `
+page:
+  type: form
+  id: customer_form
+  title: 顧客入力
+  repository: customerRepository
+  form:
+    sections:
+      - fields:
+${field}
+`;
+
+  it("required: true と requiredWhen の両方は、条件の方が意味を持たない", () => {
+    expect(
+      rulesOf(
+        form(`          - field: invoiceNo
+            label: 登録番号
+            required: true
+            requiredWhen: { field: kind, value: corp }`),
+      ),
+    ).toEqual(["requiredwhen-with-required"]);
+  });
+
+  it("readOnly: true と readOnlyWhen の両方も同じ", () => {
+    expect(
+      rulesOf(
+        form(`          - field: memberNo
+            label: 会員番号
+            readOnly: true
+            readOnlyWhen: { field: kind, value: personal }`),
+      ),
+    ).toEqual(["readonlywhen-with-readonly"]);
+  });
+
+  it("条件つきの指定だけなら黙る", () => {
+    expect(
+      rulesOf(
+        form(`          - field: invoiceNo
+            label: 登録番号
+            requiredWhen: { field: kind, value: corp }
+            readOnlyWhen: { field: kind, value: personal }`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("条件つき必須・読み取り専用の中の演算子も見る", () => {
+    expect(
+      rulesOf(
+        form(`          - field: invoiceNo
+            label: 登録番号
+            requiredWhen: { field: amount, operator: between, value: [1, 2] }`),
+      ),
+    ).toEqual(["condition-operator-unsupported"]);
+  });
+
+  it("セクションの条件の中の演算子も見る", () => {
+    expect(
+      rulesOf(`
+page:
+  type: form
+  id: customer_form
+  title: 顧客入力
+  repository: customerRepository
+  form:
+    sections:
+      - title: 請求先
+        visibleWhen: { field: amount, operator: between, value: [1, 2] }
+        fields:
+          - { field: billingCode, label: 請求先コード }
+`),
+    ).toEqual(["condition-operator-unsupported"]);
+  });
 });
 
 describe("同梱の資料との辻褄", () => {
