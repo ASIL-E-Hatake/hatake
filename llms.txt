@@ -13,7 +13,7 @@
 - [JSON Schema](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json): 定義の機械検証用（YAML に `# yaml-language-server: $schema=<この URL>` を書くと補完・検証が効く）
 
 ## MCP サーバ（対応クライアントならこれが一番速い）
-Claude Code / Claude Desktop などに繋ぐと、**このファイルを読まなくても**必要なときに仕様を引ける。道具は `hatake_reference`（キーを引く）/ `hatake_examples`（近い例を取る）/ `hatake_validate`（検証）/ `hatake_new_page`（雛形）/ `hatake_api_shape`（API の形）。
+Claude Code / Claude Desktop などに繋ぐと、**このファイルを読まなくても**必要なときに仕様を引ける。道具は `hatake_reference`（キーを引く）/ `hatake_examples`（近い例を取る）/ `hatake_validate`（検証）/ `hatake_new_page`（雛形）/ `hatake_pitfalls`（よくある間違い）/ `hatake_diff`（直した影響）/ `hatake_refs`（アプリ側に何を登録すればいいか）/ `hatake_api_shape`（API の形）。
 - 入れ方: [MCP ガイド](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/mcp.ja.md)（`claude mcp add hatake -- node <repo>/typescript/dist/mcp.js`）
 
 ## 書いた定義を検証する（CLI）
@@ -24,10 +24,13 @@ npx hatake new <kind> --id <id> --title <title>   # 雛形（crud/search/master/
 npx hatake reference <キー名>      # そのキーの型・既定値・書ける場所（--page-kind で絞る）
 npx hatake examples <やりたいこと> # 近い例を引く
 npx hatake pitfalls <キー名>       # よくある間違い → 正しい書き方
-npx hatake diff <前> <後>          # 既にある定義を直したとき：API の形と後方互換への影響
+npx hatake diff <前> <後>          # 既にある定義を直したとき：契約・画面・権限・アプリ構成への影響
+npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか（Repository / プラグイン名）
 ```
 `validate` は**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション／存在しないページへの遷移／`sort` の無い `groupBy`／条件で使えない演算子／`field` の無い集計など）。エラーではないが**画面を見ても気づけない**類なので、警告が出たら直す。`--warn-as-error` で CI を落とせる。
 未知キーは場所と直し方まで出る: `page.table.columns[0]: 知らないキー "witdh"（width の間違い？）`
+**定義の外との食い違い**も見られる。`repository:` や `plugin:` の名前がアプリ側で登録されていなければ、画面は出るのにデータが来ない／押しても何も起きない。`refs` で「何を登録すればいいか」を出し、それを `validate --registry <file>` に渡すと名前の食い違いを機械で拾える（定義の隣に `hatake-registry.json` を置けば `--registry` は省ける）。
+`diff` は変更を3段で返す。`✗ 破壊的`＝呼び出し側が壊れる、`△ 要確認`＝壊れないが人に確かめてほしい（列・ボタン・選択肢が消えた／権限が変わった／ページ・メニューが消えた）、`・安全`＝増えただけ。**要確認は黙って進めず、意図した変更か確かめる**こと。
 
 ## 用途別（1〜2ファイルだけ読めばいい）
 - [ドキュメント目次](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/index.ja.md): 「やりたいこと → 読むファイル」の索引

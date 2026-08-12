@@ -9,7 +9,13 @@
 import { join } from "node:path";
 import { parse as parseYamlText } from "yaml";
 import { deriveDto } from "./dto.js";
-import { diffDto } from "./dtoDiff.js";
+import { diffDefinitions } from "./defDiff.js";
+import {
+  collectRefs,
+  type DefinitionRegistry,
+  groupRefs,
+  refsNeedingRegistration,
+} from "./refs.js";
 import { findWarnings } from "./warnings.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import { toJsonSchema } from "./jsonSchema.js";
@@ -64,7 +70,8 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 4. 書けたら必ず hatake_validate にかける（知らないキーは黙って捨てられるので、書いた気になって効いていない事故が起きる）
 5. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
 6. バックエンドの形が要るなら hatake_api_shape
-7. **既にある定義を直したときは hatake_diff**（後方互換を壊していないか）
+7. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
+8. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグインの一覧）
 
 原則: Flutter の Widget や API のコードを手で書かず、定義を書く。定義に無い機能は
 DSL の拡張（プラグイン）で足す。`;
@@ -212,12 +219,23 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             description:
               "既定 true。false にすると知らないキーを黙って捨てる従来の寛容さ（普段は使わない）。",
           },
+          registry: {
+            type: "object",
+            description:
+              "アプリ側で登録済みのものの一覧（例 { repositories: [orderRepository], plugins: [csvExport] }）。" +
+              "渡すと、定義が要求している名前が登録されているかも見る（渡したカテゴリだけ）。" +
+              "組み込みの名前は書かなくてよい。何を渡せばいいかは hatake_refs で分かる。",
+          },
         },
         required: ["source"],
       },
       run(args) {
         const source = required(args, "source");
         const strict = args.strict !== false;
+        const registry =
+          typeof args.registry === "object" && args.registry !== null
+            ? (args.registry as DefinitionRegistry)
+            : undefined;
         try {
           const kind = /^\s*app\s*:/m.test(source)
             ? `app（${parseAppYaml(source, { strict }).pages.length} ページ）`
@@ -225,7 +243,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           const document = parseYamlText(source);
           const warnings =
             typeof document === "object" && document !== null
-              ? findWarnings(document as Record<string, unknown>)
+              ? findWarnings(document as Record<string, unknown>, { registry })
               : [];
           return pretty({
             ok: true,
@@ -324,24 +342,66 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
       name: "hatake_diff",
       title: "定義を変えた影響を見る",
       description:
-        "定義を変える前と後を渡すと、API の形がどう変わるかと**後方互換を壊すか**を返す。" +
-        "既にあるページの定義を直すときは、これで確認してから直し終わりにする。" +
-        "壊す例: 受け取る形に必須項目を足す / 返す形から項目を消す / 型を変える / " +
-        "文字数などの制約を厳しくする / ページ id を変える。" +
-        "compatible が false なら、呼び出し側（バックエンド実装・既存クライアント）の" +
-        "修正も要ると伝えること。",
+        "定義を変える前と後を渡すと、変更を area（api / ui / access / app）ごとに、" +
+        "impact（breaking / caution / safe）付きで返す。既にある定義を直すときは、" +
+        "これで確認してから直し終わりにする。page: でも app: でも受ける（同じ種類同士で）。" +
+        "breaking = 呼び出し側が壊れる: 受け取る形に必須項目を足す / 返す形から項目を消す / " +
+        "型を変える / 制約を厳しくする / ページ id を変える。" +
+        "caution = 壊れないが**人に確かめてほしい**: 列やボタンや選択肢が消えた / 確認ダイアログを" +
+        "外した / 権限が狭まった・広がった / ページやメニューが消えた。" +
+        "compatible が false なら呼び出し側の修正も要ると伝え、quiet が false なら" +
+        "**caution を列挙して「これは意図した変更か」と聞くこと**（黙って進めない）。",
       inputSchema: {
         type: "object",
         properties: {
-          before: { type: "string", description: "変更前の定義（1ページ分）。" },
-          after: { type: "string", description: "変更後の定義（1ページ分）。" },
+          before: { type: "string", description: "変更前の定義。" },
+          after: { type: "string", description: "変更後の定義。" },
         },
         required: ["before", "after"],
       },
       run(args) {
-        const shapeOf = (key: string) =>
-          deriveDto(parsePageYaml(required(args, key), { strict: true }));
-        return pretty(diffDto(shapeOf("before"), shapeOf("after")));
+        const documentOf = (key: string): Record<string, unknown> => {
+          const source = required(args, key);
+          // 書き間違いを差分として見せないよう、strict に通してから素の document を使う。
+          if (/^\s*app\s*:/m.test(source)) {
+            parseAppYaml(source, { strict: true });
+          } else {
+            parsePageYaml(source, { strict: true });
+          }
+          return parseYamlText(source) as Record<string, unknown>;
+        };
+        return pretty(diffDefinitions(documentOf("before"), documentOf("after")));
+      },
+    },
+    {
+      name: "hatake_refs",
+      title: "定義が外に要求しているものを出す",
+      description:
+        "定義が動くために**アプリ側で登録が要るもの**（Repository のキー名・プラグイン名・" +
+        "独自のフォーマッタ / バリデータ / 項目型など）を種類ごとに並べる。" +
+        "定義を書いたあと「これをアプリに組み込むには何を用意すればいいか」を答えるのに使う。" +
+        "組み込みで足りているものは needsRegistration に出ない（＝出たものだけ登録が要る）。" +
+        "この出力をそのまま hatake_validate の registry 引数に渡せば、名前の食い違いを機械で確かめられる。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description: "定義の中身そのもの（page: でも app: でも可）。",
+          },
+        },
+        required: ["source"],
+      },
+      run(args) {
+        const document = parseYamlText(required(args, "source"));
+        const refs =
+          typeof document === "object" && document !== null
+            ? collectRefs(document as Record<string, unknown>)
+            : [];
+        return pretty({
+          needsRegistration: refsNeedingRegistration(refs),
+          all: groupRefs(refs),
+        });
       },
     },
     {

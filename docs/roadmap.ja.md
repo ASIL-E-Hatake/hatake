@@ -201,6 +201,15 @@
 >   の無い集計・`sort` の無い `groupBy`・列に無い項目の合計・`validators` の書き方。
 >   MCP の `hatake_validate` も `warnings` を返す。**同梱の例とデモが警告ゼロ**であることを
 >   CI で確認（＝規則がうるさすぎない証拠）。→ [DSL 仕様](../spec/dsl-spec.ja.md#構造の間違いの検出警告)
+> - **警告の次段（画面の外との辻褄）** … ✅ `hatake refs`（定義が外に要求しているものを列挙）＋
+>   `hatake validate --registry <file>`（渡した一覧と突き合わせ）。`repository:` や `plugin:` の
+>   名前がアプリ側で登録されていなければ、**画面は出るのにデータが来ない／押しても何も起きない**。
+>   strict もスキーマもここは見られない（登録済みの一覧を知らない）ので、**渡されたカテゴリだけ**
+>   突き合わせる。組み込み名は自動で足す。定義の隣の `hatake-registry.json` は黙って拾う。
+>   MCP の `hatake_refs` / `hatake_validate(registry)`。→ [DSL 仕様](../spec/dsl-spec.ja.md#画面の外との辻褄登録済み一覧を渡したとき)
+> - **diff の次段（画面・権限・アプリ構成）** … ✅ `hatake diff` が `app:` どうしも比べ、変更を
+>   **area**（api / ui / access / app）× **impact**（breaking / caution / safe）で返す。
+>   「壊す」と「確かめてほしい」を混ぜないのが要点。→ [使い方](../typescript/README.md#cli)
 > - **よくある間違いの対照表**＋**英語版の最小資料** … ✅
 >   [`spec/pitfalls.json`](../spec/pitfalls.json)（間違い → 正しい書き方。`validate` が
 >   未知キーから自動で引く）と [`docs/api-cheatsheet.md`](api-cheatsheet.md) /
@@ -212,8 +221,8 @@
 
 | 項目 | 内容 | なぜ | 規模感 |
 |---|---|---|---|
-| 警告の次段 | 画面の外との辻褄（Repository のキー名・プラグイン名が登録済みか）を、利用者が渡した一覧と突き合わせて警告する | 今の警告は定義の中だけで閉じている。外との不一致が次に多い | 中 |
-| diff の次段 | `app:` 全体の diff（ページの増減・メニューの変化）、`DtoSpec` 以外（画面の見た目・権限）の差分 | 今は1ページの API の形だけ | 小〜中 |
+| 登録済み一覧の生成 | `hatake-registry.json` を**実装から**作る（Dart / TS / Java のソースを読んで `RepositoryRegistry({...})` などを拾う） | 今は人が書く（デモの分は CI で実装と一致を確認しているが、それは1本の正規表現に頼っている） | 中 |
+| diff の履歴 | 2ファイルではなく **git の2リビジョン**を比べる（`hatake diff --git HEAD~1..HEAD`）。PR に貼れる Markdown 出力 | 「変更前のファイル」を手で用意するのが面倒で、CI に置きにくい | 小〜中 |
 
 ### 3. 人が使うための道具・資料
 

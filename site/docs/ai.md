@@ -36,7 +36,7 @@ claude mcp add hatake -- node <repo>/typescript/dist/mcp.js
 }
 ```
 
-エージェントに渡る道具は7つ。
+エージェントに渡る道具は8つ。
 
 | 道具 | 何をするか |
 | --- | --- |
@@ -46,7 +46,8 @@ claude mcp add hatake -- node <repo>/typescript/dist/mcp.js
 | `hatake_validate` | 書いた定義を検証する。**必ず通す** |
 | `hatake_pitfalls` | よくある間違いと直し方 |
 | `hatake_api_shape` | バックエンドが返すべき JSON の形 |
-| `hatake_diff` | 既存の定義を直したとき、後方互換を壊していないか |
+| `hatake_diff` | 既存の定義を直したとき、契約を壊していないか・**確かめてほしい変化**（消えた列・ボタン・選択肢、権限の変化）はないか |
+| `hatake_refs` | その定義をアプリに組み込むのに、何を登録すればいいか |
 
 Docker で動かす手順は [MCP ガイド](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/mcp.ja.md) にある。
 
@@ -97,7 +98,29 @@ npx hatake new crud --id customer --title 顧客マスタ
 npx hatake reference rowsPerPage       # そのキーの型・既定値・書ける場所
 npx hatake examples 帳票               # 近い例
 npx hatake pitfalls groupBy            # 間違い → 正しい書き方
-npx hatake diff before.yaml after.yaml # 後方互換への影響
+npx hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権限・アプリ構成）
+npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか
 ```
 
 `validate` は構文エラーだけでなく、**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション、存在しないページへの遷移、`sort` の無い `groupBy` など）。画面を見ても気づけない類なので、警告が出たら直す。
+
+### 定義の外との食い違いも見られる
+
+定義は自分だけでは動かない。`repository: orderRepository` と書いても、アプリ側がその名前で登録していなければ**画面は出るがデータが来ない**。名前の食い違いは画面を見ても気づけないので、機械に言わせる。
+
+```bash
+npx hatake refs page.yaml --needs-registration --json > hatake-registry.json
+npx hatake validate page.yaml --registry hatake-registry.json
+```
+
+`refs` が「何を登録すればいいか」を出し、それを確かめたものを `validate` に渡す。定義の隣に `hatake-registry.json` を置いておけば `--registry` は省ける。AI に組み込みまでやらせるなら、`hatake_refs` を引かせてから登録コードを書かせるのが早い。
+
+### 直した影響を見る
+
+```bash
+npx hatake diff before.yaml after.yaml
+```
+
+3段で返る。`✗ 破壊的` は呼び出し側が壊れる（必須項目を足した・返す形から消した・型を変えた）。`△ 要確認` は壊れないが人に確かめてほしい（列やボタンや選択肢が消えた・権限が狭まった／広がった・ページやメニューが消えた）。`・安全` は増えただけ。
+
+**「要確認」を「破壊的」と混ぜていない**のが要点で、列を消すのは普通にやることだから止める話ではなく気づかせる話。CI で止めたいなら `--caution-as-error`。

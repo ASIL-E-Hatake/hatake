@@ -14,6 +14,13 @@
 
 import { ConditionOperators } from "./conditionEvaluator.js";
 import { AggregateOps } from "./definition.js";
+import {
+  builtInNames,
+  collectRefs,
+  type DefinitionRegistry,
+  type RefKind,
+} from "./refs.js";
+import { closestKey } from "./strictKeys.js";
 
 /** 構造の間違い1つ。`pitfall` があれば対照表（spec/pitfalls.json）を引ける。 */
 export interface DefinitionWarning {
@@ -45,7 +52,19 @@ const BUILT_IN_ROW_ACTIONS = new Set(["edit", "delete"]);
  * document の中の「通るけれど意図どおりに動かない」書き方を全部返す。
  * 並びは見つけた順（上から下）。
  */
-export function findWarnings(document: Dict): DefinitionWarning[] {
+export interface WarningOptions {
+  /**
+   * アプリ側で登録済みのものの一覧（Repository / プラグイン / 独自の型…）。
+   * **渡したカテゴリだけ**が突き合わせの対象になる。渡さなければ「外との辻褄」は
+   * 見ない＝定義の中だけで閉じた検査になる（今までと同じ）。
+   */
+  registry?: DefinitionRegistry;
+}
+
+export function findWarnings(
+  document: Dict,
+  options: WarningOptions = {},
+): DefinitionWarning[] {
   const found: DefinitionWarning[] = [];
   const app = isDict(document.app) ? document.app : undefined;
   const page = isDict(document.page) ? document.page : undefined;
@@ -64,7 +83,135 @@ export function findWarnings(document: Dict): DefinitionWarning[] {
     // 単票の定義では他のページを知らないので、遷移先の存在は確かめられない。
     checkPage(page, "page", null, found);
   }
+  if (options.registry !== undefined) {
+    checkRegistry(document, options.registry, found);
+  }
   return found;
+}
+
+/** 参照の種類ごとの言い方（何が起きるかを、その種類の言葉で言う）。 */
+const REF_KINDS: Record<
+  RefKind,
+  { rule: string; what: string; happens: string; fix: string }
+> = {
+  repositories: {
+    rule: "unknown-repository",
+    what: "Repository",
+    happens: "画面は出ますがデータが来ません（実行時に引き先が見つからない）。",
+    fix: "アプリ側の `RepositoryRegistry` に同じ名前で登録するか、定義の名前を直してください。",
+  },
+  plugins: {
+    rule: "unknown-plugin",
+    what: "プラグイン",
+    happens: "ボタンは出ますが、押しても何も起きません。",
+    fix: "アプリ側のアクション登録に同じ名前で足すか、定義の名前を直してください。",
+  },
+  pages: {
+    rule: "unknown-page-ref",
+    what: "ページ",
+    happens: "遷移しても開けません。",
+    fix: "そのページを `app.pages` に足すか、id を直してください。",
+  },
+  fieldTypes: {
+    rule: "unknown-field-type",
+    what: "項目の型",
+    happens: "組み込みでも登録済みでもないので、ただのテキスト入力になります。",
+    fix: "`fieldBuilders` に登録するか、組み込みの型を使ってください。",
+  },
+  columnTypes: {
+    rule: "unknown-column-type",
+    what: "列の型",
+    happens: "組み込みでも登録済みでもないので、素の文字列として出ます。",
+    fix: "組み込みの列型を使うか、登録済み一覧に足してください。",
+  },
+  actionTypes: {
+    rule: "unknown-action-type",
+    what: "アクションの型",
+    happens: "押しても何も起きません。",
+    fix: "組み込みの型か `type: plugin`（＋`plugin:`）を使ってください。",
+  },
+  validators: {
+    rule: "unknown-validator",
+    what: "バリデータ",
+    happens: "その検証は**黙って行われません**（今まで弾いていた値が通ります）。",
+    fix: "`ValidatorRegistry` に登録するか、組み込みの型を使ってください。",
+  },
+  formatters: {
+    rule: "unknown-formatter",
+    what: "フォーマッタ",
+    happens: "整形されず、素の値がそのまま出ます。",
+    fix: "`FormatterRegistry` に登録するか、組み込みの名前を使ってください。",
+  },
+  converters: {
+    rule: "unknown-converter",
+    what: "コンバータ",
+    happens: "その正規化は**黙って行われません**（全角のまま保存されます）。",
+    fix: "`ConverterRegistry` に登録するか、組み込みの名前を使ってください。",
+  },
+  computedOps: {
+    rule: "unknown-computed-op",
+    what: "計算の op",
+    happens: "計算されず、その項目が空になります。",
+    fix: "`ComputedRegistry` に登録するか、組み込みの op を使ってください。",
+  },
+  aggregates: {
+    rule: "unknown-aggregate",
+    what: "集約",
+    happens: "集計されず、値が空になります。",
+    fix: "`AggregateRegistry` に登録するか、組み込みの集約を使ってください。",
+  },
+  dashboardItemTypes: {
+    rule: "unknown-dashboard-item-type",
+    what: "カードの型",
+    happens: "そのカードは出ません。",
+    fix: "`dashboardItemBuilders` に登録するか、組み込みの型を使ってください。",
+  },
+  chartKinds: {
+    rule: "unknown-chart-kind",
+    what: "グラフの種類",
+    happens: "グラフが描かれません。",
+    fix: "組み込みの種類を使うか、登録済み一覧に足してください。",
+  },
+};
+
+/**
+ * 画面の外との辻褄。定義が要求している名前が、**渡された登録済み一覧に在るか**。
+ *
+ * strict もスキーマもここは見られない（登録済みの一覧を知らないので）。逆に言うと
+ * 一覧が無ければ判断できないので、**渡されたカテゴリだけ**を見る。組み込みの名前は
+ * 自動で足すので、渡すのは自分で登録したものだけでよい。
+ */
+function checkRegistry(
+  document: Dict,
+  registry: DefinitionRegistry,
+  found: DefinitionWarning[],
+): void {
+  const refs = collectRefs(document);
+  // 同じ名前は何箇所から参照されていても**1件**にする（言うことは同じで、直す所も
+  // 1つ＝登録する側なので）。件数だけ添えて、どれだけ効いているかは分かるように。
+  const seen = new Set<string>();
+  for (const ref of refs) {
+    const registered = registry[ref.kind];
+    if (registered === undefined) continue; // 一覧を渡されていない種類は見ない
+    const known = [...builtInNames[ref.kind], ...registered];
+    if (known.includes(ref.name)) continue;
+    const id = `${ref.kind}/${ref.name}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const others = refs.filter(
+      (r) => r.kind === ref.kind && r.name === ref.name,
+    ).length - 1;
+    const kind = REF_KINDS[ref.kind];
+    const near = closestKey(ref.name, known);
+    warn(
+      found,
+      kind.rule,
+      ref.path,
+      `${kind.what} "${ref.name}" は登録されていません。${kind.happens}` +
+        (others > 0 ? `（他 ${others} 箇所から参照）` : ""),
+      near === null ? kind.fix : `もしかして "${near}" ですか。${kind.fix}`,
+    );
+  }
 }
 
 function warn(

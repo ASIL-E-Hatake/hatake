@@ -42,14 +42,16 @@ npx hatake new report --id sales_report --title 売上明細表 > page.yaml
 npx hatake types page.yaml --lang java --package io.example.api --out gen/
 npx hatake reference rowsPerPage             # このキー、どこに書くの？型は？既定値は？
 npx hatake examples 帳票                      # 近い例を探す
+npx hatake refs page.yaml --needs-registration # アプリ側に何を登録すればいいか
 ```
 
 | コマンド | 何をするか |
 |---|---|
-| `validate <file...>` | 定義を解析して問題を報告。既定は strict（知らないキーを弾く／`--no-strict` で従来の寛容さ）。**通るけれど意図どおり動かない書き方（警告）も既定で出す**（`--no-warn` で黙る／`--warn-as-error` で終了コード 1）。`--json` で機械可読。**問題があれば終了コード 1** なので CI にそのまま置ける |
+| `validate <file...>` | 定義を解析して問題を報告。既定は strict（知らないキーを弾く／`--no-strict` で従来の寛容さ）。**通るけれど意図どおり動かない書き方（警告）も既定で出す**（`--no-warn` で黙る／`--warn-as-error` で終了コード 1）。`--registry <file>` で**画面の外との辻褄**（Repository / プラグイン名が登録済みか）も見る。`--json` で機械可読。**問題があれば終了コード 1** なので CI にそのまま置ける |
 | `new <kind> --id --title` | ページ定義の雛形（8種別すべて。`--repository` 省略時は id から推測、`--out` でファイルへ） |
 | `dto <file>` | API の形（`DtoSpec`）を JSON で |
-| `diff <old> <new>` | 定義を変えた影響範囲。API の形の差分と後方互換の判定。**壊す変更があれば終了コード 1** |
+| `diff <old> <new>` | 定義を変えた影響範囲。API の形（壊すか）＋画面・権限・アプリ構成の変化（確かめてほしいか）。`app:` どうしも比べられる。`--api-only` で契約だけ、`--caution-as-error` で「要確認」でも終了コード 1。**壊す変更があれば終了コード 1** |
+| `refs <file...>` | その定義が**外に要求しているもの**（Repository・プラグイン・独自のフォーマッタ…）を種類ごとに。`--needs-registration` で「組み込みに無い＝自分で登録が要るもの」だけ。出力はそのまま `--registry` に渡せる形 |
 | `schema <file>` | JSON Schema 2020-12 |
 | `openapi <file> [--base-path /api/orders]` | OpenAPI 3.1（`--base-path` を省くと `components.schemas` だけ） |
 | `types <file> --lang ts\|java [--out dir]` | ネイティブ型。Java は**1レコード＝1ファイル**で書き出す |
@@ -91,12 +93,53 @@ OK   page.yaml (report)
 
 ```
 $ npx hatake diff before.yaml after.yaml
-✗ 破壊的 CustomerMasterRequest.code: code の maxLength が 20 から 10 に変わりました。今まで通っていた値が弾かれます。
-・互換 CustomerMasterResponse.code: code の maxLength が 20 から 10 に変わりました。
+✗ 破壊的 [api] page.CustomerMasterRequest.code: code の maxLength が 20 から 10 に変わりました。今まで通っていた値が弾かれます。
+・安全  [api] page.CustomerMasterResponse.code: code の maxLength が 20 から 10 に変わりました。
 **後方互換を壊します**（既存の呼び出し側の修正が要ります）。
 ```
 
 同じ変更でも**受け取る形と返す形で結論が違う**（サーバが厳しくすると呼ぶ側が壊れ、返す形が厳しくなっても読む側は困らない）。壊すこと自体は普通にあるので止めない。気づかずに壊すのを防ぐのが目的。
+
+判定は3段で、`area`（どの層の話か）とセットで出る。
+
+| 印 | 意味 | 例 |
+|---|---|---|
+| `✗ 破壊的` | 呼び出し側が壊れる（`api`） | 必須項目を足す / 返す形から消す / 型を変える / 制約を厳しくする |
+| `△ 要確認` | 壊れないが**目で見て確かめてほしい** | 列・ボタン・選択肢が消えた（`ui`）/ 権限が狭まった・広がった（`access`）/ ページ・メニューが消えた（`app`） |
+| `・安全` | 増えただけ | 列が増えた / ページが増えた / テーマが変わった |
+
+**「要確認」を「破壊的」と混ぜないのが要点**。列を消すのは普通にやることなので、止める話ではなく気づかせる話。混ぜると全部無視されるようになる。
+
+```
+$ npx hatake diff before.yaml after.yaml
+△ 要確認 [ui] page.form.fields.status.options: 項目「ステータス」の選択肢から "active" が消えました。その値を持っている既存データは、開いても選び直せません。
+△ 要確認 [app] app.menu.受注照会: メニューから「受注照会」が無くなりました。ページ order_search はメニューから開けません。
+後方互換ですが、**目で見て確かめてほしい変更**があります（上の「要確認」）。
+```
+
+### 画面の外との辻褄（`--registry`）
+
+定義は自分だけでは動かない。`repository: orderRepository` と書いたら、アプリ側がその名前で
+登録していないと**画面は出るがデータが来ない**。strict もスキーマもここは見られない
+（登録済みの一覧を知らないので）。なので2段構えにした。
+
+```bash
+$ npx hatake refs page.yaml --needs-registration --json > hatake-registry.json  # 何を登録すればいいか
+$ npx hatake validate page.yaml --registry hatake-registry.json                 # 名前が食い違っていないか
+```
+
+`refs` は**判断せずに列挙する**（組み込みで足りているものには印を付けない）。`validate` は
+**渡されたカテゴリだけ**を突き合わせる（一覧が無ければ何も言わない＝定義の中だけで閉じた検査）。
+組み込みの名前は自動で足されるので、一覧に書くのは自分で登録したものだけでよい。
+
+```
+OK   sales_app.yaml (app: 8 ページ)
+     警告 app.pages[0].actions[1].plugin: プラグイン "showDefinition" は登録されていません。ボタンは出ますが、押しても何も起きません。（他 7 箇所から参照）
+          → もしかして "showDefinitoin" ですか。アプリ側のアクション登録に同じ名前で足すか、定義の名前を直してください。
+```
+
+`--registry` を省いても、定義の隣（無ければカレント）に `hatake-registry.json` があれば黙って拾う
+（同梱のデモは [`flutter/packages/hatake_example/assets/hatake-registry.json`](../flutter/packages/hatake_example/assets/hatake-registry.json)）。
 
 ## MCP サーバ（`hatake-mcp`）
 
@@ -107,7 +150,7 @@ npm run build
 claude mcp add hatake -- node "$PWD/dist/mcp.js"      # Claude Code の場合
 ```
 
-道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_api_shape` の5つで、CLI と同じ関数を呼んでいる（＝同じ答えになる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
+道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_refs` / `hatake_api_shape` の8つで、CLI と同じ関数を呼んでいる（＝同じ答えになる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
 
 ## 開発（Docker）
 
