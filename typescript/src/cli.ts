@@ -39,7 +39,16 @@ import {
   filterFailures,
 } from "./failures.js";
 import { deriveDto } from "./dto.js";
-import { explainApp, explainPage, renderExplain } from "./explain.js";
+import { renderExplain } from "./explain.js";
+import { explainSource } from "./explainSource.js";
+import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
+import { briefSource, renderBrief } from "./explainBrief.js";
+import {
+  DEFINITION_EXTENSIONS,
+  harvestFailures,
+  type HarvestInput,
+  renderHarvest,
+} from "./harvest.js";
 import { diffDefinitions, type DefinitionChange } from "./defDiff.js";
 import {
   collectRefs,
@@ -58,7 +67,6 @@ import { toOpenApi } from "./openApi.js";
 import { type PageDefinition } from "./definition.js";
 import {
   DefinitionParseError,
-  parsePageJson,
   parsePageYaml,
   UnknownKeysError,
   describeUnknownKey,
@@ -119,10 +127,22 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       辻褄（Repository / プラグイン / 独自の型の名前）も見る。省略しても
       定義の隣の hatake-registry.json があれば拾う。
 
-  hatake explain <file> [--page <id>] [--json]
+  hatake explain <file> [--page <id>] [--brief] [--json]
       定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人が、AI に
       書かせた定義をレビューするための出力。app: を渡すと画面の一覧とメニュー、
-      --page でその1枚を詳しく。
+      --page でその1枚を詳しく。--brief は1行だけ（app なら画面一覧の表）で、
+      README や PR 本文に貼る用。
+
+  hatake explain --diff <old file> <new file> [--json]
+      変更を**画面の言葉**で言う（「枠「請求先」は、区分 が 法人 のときだけ出る
+      ようになりました」）。diff は機械の言葉で言うので、人のレビューには一段
+      足りない。後方互換の判定はしない（それは hatake diff）。
+
+  hatake harvest <path...> [--min 2] [--json] [--registry hatake-registry.json]
+      定義の山を走査して、**繰り返し出ている診断**を実例カタログ
+      （spec/failures.json）の候補として出す。「なぜそう書いてしまうか」は機械には
+      書けないので、候補は人が書く欄を空のまま出す（自動では足さない）。
+      定義そのものは持ち出さない（ファイル名・場所・回数だけ）。
 
   hatake registry <path...> [--json] [--out file]
       アプリの実装を読んで「登録済みのもの」の一覧を作る（validate --registry に
@@ -187,6 +207,8 @@ interface Args {
  */
 const BOOLEAN_FLAGS = new Set([
   "json",
+  "diff",
+  "brief",
   "no-strict",
   "no-warn",
   "warn-as-error",
@@ -281,6 +303,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return registry(positional, flags, io);
       case "explain":
         return explain(positional, flags, io);
+      case "harvest":
+        return harvest(positional, flags, io);
       case "types":
         return types(positional, flags, io);
       case "new":
@@ -408,64 +432,135 @@ function loadRegistry(
 }
 
 /**
- * 定義を人の言葉に開く。
+ * 定義を人の言葉に開く。`--diff` で前後、`--brief` で1行。
  *
  * 生成系と同じく strict で読む（書き間違いのある定義を説明すると、書いていない
- * つもりの機能まで説明してしまう）。
+ * つもりの機能まで説明してしまう）。読み方そのものは explainSource に置いてある
+ * （CLI と MCP で結論が違うことが無いように）。
  */
 function explain(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (flags.diff === true) return explainChanges(files, flags, io);
   if (files.length !== 1) {
     io.err("説明する定義ファイルを1つ指定してください。");
     return 1;
   }
   const source = io.readFile(files[0]);
-  const isApp = /^\s*app\s*:/m.test(source);
   const wanted = str(flags, "page");
-  const raw = parseYamlText(source) as Record<string, unknown>;
-
-  let document;
-  if (isApp) {
-    const app = parseAppYaml(source, { strict: true });
-    if (wanted === undefined) {
-      document = explainApp(app);
-    } else {
-      // app の中の1枚。素の定義から該当ページだけ取り出して読み直す。
-      const pages = Array.isArray((raw.app as Record<string, unknown>)?.pages)
-        ? ((raw.app as Record<string, unknown>).pages as unknown[])
-        : [];
-      const found = pages.find(
-        (p) =>
-          typeof p === "object" &&
-          p !== null &&
-          (p as Record<string, unknown>).id === wanted,
-      );
-      if (found === undefined) {
-        io.err(
-          `ページ "${wanted}" はこの app にありません（${app.pages
-            .map((p) => p.id)
-            .join(" / ")}）。`,
-        );
-        return 1;
-      }
-      const one = found as Record<string, unknown>;
-      document = explainPage(
-        parsePageJson(JSON.stringify({ page: one }), { strict: true }),
-        one,
-      );
-    }
-  } else {
-    document = explainPage(
-      parsePageYaml(source, { strict: true }),
-      (raw.page ?? {}) as Record<string, unknown>,
-    );
-  }
+  const document =
+    flags.brief === true
+      ? briefSource(source, { page: wanted })
+      : explainSource(source, { page: wanted });
 
   if (flags.json === true) {
     io.out(JSON.stringify(document, null, 2));
     return 0;
   }
-  io.out(renderExplain(document));
+  io.out(
+    flags.brief === true
+      ? renderBrief(document as ReturnType<typeof briefSource>)
+      : renderExplain(document as ReturnType<typeof explainSource>),
+  );
   return 0;
+}
+
+/**
+ * 変更を画面の言葉で言う。
+ *
+ * **終了コードは変えない**（変わっていても 0）。ここは読むための道具で、止めるための
+ * 道具は `hatake diff`。混ぜると「見え方が変わっただけ」で CI が落ちるようになる。
+ */
+function explainChanges(
+  files: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  if (files.length !== 2) {
+    io.err("変更前と変更後の定義ファイルを2つ指定してください。");
+    return 1;
+  }
+  const [before, after] = files.map((file) => io.readFile(file));
+  const diff = explainDiffSources(before, after);
+  if (flags.json === true) {
+    io.out(JSON.stringify(diff, null, 2));
+    return 0;
+  }
+  io.out(renderExplainDiff(diff));
+  return 0;
+}
+
+/**
+ * 実例カタログの候補を集める。
+ *
+ * 読めなかった定義があれば**終了コード 1**（`registry` と同じ考え方＝走査が不完全な
+ * ことを黙らない）。候補が出たこと自体は失敗ではないので 0。
+ */
+function harvest(paths: string[], flags: Args["flags"], io: CliIo): number {
+  if (paths.length === 0) {
+    io.err("走査する定義のファイルかディレクトリを指定してください。");
+    return 1;
+  }
+  // 登録済み一覧は**定義ごと**に探す（複数のアプリをまとめて走査するのが普通の使い方
+  // なので、1つの一覧を全部に当てると嘘の候補が出る）。同じ場所は読み直さない。
+  const registries = new Map<string, DefinitionRegistry | undefined>();
+  const registryFor = (file: string): DefinitionRegistry | undefined => {
+    const dir = dirname(file);
+    if (!registries.has(dir)) registries.set(dir, loadRegistry(file, flags, io));
+    return registries.get(dir);
+  };
+  const inputs: HarvestInput[] = collectPaths(
+    paths,
+    io,
+    DEFINITION_EXTENSIONS,
+  ).map((path) => ({
+    file: path,
+    source: io.readFile(path),
+    registry: registryFor(path),
+  }));
+  if (inputs.length === 0) {
+    io.err(
+      `走査できる定義がありません（対象の拡張子: ${DEFINITION_EXTENSIONS.join(" ")}）。`,
+    );
+    return 1;
+  }
+
+  const min = Math.max(1, Number.parseInt(str(flags, "min") ?? "2", 10) || 2);
+  const result = harvestFailures(inputs, {
+    min,
+    catalog: loadFailures(flags, io),
+  });
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+  } else {
+    io.out(renderHarvest(result, min));
+  }
+  if (result.unreadable.length === 0) return 0;
+  io.err(
+    `読めなかった定義が ${result.unreadable.length} 件あります（走査は**不完全**です）:`,
+  );
+  for (const entry of result.unreadable) {
+    io.err(`     ${entry.file}  ${entry.reason}`);
+  }
+  return 1;
+}
+
+/**
+ * 実例のカタログ（あれば）。
+ *
+ * 無ければ「既に載っている診断か」を見ないだけで、収穫自体は成立する（spec/ を
+ * 持たない場所でも走らせたいので、無いことをエラーにしない）。
+ */
+function loadFailures(
+  flags: Args["flags"],
+  io: CliIo,
+): FailureCatalog | undefined {
+  const dir = findSpecDir(str(flags, "spec"));
+  if (dir === null) return undefined;
+  try {
+    return JSON.parse(io.readFile(join(dir, FAILURES_FILE))) as FailureCatalog;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -481,7 +576,7 @@ function registry(files: string[], flags: Args["flags"], io: CliIo): number {
     return 1;
   }
   const sources: SourceFile[] = [];
-  for (const path of collectSourcePaths(files, io)) {
+  for (const path of collectPaths(files, io, SCANNABLE_EXTENSIONS)) {
     sources.push({ path, source: io.readFile(path) });
   }
   if (sources.length === 0) {
@@ -534,18 +629,27 @@ function registry(files: string[], flags: Args["flags"], io: CliIo): number {
   return 1;
 }
 
-/** 指定された path を、走査できるソースのファイル一覧に開く。 */
-function collectSourcePaths(paths: string[], io: CliIo): string[] {
+/**
+ * 指定された path を、走査するファイルの一覧に開く。
+ *
+ * ディレクトリは拡張子で絞る。**ファイルを明示したときは絞らない**（拡張子が違う
+ * ものを指されたら、それは読みたいということ）。
+ */
+function collectPaths(
+  paths: string[],
+  io: CliIo,
+  extensions: string[],
+): string[] {
   const found: string[] = [];
   for (const path of paths) {
     const children = io.listFiles(path);
     if (children === null) {
-      found.push(path); // ファイル指定は拡張子で絞らない（明示したものは読む）
+      found.push(path);
       continue;
     }
     found.push(
       ...children.filter((child) =>
-        SCANNABLE_EXTENSIONS.some((extension) => child.endsWith(extension)),
+        extensions.some((extension) => child.endsWith(extension)),
       ),
     );
   }

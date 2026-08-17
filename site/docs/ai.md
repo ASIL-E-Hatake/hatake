@@ -47,7 +47,7 @@ claude mcp add hatake -- node <repo>/typescript/dist/mcp.js
 | `hatake_pitfalls` | よくある間違いと直し方 |
 | `hatake_api_shape` | バックエンドが返すべき JSON の形 |
 | `hatake_diff` | 既存の定義を直したとき、契約を壊していないか・**確かめてほしい変化**（消えた列・ボタン・選択肢、権限の変化）はないか |
-| `hatake_explain` | 書いた定義が何をする画面か、日本語で読み返す（**意図どおりか**は警告では分からない） |
+| `hatake_explain` | 書いた定義が何をする画面か、日本語で読み返す（**意図どおりか**は警告では分からない）。`before` を渡せば変更の言い直し、`brief` で1行 |
 | `hatake_refs` | その定義をアプリに組み込むのに、何を登録すればいいか |
 
 Docker で動かす手順は [MCP ガイド](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/mcp.ja.md) にある。
@@ -101,6 +101,9 @@ npx hatake examples 帳票               # 近い例
 npx hatake pitfalls groupBy            # 間違い → 正しい書き方
 npx hatake failures unknown-repository # 実際に転んだ実例（なぜそう書くか付き）
 npx hatake explain page.yaml           # この定義、結局どういう画面？
+npx hatake explain page.yaml --brief   # 1行の要約（app なら画面一覧の表）
+npx hatake explain --diff before.yaml page.yaml  # 何を変えたのか、画面の言葉で
+npx hatake harvest definitions/        # 繰り返し転んでいる所を実例カタログの候補に
 npx hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権限・アプリ構成）
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか
 npx hatake registry lib/main.dart              # アプリが登録しているものを実装から読む
@@ -129,6 +132,37 @@ npx hatake explain page.yaml
 
 **キーの名前は出さない**ので、DSL を知らない人がレビューできる。条件は項目と選択肢のラベルで言う（`{ field: kind, value: corp }` ではなく「区分 が 法人 のとき」）。AI 自身に読み返させてもよく、MCP なら `hatake_explain`。
 
+1行だけ欲しいときは `--brief`。画面一覧や PR 本文に貼る形で、`app` を渡すと表になる。
+
+```
+顧客入力（customer_form）… 1件の入力。4 枠に項目 11（必須 5）、条件で出し分け 4 項目、customerRepository から
+```
+
+### AI に直させたとき、何が変わったのかを読む
+
+`diff` は機械の言葉で言う（`ui / column-format-changed / …columns.amount.format`）。壊れるかを CI で見るにはそれが正しいが、**人がレビューするときに読みたいもの**ではない。
+
+```bash
+npx hatake explain --diff before.yaml after.yaml
+```
+
+```
+顧客入力（customer_form）— 変わったところ
+
+## 基本情報
+  ・「コード」が変わりました
+      前: コード … 必須、20 文字以内
+      後: コード … 必須、30 文字以内
+## 請求先
+  ・枠「請求先」は、区分 が 法人 のときだけ出るようになりました
+
+※ ここは見え方の話です。呼び出し側が壊れるか（後方互換）は hatake diff で見てください。
+```
+
+やっているのは「**説明どうしを比べる**」こと。差分の規則から文を組み立てているのではないので、既定値の変化や「できないこと」の増減のような、規則を書いていない変化も自動で入ってくる。`app` ならメニューの移動（開く先が同じなら「消えて増えた」ではなく「移った」）と、両方にあるページを1枚ずつ。
+
+判定（壊すか）は `diff`、言い直し（何が変わったか）は `explain --diff`。後者は終了コードを変えない（読むための道具なので）。
+
 ### AI が実際に転んだ実例
 
 対照表（`pitfalls`）は人が考えた間違いの集合で、AI が転ぶ所とはズレる。実例は別に溜めてある。
@@ -138,6 +172,14 @@ npx hatake failures            # 全件（こう書いた → こう言われた
 ```
 
 各件は**本当に道具にかけ直して**、記録した診断と一致することを CI で確認している。**機械では拾えない件も載っている**（載せないと「道具が万全」という嘘になる）ので、そこには「レビューでどこを見るか」が書いてある。
+
+実例は手で書くと増えない。増えないカタログは、道具が良くなったのか拾っていないだけなのか見分けが付かないので、定義の山から候補を拾う。
+
+```bash
+npx hatake harvest definitions/    # 繰り返し出ている診断を候補として出す（既定は2回以上）
+```
+
+候補は**人が書く欄を空のまま**出る。「なぜそう書いてしまうか」は機械には書けないし、そこがこのカタログの価値なので、自動で追加はしない。定義そのものも持ち出さない（ラベルや列名に客先の語彙が入るので、出すのはファイル名・場所・回数だけ）。
 
 ### 定義の外との食い違いも見られる
 

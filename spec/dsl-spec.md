@@ -1229,6 +1229,19 @@ Entries **the tools cannot catch are included too** (an empty diagnosis). Leavin
 them out would imply the tooling is complete; instead they carry a note on what a
 reviewer should look for.
 
+A hand-written catalogue does not grow, so candidates can be harvested from a corpus
+of definitions instead.
+
+```bash
+npx hatake harvest definitions/          # diagnoses that keep coming back, as candidates
+```
+
+Candidates are printed **with the human-written fields left empty** — "why someone
+writes it that way" cannot be derived by a machine, and that field is the point of the
+catalogue. Nothing is ever appended to `failures.json` automatically. The definitions
+themselves are not carried out of the scan (file, path and counts only), and diagnoses
+already in the catalogue are counted rather than proposed again.
+
 ## Explaining a definition in prose
 
 Strict parsing, the schema and the warnings all look at spelling and structure only.
@@ -1238,12 +1251,20 @@ them — so the last check is a human reading it. That is what `explain` prints.
 ```bash
 npx hatake explain page.yaml               # what this screen does (Japanese)
 npx hatake explain app.yaml --page <id>    # one page of an app, in detail
+npx hatake explain page.yaml --brief       # one line (a table of screens for an app)
+npx hatake explain --diff old.yaml new.yaml # what changed, in the screen's own words
 ```
 
 It describes the screen, **never naming DSL keys** — the reader does not need to know
 the DSL. Conditions are rendered with field and option labels, so
 `{ field: kind, value: corp }` reads as 「区分 が 法人 のとき」. It also states what the
 screen *cannot* do, read off the definition (no delete button, read-only kind, …).
+
+`--brief` is the one-line form, for a README, a PR body or a screen inventory.
+`--diff` restates a change the way a reviewer reads it (「枠「請求先」は、区分 が 法人 の
+ときだけ出るようになりました」). It compares the two *explanations*, so changes no diff rule
+was written for (defaults, the "cannot do" list) come along for free. It makes **no
+compatibility judgement** — that is `diff` — so it never changes the exit code.
 
 The output is JA-only, like the warnings: it is prose about a business screen.
 

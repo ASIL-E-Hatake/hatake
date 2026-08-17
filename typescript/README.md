@@ -45,6 +45,9 @@ npx hatake examples 帳票                      # 近い例を探す
 npx hatake refs page.yaml --needs-registration # アプリ側に何を登録すればいいか
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「登録済み」の一覧を作る
 npx hatake explain page.yaml                 # この定義、結局どういう画面？
+npx hatake explain page.yaml --brief         # 1行で（README や PR 本文に貼る用）
+npx hatake explain --diff old.yaml page.yaml # 何を変えたのか、画面の言葉で
+npx hatake harvest definitions/              # 繰り返し転んでいる所を実例カタログの候補に
 ```
 
 | コマンド | 何をするか |
@@ -62,7 +65,9 @@ npx hatake explain page.yaml                 # この定義、結局どういう
 | `examples [query] [--json]` | [例のカタログ](../spec/examples/README.md)を「やりたいこと」で引く |
 | `pitfalls [query] [--lang ja\|en]` | [よくある間違い](../spec/pitfalls.json) → なぜ駄目か → 正しい書き方。`validate` も未知キーからこれを引いてヒントを出す |
 | `failures [query]` | [実際に転んだ実例](../spec/failures.json)。こう書いた → こう言われた → こう直した。**なぜそう書いてしまうか**も持つ |
-| `explain <file> [--page id]` | 定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人がレビューするための出力 |
+| `explain <file> [--page id]` | 定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人がレビューするための出力。`--brief` で1行だけ（`app:` なら画面一覧の表） |
+| `explain --diff <old> <new>` | 変更を**画面の言葉**で言う（「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」）。後方互換の判定はしない＝**終了コードは変えない**（それは `diff` の担当） |
+| `harvest <path...>` | 定義の山を走査して、**繰り返し出ている診断**を[実例カタログ](../spec/failures.json)の候補として出す（`--min` で回数、既定 2）。「なぜそう書いてしまうか」は機械には書けないので、人が書く欄は空のまま。読めない定義があれば終了コード 1 |
 
 `reference` / `examples` は `spec/` を実行時に探す（`--spec <dir>` で明示もできる）。
 リファレンスは**その場でスキーマから生成する**ので、古い写しを配ることがない。
@@ -210,6 +215,44 @@ $ npx hatake explain spec/examples/customer_form.yaml
 ラベルで言うので、`{ field: kind, value: corp }` ではなく「区分 が 法人 のとき」と読める。
 `app:` を渡すと画面の一覧とメニュー、`--page <id>` でその1枚を詳しく。
 
+`--brief` は1行だけ。README・PR 本文・画面一覧に貼る形で、`app:` なら表になる。
+
+```
+$ npx hatake explain spec/examples/sales_app.yaml --brief
+販売管理（sales_admin）— 画面 8 枚
+
+  sales_dashboard    売上ダッシュボード          数字とグラフ。条件 1、カード 7、ボタン 1、orderRepository から
+  customer_master    顧客マスタ                  マスタ保守。条件 1、列 2、項目 2（必須 2）、ボタン 1、customerRepository から
+  order_search       受注照会                    照会（読み取り専用）。条件 4、列 5、ボタン 4、orderRepository から
+```
+
+### 何を変えたのかを読み返す（`explain --diff`）
+
+`diff` は機械の言葉で言う（`ui / column-format-changed / …columns.amount.format`）。
+壊れるかを CI で見るにはそれが正しいが、**人がレビューするときに読みたいもの**ではない。
+
+```
+$ npx hatake explain --diff old.yaml new.yaml
+顧客入力（customer_form）— 変わったところ
+
+## 基本情報
+  ・「コード」が変わりました
+      前: コード … 必須、新規のときだけ触れる、20 文字以内
+      後: コード … 必須、新規のときだけ触れる、30 文字以内
+## 請求先
+  ・枠「請求先」は、条件なしでいつでも出るようになりました
+
+※ ここは**見え方**の話です。呼び出し側が壊れるか（後方互換）は hatake diff で見てください。
+```
+
+やっているのは「**説明どうしを比べる**」こと。差分の規則から文を組み立てるのではなく、
+`explain` が出した説明を前後で比べるので、既定値の変化や「できないこと」の増減のような、
+差分の規則を書いていない変化も自動で入ってくる。`app:` なら、メニューの移動（開く先が同じ
+なら「消えて増えた」ではなく「移った」）と、両方にあるページを1枚ずつ。
+
+**終了コードは変えない**（変わっていても 0）。ここは読むための道具で、止めるための道具は
+`diff`。混ぜると「見え方が変わっただけ」で CI が落ちるようになる。
+
 ### 実際に転んだ実例（`failures`）
 
 [対照表](../spec/pitfalls.json)は「人が考えた間違い」の集合で、AI が実際に転ぶ所とはズレる。
@@ -229,6 +272,39 @@ $ npx hatake failures unknown-repository
 なるので、そういう件には「レビューでどこを見るか」を書いてある。だいたいの答えは
 「`explain` で読み返す」になる。
 
+### 実例を手で増やさない（`harvest`）
+
+カタログは手で書くと増えない。増えないカタログは、道具が良くなったのか実例を拾っていない
+だけなのか**見分けが付かない**。そこで定義の山から拾う。
+
+```
+$ npx hatake harvest definitions/
+走査: 定義 24 本（定義でないファイル 2 件は飛ばした）
+
+候補 1 件（載せるかは人が決める。自動では足さない）:
+
+# rowaction-not-declared  3 箇所 / 2 本
+  道具が言うこと: 行アクション "approve" に対応するボタンの宣言がありません。…
+  出た所: definitions/order_list.yaml  page.table.rowActions[1]
+  人が書く: why: なぜそう書いてしまうか。この表の価値はここ（対照表に無い列）。
+  …
+
+既にカタログにある（数えただけ）:
+  unknown-repository → repository-name-guessed  2 箇所
+```
+
+決めごと:
+
+* **`why` は機械には書けない。** そこがカタログの価値なので、候補は人が書く欄を空のまま出す。
+  `failures.json` に自動で足すことは絶対にしない
+* **定義そのものは持ち出さない。** ラベルや列名に客先の語彙が入るので、出すのはファイル名・
+  場所・回数と、道具が言ったことだけ
+* **1回だけ出たものは転び方ではない**（ただの間違い）。既定は2回以上。同じ定義の中で2回でも
+  数える（同じ手が2度伸びたということなので）
+* 既にカタログにある診断は候補にせず、**数えるだけ**（重複を増やさない）
+* 出るのは**道具が言えた転び方だけ**。言われない転び方は `explain` で人が見つける、と出力に
+  毎回書く（黙ると「これで全部」という嘘になる）
+
 ## MCP サーバ（`hatake-mcp`）
 
 AI エージェントに「仕様を引く・例を取る・検証する」をやらせるための MCP サーバも同梱。**依存ゼロで手書き**（stdio の JSON-RPC 2.0 で、必要なのは `initialize` / `tools/list` / `tools/call` だけなので）。
@@ -238,7 +314,7 @@ npm run build
 claude mcp add hatake -- node "$PWD/dist/mcp.js"      # Claude Code の場合
 ```
 
-道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_explain` / `hatake_refs` / `hatake_api_shape` の9つで、CLI と同じ関数を呼んでいる（＝同じ答えになる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
+道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_explain` / `hatake_refs` / `hatake_api_shape` の9つで、CLI と同じ関数を呼んでいる（＝同じ答えになる）。`hatake_explain` は `before` を渡せば変更の言い直し、`brief: true` なら1行（道具を増やすより、同じ道具の引数で足りる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
 
 ## 開発（Docker）
 
