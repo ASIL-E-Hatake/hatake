@@ -27,6 +27,12 @@ function fakeIo(files: Record<string, string> = {}): CliIo & {
     writeFile: (path, content) => {
       written[path] = content;
     },
+    // ディレクトリは「末尾が / の名前」で表す（fake なので十分）。
+    listFiles: (path) => {
+      const prefix = path.endsWith("/") ? path : `${path}/`;
+      const children = Object.keys(files).filter((name) => name.startsWith(prefix));
+      return children.length > 0 ? children.sort() : null;
+    },
   };
 }
 
@@ -310,6 +316,84 @@ describe("hatake diff", () => {
     const io = fakeIo({ "a.yaml": GOOD, "b.yaml": WITH_TYPOS });
     expect(runCli(["diff", "a.yaml", "b.yaml"], io)).toBe(1);
     expect(io.stderr.join("\n")).toContain("witdh");
+  });
+});
+
+describe("hatake registry", () => {
+  const MAIN = `
+void main() {
+  runApp(HatakeApp(
+    repositories: RepositoryRegistry({
+      'customerRepository': CustomerRepository.seeded(),
+      'orderRepository': OrderRepository.seeded(),
+    }),
+    actions: ActionRegistry({'csvExport': (ctx) async {}}),
+  ));
+}
+`;
+
+  it("実装から一覧を作る", () => {
+    const io = fakeIo({ "lib/main.dart": MAIN });
+    expect(runCli(["registry", "lib/main.dart", "--json"], io)).toBe(0);
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.repositories).toEqual(["customerRepository", "orderRepository"]);
+    expect(result.plugins).toEqual(["csvExport"]);
+    expect(result.unreadable).toEqual([]);
+  });
+
+  it("--out で validate --registry にそのまま渡せる形を書く", () => {
+    const io = fakeIo({ "lib/main.dart": MAIN });
+    expect(runCli(["registry", "lib/main.dart", "--out", "reg.json"], io)).toBe(0);
+    const written = JSON.parse(io.written["reg.json"]);
+    expect(written.$comment).toContain("再生成");
+    expect(written.repositories).toEqual([
+      "customerRepository",
+      "orderRepository",
+    ]);
+    expect(written.unreadable).toBeUndefined();
+  });
+
+  it("ディレクトリを渡すと、走査できる拡張子だけ読む", () => {
+    const io = fakeIo({
+      "lib/main.dart": MAIN,
+      "lib/readme.md": "RepositoryRegistry({'nope': x});",
+      "lib/sub/extra.dart": `final a = ActionRegistry({'openPlayground': p});`,
+    });
+    expect(runCli(["registry", "lib", "--json"], io)).toBe(0);
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.plugins).toEqual(["csvExport", "openPlayground"]);
+    expect(result.repositories).not.toContain("nope");
+  });
+
+  it("人が読む形では、どこで登録しているかまで出す", () => {
+    const io = fakeIo({ "lib/main.dart": MAIN });
+    expect(runCli(["registry", "lib/main.dart"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("customerRepository   lib/main.dart:4");
+  });
+
+  it("読めない登録があれば終了コード 1 で、どこが読めないか言う", () => {
+    const io = fakeIo({
+      "lib/main.dart": `final r = RepositoryRegistry(buildRepositories());`,
+    });
+    expect(runCli(["registry", "lib/main.dart"], io)).toBe(1);
+    const err = io.stderr.join("\n");
+    expect(err).toContain("不完全");
+    expect(err).toContain("lib/main.dart:1");
+  });
+
+  it("生成した一覧は、そのまま validate に渡して食い違いを拾える", () => {
+    const io = fakeIo({ "lib/main.dart": MAIN });
+    runCli(["registry", "lib/main.dart", "--out", "hatake-registry.json"], io);
+    const next = fakeIo({
+      "page.yaml": GOOD,
+      "hatake-registry.json": io.written["hatake-registry.json"],
+    });
+    // GOOD は customerRepository を使うので、これは通る。
+    expect(runCli(["validate", "page.yaml", "--warn-as-error"], next)).toBe(0);
+  });
+
+  it("ファイルが要る", () => {
+    expect(runCli(["registry"], fakeIo())).toBe(1);
   });
 });
 

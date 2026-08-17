@@ -43,6 +43,7 @@ npx hatake types page.yaml --lang java --package io.example.api --out gen/
 npx hatake reference rowsPerPage             # このキー、どこに書くの？型は？既定値は？
 npx hatake examples 帳票                      # 近い例を探す
 npx hatake refs page.yaml --needs-registration # アプリ側に何を登録すればいいか
+npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「登録済み」の一覧を作る
 ```
 
 | コマンド | 何をするか |
@@ -52,6 +53,7 @@ npx hatake refs page.yaml --needs-registration # アプリ側に何を登録す�
 | `dto <file>` | API の形（`DtoSpec`）を JSON で |
 | `diff <old> <new>` | 定義を変えた影響範囲。API の形（壊すか）＋画面・権限・アプリ構成の変化（確かめてほしいか）。`app:` どうしも比べられる。`--api-only` で契約だけ、`--caution-as-error` で「要確認」でも終了コード 1。**壊す変更があれば終了コード 1** |
 | `refs <file...>` | その定義が**外に要求しているもの**（Repository・プラグイン・独自のフォーマッタ…）を種類ごとに。`--needs-registration` で「組み込みに無い＝自分で登録が要るもの」だけ。出力はそのまま `--registry` に渡せる形 |
+| `registry <path...>` | 逆向き。**アプリの実装を読んで**「登録済みのもの」の一覧を作る（`--out` でファイルへ）。path はファイルでもディレクトリでも。読めない登録があれば終了コード 1 |
 | `schema <file>` | JSON Schema 2020-12 |
 | `openapi <file> [--base-path /api/orders]` | OpenAPI 3.1（`--base-path` を省くと `components.schemas` だけ） |
 | `types <file> --lang ts\|java [--out dir]` | ネイティブ型。Java は**1レコード＝1ファイル**で書き出す |
@@ -131,6 +133,35 @@ $ npx hatake validate page.yaml --registry hatake-registry.json                 
 `refs` は**判断せずに列挙する**（組み込みで足りているものには印を付けない）。`validate` は
 **渡されたカテゴリだけ**を突き合わせる（一覧が無ければ何も言わない＝定義の中だけで閉じた検査）。
 組み込みの名前は自動で足されるので、一覧に書くのは自分で登録したものだけでよい。
+
+一覧は手で書かなくてよい。**実装から作れる。**
+
+```bash
+$ npx hatake registry lib/main.dart --out hatake-registry.json
+$ npx hatake registry lib/            # 人が読む形（どこで登録しているかまで出る）
+repositories:
+  customerRepository    lib/main.dart:82
+  orderRepository       lib/main.dart:82
+plugins:
+  showDefinition   lib/main.dart:100
+```
+
+**言語のパーサは持たない。** 見るのは「登録している所に、その場で書いてある文字列」だけで、
+変数や関数から組み立てている登録は読めない。読めないものは**黙って落とさずに報告し、終了
+コード 1** にする。
+
+```
+読めなかった登録が 1 件あります。一覧は**不完全**なので、その分は手で足してください:
+     lib/playground_data.dart:20 (repositories) キーが文字列リテラルではありません: for (final key in keys…
+```
+
+黙って落とすと「登録してあるのに未登録」という**嘘の警告**になり、仕組みごと信用されなくなる。
+一覧が不完全なまま使うくらいなら、不完全だと言って止まるほうがいい。
+
+読める書き方: `XxxRegistry({ 'name': … })`（Dart / TypeScript）、`new XxxRegistry(Map.of("name", …))`
+（Java。型を明示した `Map.<K, V>of(…)` も可）、名前付き引数の `fieldBuilders: { 'color': … }`。
+コンストラクタの**宣言**と、受け取ったものを渡しているだけの素通し（`fieldBuilders:
+widget.fieldBuilders`）は登録として数えない。
 
 ```
 OK   sales_app.yaml (app: 8 ページ)

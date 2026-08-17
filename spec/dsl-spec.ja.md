@@ -1051,7 +1051,8 @@ strict もスキーマもここは見られない（**登録済みの一覧を�
 
 ```bash
 npx hatake refs page.yaml --needs-registration    # 定義が外に要求しているものを列挙する
-npx hatake validate page.yaml --registry reg.json # 渡した一覧と突き合わせる
+npx hatake registry lib/main.dart --out reg.json  # 実装から「登録済み」の一覧を作る
+npx hatake validate page.yaml --registry reg.json # 突き合わせる
 ```
 
 `refs` は判断せずに列挙し、`validate` は**渡されたカテゴリだけ**を突き合わせる。一覧を
@@ -1077,6 +1078,11 @@ npx hatake validate page.yaml --registry reg.json # 渡した一覧と突き合�
 `--registry` を省いても、定義の隣（無ければカレント）の `hatake-registry.json` があれば
 黙って拾う。同じ名前が何箇所から参照されていても**警告は1件**（直す所は登録する側の1つなので、
 件数だけ添える）。
+
+一覧は手で書かなくてよく、`hatake registry` が**アプリの実装から作る**。ただし言語のパーサは
+持たず、見るのは「登録している所に、その場で書いてある文字列」だけ。変数や関数から組み立てて
+いる登録は読めないので、**黙って落とさずに報告して終了コード 1** にする（落とすと「登録して
+あるのに未登録」という嘘の警告になり、仕組みごと信用されなくなる）。
 
 ## よくある間違い
 

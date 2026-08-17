@@ -26,10 +26,11 @@ npx hatake pitfalls <key>         # common mistake → correct form
 npx hatake new <kind> --id <id> --title <title>   # crud/search/master/detail/form/wizard/dashboard/report
 npx hatake diff <old> <new>       # what a change breaks, and what to confirm
 npx hatake refs page.yaml --needs-registration     # what the application must register
+npx hatake registry lib/main.dart --out hatake-registry.json  # what the application does register
 ```
 `validate` also warns about definitions that **parse but do not do what they say** (a row action with no matching declaration, navigation to a page that does not exist, `groupBy` without `sort`, an operator a condition cannot understand, an aggregate with no field). These are not errors, but you cannot spot them by looking at the screen — fix what it reports. `--warn-as-error` fails CI on them.
 An unknown key reports its location and the fix: `page.table.columns[0]: unknown key "witdh" (did you mean width?)`
-It can also check **names the definition expects from outside**: a `repository:` or `plugin:` the application never registered renders a screen with no data, or a button that does nothing. `refs` lists what must be registered; passing that list to `validate --registry <file>` catches the mismatch (a `hatake-registry.json` next to the definition is picked up automatically).
+It can also check **names the definition expects from outside**: a `repository:` or `plugin:` the application never registered renders a screen with no data, or a button that does nothing. `refs` lists what must be registered, `registry` reads what the application actually registers, and `validate --registry <file>` compares them (a `hatake-registry.json` next to the definition is picked up automatically). `registry` reads only the strings written at the registration site, so anything built from a variable is reported and exits 1 rather than being dropped — a dropped name would become a false "not registered" warning.
 `diff` grades every change: breaking (callers break), caution (nothing breaks but a human should confirm — a column, button or option disappeared, permissions changed, a page or menu entry is gone), safe (additions). **Never pass over cautions silently.**
 
 ## Examples (copy them; all are schema-checked in CI)

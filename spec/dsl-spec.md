@@ -1139,7 +1139,8 @@ is registered**. So it is split in two:
 
 ```bash
 npx hatake refs page.yaml --needs-registration    # list what the definition demands
-npx hatake validate page.yaml --registry reg.json # check those names against a list
+npx hatake registry lib/main.dart --out reg.json  # read what the application registers
+npx hatake validate page.yaml --registry reg.json # compare the two
 ```
 
 `refs` lists without judging; `validate` compares **only the categories you
@@ -1166,6 +1167,13 @@ The list passed to `--registry` has the same shape `refs --needs-registration
 Omit `--registry` and a `hatake-registry.json` next to the definition (or in the
 current directory) is picked up silently. A name referenced from many places is
 reported **once**, with the count — the fix is one registration either way.
+
+The list does not have to be written by hand: `hatake registry` reads it out of the
+application. It carries no language parser — it reads only the strings written at
+the registration site — so a registry built from a variable or a function cannot be
+read. Those are **reported rather than dropped, and the command exits 1**: dropping
+them would produce a "registered but reported missing" warning, which discredits the
+whole check.
 
 ## Common mistakes
 

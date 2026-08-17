@@ -77,6 +77,10 @@ jobs:
           node dist/cli.js pitfalls groupBy --lang en
           # 定義が外に要求しているもの（アプリ側で登録が要るもの）が引けること。
           node dist/cli.js refs ../spec/examples/sales_app.yaml --needs-registration
+          # 実装から作る「登録済みのもの」の一覧が、コミットしてあるものと一致すること
+          # （デモの登録を変えたら再生成が要る＝一覧が古くならない）。
+          node dist/cli.js registry ../flutter/packages/hatake_example/lib/main.dart --out /tmp/hatake-registry.json
+          diff -u --strip-trailing-cr ../flutter/packages/hatake_example/assets/hatake-registry.json /tmp/hatake-registry.json
           # 同じ定義どうしの diff は「変わりません」で終了コード 0。
           node dist/cli.js diff ../spec/examples/sales_app.yaml ../spec/examples/sales_app.yaml --caution-as-error
           # コミットしてある生成物と一致すること（vitest でも見ているが、CLI 経由でも）。

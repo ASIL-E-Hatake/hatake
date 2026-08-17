@@ -1,13 +1,13 @@
 {
-  "$comment": "このデモアプリが登録しているもの。定義の隣に置くと hatake validate が黙って拾い、定義が要求している名前と突き合わせる（`hatake refs sales_app.yaml --needs-registration` の出力がそのままこの形）。組み込みの名前は自動で足されるので、ここに書くのは自分で登録したものだけ。中身が lib/main.dart の登録と合っていることは typescript/test/refs.test.ts で確認している（この表は嘘をつけない）。",
+  "$comment": "hatake registry が実装から作った「登録済みのもの」の一覧。手で直さず、再生成すること。定義の隣に置くと hatake validate が黙って拾い、定義が要求している名前と突き合わせる。",
   "repositories": [
     "customerRepository",
-    "productRepository",
+    "orderLineRepository",
     "orderRepository",
-    "orderLineRepository"
+    "productRepository"
   ],
   "plugins": [
-    "showDefinition",
-    "openPlayground"
+    "openPlayground",
+    "showDefinition"
   ]
 }

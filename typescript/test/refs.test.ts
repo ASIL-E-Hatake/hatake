@@ -257,24 +257,8 @@ describe("デモアプリとの辻褄", () => {
     expect([...(registry.plugins ?? [])].sort()).toEqual(needed.plugins);
   });
 
-  it("登録済み一覧は、デモアプリが実際に登録しているものと一致する", () => {
-    // 一覧が実装からズレたら、警告そのものが嘘になるので機械で確かめる。
-    const main = readFileSync(`${ASSETS}/../lib/main.dart`, "utf8");
-    const inBlock = (open: string): string[] => {
-      const start = main.indexOf(open);
-      expect(start, `${open} が main.dart に見つからない`).toBeGreaterThan(-1);
-      const body = main.slice(start, main.indexOf("}),", start));
-      return [...body.matchAll(/'([A-Za-z][A-Za-z0-9_]*)':/g)]
-        .map((m) => m[1])
-        .sort();
-    };
-    expect(inBlock("RepositoryRegistry({")).toEqual(
-      [...(registry.repositories ?? [])].sort(),
-    );
-    expect(inBlock("ActionRegistry({")).toEqual(
-      [...(registry.plugins ?? [])].sort(),
-    );
-  });
+  // 一覧が実装とズレたら警告そのものが嘘になる。その確認は
+  // registryScan.test.ts（実装から生成したものと一致するか）の担当。
 
   it("デモの定義は、登録済み一覧と突き合わせても警告ゼロ", () => {
     expect(findWarnings(doc(definition), { registry })).toEqual([]);
