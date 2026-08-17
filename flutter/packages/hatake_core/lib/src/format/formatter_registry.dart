@@ -112,6 +112,12 @@ final Map<String, Formatter> builtinFormatters = {
 class FormatterRegistry {
   final Map<String, Formatter> _formatters;
 
+  /// アプリが足したフォーマッタの名前だけ（組み込みは除く）。
+  List<String> get customKeys => [
+        for (final key in _formatters.keys)
+          if (!builtinFormatters.containsKey(key)) key,
+      ]..sort();
+
   FormatterRegistry([Map<String, Formatter>? custom])
       : _formatters = {...builtinFormatters, if (custom != null) ...custom};
 

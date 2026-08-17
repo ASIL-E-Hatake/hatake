@@ -119,6 +119,12 @@ npx hatake validate page.yaml --registry hatake-registry.json # 突き合わせ�
 
 `registry` は言語のパーサを持たない。**その場に書いてある文字列しか読めない**ので、変数や関数から組み立てている登録は「読めなかった」と報告して終了コード 1 になる。黙って落とすと「登録してあるのに未登録」という嘘の警告になるため、不完全なら不完全だと言って止まる。
 
+読めなかったぶんは、**動いているアプリに聞く**（Flutter 側の `registrySnapshot`）。出す形は同じなので、ソースを読む道と実行時に聞く道のどちらで作った一覧でも `validate --registry` に渡せる。
+
+```dart
+File('hatake-registry.json').writeAsStringSync(registrySnapshotJson(scope));
+```
+
 ### 直した影響を見る
 
 ```bash

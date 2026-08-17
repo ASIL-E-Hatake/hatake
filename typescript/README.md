@@ -158,6 +158,16 @@ plugins:
 黙って落とすと「登録してあるのに未登録」という**嘘の警告**になり、仕組みごと信用されなくなる。
 一覧が不完全なまま使うくらいなら、不完全だと言って止まるほうがいい。
 
+**読めなかったぶんは、動いているアプリに聞く。** Flutter 側に同じ形を吐く口がある。
+
+```dart
+File('hatake-registry.json').writeAsStringSync(registrySnapshotJson(scope));
+```
+
+ソースを読む方は「アプリを動かさずに作れる／CI で差分を見られる」、実行時に聞く方は
+「動的に組み立てた登録も分かる」。出す形は同じなので、案件に合う方を選べばよい
+（同じ語彙・同じ形であることは `spec/conformance/registry_snapshot.json` で両版から確認している）。
+
 読める書き方: `XxxRegistry({ 'name': … })`（Dart / TypeScript）、`new XxxRegistry(Map.of("name", …))`
 （Java。型を明示した `Map.<K, V>of(…)` も可）、名前付き引数の `fieldBuilders: { 'color': … }`。
 コンストラクタの**宣言**と、受け取ったものを渡しているだけの素通し（`fieldBuilders:

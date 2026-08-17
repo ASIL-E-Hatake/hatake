@@ -25,4 +25,8 @@ class RepositoryRegistry {
   }
 
   bool contains(String key) => _repositories.containsKey(key);
+
+  /// 登録されている Repository のキー。Repository に組み込みは無いので、全部が
+  /// アプリの登録（`registrySnapshot` が使う）。
+  List<String> get customKeys => _repositories.keys.toList()..sort();
 }

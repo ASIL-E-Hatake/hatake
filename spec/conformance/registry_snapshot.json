@@ -1,0 +1,46 @@
+{
+  "_comment": "「登録済みのもの」の一覧を作る2つの道（静的に読む `hatake registry` と、動いているアプリに聞く `registrySnapshot`）が、同じ語彙・同じ形になることを固定する。`kinds` は種類の名前で、TypeScript の RefKinds（= hatake-registry.json のキー = validate --registry が見るキー）と、Dart の RegistryKinds の両方に一致すること。`sample` は「アプリがこれだけ登録したら、こう出る」。組み込みと同じ名前は出さない・空の種類は出さない・名前順、の3つがここで決まる。",
+  "kinds": [
+    "repositories",
+    "plugins",
+    "pages",
+    "fieldTypes",
+    "columnTypes",
+    "actionTypes",
+    "validators",
+    "formatters",
+    "converters",
+    "computedOps",
+    "aggregates",
+    "dashboardItemTypes",
+    "chartKinds"
+  ],
+  "runtimeKinds": [
+    "repositories",
+    "plugins",
+    "validators",
+    "formatters",
+    "converters",
+    "computedOps",
+    "aggregates",
+    "fieldTypes",
+    "dashboardItemTypes"
+  ],
+  "sample": {
+    "_comment": "registered は「アプリが registry に渡したもの」。maxLength / trim は組み込みと同じ名前（＝上書き）なので、一覧には出ない。",
+    "registered": {
+      "repositories": ["orderRepository", "customerRepository"],
+      "plugins": ["csvExport"],
+      "validators": ["even", "maxLength"],
+      "converters": ["trim"],
+      "fieldTypes": ["color"],
+      "dashboardItemTypes": []
+    },
+    "expected": {
+      "repositories": ["customerRepository", "orderRepository"],
+      "plugins": ["csvExport"],
+      "validators": ["even"],
+      "fieldTypes": ["color"]
+    }
+  }
+}

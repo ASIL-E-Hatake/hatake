@@ -125,3 +125,25 @@ HatakeScope(
   child: HatakeCrudView(definition: definition),
 );
 ```
+
+## Making what you registered count in validation
+
+A name registered here only works if the definition (YAML) names it identically. Write
+`repository: customerRepository` against a differently-named registration and the screen
+renders with no data — silently.
+
+`registrySnapshot` reports what the running application actually registered. Drop that
+next to the definition and `hatake validate` compares the two.
+
+```dart
+File('hatake-registry.json').writeAsStringSync(registrySnapshotJson(scope));
+```
+
+```bash
+npx hatake validate page.yaml   # picks up hatake-registry.json next to it
+```
+
+It reports **only what you added** (the checker knows the built-ins). There is also
+`npx hatake registry lib/main.dart`, which reads the code instead of running it — but it
+cannot read a registry built from a variable or a function. Use the snapshot when the
+registrations are dynamic.

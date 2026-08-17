@@ -93,6 +93,12 @@ class AggregateBucket {
 class AggregateRegistry {
   final Map<String, AggregateFn> _ops;
 
+  /// アプリが足した集約の名前だけ（組み込みは除く）。
+  List<String> get customKeys => [
+        for (final key in _ops.keys)
+          if (!builtinAggregates.containsKey(key)) key,
+      ]..sort();
+
   AggregateRegistry([Map<String, AggregateFn>? custom])
       : _ops = {...builtinAggregates, if (custom != null) ...custom};
 

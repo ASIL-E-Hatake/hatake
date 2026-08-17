@@ -1168,12 +1168,30 @@ Omit `--registry` and a `hatake-registry.json` next to the definition (or in the
 current directory) is picked up silently. A name referenced from many places is
 reported **once**, with the count — the fix is one registration either way.
 
-The list does not have to be written by hand: `hatake registry` reads it out of the
-application. It carries no language parser — it reads only the strings written at
-the registration site — so a registry built from a variable or a function cannot be
-read. Those are **reported rather than dropped, and the command exits 1**: dropping
-them would produce a "registered but reported missing" warning, which discredits the
-whole check.
+The list does not have to be written by hand. There are two ways to produce it, and
+**both emit the same shape**:
+
+| Source | When | Limit |
+|---|---|---|
+| `hatake registry <path...>` — read the code | no need to run the app; regenerate in CI and diff | reads **only the strings written at the registration site** |
+| `registrySnapshot(scope)` — ask the running app | registrations built dynamically | the app has to run |
+
+The first carries no language parser, so a registry built from a variable or a
+function cannot be read. Those are **reported rather than dropped, and the command
+exits 1**: dropping them would produce a "registered but reported missing" warning,
+which discredits the whole check. What it cannot read, the second one covers.
+
+```dart
+File('hatake-registry.json').writeAsStringSync(registrySnapshotJson(scope));
+```
+
+Both emit **only what the application added** (built-ins are known to the checker;
+mixing them in bloats the list and dates it every time a built-in is added). An empty
+kind is omitted — that means "nothing to say", not "this kind is empty", so it stays
+out of the comparison.
+
+`spec/conformance/registry_snapshot.json` pins that the two routes share one
+vocabulary and one shape, checked from both editions.
 
 ## Common mistakes
 
