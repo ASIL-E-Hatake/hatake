@@ -11,6 +11,7 @@ export * from "./examples.js";
 export * from "./pitfalls.js";
 export * from "./warnings.js";
 export * from "./refs.js";
+export * from "./registryScan.js";
 export * from "./appParse.js";
 export * from "./validators.js";
 export * from "./formValidator.js";

@@ -8,7 +8,14 @@
 // 依存は増やさない: 引数解析も出力も手書き。CLI が npm の流行に引きずられると、
 // 「業務システムを10年動かす」側の都合と合わなくなる。
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { parse as parseYamlText } from "yaml";
 import { type DefinitionWarning, findWarnings } from "./warnings.js";
@@ -51,6 +58,11 @@ import {
 import { parseAppYaml } from "./appParse.js";
 import { closestKey } from "./strictKeys.js";
 import { scaffold, scaffoldKinds } from "./scaffold.js";
+import {
+  SCANNABLE_EXTENSIONS,
+  scanRegistrations,
+  type SourceFile,
+} from "./registryScan.js";
 import { toJavaRecords, toTypeScript } from "./types.js";
 
 /** CLI が触る外界。テストから差し替えられるようにまとめてある。 */
@@ -59,6 +71,11 @@ export interface CliIo {
   err(text: string): void;
   readFile(path: string): string;
   writeFile(path: string, content: string): void;
+  /**
+   * ディレクトリの中のファイルを再帰的に並べる（`registry` がソースを集めるため）。
+   * ディレクトリでなければ null。
+   */
+  listFiles(path: string): string[] | null;
 }
 
 export const nodeIo: CliIo = {
@@ -69,6 +86,16 @@ export const nodeIo: CliIo = {
     const dir = dirname(path);
     if (dir && !existsSync(dir)) mkdirSync(dir, { recursive: true });
     writeFileSync(path, content, "utf8");
+  },
+  listFiles: (path) => {
+    if (!existsSync(path) || !statSync(path).isDirectory()) return null;
+    const found: string[] = [];
+    for (const entry of readdirSync(path, { withFileTypes: true })) {
+      const child = join(path, entry.name);
+      if (entry.isDirectory()) found.push(...(nodeIo.listFiles(child) ?? []));
+      else found.push(child);
+    }
+    return found;
   },
 };
 
@@ -83,6 +110,12 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --registry に「アプリ側で登録済みのもの」の一覧を渡すと、画面の外との
       辻褄（Repository / プラグイン / 独自の型の名前）も見る。省略しても
       定義の隣の hatake-registry.json があれば拾う。
+
+  hatake registry <path...> [--json] [--out file]
+      アプリの実装を読んで「登録済みのもの」の一覧を作る（validate --registry に
+      渡す形）。path はファイルでもディレクトリでもよい。**その場に書いてある
+      文字列しか読めない**ので、変数や関数から組み立てている登録は読めなかったもの
+      として報告し、終了コード 1 にする（黙って落とすと一覧が嘘になるため）。
 
   hatake refs <file...> [--json] [--needs-registration]
       その定義が外に要求しているもの（Repository・プラグイン・フォーマッタ…）を
@@ -227,6 +260,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return diff(positional, flags, io);
       case "refs":
         return refs(positional, flags, io);
+      case "registry":
+        return registry(positional, flags, io);
       case "types":
         return types(positional, flags, io);
       case "new":
@@ -349,6 +384,90 @@ function loadRegistry(
     }
   }
   return undefined;
+}
+
+/**
+ * アプリの実装から「登録済みのもの」の一覧を作る。
+ *
+ * 読めなかった登録があれば**終了コード 1**。生成した一覧はそのとき不完全なので、
+ * 気づかないまま `--registry` に渡されると「登録してあるのに未登録」という嘘の
+ * 警告が出る。出力自体は書く（手で足せるように）。
+ */
+function registry(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length === 0) {
+    io.err("ソースのファイルかディレクトリを指定してください。");
+    return 1;
+  }
+  const sources: SourceFile[] = [];
+  for (const path of collectSourcePaths(files, io)) {
+    sources.push({ path, source: io.readFile(path) });
+  }
+  if (sources.length === 0) {
+    io.err(
+      `走査できるソースがありません（対象の拡張子: ${SCANNABLE_EXTENSIONS.join(" ")}）。`,
+    );
+    return 1;
+  }
+
+  const scan = scanRegistrations(sources);
+  const document = {
+    $comment:
+      "hatake registry が実装から作った「登録済みのもの」の一覧。手で直さず、再生成すること。" +
+      "定義の隣に置くと hatake validate が黙って拾い、定義が要求している名前と突き合わせる。",
+    ...scan.registry,
+  };
+
+  if (str(flags, "out") !== undefined) {
+    // ファイルに書くのは一覧そのもの（読めなかったものは下で人に言う）。
+    output(JSON.stringify(document, null, 2), flags, io);
+  } else if (flags.json === true) {
+    io.out(JSON.stringify({ ...document, unreadable: scan.unreadable }, null, 2));
+  } else {
+    // 種類ごとに並べ、名前がどこで登録されているかを添える（直しに行けるように）。
+    const where = new Map<string, string>();
+    for (const site of scan.sites) {
+      for (const name of site.names) {
+        const key = `${site.kind}/${name}`;
+        if (!where.has(key)) where.set(key, `${site.file}:${site.line}`);
+      }
+    }
+    for (const [kind, names] of Object.entries(scan.registry)) {
+      io.out(`${kind}:`);
+      const width = Math.max(...names.map((name) => name.length));
+      for (const name of names) {
+        io.out(`  ${name.padEnd(width)}   ${where.get(`${kind}/${name}`) ?? ""}`);
+      }
+    }
+    if (scan.sites.length === 0) io.out("登録は見つかりませんでした。");
+  }
+
+  if (scan.unreadable.length === 0) return 0;
+  io.err(
+    `読めなかった登録が ${scan.unreadable.length} 件あります。` +
+      "一覧は**不完全**なので、その分は手で足してください:",
+  );
+  for (const site of scan.unreadable) {
+    io.err(`     ${site.file}:${site.line} (${site.kind}) ${site.reason}`);
+  }
+  return 1;
+}
+
+/** 指定された path を、走査できるソースのファイル一覧に開く。 */
+function collectSourcePaths(paths: string[], io: CliIo): string[] {
+  const found: string[] = [];
+  for (const path of paths) {
+    const children = io.listFiles(path);
+    if (children === null) {
+      found.push(path); // ファイル指定は拡張子で絞らない（明示したものは読む）
+      continue;
+    }
+    found.push(
+      ...children.filter((child) =>
+        SCANNABLE_EXTENSIONS.some((extension) => child.endsWith(extension)),
+      ),
+    );
+  }
+  return [...new Set(found)].sort();
 }
 
 /** 定義が外に要求しているものを並べる。出力はそのまま --registry に渡せる形。 */

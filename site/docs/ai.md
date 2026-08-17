@@ -100,6 +100,7 @@ npx hatake examples 帳票               # 近い例
 npx hatake pitfalls groupBy            # 間違い → 正しい書き方
 npx hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権限・アプリ構成）
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか
+npx hatake registry lib/main.dart              # アプリが登録しているものを実装から読む
 ```
 
 `validate` は構文エラーだけでなく、**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション、存在しないページへの遷移、`sort` の無い `groupBy` など）。画面を見ても気づけない類なので、警告が出たら直す。
@@ -109,11 +110,14 @@ npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録す
 定義は自分だけでは動かない。`repository: orderRepository` と書いても、アプリ側がその名前で登録していなければ**画面は出るがデータが来ない**。名前の食い違いは画面を見ても気づけないので、機械に言わせる。
 
 ```bash
-npx hatake refs page.yaml --needs-registration --json > hatake-registry.json
-npx hatake validate page.yaml --registry hatake-registry.json
+npx hatake refs page.yaml --needs-registration   # 定義が要求しているもの
+npx hatake registry lib/main.dart --out hatake-registry.json  # アプリが登録しているもの
+npx hatake validate page.yaml --registry hatake-registry.json # 突き合わせる
 ```
 
-`refs` が「何を登録すればいいか」を出し、それを確かめたものを `validate` に渡す。定義の隣に `hatake-registry.json` を置いておけば `--registry` は省ける。AI に組み込みまでやらせるなら、`hatake_refs` を引かせてから登録コードを書かせるのが早い。
+`refs` が「何を登録すればいいか」、`registry` が「実際に何を登録しているか」を出し、`validate` が突き合わせる。定義の隣に `hatake-registry.json` を置いておけば `--registry` は省ける。AI に組み込みまでやらせるなら、`hatake_refs` を引かせてから登録コードを書かせるのが早い。
+
+`registry` は言語のパーサを持たない。**その場に書いてある文字列しか読めない**ので、変数や関数から組み立てている登録は「読めなかった」と報告して終了コード 1 になる。黙って落とすと「登録してあるのに未登録」という嘘の警告になるため、不完全なら不完全だと言って止まる。
 
 ### 直した影響を見る
 
