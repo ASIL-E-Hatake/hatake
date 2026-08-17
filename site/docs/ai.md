@@ -36,7 +36,7 @@ claude mcp add hatake -- node <repo>/typescript/dist/mcp.js
 }
 ```
 
-エージェントに渡る道具は8つ。
+エージェントに渡る道具は9つ。
 
 | 道具 | 何をするか |
 | --- | --- |
@@ -47,6 +47,7 @@ claude mcp add hatake -- node <repo>/typescript/dist/mcp.js
 | `hatake_pitfalls` | よくある間違いと直し方 |
 | `hatake_api_shape` | バックエンドが返すべき JSON の形 |
 | `hatake_diff` | 既存の定義を直したとき、契約を壊していないか・**確かめてほしい変化**（消えた列・ボタン・選択肢、権限の変化）はないか |
+| `hatake_explain` | 書いた定義が何をする画面か、日本語で読み返す（**意図どおりか**は警告では分からない） |
 | `hatake_refs` | その定義をアプリに組み込むのに、何を登録すればいいか |
 
 Docker で動かす手順は [MCP ガイド](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/mcp.ja.md) にある。
@@ -98,12 +99,45 @@ npx hatake new crud --id customer --title 顧客マスタ
 npx hatake reference rowsPerPage       # そのキーの型・既定値・書ける場所
 npx hatake examples 帳票               # 近い例
 npx hatake pitfalls groupBy            # 間違い → 正しい書き方
+npx hatake failures unknown-repository # 実際に転んだ実例（なぜそう書くか付き）
+npx hatake explain page.yaml           # この定義、結局どういう画面？
 npx hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権限・アプリ構成）
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか
 npx hatake registry lib/main.dart              # アプリが登録しているものを実装から読む
 ```
 
 `validate` は構文エラーだけでなく、**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション、存在しないページへの遷移、`sort` の無い `groupBy` など）。画面を見ても気づけない類なので、警告が出たら直す。
+
+### 書けたものを、日本語で読み返す
+
+`validate` が見るのは綴りと構造だけ。**条件の向きを間違えた・意図と違う項目を必須にした**は全部通る。AI に書かせるなら、最後に人の言葉で読み返すのが要る。
+
+```bash
+npx hatake explain page.yaml
+```
+
+```
+顧客入力（customer_form）— 1件を入力する画面（新規と編集の両方）
+
+## 基本情報
+  ・コード … 必須、新規のときだけ触れる、20 文字以内
+  ・登録番号 … 区分 が 法人 のときだけ必須
+
+## 請求先（区分 が 法人 のときだけ出る枠）
+  ・請求先コード … 必須
+```
+
+**キーの名前は出さない**ので、DSL を知らない人がレビューできる。条件は項目と選択肢のラベルで言う（`{ field: kind, value: corp }` ではなく「区分 が 法人 のとき」）。AI 自身に読み返させてもよく、MCP なら `hatake_explain`。
+
+### AI が実際に転んだ実例
+
+対照表（`pitfalls`）は人が考えた間違いの集合で、AI が転ぶ所とはズレる。実例は別に溜めてある。
+
+```bash
+npx hatake failures            # 全件（こう書いた → こう言われた → こう直した）
+```
+
+各件は**本当に道具にかけ直して**、記録した診断と一致することを CI で確認している。**機械では拾えない件も載っている**（載せないと「道具が万全」という嘘になる）ので、そこには「レビューでどこを見るか」が書いてある。
 
 ### 定義の外との食い違いも見られる
 

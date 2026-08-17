@@ -1209,6 +1209,44 @@ npx hatake validate page.yaml           # unknown keys pull the matching fix in 
 Every entry is verified in CI: the wrong form really fails strict parsing and the
 correct form really passes, so the table cannot lie.
 
+## Real failures
+
+The table above is a curated set of mistakes **a human thought of**, which is not
+the same as where an agent actually trips. Observed incidents live separately in
+[`failures.json`](failures.json).
+
+```bash
+npx hatake failures unknown-repository   # what was written → what the tools said → the fix
+```
+
+What sets it apart is provenance, plus a field the pitfalls table has no room for:
+**why someone writes it that way**. Every entry is replayed through the real tools
+in CI and must match the recorded diagnosis — so this table cannot lie either, and
+a regression in diagnostic quality (no longer detected, message changed) fails the
+build.
+
+Entries **the tools cannot catch are included too** (an empty diagnosis). Leaving
+them out would imply the tooling is complete; instead they carry a note on what a
+reviewer should look for.
+
+## Explaining a definition in prose
+
+Strict parsing, the schema and the warnings all look at spelling and structure only.
+A condition pointing the wrong way, or the wrong field made required, passes all of
+them — so the last check is a human reading it. That is what `explain` prints.
+
+```bash
+npx hatake explain page.yaml               # what this screen does (Japanese)
+npx hatake explain app.yaml --page <id>    # one page of an app, in detail
+```
+
+It describes the screen, **never naming DSL keys** — the reader does not need to know
+the DSL. Conditions are rendered with field and option labels, so
+`{ field: kind, value: corp }` reads as 「区分 が 法人 のとき」. It also states what the
+screen *cannot* do, read off the definition (no delete button, read-only kind, …).
+
+The output is JA-only, like the warnings: it is prose about a business screen.
+
 ## Complete example
 
 An index by task lives in [`examples/README.md`](examples/README.md) (machine

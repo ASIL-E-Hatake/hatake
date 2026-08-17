@@ -92,6 +92,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 | `hatake_new_page` | 新しい画面の出発点。そのまま検証を通る雛形が出る | `kind`、`id`、`title`、`repository` |
 | `hatake_pitfalls` | よくある間違い → なぜ駄目か → 正しい書き方。書く前に眺める / 落ちて直せないとき | `query`、`lang`（ja/en） |
 | `hatake_diff` | **既にある定義を直したとき**：契約（api）を壊すか＋画面・権限・アプリ構成の**確かめてほしい**変化 | `before`、`after` |
+| `hatake_explain` | **検証を通したあと**：書いた定義が何をする画面かを日本語で読み返す（意図と違っていないか） | `source`、`page`（app のとき1枚だけ） |
 | `hatake_refs` | アプリに組み込むとき：定義が要求している Repository / プラグイン名などの一覧 | `source` |
 | `hatake_api_shape` | 同じ定義から API の形（DtoSpec / JSON Schema / OpenAPI 3.1 / TS / Java） | `source`、`format`、`basePath`、`package` |
 
@@ -101,12 +102,14 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 1. hatake_examples で近い例を探す
 2. 新規なら hatake_new_page で雛形
 3. 迷ったキーだけ hatake_reference で引く
-4. 書けたら必ず hatake_validate
+4. 書けたら必ず hatake_validate → hatake_explain で読み返す
 5. 直し方が分からない / 書く前に落とし穴を知りたいときは hatake_pitfalls
 6. バックエンドの形が要るなら hatake_api_shape
 7. 既にある定義を直したときは hatake_diff（壊していないか・確かめてほしい変化はないか）
 8. アプリに組み込むときは hatake_refs（何を登録すればいいか）
 ```
+
+`hatake_explain` は「意図どおりか」を見る道具です。strict もスキーマも警告も**綴りと構造しか見ない**ので、条件の向きを間違えた・意図と違う項目を必須にした、は全部通ります。検証のあとに日本語で読み返して、頼まれたことと違っていたら直す。人に見せてレビューしてもらう出力にもなります（読み手は DSL を知らなくてよい）。
 
 `hatake_diff` は変更を **area**（api / ui / access / app）と **impact**（breaking / caution / safe）で返します。`compatible: false` は呼び出し側の修正が要る話、`quiet: false` は「壊れないが人に確かめてほしい」話（列やボタンや選択肢が消えた・権限が変わった・ページやメニューが消えた）。エージェントには**後者を黙って進めず列挙させる**ようにしてあります。
 
