@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  RefKinds,
   scanRegistrations,
   type SourceFile,
   stripComments,
@@ -231,6 +232,37 @@ final v = ValidatorRegistry({
     const result = scanRegistrations(files);
     expect(result.registry.plugins).toEqual(["one", "two"]);
     expect(result.sites.map((s) => s.file)).toEqual(["a.dart", "b.dart"]);
+  });
+});
+
+describe("実行時に申告する側との辻褄", () => {
+  // 一覧の作り方は2つある（ソースを読む / 動いているアプリに聞く）。同じ語彙・同じ形
+  // でなければ、片方で作った一覧をもう片方の道具に渡せない。
+  const fixture = JSON.parse(
+    readFileSync("../spec/conformance/registry_snapshot.json", "utf8"),
+  ) as {
+    kinds: string[];
+    runtimeKinds: string[];
+    sample: { expected: Record<string, string[]> };
+  };
+
+  it("種類の名前は spec と一致する（Dart の RegistryKinds も同じものを見る）", () => {
+    expect(Object.values(RefKinds).sort()).toEqual([...fixture.kinds].sort());
+  });
+
+  it("実行時に出る種類は、突き合わせに使える種類の一部", () => {
+    for (const kind of fixture.runtimeKinds) {
+      expect(fixture.kinds, kind).toContain(kind);
+    }
+  });
+
+  it("実行時に出る形は、そのまま登録済み一覧として渡せる", () => {
+    // 値は名前の配列、キーは種類名。validate --registry が読む形と同じ。
+    for (const [kind, names] of Object.entries(fixture.sample.expected)) {
+      expect(fixture.kinds).toContain(kind);
+      expect(Array.isArray(names)).toBe(true);
+      expect([...names].sort()).toEqual(names);
+    }
   });
 });
 

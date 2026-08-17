@@ -85,7 +85,7 @@ typedef MaterialDashboardItemBuilder = Widget Function(
 ///
 /// Extend field-type support by passing [fieldBuilders] keyed by field type
 /// (e.g. `{'color': (ctx) => ...}`); these take precedence over the built-ins.
-class MaterialRenderer implements Renderer {
+class MaterialRenderer implements Renderer, RegistryReporter {
   final Map<String, MaterialFieldBuilder> fieldBuilders;
 
   /// Display formatters used for columns/fields with a `format`. Defaults to
@@ -101,6 +101,16 @@ class MaterialRenderer implements Renderer {
     this.formatters,
     this.dashboardItemBuilders = const {},
   });
+
+  /// この Renderer に渡された独自の登録（`registrySnapshot` が拾う）。
+  /// 組み込みは含めない＝アプリが足したものだけを名乗る。
+  @override
+  Map<String, List<String>> get registeredNames => {
+        RegistryKinds.fieldTypes: fieldBuilders.keys.toList()..sort(),
+        RegistryKinds.dashboardItemTypes: dashboardItemBuilders.keys.toList()
+          ..sort(),
+        RegistryKinds.formatters: formatters?.customKeys ?? const [],
+      };
 
   @override
   Widget buildCrudPage(

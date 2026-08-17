@@ -55,6 +55,12 @@ final Map<String, Converter> builtinConverters = {
 class ConverterRegistry {
   final Map<String, Converter> _converters;
 
+  /// アプリが足したコンバータの名前だけ（組み込みは除く）。
+  List<String> get customKeys => [
+        for (final key in _converters.keys)
+          if (!builtinConverters.containsKey(key)) key,
+      ]..sort();
+
   ConverterRegistry([Map<String, Converter>? custom])
       : _converters = {...builtinConverters, if (custom != null) ...custom};
 

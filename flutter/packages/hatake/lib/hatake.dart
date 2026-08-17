@@ -17,6 +17,7 @@ export 'src/runtime/export_sink.dart';
 export 'src/runtime/form_controller.dart';
 export 'src/runtime/hatake_router.dart';
 export 'src/runtime/list_controller.dart';
+export 'src/runtime/registry_snapshot.dart';
 export 'src/runtime/report_controller.dart';
 export 'src/runtime/repository_registry.dart';
 export 'src/runtime/sub_table_controller.dart';

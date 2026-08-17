@@ -100,4 +100,15 @@ class ValidatorRegistry {
   void register(String type, ValidatorFn fn) => _validators[type] = fn;
 
   bool contains(String type) => _validators.containsKey(type);
+
+  /// アプリが足した検証の名前だけ（組み込みは除く）。実行時に「何を登録したか」を
+  /// 吐くために使う（`registrySnapshot`）。組み込みは突き合わせ側が知っているので、
+  /// ここに混ぜると一覧が無駄に太り、組み込みが増えるたびに古くなる。
+  List<String> get customKeys {
+    final builtin = builtinValidators().keys.toSet();
+    return [
+      for (final key in _validators.keys)
+        if (!builtin.contains(key)) key,
+    ]..sort();
+  }
 }

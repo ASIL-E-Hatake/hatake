@@ -47,4 +47,8 @@ class ActionRegistry {
   void register(String key, ActionHandler handler) => _handlers[key] = handler;
 
   bool contains(String key) => _handlers.containsKey(key);
+
+  /// 登録されているプラグインの名前。組み込みのプラグインアクションは無いので、
+  /// 全部がアプリの登録（`registrySnapshot` が使う）。
+  List<String> get customKeys => _handlers.keys.toList()..sort();
 }

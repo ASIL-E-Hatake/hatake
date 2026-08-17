@@ -65,6 +65,12 @@ final Map<String, ComputedFn> builtinComputeds = {
 class ComputedRegistry {
   final Map<String, ComputedFn> _ops;
 
+  /// アプリが足した計算の名前だけ（組み込みは除く）。
+  List<String> get customKeys => [
+        for (final key in _ops.keys)
+          if (!builtinComputeds.containsKey(key)) key,
+      ]..sort();
+
   ComputedRegistry([Map<String, ComputedFn>? custom])
       : _ops = {...builtinComputeds, if (custom != null) ...custom};
 

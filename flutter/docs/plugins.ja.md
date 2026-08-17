@@ -121,3 +121,24 @@ HatakeScope(
   child: HatakeCrudView(definition: definition),
 );
 ```
+
+## 登録したものを、定義の検証に効かせる
+
+上のように登録した名前は、定義（YAML）が名指しする名前と**合っていないと黙って効かない**。
+`repository: customerRepository` と書いたのに登録名が違えば、画面は出るのにデータが来ない。
+
+`registrySnapshot` が「このアプリが実際に登録しているもの」を吐くので、それを定義の隣に
+置いておくと `hatake validate` が突き合わせてくれる。
+
+```dart
+// デバッグメニューやテストから1回呼べばよい。
+File('hatake-registry.json').writeAsStringSync(registrySnapshotJson(scope));
+```
+
+```bash
+npx hatake validate page.yaml            # 隣の hatake-registry.json を黙って拾う
+```
+
+出るのは**自分で足したものだけ**（組み込みは検証側が知っている）。ソースを読んで作る
+`npx hatake registry lib/main.dart` もあり、こちらはアプリを動かさずに済むが、
+**変数や関数から組み立てている登録は読めない**。動的に作っているなら `registrySnapshot` を使う。
