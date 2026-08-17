@@ -26,6 +26,8 @@ npx hatake pitfalls <key>         # common mistake → correct form
 npx hatake new <kind> --id <id> --title <title>   # crud/search/master/detail/form/wizard/dashboard/report
 npx hatake diff <old> <new>       # what a change breaks, and what to confirm
 npx hatake explain page.yaml      # read back what this screen does (Japanese)
+npx hatake explain page.yaml --brief         # one-line summary (a table for an app)
+npx hatake explain --diff <old> <new>        # what changed, in the screen's own words
 npx hatake failures <key>         # real failures: what was written, what the tools said
 npx hatake refs page.yaml --needs-registration     # what the application must register
 npx hatake registry lib/main.dart --out hatake-registry.json  # what the application does register
@@ -35,6 +37,7 @@ An unknown key reports its location and the fix: `page.table.columns[0]: unknown
 It can also check **names the definition expects from outside**: a `repository:` or `plugin:` the application never registered renders a screen with no data, or a button that does nothing. `refs` lists what must be registered, `registry` reads what the application actually registers, and `validate --registry <file>` compares them (a `hatake-registry.json` next to the definition is picked up automatically). `registry` reads only the strings written at the registration site, so anything built from a variable is reported and exits 1 rather than being dropped — a dropped name would become a false "not registered" warning.
 **Validation only sees spelling and structure.** A condition pointing the wrong way, or the wrong field made required, passes everything — so read the definition back with `explain` (Japanese prose, no DSL key names) and compare it against what you were asked for. `failures` collects real incidents, **including the ones no tool catches**, each with a note on what a reviewer should look for.
 `diff` grades every change: breaking (callers break), caution (nothing breaks but a human should confirm — a column, button or option disappeared, permissions changed, a page or menu entry is gone), safe (additions). **Never pass over cautions silently.**
+**When reporting a change to a human, use `explain --diff`.** `diff` answers in machine terms (`ui / column-format-changed / …`); this one says it the way a reviewer reads it (「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」). Judgement (does it break) is `diff`; restating (what changed) is `explain --diff`, which never changes the exit code.
 
 ## Examples (copy them; all are schema-checked in CI)
 - [Customers / crud](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_master.yaml)

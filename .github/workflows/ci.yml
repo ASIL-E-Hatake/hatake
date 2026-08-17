@@ -78,7 +78,16 @@ jobs:
           # 定義を人の言葉に開く／実際に転んだ実例を引く（spec/ を実行時に探す経路）。
           node dist/cli.js explain ../spec/examples/sales_report.yaml
           node dist/cli.js explain ../spec/examples/sales_app.yaml --page order_search
+          # 1行の要約（README や PR 本文に貼る形）。app なら画面一覧の表。
+          node dist/cli.js explain ../spec/examples/customer_form.yaml --brief
+          node dist/cli.js explain ../spec/examples/sales_app.yaml --brief
+          # 同じ定義どうしなら「見え方は変わりません」。終了コードは変えない道具。
+          node dist/cli.js explain --diff ../spec/examples/sales_app.yaml ../spec/examples/sales_app.yaml
           node dist/cli.js failures unknown-repository
+          # 実例カタログの収穫。**同梱の例からは候補が出ない**こと（配っている定義が
+          # 汚れていない＝カタログに足すものが無い、が正しい状態）。
+          node dist/cli.js harvest ../spec/examples --min 1 | tee /tmp/harvest.log
+          grep -q '候補はありません' /tmp/harvest.log
           # 定義が外に要求しているもの（アプリ側で登録が要るもの）が引けること。
           node dist/cli.js refs ../spec/examples/sales_app.yaml --needs-registration
           # 実装から作る「登録済みのもの」の一覧が、コミットしてあるものと一致すること

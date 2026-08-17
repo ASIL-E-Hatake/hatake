@@ -345,14 +345,129 @@ describe("hatake explain", () => {
   it("ファイルは1つ", () => {
     expect(runCli(["explain"], fakeIo())).toBe(1);
   });
+
+  it("--brief は1行だけ（README や PR 本文に貼る形）", () => {
+    const io = fakeIo({ "page.yaml": GOOD });
+    expect(runCli(["explain", "page.yaml", "--brief"], io)).toBe(0);
+    expect(io.stdout).toHaveLength(1);
+    expect(io.stdout[0]).toContain(
+      "顧客マスタ（customer_master）… 検索＋一覧＋登録・修正・削除。",
+    );
+  });
+
+  it("--brief --json は数も返す", () => {
+    const io = fakeIo({ "page.yaml": GOOD });
+    expect(runCli(["explain", "page.yaml", "--brief", "--json"], io)).toBe(0);
+    const brief = JSON.parse(io.stdout.join("\n"));
+    expect(brief.counts).toEqual({
+      columns: 1,
+      sections: 1,
+      fields: 1,
+      required: 1,
+    });
+  });
+});
+
+describe("hatake explain --diff", () => {
+  const WITH_FORMAT = GOOD.replace(
+    "{ field: code, label: コード }",
+    "{ field: code, label: コード, format: mask }",
+  );
+
+  it("変更を画面の言葉で言う", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "b.yaml": WITH_FORMAT });
+    expect(runCli(["explain", "--diff", "a.yaml", "b.yaml"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("「コード」が変わりました");
+    expect(out).toContain("後: コード（一部を隠して見せる）");
+  });
+
+  it("変わっていなければそう言う（終了コードは変えない＝止める道具ではない）", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "b.yaml": GOOD });
+    expect(runCli(["explain", "--diff", "a.yaml", "b.yaml"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("見え方は変わりません。");
+  });
+
+  it("壊す変更でも終了コードは 0（後方互換の判定は hatake diff）", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "b.yaml": TIGHTENED_FOR_EXPLAIN });
+    expect(runCli(["explain", "--diff", "a.yaml", "b.yaml"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("hatake diff で見てください");
+  });
+
+  it("2ファイル要る", () => {
+    const io = fakeIo({ "a.yaml": GOOD });
+    expect(runCli(["explain", "--diff", "a.yaml"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("2つ指定");
+  });
+});
+
+/** 制約を厳しくした版（`diff` なら破壊的、`explain --diff` は見え方の話だけ）。 */
+const TIGHTENED_FOR_EXPLAIN = GOOD.replace(
+  "{ type: maxLength, value: 20 }",
+  "{ type: maxLength, value: 10 }",
+);
+
+describe("hatake harvest", () => {
+  const undeclared = (id: string) => `
+page:
+  type: crud
+  id: ${id}
+  title: 受注一覧
+  repository: orderRepository
+  key: orderNo
+  table:
+    rowActions: [edit, approve]
+    columns:
+      - { field: orderNo, label: 受注番号 }
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号, required: true }
+`;
+
+  const corpus = {
+    "defs/a.yaml": undeclared("a"),
+    "defs/b.yaml": undeclared("b"),
+    "defs/pubspec.yaml": "name: demo\n",
+  };
+
+  it("ディレクトリを走査して、繰り返し出た診断を候補として出す", () => {
+    const io = fakeIo(corpus);
+    expect(runCli(["harvest", "defs"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("走査: 定義 2 本（定義でないファイル 1 件は飛ばした）");
+    expect(out).toContain("# rowaction-not-declared  2 箇所 / 2 本");
+    expect(out).toContain("人が書く: why:");
+  });
+
+  it("カタログにある診断は候補にしない（重複を増やさない）", () => {
+    const io = fakeIo({ ...corpus, ...failureFiles });
+    expect(runCli(["harvest", "defs", "--spec", SPEC], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("候補はありません");
+    expect(out).toContain("rowaction-not-declared → invented-row-action");
+  });
+
+  it("--json は機械可読", () => {
+    const io = fakeIo(corpus);
+    expect(runCli(["harvest", "defs", "--json"], io)).toBe(0);
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.scanned).toBe(2);
+    expect(result.candidates[0].id).toBe("rowaction-not-declared");
+  });
+
+  it("読めない定義があれば終了コード 1（走査が不完全だと言う）", () => {
+    const io = fakeIo({ "defs/broken.yaml": "page:\n  type: crud\n\tbad\n" });
+    expect(runCli(["harvest", "defs"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("読めなかった定義が 1 件");
+  });
+
+  it("path 指定が要る", () => {
+    expect(runCli(["harvest"], fakeIo())).toBe(1);
+  });
 });
 
 describe("hatake failures", () => {
-  const failureFiles = {
-    ...specFiles,
-    [join(SPEC, "failures.json")]: readFileSync("../spec/failures.json", "utf8"),
-  };
-
   it("実例を「こう書いた → こう言われた → こう直す」で出す", () => {
     const io = fakeIo(failureFiles);
     expect(runCli(["failures", "unknown-repository", "--spec", SPEC], io)).toBe(0);
@@ -650,6 +765,12 @@ const specFiles = {
     "../spec/examples/index.json",
     "utf8",
   ),
+};
+
+/** 実例カタログつきの spec/（failures と harvest の両方で使う）。 */
+const failureFiles = {
+  ...specFiles,
+  [join(SPEC, "failures.json")]: readFileSync("../spec/failures.json", "utf8"),
 };
 
 describe("hatake reference", () => {

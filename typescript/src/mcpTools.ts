@@ -10,7 +10,10 @@ import { join } from "node:path";
 import { parse as parseYamlText } from "yaml";
 import { deriveDto } from "./dto.js";
 import { diffDefinitions } from "./defDiff.js";
-import { explainApp, explainPage, renderExplain } from "./explain.js";
+import { renderExplain } from "./explain.js";
+import { explainSource } from "./explainSource.js";
+import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
+import { briefSource, renderBrief } from "./explainBrief.js";
 import {
   collectRefs,
   type DefinitionRegistry,
@@ -25,7 +28,6 @@ import { parseAppYaml } from "./appParse.js";
 import {
   DefinitionParseError,
   describeUnknownKey,
-  parsePageJson,
   parsePageYaml,
   UnknownKeysError,
 } from "./parse.js";
@@ -74,6 +76,7 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 5. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
 6. バックエンドの形が要るなら hatake_api_shape
 7. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
+   直した内容を人に伝えるときは hatake_explain に before を渡す（変更を画面の言葉で言い直す）
 8. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグインの一覧）
 
 原則: Flutter の Widget や API のコードを手で書かず、定義を書く。定義に無い機能は
@@ -384,7 +387,10 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "strict もスキーマも警告も、綴りと構造しか見ない。『条件の向きを間違えた』『意図と違う項目を必須にした』" +
         "『枠の条件と噛み合わない条件を書いた』は全部通るので、機械では拾えない。" +
         "説明を読み返して、頼まれたことと違っていたら直す。人に見せてレビューしてもらう出力としても使える" +
-        "（読み手は DSL を知らなくてよい）。app: を渡すと画面の一覧とメニュー、page に id を渡すとその1枚を詳しく。",
+        "（読み手は DSL を知らなくてよい）。app: を渡すと画面の一覧とメニュー、page に id を渡すとその1枚を詳しく。" +
+        "**既にある定義を直したときは before に直す前を渡す**＝変更を画面の言葉で言い直す" +
+        "（人に「何を変えたか」を伝えるのはこの出力。hatake_diff は壊れるかどうかの判定で、両方要る）。" +
+        "brief を true にすると1行だけ（画面一覧・要約・PR 本文に貼る用）。",
       inputSchema: {
         type: "object",
         properties: {
@@ -392,50 +398,32 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             type: "string",
             description: "定義の中身そのもの（page: でも app: でも可）。",
           },
+          before: {
+            type: "string",
+            description:
+              "直す前の定義。渡すと source との差を画面の言葉で言う（同じ種類同士で）。",
+          },
           page: {
             type: "string",
             description: "app: のとき、その1枚だけを詳しく説明する（ページ id）。",
+          },
+          brief: {
+            type: "boolean",
+            description: "1行の要約だけを返す（既定 false）。",
           },
         },
         required: ["source"],
       },
       run(args) {
         const source = required(args, "source");
-        const wanted = str(args, "page");
-        const raw = parseYamlText(source) as Record<string, unknown>;
-        if (/^\s*app\s*:/m.test(source)) {
-          const app = parseAppYaml(source, { strict: true });
-          if (wanted === undefined) return renderExplain(explainApp(app));
-          const pages = Array.isArray((raw.app as Record<string, unknown>)?.pages)
-            ? ((raw.app as Record<string, unknown>).pages as unknown[])
-            : [];
-          const found = pages.find(
-            (p) =>
-              typeof p === "object" &&
-              p !== null &&
-              (p as Record<string, unknown>).id === wanted,
-          );
-          if (found === undefined) {
-            throw new Error(
-              `ページ "${wanted}" はこの app にありません（${app.pages
-                .map((p) => p.id)
-                .join(" / ")}）。`,
-            );
-          }
-          const one = found as Record<string, unknown>;
-          return renderExplain(
-            explainPage(
-              parsePageJson(JSON.stringify({ page: one }), { strict: true }),
-              one,
-            ),
-          );
+        const before = str(args, "before");
+        if (before !== undefined) {
+          return renderExplainDiff(explainDiffSources(before, source));
         }
-        return renderExplain(
-          explainPage(
-            parsePageYaml(source, { strict: true }),
-            (raw.page ?? {}) as Record<string, unknown>,
-          ),
-        );
+        const page = str(args, "page");
+        return args.brief === true
+          ? renderBrief(briefSource(source, { page }))
+          : renderExplain(explainSource(source, { page }));
       },
     },
     {

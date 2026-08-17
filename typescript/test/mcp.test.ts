@@ -360,6 +360,28 @@ describe("hatake_explain", () => {
     expect(missing.isError).toBe(true);
     expect(missing.text).toContain("order_search");
   });
+
+  it("before を渡すと、変更を画面の言葉で言い直す", () => {
+    const after = source.replace("label: コード", "label: 顧客コード");
+    const text = call("hatake_explain", { source: after, before: source }).text;
+    expect(text).toContain("「コード」が無くなりました");
+    expect(text).toContain("「顧客コード」が増えました");
+    // 後方互換の判定はしないと、出力そのものが言う。
+    expect(text).toContain("hatake diff");
+  });
+
+  it("brief なら1行だけ（画面一覧や要約に貼る）", () => {
+    const text = call("hatake_explain", { source, brief: true }).text;
+    expect(text.split("\n")).toHaveLength(1);
+    expect(text).toContain("顧客マスタ（customer_master）…");
+  });
+
+  it("brief は app なら画面一覧の表になる", () => {
+    const app = readFileSync("../spec/examples/sales_app.yaml", "utf8");
+    const text = call("hatake_explain", { source: app, brief: true }).text;
+    expect(text).toContain("画面 8 枚");
+    expect(text).toContain("order_search");
+  });
 });
 
 describe("hatake_refs", () => {
