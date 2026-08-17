@@ -21,6 +21,7 @@ import { parse as parseYamlText } from "yaml";
 import { type DefinitionWarning, findWarnings } from "./warnings.js";
 import {
   CATALOG_PATH,
+  FAILURES_FILE,
   findSpecDir,
   PITFALLS_FILE,
   SCHEMA_FILE,
@@ -32,7 +33,13 @@ import {
   pitfallsForKeys,
   snippet,
 } from "./pitfalls.js";
+import {
+  describeFailure,
+  type FailureCatalog,
+  filterFailures,
+} from "./failures.js";
 import { deriveDto } from "./dto.js";
+import { explainApp, explainPage, renderExplain } from "./explain.js";
 import { diffDefinitions, type DefinitionChange } from "./defDiff.js";
 import {
   collectRefs,
@@ -51,6 +58,7 @@ import { toOpenApi } from "./openApi.js";
 import { type PageDefinition } from "./definition.js";
 import {
   DefinitionParseError,
+  parsePageJson,
   parsePageYaml,
   UnknownKeysError,
   describeUnknownKey,
@@ -111,6 +119,11 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       辻褄（Repository / プラグイン / 独自の型の名前）も見る。省略しても
       定義の隣の hatake-registry.json があれば拾う。
 
+  hatake explain <file> [--page <id>] [--json]
+      定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人が、AI に
+      書かせた定義をレビューするための出力。app: を渡すと画面の一覧とメニュー、
+      --page でその1枚を詳しく。
+
   hatake registry <path...> [--json] [--out file]
       アプリの実装を読んで「登録済みのもの」の一覧を作る（validate --registry に
       渡す形）。path はファイルでもディレクトリでもよい。**その場に書いてある
@@ -148,6 +161,10 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
 
   hatake examples [query] [--json]
       例のカタログ（やりたいこと → 例）。query で絞り込む。
+
+  hatake failures [query] [--json]
+      実際に定義を書いて転んだ実例（こう書いた → こう言われた → こう直した）。
+      「なぜそう書いてしまうか」も持つ。機械では拾えない件も載っている。
 
   hatake pitfalls [query] [--json] [--lang ja|en]
       よくある間違い → 正しい書き方の対照表。validate も未知キーからこれを引く。
@@ -262,6 +279,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return refs(positional, flags, io);
       case "registry":
         return registry(positional, flags, io);
+      case "explain":
+        return explain(positional, flags, io);
       case "types":
         return types(positional, flags, io);
       case "new":
@@ -272,6 +291,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return examples(positional, flags, io);
       case "pitfalls":
         return pitfalls(positional, flags, io);
+      case "failures":
+        return failures(positional, flags, io);
       default:
         io.err(`知らないコマンド "${command}" です。--help を見てください。`);
         return 1;
@@ -384,6 +405,67 @@ function loadRegistry(
     }
   }
   return undefined;
+}
+
+/**
+ * 定義を人の言葉に開く。
+ *
+ * 生成系と同じく strict で読む（書き間違いのある定義を説明すると、書いていない
+ * つもりの機能まで説明してしまう）。
+ */
+function explain(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("説明する定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const source = io.readFile(files[0]);
+  const isApp = /^\s*app\s*:/m.test(source);
+  const wanted = str(flags, "page");
+  const raw = parseYamlText(source) as Record<string, unknown>;
+
+  let document;
+  if (isApp) {
+    const app = parseAppYaml(source, { strict: true });
+    if (wanted === undefined) {
+      document = explainApp(app);
+    } else {
+      // app の中の1枚。素の定義から該当ページだけ取り出して読み直す。
+      const pages = Array.isArray((raw.app as Record<string, unknown>)?.pages)
+        ? ((raw.app as Record<string, unknown>).pages as unknown[])
+        : [];
+      const found = pages.find(
+        (p) =>
+          typeof p === "object" &&
+          p !== null &&
+          (p as Record<string, unknown>).id === wanted,
+      );
+      if (found === undefined) {
+        io.err(
+          `ページ "${wanted}" はこの app にありません（${app.pages
+            .map((p) => p.id)
+            .join(" / ")}）。`,
+        );
+        return 1;
+      }
+      const one = found as Record<string, unknown>;
+      document = explainPage(
+        parsePageJson(JSON.stringify({ page: one }), { strict: true }),
+        one,
+      );
+    }
+  } else {
+    document = explainPage(
+      parsePageYaml(source, { strict: true }),
+      (raw.page ?? {}) as Record<string, unknown>,
+    );
+  }
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(document, null, 2));
+    return 0;
+  }
+  io.out(renderExplain(document));
+  return 0;
 }
 
 /**
@@ -775,6 +857,32 @@ function examples(
 }
 
 /** よくある間違いの対照表。書く前に眺めるのと、落ちた後に引くのの両方に使う。 */
+/** 実際に転んだ実例。書く前に眺めるのにも、落ちてから引くのにも使う。 */
+function failures(
+  positional: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const catalog = readSpec(flags, io, FAILURES_FILE);
+  if (catalog === null) return 1;
+  const query = positional[0];
+  const found = filterFailures(catalog as FailureCatalog, query);
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(found, null, 2));
+    return found.length === 0 ? 1 : 0;
+  }
+  if (found.length === 0) {
+    io.err(`"${query}" に近い実例は載っていません。`);
+    return 1;
+  }
+  for (const failure of found) {
+    io.out(describeFailure(failure));
+    io.out("");
+  }
+  return 0;
+}
+
 function pitfalls(
   positional: string[],
   flags: Args["flags"],

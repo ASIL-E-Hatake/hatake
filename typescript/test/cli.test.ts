@@ -319,6 +319,62 @@ describe("hatake diff", () => {
   });
 });
 
+describe("hatake explain", () => {
+  it("何をする画面かを日本語で出す", () => {
+    const io = fakeIo({ "page.yaml": GOOD });
+    expect(runCli(["explain", "page.yaml"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("顧客マスタ（customer_master）—");
+    expect(out).toContain("データの出どころは customerRepository");
+  });
+
+  it("--json は構造で返す（見出しと行）", () => {
+    const io = fakeIo({ "page.yaml": GOOD });
+    expect(runCli(["explain", "page.yaml", "--json"], io)).toBe(0);
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.headline).toContain("顧客マスタ");
+    expect(Array.isArray(result.sections)).toBe(true);
+  });
+
+  it("書き間違いのある定義は説明しない（常に strict で読む）", () => {
+    const io = fakeIo({ "page.yaml": WITH_TYPOS });
+    expect(runCli(["explain", "page.yaml"], io)).toBe(1);
+    expect(io.err ? io.stderr.join("\n") : "").toContain("witdh");
+  });
+
+  it("ファイルは1つ", () => {
+    expect(runCli(["explain"], fakeIo())).toBe(1);
+  });
+});
+
+describe("hatake failures", () => {
+  const failureFiles = {
+    ...specFiles,
+    [join(SPEC, "failures.json")]: readFileSync("../spec/failures.json", "utf8"),
+  };
+
+  it("実例を「こう書いた → こう言われた → こう直す」で出す", () => {
+    const io = fakeIo(failureFiles);
+    expect(runCli(["failures", "unknown-repository", "--spec", SPEC], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("なぜそう書くか:");
+    expect(out).toContain("道具が言うこと: unknown-repository");
+  });
+
+  it("--json は機械可読", () => {
+    const io = fakeIo(failureFiles);
+    expect(runCli(["failures", "--json", "--spec", SPEC], io)).toBe(0);
+    const found = JSON.parse(io.stdout.join("\n"));
+    expect(found.length).toBeGreaterThan(0);
+    expect(found[0].why).toBeTypeOf("string");
+  });
+
+  it("当たらなければ終了コード 1", () => {
+    const io = fakeIo(failureFiles);
+    expect(runCli(["failures", "そんな間違いはない", "--spec", SPEC], io)).toBe(1);
+  });
+});
+
 describe("hatake registry", () => {
   const MAIN = `
 void main() {

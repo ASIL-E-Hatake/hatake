@@ -16,6 +16,9 @@ export const CATALOG_PATH = ["examples", "index.json"];
 /** よくある間違いの対照表。 */
 export const PITFALLS_FILE = "pitfalls.json";
 
+/** 実際に転んだ実例のカタログ（spec/ からの相対）。 */
+export const FAILURES_FILE = "failures.json";
+
 /**
  * spec/ ディレクトリを返す。[explicit] があればそこだけを見る。
  * 無ければ実行時のカレント → このモジュールの位置、の順に上へ辿る。

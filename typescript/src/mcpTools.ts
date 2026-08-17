@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { parse as parseYamlText } from "yaml";
 import { deriveDto } from "./dto.js";
 import { diffDefinitions } from "./defDiff.js";
+import { explainApp, explainPage, renderExplain } from "./explain.js";
 import {
   collectRefs,
   type DefinitionRegistry,
@@ -24,6 +25,7 @@ import { parseAppYaml } from "./appParse.js";
 import {
   DefinitionParseError,
   describeUnknownKey,
+  parsePageJson,
   parsePageYaml,
   UnknownKeysError,
 } from "./parse.js";
@@ -68,6 +70,7 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 2. 新規なら hatake_new_page で雛形を出す
 3. キーの型・既定値・書ける場所に迷ったら hatake_reference で引く（仕様書は読まなくていい）
 4. 書けたら必ず hatake_validate にかける（知らないキーは黙って捨てられるので、書いた気になって効いていない事故が起きる）
+   そのあと hatake_explain で読み返す（**書いたものが意図どおりか**は、警告では分からない）
 5. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
 6. バックエンドの形が要るなら hatake_api_shape
 7. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
@@ -371,6 +374,68 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           return parseYamlText(source) as Record<string, unknown>;
         };
         return pretty(diffDefinitions(documentOf("before"), documentOf("after")));
+      },
+    },
+    {
+      name: "hatake_explain",
+      title: "定義が何をする画面か説明する",
+      description:
+        "定義を「この画面は何をするか」に開いて返す（日本語）。**検証を通したあとに読み返す**ために使う。" +
+        "strict もスキーマも警告も、綴りと構造しか見ない。『条件の向きを間違えた』『意図と違う項目を必須にした』" +
+        "『枠の条件と噛み合わない条件を書いた』は全部通るので、機械では拾えない。" +
+        "説明を読み返して、頼まれたことと違っていたら直す。人に見せてレビューしてもらう出力としても使える" +
+        "（読み手は DSL を知らなくてよい）。app: を渡すと画面の一覧とメニュー、page に id を渡すとその1枚を詳しく。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description: "定義の中身そのもの（page: でも app: でも可）。",
+          },
+          page: {
+            type: "string",
+            description: "app: のとき、その1枚だけを詳しく説明する（ページ id）。",
+          },
+        },
+        required: ["source"],
+      },
+      run(args) {
+        const source = required(args, "source");
+        const wanted = str(args, "page");
+        const raw = parseYamlText(source) as Record<string, unknown>;
+        if (/^\s*app\s*:/m.test(source)) {
+          const app = parseAppYaml(source, { strict: true });
+          if (wanted === undefined) return renderExplain(explainApp(app));
+          const pages = Array.isArray((raw.app as Record<string, unknown>)?.pages)
+            ? ((raw.app as Record<string, unknown>).pages as unknown[])
+            : [];
+          const found = pages.find(
+            (p) =>
+              typeof p === "object" &&
+              p !== null &&
+              (p as Record<string, unknown>).id === wanted,
+          );
+          if (found === undefined) {
+            throw new Error(
+              `ページ "${wanted}" はこの app にありません（${app.pages
+                .map((p) => p.id)
+                .join(" / ")}）。`,
+            );
+          }
+          const one = found as Record<string, unknown>;
+          return renderExplain(
+            explainPage(
+              parsePageJson(JSON.stringify({ page: one }), { strict: true }),
+              one,
+            ),
+          );
+        }
+        return renderExplain(
+          explainPage(
+            parsePageYaml(source, { strict: true }),
+            (raw.page ?? {}) as Record<string, unknown>,
+          ),
+        );
       },
     },
     {

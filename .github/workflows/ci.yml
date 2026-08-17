@@ -75,6 +75,10 @@ jobs:
           node dist/cli.js examples 帳票
           node dist/cli.js pitfalls groupBy
           node dist/cli.js pitfalls groupBy --lang en
+          # 定義を人の言葉に開く／実際に転んだ実例を引く（spec/ を実行時に探す経路）。
+          node dist/cli.js explain ../spec/examples/sales_report.yaml
+          node dist/cli.js explain ../spec/examples/sales_app.yaml --page order_search
+          node dist/cli.js failures unknown-repository
           # 定義が外に要求しているもの（アプリ側で登録が要るもの）が引けること。
           node dist/cli.js refs ../spec/examples/sales_app.yaml --needs-registration
           # 実装から作る「登録済みのもの」の一覧が、コミットしてあるものと一致すること

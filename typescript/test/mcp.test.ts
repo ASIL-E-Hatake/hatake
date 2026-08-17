@@ -89,6 +89,7 @@ describe("MCP プロトコル", () => {
       "hatake_new_page",
       "hatake_pitfalls",
       "hatake_diff",
+      "hatake_explain",
       "hatake_refs",
       "hatake_api_shape",
     ]);
@@ -332,6 +333,32 @@ describe("hatake_diff", () => {
     const missing = call("hatake_diff", { before });
     expect(missing.isError).toBe(true);
     expect(missing.text).toContain("after は必須");
+  });
+});
+
+describe("hatake_explain", () => {
+  const source = readFileSync("../spec/examples/customer_master.yaml", "utf8");
+
+  it("何をする画面かを日本語で返す（キー名の羅列にしない）", () => {
+    const text = call("hatake_explain", { source }).text;
+    expect(text).toContain("検索して一覧に出し");
+    expect(text).toContain("データの出どころは customerRepository");
+    expect(text).not.toContain("visibleWhen");
+  });
+
+  it("app なら画面の一覧、page でその1枚", () => {
+    const app = readFileSync("../spec/examples/sales_app.yaml", "utf8");
+    expect(call("hatake_explain", { source: app }).text).toContain("メニュー");
+    expect(
+      call("hatake_explain", { source: app, page: "sales_report" }).text,
+    ).toContain("帳票の体裁");
+  });
+
+  it("無い page を指したら、在るものを言う", () => {
+    const app = readFileSync("../spec/examples/sales_app.yaml", "utf8");
+    const missing = call("hatake_explain", { source: app, page: "nope" });
+    expect(missing.isError).toBe(true);
+    expect(missing.text).toContain("order_search");
   });
 });
 

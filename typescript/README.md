@@ -44,6 +44,7 @@ npx hatake reference rowsPerPage             # このキー、どこに書くの
 npx hatake examples 帳票                      # 近い例を探す
 npx hatake refs page.yaml --needs-registration # アプリ側に何を登録すればいいか
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「登録済み」の一覧を作る
+npx hatake explain page.yaml                 # この定義、結局どういう画面？
 ```
 
 | コマンド | 何をするか |
@@ -60,6 +61,8 @@ npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「�
 | `reference [name] [--page-kind k]` | 機械可読な [DSL リファレンス](../spec/reference.json)（JSON）。`name` にキー名・ノード名・ページ種別を渡すとその1件だけ。綴り違いは候補を出す |
 | `examples [query] [--json]` | [例のカタログ](../spec/examples/README.md)を「やりたいこと」で引く |
 | `pitfalls [query] [--lang ja\|en]` | [よくある間違い](../spec/pitfalls.json) → なぜ駄目か → 正しい書き方。`validate` も未知キーからこれを引いてヒントを出す |
+| `failures [query]` | [実際に転んだ実例](../spec/failures.json)。こう書いた → こう言われた → こう直した。**なぜそう書いてしまうか**も持つ |
+| `explain <file> [--page id]` | 定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人がレビューするための出力 |
 
 `reference` / `examples` は `spec/` を実行時に探す（`--spec <dir>` で明示もできる）。
 リファレンスは**その場でスキーマから生成する**ので、古い写しを配ることがない。
@@ -182,6 +185,50 @@ OK   sales_app.yaml (app: 8 ページ)
 `--registry` を省いても、定義の隣（無ければカレント）に `hatake-registry.json` があれば黙って拾う
 （同梱のデモは [`flutter/packages/hatake_example/assets/hatake-registry.json`](../flutter/packages/hatake_example/assets/hatake-registry.json)）。
 
+### 書けたものを読み返す（`explain`）
+
+strict もスキーマも警告も、**綴りと構造しか見ない**。「条件の向きを間違えた」「意図と違う
+項目を必須にした」は全部通る。だから最後に人の言葉で読み返す。
+
+```
+$ npx hatake explain spec/examples/customer_form.yaml
+顧客入力（customer_form）— 1件を入力する画面（新規と編集の両方）
+
+## 基本情報
+  ・コード … 必須、新規のときだけ触れる、20 文字以内、保存前に整える（全角→半角・前後の空白を落とす）
+  ・区分 … 選択、必須、選べるのは 個人 / 法人
+  ・登録番号 … 区分 が 法人 のときだけ必須
+
+## 請求先（区分 が 法人 のときだけ出る枠）
+  ・請求先コード … 必須
+
+## この画面でできないこと
+  ・一覧は無い（開く先は呼び出し側が決める）
+```
+
+**キーの名前は出さない**（読み手は DSL を知らなくてよい）。条件は項目のラベルと選択肢の
+ラベルで言うので、`{ field: kind, value: corp }` ではなく「区分 が 法人 のとき」と読める。
+`app:` を渡すと画面の一覧とメニュー、`--page <id>` でその1枚を詳しく。
+
+### 実際に転んだ実例（`failures`）
+
+[対照表](../spec/pitfalls.json)は「人が考えた間違い」の集合で、AI が実際に転ぶ所とはズレる。
+そこで[実例のカタログ](../spec/failures.json)を分けてある。**各件は本当に道具にかけ直して、
+記録した診断と一致することを CI で確認している**（＝この表は嘘をつけないし、診断の質が落ちたら
+そこで落ちる）。
+
+```
+$ npx hatake failures unknown-repository
+# Repository の名前を、それらしく短くして書いた
+  なぜそう書くか: `orderRepository` を `orderRepo` と書く（あるいは逆）。定義だけ見れば筋が通っている…
+  道具が言うこと: unknown-repository
+  直し方: アプリが登録している名前をそのまま書く…
+```
+
+**機械では拾えない件も載っている**（診断が空の件）。載せないと「道具が万全である」という嘘に
+なるので、そういう件には「レビューでどこを見るか」を書いてある。だいたいの答えは
+「`explain` で読み返す」になる。
+
 ## MCP サーバ（`hatake-mcp`）
 
 AI エージェントに「仕様を引く・例を取る・検証する」をやらせるための MCP サーバも同梱。**依存ゼロで手書き**（stdio の JSON-RPC 2.0 で、必要なのは `initialize` / `tools/list` / `tools/call` だけなので）。
@@ -191,7 +238,7 @@ npm run build
 claude mcp add hatake -- node "$PWD/dist/mcp.js"      # Claude Code の場合
 ```
 
-道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_refs` / `hatake_api_shape` の8つで、CLI と同じ関数を呼んでいる（＝同じ答えになる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
+道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_explain` / `hatake_refs` / `hatake_api_shape` の9つで、CLI と同じ関数を呼んでいる（＝同じ答えになる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
 
 ## 開発（Docker）
 
