@@ -50,6 +50,8 @@ import {
   renderHarvest,
 } from "./harvest.js";
 import { minimizeSource, renderMinimize } from "./minimize.js";
+import { fixSource, renderFix } from "./fix.js";
+import { findAdvice, renderAdvice } from "./advise.js";
 import { diffDefinitions, type DefinitionChange } from "./defDiff.js";
 import {
   collectRefs,
@@ -153,6 +155,17 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       （変わるものは落とさない）。コメントはそのまま残す。既定は最小化した定義を
       標準出力に、落としたものは標準エラーに出す（--json で両方まとめて機械可読）。
 
+  hatake fix <file> [--write] [--json] [--registry hatake-registry.json]
+      **直し方が一意に決まる問題だけ**を直す（綴り違い・入れる値が決まっている指定）。
+      既定は直した定義を標準出力に出すだけで、ファイルは触らない（--write で上書き）。
+      1件ずつ当てて「問題が減る・新しい問題が出ない」ことを確かめ、崩れたら何もしない。
+      直さなかったものは**理由つきで**標準エラーに出す（意図が要るものは人の仕事）。
+
+  hatake advise <file> [--json]
+      **書き足したほうがいい所**を挙げる（並べ替えできる列が無い・絞り込みが無い・
+      誰でも消せる・金額に桁区切りが無い…）。これは助言で警告ではないので、
+      終了コードは変えない。「書いたのに効かない」は validate の担当。
+
   hatake registry <path...> [--json] [--out file]
       アプリの実装を読んで「登録済みのもの」の一覧を作る（validate --registry に
       渡す形）。path はファイルでもディレクトリでもよい。**その場に書いてある
@@ -219,6 +232,7 @@ const BOOLEAN_FLAGS = new Set([
   "diff",
   "brief",
   "repro",
+  "write",
   "no-strict",
   "no-warn",
   "warn-as-error",
@@ -317,6 +331,10 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return harvest(positional, flags, io);
       case "minimize":
         return minimize(positional, flags, io);
+      case "fix":
+        return fix(positional, flags, io);
+      case "advise":
+        return advise(positional, flags, io);
       case "types":
         return types(positional, flags, io);
       case "new":
@@ -587,6 +605,80 @@ function minimize(files: string[], flags: Args["flags"], io: CliIo): number {
     io.out(`書きました: ${out}`);
   }
   io.err(renderMinimize(result));
+  return 0;
+}
+
+/**
+ * 直し方が一意に決まる問題を直す。
+ *
+ * **既定ではファイルを触らない**（標準出力に出すだけ）。書き換える道具は、見せてから
+ * 当てるのが順番。`--write` のときだけ上書きし、何をしたかは必ず標準エラーに出す。
+ *
+ * 終了コードは「直せなかったものが残っているか」ではなく**直す前に問題があったか**で
+ * 決めない: 直したあとに残った問題があれば 1（CI で「まだ人の手が要る」と分かる）。
+ */
+function fix(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("直す定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const source = io.readFile(files[0]);
+  const result = fixSource(source, {
+    registry: loadRegistry(files[0], flags, io),
+  });
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+    return result.remaining.length > 0 ? 1 : 0;
+  }
+  if (flags.write === true) {
+    if (result.applied.length > 0) {
+      io.writeFile(files[0], result.source);
+      io.out(`書きました: ${files[0]}`);
+    } else {
+      io.out("書き換えるものはありませんでした。");
+    }
+  } else {
+    io.out(result.source.trimEnd());
+  }
+  io.err(renderFix(result));
+  // 直した所を画面の言葉で言えるなら添える（前後どちらも strict で読めるときだけ）。
+  if (result.applied.length > 0) {
+    try {
+      io.err("");
+      io.err(renderExplainDiff(explainDiffSources(source, result.source)));
+    } catch {
+      io.err(
+        "（直す前の定義は strict で読めないので、画面の言葉での差分は出せません）",
+      );
+    }
+  }
+  return result.remaining.length > 0 ? 1 : 0;
+}
+
+/**
+ * 書き足したほうがいい所を挙げる。
+ *
+ * **終了コードは always 0**。助言で CI を落とすと、助言が「守らせるもの」になって好みを
+ * 強制することになる。事実（書いたのに効かない）は `validate` の担当。
+ */
+function advise(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("助言する定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const source = io.readFile(files[0]);
+  const document = parseYamlText(source);
+  if (typeof document !== "object" || document === null) {
+    io.err("定義（map）として読めません。");
+    return 1;
+  }
+  const advice = findAdvice(document as Record<string, unknown>);
+  if (flags.json === true) {
+    io.out(JSON.stringify(advice, null, 2));
+    return 0;
+  }
+  io.out(renderAdvice(advice));
   return 0;
 }
 

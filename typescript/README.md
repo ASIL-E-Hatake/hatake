@@ -49,6 +49,8 @@ npx hatake explain page.yaml --brief         # 1行で（README や PR 本文に
 npx hatake explain --diff old.yaml page.yaml # 何を変えたのか、画面の言葉で
 npx hatake harvest definitions/              # 繰り返し転んでいる所を実例カタログの候補に
 npx hatake minimize page.yaml                # 既定値と同じ指定を落として短く（意味は変えない）
+npx hatake fix page.yaml                     # 直し方が一意な問題だけ直す（--write で上書き）
+npx hatake advise page.yaml                  # 書き足したほうがいい所（助言。警告ではない）
 ```
 
 | コマンド | 何をするか |
@@ -69,6 +71,8 @@ npx hatake minimize page.yaml                # 既定値と同じ指定を落と
 | `explain <file> [--page id]` | 定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人がレビューするための出力。`--brief` で1行だけ（`app:` なら画面一覧の表） |
 | `explain --diff <old> <new>` | 変更を**画面の言葉**で言う（「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」）。後方互換の判定はしない＝**終了コードは変えない**（それは `diff` の担当） |
 | `harvest <path...>` | 定義の山を走査して、**繰り返し出ている診断**を[実例カタログ](../spec/failures.json)の候補として出す（`--min` で回数、既定 2）。「なぜそう書いてしまうか」は機械には書けないので、人が書く欄は空のまま。`--repro` で**最小の再現**の下書きも作る。読めない定義があれば終了コード 1 |
+| `fix <file>` | **直し方が一意に決まる問題だけ**を直す（綴り違い・入れる値が決まっている指定）。既定は標準出力に出すだけで**ファイルは触らない**（`--write` で上書き）。直さなかったものは理由つきで標準エラーに。残った問題があれば終了コード 1 |
+| `advise <file>` | **書き足したほうがいい所**（並べ替えできる列が無い・絞り込みが無い・誰でも消せる…）。助言なので**終了コードは変えない** |
 | `minimize <file>` | **意味を変えずに**短くする。既定値と同じ指定・空の指定を落とす。落とすたびに解析後のモデルが変わらないことを確かめる（変わるものは落とさない）。コメントも、落とした所以外の書き方もそのまま。定義は標準出力・落としたものは標準エラー |
 
 `reference` / `examples` / `minimize` は `spec/` を実行時に探す（`--spec <dir>` で明示もできる。
@@ -329,6 +333,77 @@ $ npx hatake harvest definitions/
 （先に置き換えると、ラベルに依る診断があったときに嘘の再現になる）。**識別子は残る**ので、
 そこは人が見る（候補の `todo` にそう書いてある）。出力に定義の本文が入るので**既定では作らない**。
 
+### 一意な直しは機械にやらせる（`fix`）
+
+AI は指摘されると**別の場所を直して壊す**ことがある。「`witdh` は知らないキーです」と言われて
+列ごと書き換える、というような直し方をする。綴り違いのような**一意な直しは機械のほうが速くて
+安全**なので、そこは道具に任せる。
+
+```
+$ npx hatake fix page.yaml
+2 件を直しました:
+  page.table.columns[0].witdh のキー名を width に直しました
+  page.table.rowActions[1] を "aprove" から "approve" に直しました
+
+直さなかったもの（意図が要るので人の仕事です）:
+  page.repository [unknown-repositories] 登録済みの名前に近いものがありません（"zzz"）。名前を決めるのは人の仕事です。
+
+残っている問題 1 件: unknown-repository
+```
+
+直すのは2種類だけ。
+
+* **綴り違い** … キー名・Repository / プラグイン / 型 / ページ id / アクション id / 連動の親。
+  近い名前が**1つに決まる**ときだけ（候補が2つあれば人の仕事）。登録済み一覧を渡せば、
+  **略して書いた名前**（`orderRepository` を `orderRepo`）も戻せる
+* **入れる値が決まっている指定** … 小計のある帳票に `report.sort` を足す（並べる項目は
+  `groupBy` から決まる）
+
+確かめ方は**診断で守る**（最小化がモデルの一致で守るのに対して）。1件ずつ当てて「問題が減る・
+**新しい問題が出ない**」ことを見て、当て終わった文字列をもう一度読んで同じことを確かめる。
+崩れていたら**何もしない**。
+
+* **既定ではファイルを触らない**（標準出力に出すだけ）。書き換える道具は、見せてから当てる
+  のが順番。`--write` のときだけ上書きする
+* 直したあとは、変更を[画面の言葉](#何を変えたのかを読み返すexplain---diff)でも言う
+  （前後どちらも strict で読めるときだけ）
+* **直さなかったものは理由つきで必ず出す。** 同じ項目の重複（どちらを残すか）・`field` の無い
+  集計（どの項目か）・条件で使えない演算子（何をしたかったか）は意図が要るので触らない
+* 残った問題があれば**終了コード 1**（CI で「まだ人の手が要る」と分かる）
+
+### 書き足したほうがいい所（`advise`）
+
+`minimize` は**書きすぎ**を直す。しかし業務システムで多いのは書きすぎより**書き足りない**。
+
+```
+$ npx hatake advise page.yaml
+書き足すと良さそうな所が 2 件:
+
+# page.search [no-search-filter]
+  こうなる: 絞り込みが無いので、一覧は毎回全件から始まります。件数が増えると使えません。
+  書き足す: `search.filters` に、現場が必ず使う条件（コード・名称・日付の範囲）。
+
+# page.actions[0].roles [open-dangerous-action]
+  こうなる: 「削除」は誰でも押せます（消したものは戻りません）。
+  書き足す: `roles` で見える人を決める（権限はアプリ側の判定と合わせて二重にかける）。
+```
+
+見るのは、並べ替えできる列が無い / 絞り込みが無い / キーが一覧に出ていない / 必須が1つも無い /
+消せる・持ち出せるのに権限が無い / 金額らしいのに桁区切りが無い / 明細に親のキーが無い /
+帳票に合計が無い、の8つ。
+
+**これは警告ではなく助言。** この2つは混ぜない:
+
+| | 中身 | CI |
+|---|---|---|
+| 警告（`validate`） | 書いたのに効かない。**事実** | 落としてよい（`--warn-as-error`） |
+| 助言（`advise`） | 書いていないから不便かもしれない。**好み** | 落とさない（終了コードを変えない） |
+
+混ぜると警告の信頼が落ちる（「hatake は好みを押し付ける」になった時点で誰も読まない）。
+画面の種別も見る（照会に「必須が無い」とは言わない・帳票に「並べ替えできない」とは言わない）。
+勧めるキーが**その場所に本当に書けるキーである**ことは、スキーマから作ったリファレンスで
+CI が確かめている（書けないキーを勧めるのは、間違いを教えるのと同じ）。
+
 ### 意味を変えずに短くする（`minimize`）
 
 AI に書かせた定義は冗長になる（`type: text`、`required: false`、`validators: []`）。冗長な定義は
@@ -365,7 +440,7 @@ npm run build
 claude mcp add hatake -- node "$PWD/dist/mcp.js"      # Claude Code の場合
 ```
 
-道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_explain` / `hatake_minimize` / `hatake_refs` / `hatake_api_shape` の10個で、CLI と同じ関数を呼んでいる（＝同じ答えになる）。`hatake_explain` は `before` を渡せば変更の言い直し、`brief: true` なら1行（道具を増やすより、同じ道具の引数で足りる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
+道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_explain` / `hatake_fix` / `hatake_minimize` / `hatake_refs` / `hatake_api_shape` の11個で、CLI と同じ関数を呼んでいる（＝同じ答えになる）。`hatake_explain` は `before` を渡せば変更の言い直し、`brief: true` なら1行（道具を増やすより、同じ道具の引数で足りる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
 
 ## 開発（Docker）
 

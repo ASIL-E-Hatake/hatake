@@ -32,6 +32,29 @@ const show = (path: Path): string =>
     .join("")
     .replace(/^\./, "");
 
+/** 道を文字列にする（`page.table.columns[0].label`）。警告と同じ書き方。 */
+export const pathText = (path: Path): string => show(path);
+
+/**
+ * 文字列の道を配列に戻す（`app.pages[2].table.rowActions[1]`）。
+ *
+ * 警告や差分は道を文字列で持っているので、そこを起点に定義を書き換えるには
+ * この逆変換が要る。[pathText] と対になっていること自体を試験で確かめている。
+ */
+export function parsePath(text: string): Path {
+  const path: Path = [];
+  for (const part of text.split(".")) {
+    if (part === "") continue;
+    const match = /^([^[\]]*)((\[\d+\])*)$/.exec(part);
+    if (match === null) return path;
+    if (match[1] !== "") path.push(match[1]);
+    for (const index of match[2].match(/\d+/g) ?? []) {
+      path.push(Number(index));
+    }
+  }
+  return path;
+}
+
 /**
  * 消せる場所を全部並べる。**深いものから、配列は後ろから**。
  *

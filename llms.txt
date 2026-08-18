@@ -13,7 +13,7 @@
 - [JSON Schema](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json): 定義の機械検証用（YAML に `# yaml-language-server: $schema=<この URL>` を書くと補完・検証が効く）
 
 ## MCP サーバ（対応クライアントならこれが一番速い）
-Claude Code / Claude Desktop などに繋ぐと、**このファイルを読まなくても**必要なときに仕様を引ける。道具は `hatake_reference`（キーを引く）/ `hatake_examples`（近い例を取る）/ `hatake_validate`（検証）/ `hatake_new_page`（雛形）/ `hatake_pitfalls`（よくある間違い）/ `hatake_diff`（直した影響）/ `hatake_explain`（書いた定義を日本語で読み返す・変更を言い直す）/ `hatake_minimize`（既定値と同じ指定を落として短く）/ `hatake_refs`（アプリ側に何を登録すればいいか）/ `hatake_api_shape`（API の形）。
+Claude Code / Claude Desktop などに繋ぐと、**このファイルを読まなくても**必要なときに仕様を引ける。道具は `hatake_reference`（キーを引く）/ `hatake_examples`（近い例を取る）/ `hatake_validate`（検証）/ `hatake_new_page`（雛形）/ `hatake_pitfalls`（よくある間違い）/ `hatake_diff`（直した影響）/ `hatake_explain`（書いた定義を日本語で読み返す・変更を言い直す）/ `hatake_fix`（一意な直しだけ機械にやらせる）/ `hatake_minimize`（既定値と同じ指定を落として短く）/ `hatake_refs`（アプリ側に何を登録すればいいか）/ `hatake_api_shape`（API の形）。
 - 入れ方: [MCP ガイド](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/mcp.ja.md)（`claude mcp add hatake -- node <repo>/typescript/dist/mcp.js`）
 
 ## 書いた定義を検証する（CLI）
@@ -28,6 +28,8 @@ npx hatake failures <キー名>       # 実際に転んだ実例（なぜそう�
 npx hatake explain page.yaml       # この定義は何をする画面か（日本語で読み返す）
 npx hatake explain page.yaml --brief        # 1行の要約（app なら画面一覧の表）
 npx hatake explain --diff <前> <後>          # 何を変えたのか、画面の言葉で（人への報告用）
+npx hatake fix page.yaml           # 綴り違いなど**一意な直し**だけ機械にやらせる（--write で上書き）
+npx hatake advise page.yaml        # 書き足したほうがいい所（助言。警告ではない）
 npx hatake minimize page.yaml      # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake diff <前> <後>          # 既にある定義を直したとき：契約・画面・権限・アプリ構成への影響
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか（Repository / プラグイン名）

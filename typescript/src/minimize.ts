@@ -13,21 +13,16 @@
 // なぜモデルで見るか: 意味は解析後のモデルが持っている。パーサの既定値がスキーマと
 // 食い違っていた場合、この門は**落とすのをやめる**側に倒れる（＝壊さない）。
 //
-// **落とす所だけを文字列から切る**。Document を作り直して書き戻すと、コメントは残っても
-// 折り返しや空白が全部変わって差分が読めなくなる（改行コードも変わる）。最小化の目的は
-// レビューを軽くすることなので、出力は「落とした行が消えただけ」でなければ意味がない。
+// **落とす所だけを文字列から切る**（位置の出し方は yamlSpans.ts）。Document を作り直して
+// 書き戻すと、コメントは残っても折り返しや空白が全部変わって差分が読めなくなる（改行
+// コードも変わる）。最小化の目的はレビューを軽くすることなので、出力は「落とした行が
+// 消えただけ」でなければ意味がない。
 //
 // 切ったあとに**もう一度読んでモデルが一致すること**を確かめる。合わなければ何も返さずに
 // 落とす（壊れた定義を書き出すより、最小化しないほうが良い）。
 
-import {
-  isMap,
-  isScalar,
-  type Node,
-  parseDocument,
-  parse as parseYamlText,
-  type Pair,
-} from "yaml";
+import { parseDocument, parse as parseYamlText } from "yaml";
+import { deleteSpanAt } from "./yamlSpans.js";
 import { parseAppMap, parseAppYaml } from "./appParse.js";
 import { parsePageMap, parsePageYaml } from "./parse.js";
 import { type DslReference } from "./reference.js";
@@ -179,7 +174,7 @@ function onePass(source: string, reference: DslReference): MinimizeResult {
   const document = parseDocument(source);
   const cuts: { at: [number, number]; dropped: Dropped }[] = [];
   for (const removal of result.removed) {
-    const span = spanOf(document, removal.path, source);
+    const span = deleteSpanAt(document, removal.path, source);
     if (span === null) continue; // 場所を文字列の上で特定できないものは触らない
     cuts.push({
       at: span,
@@ -231,76 +226,6 @@ function same(
   } catch {
     return false;
   }
-}
-
-/**
- * そのキーが文字列のどこからどこまでか。
- *
- * ブロックなら**行ごと**（前の字下げと後ろの改行まで。同じ行の後ろにコメントが付いて
- * いれば、それはそのキーの説明なので一緒に消す）。フローなら**その場だけ**を切って、
- * 続くカンマ（最後の要素なら前のカンマ）も落とす。
- */
-function spanOf(
-  document: ReturnType<typeof parseDocument>,
-  path: Path,
-  source: string,
-): [number, number] | null {
-  const pair = pairOf(document, path);
-  if (pair === null) return null;
-  const key = pair.pair.key as Node | null;
-  const value = pair.pair.value as Node | null;
-  const from = key?.range?.[0];
-  const to = value?.range?.[1] ?? key?.range?.[1];
-  if (from === undefined || to === undefined) return null;
-
-  const spaceBefore = (at: number): number => {
-    let start = at;
-    while (start > 0 && /[ \t]/.test(source[start - 1])) start--;
-    return start;
-  };
-
-  if (pair.flow) {
-    let end = to;
-    while (end < source.length && /[ \t]/.test(source[end])) end++;
-    if (source[end] === ",") {
-      end++;
-      while (end < source.length && /[ \t]/.test(source[end])) end++;
-      // 続きが次の行なら、行末に空白を残さないよう前の空白も一緒に切る。
-      return [/^\r?\n/.test(source.slice(end)) ? spaceBefore(from) : from, end];
-    }
-    // 最後の要素。前のカンマまで戻して切る。
-    let start = from;
-    while (start > 0 && /[ \t\r\n]/.test(source[start - 1])) start--;
-    if (source[start - 1] === ",") return [start - 1, to];
-    return [from, to];
-  }
-
-  // ブロック。行頭（字下げの先頭）から、行末の改行までを消す。
-  const start = spaceBefore(from);
-  // 改行の直後でなければ行頭ではない（想定外なので触らない）。CRLF も見る。
-  if (start > 0 && !/[\n\r]/.test(source[start - 1])) return null;
-  let end = to;
-  while (end < source.length && source[end] !== "\n") end++;
-  // 後ろに残るのが空白かコメントだけなら行ごと消せる。値らしきものが続くなら触らない。
-  if (!/^[ \t\r]*(#.*?)?\r?$/.test(source.slice(to, end))) return null;
-  return [start, Math.min(end + 1, source.length)];
-}
-
-/** その道にあるキーと値の組（と、フローの中かどうか）。 */
-function pairOf(
-  document: ReturnType<typeof parseDocument>,
-  path: Path,
-): { pair: Pair; flow: boolean } | null {
-  const parent =
-    path.length > 1 ? document.getIn(path.slice(0, -1), true) : document.contents;
-  if (!isMap(parent)) return null;
-  const name = path[path.length - 1];
-  for (const item of parent.items) {
-    if (isScalar(item.key) && item.key.value === name) {
-      return { pair: item, flow: parent.flow === true };
-    }
-  }
-  return null;
 }
 
 const countLines = (text: string): number => text.trimEnd().split("\n").length;

@@ -93,6 +93,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 | `hatake_pitfalls` | よくある間違い → なぜ駄目か → 正しい書き方。書く前に眺める / 落ちて直せないとき | `query`、`lang`（ja/en） |
 | `hatake_diff` | **既にある定義を直したとき**：契約（api）を壊すか＋画面・権限・アプリ構成の**確かめてほしい**変化 | `before`、`after` |
 | `hatake_explain` | **検証を通したあと**：書いた定義が何をする画面かを日本語で読み返す（意図と違っていないか）。直したものを人に伝えるときは `before` も渡す | `source`、`before`（直す前＝変更を画面の言葉で言い直す）、`page`（app のとき1枚だけ）、`brief`（1行だけ） |
+| `hatake_fix` | **検証で問題が出たとき**：直し方が一意なものだけ直す（綴り違い・入れる値が決まっている指定）。直さなかったものは理由つきで返る | `source`、`registry` |
 | `hatake_minimize` | 定義が長くなったとき：**既定値と同じ指定・空の指定**を落として短くする（意味は変えない） | `source` |
 | `hatake_refs` | アプリに組み込むとき：定義が要求している Repository / プラグイン名などの一覧 | `source` |
 | `hatake_api_shape` | 同じ定義から API の形（DtoSpec / JSON Schema / OpenAPI 3.1 / TS / Java） | `source`、`format`、`basePath`、`package` |
@@ -103,7 +104,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 1. hatake_examples で近い例を探す
 2. 新規なら hatake_new_page で雛形
 3. 迷ったキーだけ hatake_reference で引く
-4. 書けたら必ず hatake_validate → hatake_explain で読み返す
+4. 書けたら必ず hatake_validate → 問題が出たら hatake_fix → hatake_explain で読み返す
 5. 直し方が分からない / 書く前に落とし穴を知りたいときは hatake_pitfalls
 6. バックエンドの形が要るなら hatake_api_shape
 7. 既にある定義を直したときは hatake_diff（壊していないか・確かめてほしい変化はないか）
@@ -119,6 +120,8 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 `hatake_diff` は変更を **area**（api / ui / access / app）と **impact**（breaking / caution / safe）で返します。`compatible: false` は呼び出し側の修正が要る話、`quiet: false` は「壊れないが人に確かめてほしい」話（列やボタンや選択肢が消えた・権限が変わった・ページやメニューが消えた）。エージェントには**後者を黙って進めず列挙させる**ようにしてあります。
 
 `hatake_refs` → `hatake_validate` の `registry` は繋がっています。前者が「何を登録すればいいか」を出し、それを人が確かめて後者に渡すと、名前の食い違いを機械で拾えます。
+
+`hatake_fix` は「指摘を読んで自分で直す」の失敗を減らす道具です。エージェントは指摘されると**別の場所を触って壊す**ことがあるので、綴り違いのような一意な直しは機械にやらせます。直したものと**直さなかったもの（理由つき）**の両方が返るので、後者だけを自分で考えて直させるのが速い。`registry` を渡すと、略して書いた Repository 名（`orderRepository` を `orderRepo`）も戻します。
 
 `hatake_minimize` は「短くする」道具ですが、狙いは**次に読む側**です。AI が生成した定義は既定値をわざわざ書きがちで、そのぶんレビューが重くなり、次に AI が読むときのコンテキストも太ります。落とすたびに解析後のモデルが変わらないことを確かめているので、意味は変わりません（変わるものは落とさない）。コメントも、落とした所以外の書き方もそのまま残ります。
 

@@ -90,6 +90,7 @@ describe("MCP プロトコル", () => {
       "hatake_pitfalls",
       "hatake_diff",
       "hatake_explain",
+      "hatake_fix",
       "hatake_minimize",
       "hatake_refs",
       "hatake_api_shape",
@@ -334,6 +335,58 @@ describe("hatake_diff", () => {
     const missing = call("hatake_diff", { before });
     expect(missing.isError).toBe(true);
     expect(missing.text).toContain("after は必須");
+  });
+});
+
+describe("hatake_fix", () => {
+  const typos = `page:
+  type: crud
+  id: order_list
+  title: 受注一覧
+  repository: orderRepository
+  key: orderNo
+  table:
+    rowActions: [edit, aprove]
+    columns:
+      - { field: orderNo, label: 受注番号, witdh: 140 }
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号, required: true }
+  actions:
+    - { id: approve, type: plugin, plugin: approveOrder, label: 承認 }
+`;
+
+  it("綴り違いを直して、直したものを返す", () => {
+    const result = json(call("hatake_fix", { source: typos }).text);
+    expect(result.source).toContain("width: 140");
+    expect(result.source).toContain("[edit, approve]");
+    expect(result.applied).toHaveLength(2);
+    expect(result.remaining).toEqual([]);
+  });
+
+  it("registry を渡すと、アプリ側の登録名との食い違いも直す", () => {
+    const result = json(
+      call("hatake_fix", {
+        source: typos.replace("orderRepository", "orderRepo"),
+        registry: { repositories: ["orderRepository"] },
+      }).text,
+    );
+    expect(result.source).toContain("repository: orderRepository");
+  });
+
+  it("直さなかったものは理由つきで返す（そこは AI の仕事）", () => {
+    const ambiguous = `page:
+  type: dashboard
+  id: sales_dashboard
+  title: 売上
+  repository: orderRepository
+  items:
+    - { id: total, type: metric, title: 売上合計, value: { aggregate: sum } }
+`;
+    const result = json(call("hatake_fix", { source: ambiguous }).text);
+    expect(result.applied).toEqual([]);
+    expect(result.remaining).toEqual(["aggregate-without-field"]);
   });
 });
 

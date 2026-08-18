@@ -15,6 +15,7 @@ import { explainSource } from "./explainSource.js";
 import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
 import { briefSource, renderBrief } from "./explainBrief.js";
 import { minimizeSource } from "./minimize.js";
+import { fixSource } from "./fix.js";
 import {
   collectRefs,
   type DefinitionRegistry,
@@ -73,6 +74,7 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 2. 新規なら hatake_new_page で雛形を出す
 3. キーの型・既定値・書ける場所に迷ったら hatake_reference で引く（仕様書は読まなくていい）
 4. 書けたら必ず hatake_validate にかける（知らないキーは黙って捨てられるので、書いた気になって効いていない事故が起きる）
+   問題が出たら hatake_fix に通す（綴り違いのような**一意な直し**は自分で書き直さない。別の所を壊す）
    そのあと hatake_explain で読み返す（**書いたものが意図どおりか**は、警告では分からない）
 5. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
 6. バックエンドの形が要るなら hatake_api_shape
@@ -426,6 +428,43 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         return args.brief === true
           ? renderBrief(briefSource(source, { page }))
           : renderExplain(explainSource(source, { page }));
+      },
+    },
+    {
+      name: "hatake_fix",
+      title: "直し方が一意な問題を直す",
+      description:
+        "定義の問題のうち、**直し方が1つに決まるものだけ**を直して返す。" +
+        "hatake_validate が problems / warnings を返したら、まずこれに通す" +
+        "（指摘を読んで自分で書き直すと、**別の場所を触って壊しがち**）。" +
+        "直すのは綴り違い（キー名・Repository / プラグイン / 型 / ページ id / アクション id）と、" +
+        "入れる値が決まっている指定（小計のある帳票に report.sort を足す）。" +
+        "**直さなかったものは skipped に理由つきで入る**＝そこは意図が要るので、自分で考えて直す。" +
+        "registry を渡すと、アプリ側の登録名との食い違い（略して書いた名前を含む）も直す。" +
+        "1件ずつ当てて「問題が減る・新しい問題が出ない」ことを確かめているので、通したあとに" +
+        "壊れていることはない。remaining が空でなければ、まだ人（AI）の仕事が残っている。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description: "定義の中身そのもの（page: でも app: でも可）。",
+          },
+          registry: {
+            type: "object",
+            description:
+              "アプリ側で登録済みのものの一覧（hatake_refs の出力をそのまま渡せる）。" +
+              "渡すと Repository / プラグイン名の食い違いも直す。",
+          },
+        },
+        required: ["source"],
+      },
+      run(args) {
+        const registry =
+          typeof args.registry === "object" && args.registry !== null
+            ? (args.registry as DefinitionRegistry)
+            : undefined;
+        return pretty(fixSource(required(args, "source"), { registry }));
       },
     },
     {
