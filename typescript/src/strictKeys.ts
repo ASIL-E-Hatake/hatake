@@ -237,6 +237,31 @@ export function closestKey(key: string, known: string[]): string | null {
   return best;
 }
 
+/**
+ * 「これしかない」と言える一番近い名前。無ければ null。
+ *
+ * [closestKey] との違いは**同点を許さない**こと。提案（「もしかして X ですか」）は
+ * 同点でも1つ選んでよいが、**書き換え**は候補が2つある時点で機械の仕事ではない
+ * （`aprove` に対して `approve` と `improve` が同距離なら、人が選ぶ）。
+ */
+export function soleClosestKey(key: string, known: string[]): string | null {
+  const lower = key.toLowerCase();
+  let best: string | null = null;
+  let bestDistance = 3;
+  let ties = 0;
+  for (const candidate of known) {
+    const distance = editDistance(lower, candidate.toLowerCase());
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = candidate;
+      ties = 1;
+    } else if (distance === bestDistance && candidate !== best) {
+      ties++;
+    }
+  }
+  return ties === 1 ? best : null;
+}
+
 /** Levenshtein 距離（2行だけ持つ素直な実装）。 */
 function editDistance(a: string, b: string): number {
   if (a === b) return 0;

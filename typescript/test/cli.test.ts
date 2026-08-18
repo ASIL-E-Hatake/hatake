@@ -542,6 +542,123 @@ page:
   });
 });
 
+describe("hatake fix", () => {
+  const TYPOS = `page:
+  type: crud
+  id: order_list
+  title: 受注一覧
+  repository: orderRepository
+  key: orderNo
+  table:
+    rowActions: [edit, aprove]
+    columns:
+      - { field: orderNo, label: 受注番号, witdh: 140 }
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号, required: true }
+  actions:
+    - { id: approve, type: plugin, plugin: approveOrder, label: 承認 }
+`;
+
+  it("直した定義は標準出力、何をしたかは標準エラー", () => {
+    const io = fakeIo({ "page.yaml": TYPOS });
+    expect(runCli(["fix", "page.yaml"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("width: 140");
+    expect(io.stdout.join("\n")).toContain("[edit, approve]");
+    expect(io.stderr.join("\n")).toContain("2 件を直しました");
+  });
+
+  it("既定ではファイルを触らない（見せてから当てる）", () => {
+    const io = fakeIo({ "page.yaml": TYPOS });
+    runCli(["fix", "page.yaml"], io);
+    expect(io.written).toEqual({});
+  });
+
+  it("--write で上書きする", () => {
+    const io = fakeIo({ "page.yaml": TYPOS });
+    expect(runCli(["fix", "page.yaml", "--write"], io)).toBe(0);
+    expect(io.written["page.yaml"]).toContain("width: 140");
+    expect(io.stdout.join("\n")).toContain("書きました: page.yaml");
+  });
+
+  it("直しても残る問題があれば終了コード 1（まだ人の手が要る）", () => {
+    const io = fakeIo({
+      "page.yaml": TYPOS.replace(
+        "    - { id: approve, type: plugin, plugin: approveOrder, label: 承認 }",
+        `    - { id: approve, type: plugin, plugin: approveOrder, label: 承認 }
+    - { id: approve, type: plugin, plugin: approveOrder, label: 承認2 }`,
+      ),
+    });
+    expect(runCli(["fix", "page.yaml"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("残っている問題");
+  });
+
+  it("直せるものが無ければ、そう言って何も書かない", () => {
+    const io = fakeIo({ "page.yaml": GOOD });
+    expect(runCli(["fix", "page.yaml", "--write"], io)).toBe(0);
+    expect(io.written).toEqual({});
+    expect(io.stdout.join("\n")).toContain("書き換えるものはありませんでした");
+  });
+
+  it("--json は機械可読（直したもの・直さなかったもの・残り）", () => {
+    const io = fakeIo({ "page.yaml": TYPOS });
+    expect(runCli(["fix", "page.yaml", "--json"], io)).toBe(0);
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.applied).toHaveLength(2);
+    expect(result.remaining).toEqual([]);
+    expect(result.source).toContain("width: 140");
+  });
+
+  it("ファイルは1つ", () => {
+    expect(runCli(["fix"], fakeIo())).toBe(1);
+  });
+});
+
+describe("hatake advise", () => {
+  const THIN = `page:
+  type: crud
+  id: order_list
+  title: 受注一覧
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号, required: true }
+  actions:
+    - { id: remove, type: delete, label: 削除 }
+`;
+
+  it("書き足すと良さそうな所を出す", () => {
+    const io = fakeIo({ "page.yaml": THIN });
+    expect(runCli(["advise", "page.yaml"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("no-search-filter");
+    expect(out).toContain("open-dangerous-action");
+  });
+
+  it("助言では終了コードを変えない（好みを強制しない）", () => {
+    const io = fakeIo({ "page.yaml": THIN });
+    expect(runCli(["advise", "page.yaml"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("警告ではありません");
+  });
+
+  it("--json は機械可読", () => {
+    const io = fakeIo({ "page.yaml": THIN });
+    expect(runCli(["advise", "page.yaml", "--json"], io)).toBe(0);
+    const advice = JSON.parse(io.stdout.join("\n"));
+    expect(advice.map((one: { rule: string }) => one.rule)).toContain("no-search-filter");
+  });
+
+  it("ファイルは1つ", () => {
+    expect(runCli(["advise"], fakeIo())).toBe(1);
+  });
+});
+
 describe("hatake failures", () => {
   it("実例を「こう書いた → こう言われた → こう直す」で出す", () => {
     const io = fakeIo(failureFiles);

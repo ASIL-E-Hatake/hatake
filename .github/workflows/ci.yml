@@ -98,6 +98,40 @@ jobs:
           # 2度目は落とすものが無い（＝1回で終わる）。
           node dist/cli.js minimize /tmp/min.yaml 2>&1 >/dev/null | tee /tmp/min2.log
           grep -q '落とせる指定はありません' /tmp/min2.log
+          # 自動修復。綴り違い（キー名・行アクション）を入れた定義を直して、
+          # **直したものが警告ゼロで通る**こと。
+          cat > /tmp/typo.yaml <<'YAML'
+          page:
+            type: crud
+            id: order_list
+            title: 受注一覧
+            repository: orderRepository
+            key: orderNo
+            table:
+              rowActions: [edit, aprove]
+              columns:
+                - { field: orderNo, label: 受注番号, witdh: 140 }
+            form:
+              sections:
+                - fields:
+                    - { field: orderNo, label: 受注番号, required: true }
+            actions:
+              - { id: approve, type: plugin, plugin: approveOrder, label: 承認 }
+          YAML
+          # **綴り違いで**落ちていることを確かめる（「落ちれば何でもよい」にすると、
+          # YAML が壊れていても「想定どおり」に見えてしまう）。
+          if node dist/cli.js validate /tmp/typo.yaml 2>/tmp/typo.log; then
+            echo "綴り違いを検出できていない"; exit 1
+          fi
+          grep -q 'witdh' /tmp/typo.log
+          node dist/cli.js fix /tmp/typo.yaml > /tmp/fixed.yaml
+          node dist/cli.js validate --warn-as-error /tmp/fixed.yaml
+          # 同梱の例には直すものが無い（配っているものは健康）。
+          node dist/cli.js fix ../spec/examples/sales_app.yaml 2>&1 >/dev/null | tee /tmp/nofix.log
+          grep -q '直せるものはありませんでした' /tmp/nofix.log
+          # 助言。**終了コードを変えない**のが決めごと（好みを強制しない）。
+          node dist/cli.js advise ../spec/examples/sales_app.yaml
+          node dist/cli.js advise ../spec/examples/customer_form.yaml
           # 定義が外に要求しているもの（アプリ側で登録が要るもの）が引けること。
           node dist/cli.js refs ../spec/examples/sales_app.yaml --needs-registration
           # 実装から作る「登録済みのもの」の一覧が、コミットしてあるものと一致すること
@@ -117,7 +151,8 @@ jobs:
           # 図解は生成物。元データ（docs/diagrams/*.json）だけ直せば絵が付いてくる形にして
           # あるので、作り直して差分が出たら「絵が古い」ということ。
           node docs/tools/render-diagrams.mjs
-          git diff --exit-code -- docs/diagrams
+          # --ignore-cr-at-eol: Windows のチェックアウト（CRLF）で走らせても同じ判定にする。
+          git diff --exit-code --ignore-cr-at-eol -- docs/diagrams
 
       - name: A definition compared with itself is compatible
         working-directory: typescript

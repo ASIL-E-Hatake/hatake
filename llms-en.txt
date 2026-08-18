@@ -13,7 +13,7 @@ This file is the English entry point for LLMs. The project's primary language is
 - [JSON Schema](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json): for machine validation (put `# yaml-language-server: $schema=<this URL>` at the top of a YAML file to get completion and validation in an editor)
 
 ## MCP server (the fastest route for a capable client)
-Connecting it lets an agent look things up on demand instead of being handed documents. Tools: `hatake_reference` (look up a key), `hatake_examples` (fetch the nearest example), `hatake_validate` (validate, with fixes for structural mistakes and warnings for definitions that parse but misbehave), `hatake_new_page` (scaffold), `hatake_pitfalls` (common mistakes), `hatake_diff` (what changing a definition breaks, plus the changes a human should confirm), `hatake_explain` (read back, in Japanese, what the definition actually does, or restate a change), `hatake_minimize` (drop specifications equal to the default, without changing meaning), `hatake_refs` (what the definition expects the application to register), `hatake_api_shape` (the API shapes a definition implies). Tool descriptions are in Japanese.
+Connecting it lets an agent look things up on demand instead of being handed documents. Tools: `hatake_reference` (look up a key), `hatake_examples` (fetch the nearest example), `hatake_validate` (validate, with fixes for structural mistakes and warnings for definitions that parse but misbehave), `hatake_new_page` (scaffold), `hatake_pitfalls` (common mistakes), `hatake_diff` (what changing a definition breaks, plus the changes a human should confirm), `hatake_explain` (read back, in Japanese, what the definition actually does, or restate a change), `hatake_fix` (apply only the repairs that are uniquely determined), `hatake_minimize` (drop specifications equal to the default, without changing meaning), `hatake_refs` (what the definition expects the application to register), `hatake_api_shape` (the API shapes a definition implies). Tool descriptions are in Japanese.
 - Setup: [MCP guide](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/mcp.ja.md) (ja) — `claude mcp add hatake -- node <repo>/typescript/dist/mcp.js`
 
 ## Validate what you wrote (CLI)
@@ -28,6 +28,8 @@ npx hatake diff <old> <new>       # what a change breaks, and what to confirm
 npx hatake explain page.yaml      # read back what this screen does (Japanese)
 npx hatake explain page.yaml --brief         # one-line summary (a table for an app)
 npx hatake explain --diff <old> <new>        # what changed, in the screen's own words
+npx hatake fix page.yaml          # apply only uniquely-determined repairs (--write to overwrite)
+npx hatake advise page.yaml        # what is worth adding (advice, not warnings)
 npx hatake minimize page.yaml     # drop defaults; meaning is unchanged
 npx hatake failures <key>         # real failures: what was written, what the tools said
 npx hatake refs page.yaml --needs-registration     # what the application must register

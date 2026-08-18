@@ -1247,6 +1247,38 @@ shrunk for as long as the target diagnosis keeps firing and no new one appears. 
 text (`label` / `title` / `description`) is replaced with symbols afterwards, while
 identifiers stay — so this form does carry definition text, and is off by default.
 
+## Repairing what is uniquely repairable
+
+```bash
+npx hatake fix page.yaml            # prints by default; --write overwrites
+```
+
+Two kinds of repair only: **misspellings** (key names, repository / plugin / type names, page ids,
+action ids, the parent of linked options) and **specifications whose value is determined** (adding
+`report.sort` to a report that has subtotals). Nothing is changed unless the nearest name is
+unique — two equally close candidates means a human decides. With a registry, abbreviated names
+(`orderRepo` for `orderRepository`) are restored too.
+
+The guard is the *diagnosis*: each repair is applied on its own and kept only if the number of
+problems goes down and **no new problem appears**; the final text is re-read and checked the same
+way, and nothing is written if that fails. Duplicated fields, an aggregate with no field and an
+operator a condition cannot understand are left alone — with the reason printed, never silently.
+
+## Suggesting what is worth adding
+
+```bash
+npx hatake advise page.yaml
+```
+
+Reports a list with no sortable column, a list with no filters, a key that is not in the list, a
+form with nothing required, a delete/export button with no roles, a money-looking column with no
+formatting, a child table with no parent key, and a report with no totals.
+
+This is **advice, not a warning**, so it never changes the exit code: a warning states a fact
+("you wrote it and it does not work"), advice states a preference ("not writing this may hurt").
+Mixing the two would cost the warnings their credibility. That every suggested key really is
+writable at that place is checked in CI against the schema-derived reference.
+
 ## Shrinking a definition without changing it
 
 Generated definitions get verbose (a default written out, an empty list left behind).
