@@ -118,8 +118,12 @@ jobs:
             actions:
               - { id: approve, type: plugin, plugin: approveOrder, label: 承認 }
           YAML
-          sed -i 's/^          //' /tmp/typo.yaml
-          node dist/cli.js validate /tmp/typo.yaml && exit 1 || echo "壊れているのを確認"
+          # **綴り違いで**落ちていることを確かめる（「落ちれば何でもよい」にすると、
+          # YAML が壊れていても「想定どおり」に見えてしまう）。
+          if node dist/cli.js validate /tmp/typo.yaml 2>/tmp/typo.log; then
+            echo "綴り違いを検出できていない"; exit 1
+          fi
+          grep -q 'witdh' /tmp/typo.log
           node dist/cli.js fix /tmp/typo.yaml > /tmp/fixed.yaml
           node dist/cli.js validate --warn-as-error /tmp/fixed.yaml
           # 同梱の例には直すものが無い（配っているものは健康）。
