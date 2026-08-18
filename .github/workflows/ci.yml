@@ -63,8 +63,11 @@ jobs:
           node dist/cli.js validate --warn-as-error ../spec/examples/*.yaml
           # デモは隣に hatake-registry.json があるので、画面の外との辻褄（Repository /
           # プラグイン名が登録済みか）もここで見ている＝名前がズレたら CI が落ちる。
+          # 1枚ずつではなく assets/*.yaml を全部見る。以前 sales_app.yaml だけを見て
+          # いたので、隣の customer_master.yaml に未登録のプラグイン（押しても何も
+          # 起きないボタン）が入ったまま気づけなかった。配るものは全部通す。
           node dist/cli.js validate --warn-as-error \
-            ../flutter/packages/hatake_example/assets/sales_app.yaml
+            ../flutter/packages/hatake_example/assets/*.yaml
       - name: Reference & example catalog are reachable from a real run
         working-directory: typescript
         run: |

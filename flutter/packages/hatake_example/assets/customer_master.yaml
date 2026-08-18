@@ -59,4 +59,6 @@ page:
 
   actions:
     - { id: create, type: create, label: 新規登録 }
-    - { id: export, type: plugin, plugin: csvExport, label: CSV出力 }
+    # 一覧の CSV。組み込みの export なので、アプリ側に要るのは出力先（exportSink）
+    # だけ。プラグインを書く必要はない。出るのは表示中のページではなく検索結果全体。
+    - { id: export, type: export, label: CSV出力, config: { filename: 顧客一覧, bom: true } }
