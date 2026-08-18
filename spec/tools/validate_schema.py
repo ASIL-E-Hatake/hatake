@@ -22,11 +22,13 @@ CATALOG_PATH = SPEC / "examples" / "index.json"
 DEFAULT_DOCS = [
     SPEC / "examples" / entry["file"]
     for entry in json.loads(CATALOG_PATH.read_text(encoding="utf-8"))["examples"]
-] + [
-    # The public demo's own definition (same app plus a demo-only viewer action)
-    # — keep it schema-valid too, since it is what visitors actually see.
-    SPEC.parent / "flutter" / "packages" / "hatake_example" / "assets" / "sales_app.yaml",
-]
+] + sorted(
+    # The public demo's own definitions (the same app plus a demo-only viewer
+    # action, and the standalone samples the playground offers) — keep them
+    # schema-valid too, since they are what visitors actually see. Every asset,
+    # not a named one: a second asset used to sit here unchecked.
+    (SPEC.parent / "flutter" / "packages" / "hatake_example" / "assets").glob("*.yaml")
+)
 
 
 def load(path: Path):
