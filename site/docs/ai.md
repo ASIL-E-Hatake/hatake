@@ -36,7 +36,7 @@ claude mcp add hatake -- node <repo>/typescript/dist/mcp.js
 }
 ```
 
-エージェントに渡る道具は9つ。
+エージェントに渡る道具は10個。
 
 | 道具 | 何をするか |
 | --- | --- |
@@ -48,6 +48,7 @@ claude mcp add hatake -- node <repo>/typescript/dist/mcp.js
 | `hatake_api_shape` | バックエンドが返すべき JSON の形 |
 | `hatake_diff` | 既存の定義を直したとき、契約を壊していないか・**確かめてほしい変化**（消えた列・ボタン・選択肢、権限の変化）はないか |
 | `hatake_explain` | 書いた定義が何をする画面か、日本語で読み返す（**意図どおりか**は警告では分からない）。`before` を渡せば変更の言い直し、`brief` で1行 |
+| `hatake_minimize` | 冗長になった定義を短くする（既定値と同じ指定を落とす。**意味は変えない**） |
 | `hatake_refs` | その定義をアプリに組み込むのに、何を登録すればいいか |
 
 Docker で動かす手順は [MCP ガイド](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/mcp.ja.md) にある。
@@ -104,6 +105,7 @@ npx hatake explain page.yaml           # この定義、結局どういう画面
 npx hatake explain page.yaml --brief   # 1行の要約（app なら画面一覧の表）
 npx hatake explain --diff before.yaml page.yaml  # 何を変えたのか、画面の言葉で
 npx hatake harvest definitions/        # 繰り返し転んでいる所を実例カタログの候補に
+npx hatake minimize page.yaml          # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権限・アプリ構成）
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか
 npx hatake registry lib/main.dart              # アプリが登録しているものを実装から読む
@@ -180,6 +182,18 @@ npx hatake harvest definitions/    # 繰り返し出ている診断を候補と�
 ```
 
 候補は**人が書く欄を空のまま**出る。「なぜそう書いてしまうか」は機械には書けないし、そこがこのカタログの価値なので、自動で追加はしない。定義そのものも持ち出さない（ラベルや列名に客先の語彙が入るので、出すのはファイル名・場所・回数だけ）。
+
+`--repro` を付けると、**最小の再現**（その診断が出続ける形まで削った下書き）も作る。守るのは意味ではなく診断で、削り終わってからラベルを記号に置き換える。手で作るといちばん手間な所なので、下書きまでは機械がやる。
+
+### 生成した定義が長くなったら短くする
+
+AI に書かせた定義は冗長になる（`type: text`、`required: false`、`validators: []`）。冗長な定義はレビューが重くなり、次に AI が読むときのコンテキストも太る。
+
+```bash
+npx hatake minimize page.yaml > short.yaml   # 落としたものは標準エラーに出る
+```
+
+落とすのは「既定値と同じ指定」と「空の指定」だけ。**1つ落とすたびに解析後のモデルが1バイトも変わらないことを確かめ、変わったら戻す**ので、意味は変わらない。出力は落とす所だけを切るので、コメントも書き方も改行コードもそのまま（差分が「消えた行」だけになる）。書き間違いのある定義は最小化しない — 未知キーを黙って消す道具になってはいけないので。
 
 ### 定義の外との食い違いも見られる
 

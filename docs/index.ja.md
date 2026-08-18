@@ -17,6 +17,7 @@
 | 英語で AI に読ませる | [AI cheat sheet](api-cheatsheet.md) / [llms-en.txt](../llms-en.txt) | 日本語版のみの文書には `(ja)` と明記 |
 | 定義が正しいか機械検証 | [JSON Schema](../spec/hatake-page.schema.json) | `python spec/tools/validate_schema.py <file>` |
 | 業務画面をまるごと写経したい | [cookbook](cookbook/) | 下記参照。実物は CI 検証済み |
+| **絵で全体像をつかむ** | [図解](diagrams/README.ja.md) | 定義から画面まで / データの流れ / 層の責務（[サイト版](https://asil-e-hatake.github.io/hatake/diagrams)） |
 | **自分のコードをどこに書くか**知りたい | [仕組みと責務分担](guide/concepts.ja.md) | Framework が持たない領域も明記 |
 | どのページ種別を使うか迷った | [ページ種別の選び方](guide/page-types.ja.md) | 判断表 |
 | 検証を足す／メッセージを変える | [入力検証](guide/validation.ja.md) | 独自ルール・i18n |
@@ -45,6 +46,8 @@
 | [消費税・インボイス](cookbook/invoice-tax.ja.md) | 税率別合計・端数処理を業務要件どおりに |
 
 ## 全体像（1枚で）
+
+絵で見るなら [図解](diagrams/README.ja.md)（定義から画面まで / データの流れ / 層の責務）。
 
 ```
 業務定義（YAML / JSON / 各言語DSL）

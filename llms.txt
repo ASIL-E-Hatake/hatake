@@ -13,7 +13,7 @@
 - [JSON Schema](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json): 定義の機械検証用（YAML に `# yaml-language-server: $schema=<この URL>` を書くと補完・検証が効く）
 
 ## MCP サーバ（対応クライアントならこれが一番速い）
-Claude Code / Claude Desktop などに繋ぐと、**このファイルを読まなくても**必要なときに仕様を引ける。道具は `hatake_reference`（キーを引く）/ `hatake_examples`（近い例を取る）/ `hatake_validate`（検証）/ `hatake_new_page`（雛形）/ `hatake_pitfalls`（よくある間違い）/ `hatake_diff`（直した影響）/ `hatake_explain`（書いた定義を日本語で読み返す）/ `hatake_refs`（アプリ側に何を登録すればいいか）/ `hatake_api_shape`（API の形）。
+Claude Code / Claude Desktop などに繋ぐと、**このファイルを読まなくても**必要なときに仕様を引ける。道具は `hatake_reference`（キーを引く）/ `hatake_examples`（近い例を取る）/ `hatake_validate`（検証）/ `hatake_new_page`（雛形）/ `hatake_pitfalls`（よくある間違い）/ `hatake_diff`（直した影響）/ `hatake_explain`（書いた定義を日本語で読み返す・変更を言い直す）/ `hatake_minimize`（既定値と同じ指定を落として短く）/ `hatake_refs`（アプリ側に何を登録すればいいか）/ `hatake_api_shape`（API の形）。
 - 入れ方: [MCP ガイド](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/mcp.ja.md)（`claude mcp add hatake -- node <repo>/typescript/dist/mcp.js`）
 
 ## 書いた定義を検証する（CLI）
@@ -28,6 +28,7 @@ npx hatake failures <キー名>       # 実際に転んだ実例（なぜそう�
 npx hatake explain page.yaml       # この定義は何をする画面か（日本語で読み返す）
 npx hatake explain page.yaml --brief        # 1行の要約（app なら画面一覧の表）
 npx hatake explain --diff <前> <後>          # 何を変えたのか、画面の言葉で（人への報告用）
+npx hatake minimize page.yaml      # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake diff <前> <後>          # 既にある定義を直したとき：契約・画面・権限・アプリ構成への影響
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか（Repository / プラグイン名）
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読んで「登録済み」の一覧を作る
@@ -37,6 +38,7 @@ npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読ん�
 **定義の外との食い違い**も見られる。`repository:` や `plugin:` の名前がアプリ側で登録されていなければ、画面は出るのにデータが来ない／押しても何も起きない。`refs` で「何を登録すればいいか」を出し、`registry` で「実装が何を登録しているか」を読み、`validate --registry <file>` で突き合わせると名前の食い違いを機械で拾える（定義の隣に `hatake-registry.json` を置けば `--registry` は省ける）。`registry` は**その場に書いてある文字列しか読めない**ので、読めない登録があれば終了コード 1 で報告する（黙って落とすと嘘の一覧になるため）。
 **`validate` が見るのは綴りと構造だけ。** 条件の向きを間違えた・意図と違う項目を必須にした、は全部通る。書けたら `explain` で日本語に開いて読み返し、頼まれたことと違っていたら直す（キー名は出ないので、そのまま人にレビューさせてもよい）。実際に転んだ実例は `failures` に溜めてあり、**機械では拾えない件も載っている**（そこには「レビューでどこを見るか」が書いてある）。
 `diff` は変更を3段で返す。`✗ 破壊的`＝呼び出し側が壊れる、`△ 要確認`＝壊れないが人に確かめてほしい（列・ボタン・選択肢が消えた／権限が変わった／ページ・メニューが消えた）、`・安全`＝増えただけ。**要確認は黙って進めず、意図した変更か確かめる**こと。
+**既定値をわざわざ書かない。** `type: text` / `required: false` / `validators: []` のような指定は、書いても何も足していない。書いてしまったら `minimize` で落とせる（意味は変えない＝落とすたびに解析後のモデルが変わらないことを確かめている）。短い定義のほうが、人のレビューも次に読む AI のコンテキストも軽い。
 **直した内容を人に報告するときは `explain --diff`。** `diff` が返すのは機械の言葉（`ui / column-format-changed / …`）だが、こちらは「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」と画面の言葉で言う。判定（壊すか）は `diff`、言い直し（何が変わったか）は `explain --diff`。後者は終了コードを変えない。
 
 ## 用途別（1〜2ファイルだけ読めばいい）

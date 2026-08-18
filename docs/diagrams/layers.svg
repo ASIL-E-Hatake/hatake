@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 323" width="900" height="323" role="img" aria-label="層の責務（どこに何を書くか・書かないか）">
+  <style>
+    .bg { fill: #ffffff }
+    text { font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif; fill: #0f172a }
+    .title { font-size: 19px; font-weight: 700 }
+    .caption { font-size: 13px; fill: #64748b }
+    .label { font-size: 15px; font-weight: 600 }
+    .note { font-size: 13px; fill: #64748b }
+    .body { font-size: 13px; fill: #334155 }
+    .edge { font-size: 13px; fill: #475569 }
+    .strong { font-weight: 700 }
+    .good { fill: #15803d }
+    .bad { fill: #b91c1c }
+    .box { stroke-width: 1.5 }
+    .core { fill: #f1f5f9; stroke: #475569 }
+    .input { fill: #eff6ff; stroke: #2563eb }
+    .output { fill: #f0fdf4; stroke: #16a34a }
+    .outside { fill: #fefce8; stroke: #ca8a04; stroke-dasharray: 5 4 }
+    .flow { stroke: #475569; stroke-width: 2 }
+    .back { stroke: #94a3b8 }
+    .tip { fill: #475569 }
+    .tipBack { fill: #94a3b8 }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0b1220 }
+      text { fill: #e2e8f0 }
+      .caption, .note { fill: #94a3b8 }
+      .body { fill: #cbd5e1 }
+      .edge { fill: #cbd5e1 }
+      .good { fill: #4ade80 }
+      .bad { fill: #f87171 }
+      .core { fill: #172033; stroke: #94a3b8 }
+      .input { fill: #172554; stroke: #60a5fa }
+      .output { fill: #052e16; stroke: #4ade80 }
+      .outside { fill: #2a2410; stroke: #facc15 }
+      .flow { stroke: #cbd5e1 }
+      .back { stroke: #64748b }
+      .tip { fill: #cbd5e1 }
+      .tipBack { fill: #64748b }
+    }
+  </style>
+  <defs>
+    <marker id="tip" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="tip" d="M 0 0 L 10 5 L 0 10 z"/></marker>
+    <marker id="tipBack" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="tipBack" d="M 0 0 L 10 5 L 0 10 z"/></marker>
+  </defs>
+  <rect class="bg" x="0" y="0" width="900" height="323"/>
+  <text class="title" x="24" y="49">層の責務（どこに何を書くか・書かないか）</text>
+  <text class="caption" x="24" y="68">迷ったら「その知識はこの層のものか」で決める。○ はしてよいこと、× はしてはいけないこと。</text>
+  <rect class="box input" x="24" y="82" width="201.0" height="145" rx="8"/>
+  <text class="label" x="124.5" y="112" text-anchor="middle">業務定義</text>
+  <text class="note" x="124.5" y="131" text-anchor="middle">spec/ の DSL</text>
+  <text class="body good" x="38.0" y="156">○ 画面・項目・条件・権限</text>
+  <text class="body good" x="38.0" y="175">○ 検証と整形の指定</text>
+  <text class="body bad" x="38.0" y="194">× 手続き（if の連なり）</text>
+  <text class="body bad" x="38.0" y="213">× 取得方法（URL・SQL）</text>
+  <rect class="box core" x="241" y="82" width="201.0" height="145" rx="8"/>
+  <text class="label" x="341.5" y="112" text-anchor="middle">パーサ / モデル</text>
+  <text class="note" x="341.5" y="131" text-anchor="middle">hatake_core・TS・Java</text>
+  <text class="body good" x="255.0" y="156">○ 読み方と既定値</text>
+  <text class="body good" x="255.0" y="175">○ 知らないキーを弾く</text>
+  <text class="body bad" x="255.0" y="194">× 描画の都合</text>
+  <text class="body bad" x="255.0" y="213">× 業務ロジック</text>
+  <rect class="box core" x="458" y="82" width="201.0" height="145" rx="8"/>
+  <text class="label" x="558.5" y="112" text-anchor="middle">Renderer</text>
+  <text class="note" x="558.5" y="131" text-anchor="middle">hatake_material など</text>
+  <text class="body good" x="472.0" y="156">○ 定義を Widget にする</text>
+  <text class="body good" x="472.0" y="175">○ 見た目とテーマ</text>
+  <text class="body bad" x="472.0" y="194">× Repository を持つ</text>
+  <text class="body bad" x="472.0" y="213">× HTTP を呼ぶ</text>
+  <rect class="box outside" x="675" y="82" width="201.0" height="145" rx="8"/>
+  <text class="label" x="775.5" y="112" text-anchor="middle">アプリ（利用者）</text>
+  <text class="note" x="775.5" y="131" text-anchor="middle">案件ごとのコード</text>
+  <text class="body good" x="689.0" y="156">○ Repository の実装</text>
+  <text class="body good" x="689.0" y="175">○ プラグインの登録</text>
+  <text class="body good" x="689.0" y="194">○ 認証・認可はここから外</text>
+  <text class="body bad" x="689.0" y="213">× 本体を fork する</text>
+  <text class="caption" x="24" y="251"><tspan class="caption strong">足りないものは Plugin で足す。</tspan> 本体を直すと、次の版で全員のコードが壊れる（Plugin &gt; Fork）。</text>
+  <text class="caption" x="24" y="287">定義に無い機能を Widget で書き始めたら、そこが DSL の穴。<tspan class="caption strong">DSL の拡張を先に提案する</tspan>のが正しい順番。</text>
+</svg>

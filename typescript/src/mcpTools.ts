@@ -14,6 +14,7 @@ import { renderExplain } from "./explain.js";
 import { explainSource } from "./explainSource.js";
 import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
 import { briefSource, renderBrief } from "./explainBrief.js";
+import { minimizeSource } from "./minimize.js";
 import {
   collectRefs,
   type DefinitionRegistry,
@@ -78,6 +79,7 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 7. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
    直した内容を人に伝えるときは hatake_explain に before を渡す（変更を画面の言葉で言い直す）
 8. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグインの一覧）
+9. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
 
 原則: Flutter の Widget や API のコードを手で書かず、定義を書く。定義に無い機能は
 DSL の拡張（プラグイン）で足す。`;
@@ -424,6 +426,35 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         return args.brief === true
           ? renderBrief(briefSource(source, { page }))
           : renderExplain(explainSource(source, { page }));
+      },
+    },
+    {
+      name: "hatake_minimize",
+      title: "定義を短くする（意味は変えない）",
+      description:
+        "定義から**既定値と同じ指定・空の指定**を落として短くする。生成した定義が冗長になったとき" +
+        "（`type: text` や `required: false` や `validators: []` を並べたとき）に通す。" +
+        "落とすたびに解析後のモデルが変わらないことを確かめているので意味は変わらない" +
+        "（変わるものは落とさない）。コメントも、落とした所以外の書き方もそのまま。" +
+        "返すのは短くした定義と、落とした指定の一覧。**書く前に読むものでもある**＝" +
+        "既定値をわざわざ書かないほうが、レビューも次に読む側も軽い。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description: "定義の中身そのもの（page: でも app: でも可）。",
+          },
+        },
+        required: ["source"],
+      },
+      run(args) {
+        const result = minimizeSource(required(args, "source"), reference());
+        return pretty({
+          source: result.source,
+          dropped: result.dropped,
+          lines: result.lines,
+        });
       },
     },
     {

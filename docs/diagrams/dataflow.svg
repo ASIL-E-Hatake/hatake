@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 681" width="900" height="681" role="img" aria-label="検索して一覧に出し、直して保存するまで">
+  <style>
+    .bg { fill: #ffffff }
+    text { font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif; fill: #0f172a }
+    .title { font-size: 19px; font-weight: 700 }
+    .caption { font-size: 13px; fill: #64748b }
+    .label { font-size: 15px; font-weight: 600 }
+    .note { font-size: 13px; fill: #64748b }
+    .body { font-size: 13px; fill: #334155 }
+    .edge { font-size: 13px; fill: #475569 }
+    .strong { font-weight: 700 }
+    .good { fill: #15803d }
+    .bad { fill: #b91c1c }
+    .box { stroke-width: 1.5 }
+    .core { fill: #f1f5f9; stroke: #475569 }
+    .input { fill: #eff6ff; stroke: #2563eb }
+    .output { fill: #f0fdf4; stroke: #16a34a }
+    .outside { fill: #fefce8; stroke: #ca8a04; stroke-dasharray: 5 4 }
+    .flow { stroke: #475569; stroke-width: 2 }
+    .back { stroke: #94a3b8 }
+    .tip { fill: #475569 }
+    .tipBack { fill: #94a3b8 }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0b1220 }
+      text { fill: #e2e8f0 }
+      .caption, .note { fill: #94a3b8 }
+      .body { fill: #cbd5e1 }
+      .edge { fill: #cbd5e1 }
+      .good { fill: #4ade80 }
+      .bad { fill: #f87171 }
+      .core { fill: #172033; stroke: #94a3b8 }
+      .input { fill: #172554; stroke: #60a5fa }
+      .output { fill: #052e16; stroke: #4ade80 }
+      .outside { fill: #2a2410; stroke: #facc15 }
+      .flow { stroke: #cbd5e1 }
+      .back { stroke: #64748b }
+      .tip { fill: #cbd5e1 }
+      .tipBack { fill: #64748b }
+    }
+  </style>
+  <defs>
+    <marker id="tip" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="tip" d="M 0 0 L 10 5 L 0 10 z"/></marker>
+    <marker id="tipBack" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="tipBack" d="M 0 0 L 10 5 L 0 10 z"/></marker>
+  </defs>
+  <rect class="bg" x="0" y="0" width="900" height="681"/>
+  <text class="title" x="24" y="49">検索して一覧に出し、直して保存するまで</text>
+  <text class="caption" x="24" y="68">データの出入りは Repository の1点だけ。フレームワークは HTTP も DB も知らない。</text>
+  <rect class="box output" x="24" y="82" width="852.0" height="69" rx="8"/>
+  <text class="label" x="450.0" y="112" text-anchor="middle">画面（Renderer が組んだもの）</text>
+  <text class="note" x="450.0" y="131" text-anchor="middle">定義どおりの検索欄・一覧・入力欄</text>
+  <line class="flow" x1="450" y1="165" x2="450" y2="199" marker-end="url(#tip)"/>
+  <text class="edge" x="438" y="188" text-anchor="end">検索条件（定義の operator が意味を決める）</text>
+  <line class="flow back" x1="736" y1="199" x2="736" y2="165" marker-end="url(#tipBack)"/>
+  <text class="edge back" x="746" y="188">行の一覧</text>
+  <rect class="box core" x="24" y="207" width="852.0" height="107" rx="8"/>
+  <text class="label" x="450.0" y="237" text-anchor="middle">Query / Command（定義から組む）</text>
+  <text class="note" x="450.0" y="256" text-anchor="middle">どの項目でどう突き合わせるか、並び、ページング</text>
+  <text class="body body" x="38.0" y="281">・ 保存の前に整形（全角→半角など）と検証を通す</text>
+  <text class="body body" x="38.0" y="300">・ 隠れている項目は検証しない（条件は定義が持つ）</text>
+  <line class="flow" x1="450" y1="328" x2="450" y2="362" marker-end="url(#tip)"/>
+  <text class="edge" x="438" y="351" text-anchor="end">Repository の呼び出し（<tspan class="edge strong">インタフェースだけを知る</tspan>）</text>
+  <line class="flow back" x1="736" y1="362" x2="736" y2="328" marker-end="url(#tipBack)"/>
+  <text class="edge back" x="746" y="351">レコード</text>
+  <rect class="box outside" x="24" y="370" width="852.0" height="107" rx="8"/>
+  <text class="label" x="450.0" y="400" text-anchor="middle">Repository の実装</text>
+  <text class="note" x="450.0" y="419" text-anchor="middle"><tspan class="note strong">利用者が書く</tspan>（フレームワークは含まない）</text>
+  <text class="body good" x="38.0" y="444">○ HTTP / DB / モックを選ぶのはここ</text>
+  <text class="body good" x="38.0" y="463">○ 認証・認可もここから外側</text>
+  <line class="flow" x1="450" y1="491" x2="450" y2="525" marker-end="url(#tip)"/>
+  <text class="edge" x="438" y="514" text-anchor="end">HTTP / SQL / gRPC …</text>
+  <line class="flow back" x1="736" y1="525" x2="736" y2="491" marker-end="url(#tipBack)"/>
+  <text class="edge back" x="746" y="514">応答</text>
+  <rect class="box input" x="24" y="533" width="852.0" height="88" rx="8"/>
+  <text class="label" x="450.0" y="563" text-anchor="middle">バックエンド（何でもよい）</text>
+  <text class="note" x="450.0" y="582" text-anchor="middle">Spring Boot / ASP.NET / Node / Laravel / Firebase …</text>
+  <text class="body body" x="38.0" y="607">・ 同じ定義から API の形を出せる（hatake dto / openapi / types）</text>
+  <text class="caption" x="24" y="645">画面が出るのにデータが来ない事故は、ほぼ<tspan class="caption strong">名前の食い違い</tspan>。`hatake refs` と `hatake registry` を突き合わせれば機械で分かる。</text>
+</svg>

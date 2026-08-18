@@ -1,0 +1,64 @@
+{
+  "$comment": "図解の元データ。直したら node docs/tools/render-diagrams.mjs で .svg を作り直す（CI が差分を見る）。",
+  "title": "層の責務（どこに何を書くか・書かないか）",
+  "subtitle": "迷ったら「その知識はこの層のものか」で決める。○ はしてよいこと、× はしてはいけないこと。",
+  "rows": [
+    {
+      "kind": "boxes",
+      "items": [
+        {
+          "label": "業務定義",
+          "note": "spec/ の DSL",
+          "tone": "input",
+          "lines": [
+            "+ 画面・項目・条件・権限",
+            "+ 検証と整形の指定",
+            "! 手続き（if の連なり）",
+            "! 取得方法（URL・SQL）"
+          ]
+        },
+        {
+          "label": "パーサ / モデル",
+          "note": "hatake_core・TS・Java",
+          "tone": "core",
+          "lines": [
+            "+ 読み方と既定値",
+            "+ 知らないキーを弾く",
+            "! 描画の都合",
+            "! 業務ロジック"
+          ]
+        },
+        {
+          "label": "Renderer",
+          "note": "hatake_material など",
+          "tone": "core",
+          "lines": [
+            "+ 定義を Widget にする",
+            "+ 見た目とテーマ",
+            "! Repository を持つ",
+            "! HTTP を呼ぶ"
+          ]
+        },
+        {
+          "label": "アプリ（利用者）",
+          "note": "案件ごとのコード",
+          "tone": "outside",
+          "lines": [
+            "+ Repository の実装",
+            "+ プラグインの登録",
+            "+ 認証・認可はここから外",
+            "! 本体を fork する"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "note",
+      "text": "**足りないものは Plugin で足す。** 本体を直すと、次の版で全員のコードが壊れる（Plugin > Fork）。"
+    },
+    {
+      "kind": "note",
+      "text": "定義に無い機能を Widget で書き始めたら、そこが DSL の穴。**DSL の拡張を先に提案する**のが正しい順番。"
+    }
+  ]
+}

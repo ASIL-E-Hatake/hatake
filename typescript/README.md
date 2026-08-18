@@ -48,6 +48,7 @@ npx hatake explain page.yaml                 # この定義、結局どういう
 npx hatake explain page.yaml --brief         # 1行で（README や PR 本文に貼る用）
 npx hatake explain --diff old.yaml page.yaml # 何を変えたのか、画面の言葉で
 npx hatake harvest definitions/              # 繰り返し転んでいる所を実例カタログの候補に
+npx hatake minimize page.yaml                # 既定値と同じ指定を落として短く（意味は変えない）
 ```
 
 | コマンド | 何をするか |
@@ -67,9 +68,11 @@ npx hatake harvest definitions/              # 繰り返し転んでいる所を
 | `failures [query]` | [実際に転んだ実例](../spec/failures.json)。こう書いた → こう言われた → こう直した。**なぜそう書いてしまうか**も持つ |
 | `explain <file> [--page id]` | 定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人がレビューするための出力。`--brief` で1行だけ（`app:` なら画面一覧の表） |
 | `explain --diff <old> <new>` | 変更を**画面の言葉**で言う（「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」）。後方互換の判定はしない＝**終了コードは変えない**（それは `diff` の担当） |
-| `harvest <path...>` | 定義の山を走査して、**繰り返し出ている診断**を[実例カタログ](../spec/failures.json)の候補として出す（`--min` で回数、既定 2）。「なぜそう書いてしまうか」は機械には書けないので、人が書く欄は空のまま。読めない定義があれば終了コード 1 |
+| `harvest <path...>` | 定義の山を走査して、**繰り返し出ている診断**を[実例カタログ](../spec/failures.json)の候補として出す（`--min` で回数、既定 2）。「なぜそう書いてしまうか」は機械には書けないので、人が書く欄は空のまま。`--repro` で**最小の再現**の下書きも作る。読めない定義があれば終了コード 1 |
+| `minimize <file>` | **意味を変えずに**短くする。既定値と同じ指定・空の指定を落とす。落とすたびに解析後のモデルが変わらないことを確かめる（変わるものは落とさない）。コメントも、落とした所以外の書き方もそのまま。定義は標準出力・落としたものは標準エラー |
 
-`reference` / `examples` は `spec/` を実行時に探す（`--spec <dir>` で明示もできる）。
+`reference` / `examples` / `minimize` は `spec/` を実行時に探す（`--spec <dir>` で明示もできる。
+`minimize` はキーの既定値をスキーマから引くので、手で書いた表が古くなることがない）。
 リファレンスは**その場でスキーマから生成する**ので、古い写しを配ることがない。
 
 `validate` は失敗したとき、場所・キー・直し方をそのまま出す:
@@ -305,6 +308,54 @@ $ npx hatake harvest definitions/
 * 出るのは**道具が言えた転び方だけ**。言われない転び方は `explain` で人が見つける、と出力に
   毎回書く（黙ると「これで全部」という嘘になる）
 
+`--repro` を付けると、**最小の再現**（`wrote` の下書き）も作る。当たった定義から、その診断が
+出続ける限り削ったもの:
+
+```
+  最小の再現（17 箇所削った下書き）:
+    page:
+      type: report
+      id: sales_report1
+      title: 名前1
+      repository: orderRepository
+      report:
+        groupBy:
+          - field: customer
+            label: 名前2
+```
+
+守るのは「意味」ではなく**診断**（目当ての診断が出続けていて、かつ**新しい診断が出ていない**
+限り削る）。削り終わってから自由文（`label` / `title` / `description`）を記号に置き換える
+（先に置き換えると、ラベルに依る診断があったときに嘘の再現になる）。**識別子は残る**ので、
+そこは人が見る（候補の `todo` にそう書いてある）。出力に定義の本文が入るので**既定では作らない**。
+
+### 意味を変えずに短くする（`minimize`）
+
+AI に書かせた定義は冗長になる（`type: text`、`required: false`、`validators: []`）。冗長な定義は
+レビューが重くなり、次に AI が読むときのコンテキストも太る。
+
+```
+$ npx hatake minimize spec/examples/customer_form.yaml > short.yaml
+7 件の指定を落としました（66 行 から 64 行）:
+  page.form.sections[0].fields[0].type = "text"   （既定値と同じ）
+  page.key = "id"   （既定値と同じ）
+  …
+※ 解析後のモデルが1バイトも変わらないことを1件ずつ確かめています（変わるものは落としません）。
+```
+
+安全のために門を2つ通す。
+
+1. 落とす候補は「**スキーマの既定値と同じ値**」と「**空の配列・空のオブジェクト**」だけ。既定値は
+   [リファレンス](../spec/reference.json)（スキーマから毎回作る）から引くので、手で書いた表が
+   古くなることがない。必須キーは候補にしない（スキーマ検証に落ちる形にしない）
+2. 1つ落とすたびに**解析後のモデルが1バイトも変わらないこと**を確かめ、変わったら戻す。
+   「既定値だと思っていたものが実は違った」ときは何も起きない
+
+出力は**落とす所だけを文字列から切る**（Document を作り直して書き戻さない）。コメントも折り返しも
+改行コードもそのままで、差分が「消えた行」だけになる。`dsl_version` は既定値と同じでも残す
+（版は必ず持つのが決めごと）。書き間違いのある定義は最小化しない（**知らないキーを黙って落とす
+道具**になると、綴り間違いが「短くなった」として消える）。
+
 ## MCP サーバ（`hatake-mcp`）
 
 AI エージェントに「仕様を引く・例を取る・検証する」をやらせるための MCP サーバも同梱。**依存ゼロで手書き**（stdio の JSON-RPC 2.0 で、必要なのは `initialize` / `tools/list` / `tools/call` だけなので）。
@@ -314,7 +365,7 @@ npm run build
 claude mcp add hatake -- node "$PWD/dist/mcp.js"      # Claude Code の場合
 ```
 
-道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_explain` / `hatake_refs` / `hatake_api_shape` の9つで、CLI と同じ関数を呼んでいる（＝同じ答えになる）。`hatake_explain` は `before` を渡せば変更の言い直し、`brief: true` なら1行（道具を増やすより、同じ道具の引数で足りる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
+道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_explain` / `hatake_minimize` / `hatake_refs` / `hatake_api_shape` の10個で、CLI と同じ関数を呼んでいる（＝同じ答えになる）。`hatake_explain` は `before` を渡せば変更の言い直し、`brief: true` なら1行（道具を増やすより、同じ道具の引数で足りる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
 
 ## 開発（Docker）
 

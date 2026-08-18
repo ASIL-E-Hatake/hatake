@@ -147,11 +147,41 @@ export function findUnknownKeys(
   document: Record<string, unknown>,
 ): UnknownKey[] {
   const found: UnknownKey[] = [];
-  walk("", document, "", found);
+  walkNodes(document, ({ path, dict, known }) => {
+    for (const key of Object.keys(dict)) {
+      if (known.includes(key)) continue;
+      found.push({ path, key, suggestion: closestKey(key, known) });
+    }
+  });
   found.sort((a, b) =>
     a.path === b.path ? compare(a.key, b.key) : compare(a.path, b.path),
   );
   return found;
+}
+
+/** 訪ねた「閉じたノード」1つ。 */
+export interface NodeVisit {
+  /** ノード名（`column` / `crudPage` / ドキュメント直下は `""`）。 */
+  node: string;
+  /** そのノードまでの道（`page.table.columns[0]`）。 */
+  path: string;
+  dict: Record<string, unknown>;
+  /** そこに書ける既知キー。 */
+  known: string[];
+}
+
+/**
+ * document の中の「閉じたノード」を上から順に訪ねる。
+ *
+ * 未知キーの検出（[findUnknownKeys]）と、キーの既定値との突き合わせ（最小化）が
+ * **同じ道の付け方**をするために切り出してある。未知キーの下には降りない（そこは
+ * 何のノードか決められないので、間違った表で見ることになる）。
+ */
+export function walkNodes(
+  document: Record<string, unknown>,
+  visit: (found: NodeVisit) => void,
+): void {
+  walk("", document, "", visit);
 }
 
 /** 言語をまたいで同じ順序にするため、コード単位で比べる。 */
@@ -161,7 +191,7 @@ function walk(
   node: string,
   value: unknown,
   path: string,
-  found: UnknownKey[],
+  visit: (found: NodeVisit) => void,
 ): void {
   if (!isDict(value)) return;
   const resolved =
@@ -169,12 +199,10 @@ function walk(
   if (resolved === undefined) return; // 未知のページ種別
   const known = strictKeyTable[resolved];
   if (known === undefined) return;
+  visit({ node: resolved, path, dict: value, known });
 
   for (const [key, child] of Object.entries(value)) {
-    if (!known.includes(key)) {
-      found.push({ path, key, suggestion: closestKey(key, known) });
-      continue;
-    }
+    if (!known.includes(key)) continue; // 未知キーの下には降りない
     const target = children[resolved]?.[key];
     if (target === undefined) continue; // 葉、または自由な入れ物
     const childPath = path === "" ? key : `${path}.${key}`;
@@ -182,11 +210,11 @@ function walk(
       const childNode = target.slice(0, -2);
       if (Array.isArray(child)) {
         child.forEach((item, i) =>
-          walk(childNode, item, `${childPath}[${i}]`, found),
+          walk(childNode, item, `${childPath}[${i}]`, visit),
         );
       }
     } else {
-      walk(target, child, childPath, found);
+      walk(target, child, childPath, visit);
     }
   }
 }

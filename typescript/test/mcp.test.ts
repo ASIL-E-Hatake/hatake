@@ -90,6 +90,7 @@ describe("MCP プロトコル", () => {
       "hatake_pitfalls",
       "hatake_diff",
       "hatake_explain",
+      "hatake_minimize",
       "hatake_refs",
       "hatake_api_shape",
     ]);
@@ -333,6 +334,63 @@ describe("hatake_diff", () => {
     const missing = call("hatake_diff", { before });
     expect(missing.isError).toBe(true);
     expect(missing.text).toContain("after は必須");
+  });
+});
+
+describe("hatake_minimize", () => {
+  it("既定値と同じ指定を落として、落としたものも返す", () => {
+    const verbose = `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号, type: text, sortable: false }
+`;
+    const result = json(call("hatake_minimize", { source: verbose }).text);
+    expect(result.source).not.toContain("sortable: false");
+    expect(result.source).toContain("id: order_search");
+    expect(result.dropped.map((one: { where: string }) => one.where)).toContain(
+      "page.table.columns[0].type",
+    );
+    // 1行の中の指定を落としただけなら行数は変わらない（短くはなる）。
+    expect(result.lines.after).toBeLessThanOrEqual(result.lines.before);
+    expect(result.source.length).toBeLessThan(verbose.length);
+  });
+
+  it("書き間違いのある定義は短くしない（黙って未知キーを消さない）", () => {
+    const typo = `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号, witdh: 140 }
+`;
+    const failed = call("hatake_minimize", { source: typo });
+    expect(failed.isError).toBe(true);
+    expect(failed.text).toContain("witdh");
+  });
+
+  it("落とせるものが無ければ、そのまま返す", () => {
+    const lean = `page:
+  type: detail
+  id: order_detail
+  title: 受注詳細
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号 }
+`;
+    const result = json(call("hatake_minimize", { source: lean }).text);
+    expect(result.dropped).toEqual([]);
+    expect(result.source).toBe(lean);
   });
 });
 

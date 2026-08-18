@@ -50,6 +50,7 @@ Business Definition (YAML / JSON / 各言語DSL)
 | [レシピ集](docs/cookbook/) | [マスタメンテ](docs/cookbook/master-maintenance.ja.md) / [一覧→詳細](docs/cookbook/search-list-detail.ja.md) / [消費税・インボイス](docs/cookbook/invoice-tax.ja.md) |
 | [ガイド](docs/guide/) | [仕組みと責務分担](docs/guide/concepts.ja.md) / [ページ種別の選び方](docs/guide/page-types.ja.md) / [入力検証](docs/guide/validation.ja.md) / [バックエンド連携](docs/guide/backend.ja.md) |
 | [AI チートシート](docs/api-cheatsheet.ja.md) | 定義の書き方を1枚に圧縮（AI に渡すならこれ） |
+| [図解](docs/diagrams/README.ja.md) | 定義から画面まで / データの流れ / 層の責務（絵は生成物で、元はテキスト） |
 
 ## ざっとイメージ
 
