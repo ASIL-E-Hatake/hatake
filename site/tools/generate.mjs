@@ -233,6 +233,17 @@ rmSync(publicDir, { recursive: true, force: true });
 mkdirSync(publicDir, { recursive: true });
 for (const a of assets) copyFileSync(join(repoRoot, a.from), join(publicDir, a.to));
 
+// --- 図解（docs/diagrams/*.svg）---
+// 絵の正もリポジトリ側（元データから生成したもの）。ここでは複製するだけなので、
+// 絵を直すのは docs/diagrams/*.json → node docs/tools/render-diagrams.mjs。
+const diagramsFrom = join(repoRoot, 'docs', 'diagrams');
+const diagramsTo = join(publicDir, 'diagrams');
+mkdirSync(diagramsTo, { recursive: true });
+const diagrams = readdirSync(diagramsFrom).filter((name) => name.endsWith('.svg'));
+for (const name of diagrams) {
+  copyFileSync(join(diagramsFrom, name), join(diagramsTo, name));
+}
+
 // AI ページに貼る素材一覧。大きさを載せるのは「何をどれだけ食うか」が分かるようにするため。
 // 手で書くと必ず古くなるので生成する。
 const kb = (path) => `${Math.max(1, Math.round(statSync(path).size / 1024))} KB`;
@@ -251,6 +262,6 @@ writeFileSync(
 
 const pending = topics.topics.filter((t) => !hasProse(t)).length;
 console.log(
-  `生成: ${count} ページ / ${assets.length} 素材（DSL ${reference.dslVersion}）` +
+  `生成: ${count} ページ / ${assets.length} 素材 / 図解 ${diagrams.length} 枚（DSL ${reference.dslVersion}）` +
     (pending > 0 ? `、うち解説未執筆 ${pending} 件（npm run site:todo）` : ''),
 );

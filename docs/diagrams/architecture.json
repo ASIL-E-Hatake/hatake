@@ -1,0 +1,66 @@
+{
+  "$comment": "図解の元データ。直したら node docs/tools/render-diagrams.mjs で .svg を作り直す（CI が差分を見る）。",
+  "title": "定義から画面まで",
+  "subtitle": "hatake の中心は DSL と業務定義。Flutter は Renderer の1つで、交換できる。",
+  "rows": [
+    {
+      "kind": "boxes",
+      "items": [
+        {
+          "label": "定義（Definition）",
+          "note": "人と AI が書くのはここだけ",
+          "tone": "input",
+          "lines": ["YAML / JSON", "Dart のビルダー", "API から取った JSON"]
+        }
+      ]
+    },
+    { "kind": "arrow", "label": "解析（strict：知らないキーは**黙って捨てず弾く**）" },
+    {
+      "kind": "boxes",
+      "items": [
+        {
+          "label": "PageDefinition / AppDefinition",
+          "note": "**唯一の正**（Single Source of Truth）",
+          "tone": "core",
+          "lines": [
+            "取得方法を知らない（YAML か API かは残らない）",
+            "3言語で同じ形（Dart / TypeScript / Java）"
+          ]
+        }
+      ]
+    },
+    { "kind": "arrow", "label": "描画（定義を読んで Widget を組む）", "back": "入力・操作" },
+    {
+      "kind": "boxes",
+      "items": [
+        {
+          "label": "Renderer",
+          "note": "Material / Fluent / 独自",
+          "tone": "core",
+          "lines": ["+ 定義を Widget にする", "! 業務ロジックを持たない", "! HTTP を呼ばない"]
+        },
+        {
+          "label": "Registry（プラグイン）",
+          "note": "足すのはここ。本体は直さない",
+          "tone": "outside",
+          "lines": ["項目型・検証・整形", "アクション・集計"]
+        }
+      ]
+    },
+    { "kind": "arrow", "label": "組み上がったもの" },
+    {
+      "kind": "boxes",
+      "items": [
+        {
+          "label": "Flutter Widget",
+          "note": "実装技術。ここを手で書かないのが目的",
+          "tone": "output"
+        }
+      ]
+    },
+    {
+      "kind": "note",
+      "text": "AI にも人にも入口は1つ。**Widget を書かせず、定義を書かせる**（足りなければ DSL かプラグインを足す）。"
+    }
+  ]
+}

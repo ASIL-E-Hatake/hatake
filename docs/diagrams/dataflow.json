@@ -1,0 +1,64 @@
+{
+  "$comment": "図解の元データ。直したら node docs/tools/render-diagrams.mjs で .svg を作り直す（CI が差分を見る）。",
+  "title": "検索して一覧に出し、直して保存するまで",
+  "subtitle": "データの出入りは Repository の1点だけ。フレームワークは HTTP も DB も知らない。",
+  "rows": [
+    {
+      "kind": "boxes",
+      "items": [
+        {
+          "label": "画面（Renderer が組んだもの）",
+          "note": "定義どおりの検索欄・一覧・入力欄",
+          "tone": "output"
+        }
+      ]
+    },
+    {
+      "kind": "arrow",
+      "label": "検索条件（定義の operator が意味を決める）",
+      "back": "行の一覧"
+    },
+    {
+      "kind": "boxes",
+      "items": [
+        {
+          "label": "Query / Command（定義から組む）",
+          "note": "どの項目でどう突き合わせるか、並び、ページング",
+          "tone": "core",
+          "lines": [
+            "保存の前に整形（全角→半角など）と検証を通す",
+            "隠れている項目は検証しない（条件は定義が持つ）"
+          ]
+        }
+      ]
+    },
+    { "kind": "arrow", "label": "Repository の呼び出し（**インタフェースだけを知る**）", "back": "レコード" },
+    {
+      "kind": "boxes",
+      "items": [
+        {
+          "label": "Repository の実装",
+          "note": "**利用者が書く**（フレームワークは含まない）",
+          "tone": "outside",
+          "lines": ["+ HTTP / DB / モックを選ぶのはここ", "+ 認証・認可もここから外側"]
+        }
+      ]
+    },
+    { "kind": "arrow", "label": "HTTP / SQL / gRPC …", "back": "応答" },
+    {
+      "kind": "boxes",
+      "items": [
+        {
+          "label": "バックエンド（何でもよい）",
+          "note": "Spring Boot / ASP.NET / Node / Laravel / Firebase …",
+          "tone": "input",
+          "lines": ["同じ定義から API の形を出せる（hatake dto / openapi / types）"]
+        }
+      ]
+    },
+    {
+      "kind": "note",
+      "text": "画面が出るのにデータが来ない事故は、ほぼ**名前の食い違い**。`hatake refs` と `hatake registry` を突き合わせれば機械で分かる。"
+    }
+  ]
+}

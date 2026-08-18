@@ -465,6 +465,81 @@ page:
   it("path 指定が要る", () => {
     expect(runCli(["harvest"], fakeIo())).toBe(1);
   });
+
+  it("--repro は最小の再現まで作る（既定では作らない）", () => {
+    const io = fakeIo(corpus);
+    expect(runCli(["harvest", "defs", "--repro"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    // 見出しは「最小の再現（N 箇所削った下書き）:」。人が書く欄の文にも同じ語が出るので、
+    // 括弧まで見て「本文が付いているか」を確かめる。
+    expect(out).toContain("最小の再現（");
+    expect(out).toContain("rowActions");
+    // ラベルは記号に置き換わっている（客先の語彙を持ち出さない）。
+    expect(out).not.toContain("受注一覧");
+
+    const quiet = fakeIo(corpus);
+    expect(runCli(["harvest", "defs"], quiet)).toBe(0);
+    expect(quiet.stdout.join("\n")).not.toContain("最小の再現（");
+  });
+});
+
+describe("hatake minimize", () => {
+  const VERBOSE = `dsl_version: "1.0"
+page:
+  type: crud
+  id: order_list
+  title: 受注一覧
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号, type: text, sortable: false }
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号, required: true, validators: [] }
+`;
+  const files = { ...specFiles, "page.yaml": VERBOSE };
+
+  it("定義は標準出力、落としたものは標準エラー（リダイレクトで使える）", () => {
+    const io = fakeIo(files);
+    expect(runCli(["minimize", "page.yaml", "--spec", SPEC], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("type: crud");
+    expect(out).not.toContain("sortable: false");
+    expect(out).not.toContain("validators: []");
+    expect(io.stderr.join("\n")).toContain("件の指定を落としました");
+  });
+
+  it("--json は落としたものと結果をまとめて返す", () => {
+    const io = fakeIo(files);
+    expect(runCli(["minimize", "page.yaml", "--spec", SPEC, "--json"], io)).toBe(0);
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.dropped.map((one: { where: string }) => one.where)).toContain(
+      "page.table.columns[0].sortable",
+    );
+    expect(result.lines.after).toBeLessThan(result.lines.before + 1);
+    expect(result.source).toContain("id: order_list");
+  });
+
+  it("--out でファイルに書く", () => {
+    const io = fakeIo(files);
+    expect(runCli(["minimize", "page.yaml", "--spec", SPEC, "--out", "min.yaml"], io)).toBe(
+      0,
+    );
+    expect(io.written["min.yaml"]).toContain("type: crud");
+    expect(io.written["min.yaml"]).not.toContain("sortable: false");
+  });
+
+  it("書き間違いのある定義は最小化しない", () => {
+    const io = fakeIo({ ...specFiles, "page.yaml": WITH_TYPOS });
+    expect(runCli(["minimize", "page.yaml", "--spec", SPEC], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("witdh");
+  });
+
+  it("ファイルは1つ", () => {
+    expect(runCli(["minimize"], fakeIo())).toBe(1);
+  });
 });
 
 describe("hatake failures", () => {

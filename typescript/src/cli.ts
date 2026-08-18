@@ -49,6 +49,7 @@ import {
   type HarvestInput,
   renderHarvest,
 } from "./harvest.js";
+import { minimizeSource, renderMinimize } from "./minimize.js";
 import { diffDefinitions, type DefinitionChange } from "./defDiff.js";
 import {
   collectRefs,
@@ -138,11 +139,19 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       ようになりました」）。diff は機械の言葉で言うので、人のレビューには一段
       足りない。後方互換の判定はしない（それは hatake diff）。
 
-  hatake harvest <path...> [--min 2] [--json] [--registry hatake-registry.json]
+  hatake harvest <path...> [--min 2] [--repro] [--json] [--registry hatake-registry.json]
       定義の山を走査して、**繰り返し出ている診断**を実例カタログ
       （spec/failures.json）の候補として出す。「なぜそう書いてしまうか」は機械には
       書けないので、候補は人が書く欄を空のまま出す（自動では足さない）。
-      定義そのものは持ち出さない（ファイル名・場所・回数だけ）。
+      定義そのものは持ち出さない（ファイル名・場所・回数だけ）。--repro を付けると
+      **最小の再現**（その診断が出続ける形まで削った下書き）も作る。ラベルは記号に
+      置き換えるが、id や項目名は残るので、出力に定義の本文が入る。
+
+  hatake minimize <file> [--json] [--out file]
+      **意味を変えずに**定義を短くする。既定値と同じ指定・空の指定を落とす。落とすたびに
+      解析後のモデルが1バイトも変わらないことを確かめるので、意味は変わらない
+      （変わるものは落とさない）。コメントはそのまま残す。既定は最小化した定義を
+      標準出力に、落としたものは標準エラーに出す（--json で両方まとめて機械可読）。
 
   hatake registry <path...> [--json] [--out file]
       アプリの実装を読んで「登録済みのもの」の一覧を作る（validate --registry に
@@ -209,6 +218,7 @@ const BOOLEAN_FLAGS = new Set([
   "json",
   "diff",
   "brief",
+  "repro",
   "no-strict",
   "no-warn",
   "warn-as-error",
@@ -305,6 +315,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return explain(positional, flags, io);
       case "harvest":
         return harvest(positional, flags, io);
+      case "minimize":
+        return minimize(positional, flags, io);
       case "types":
         return types(positional, flags, io);
       case "new":
@@ -526,6 +538,7 @@ function harvest(paths: string[], flags: Args["flags"], io: CliIo): number {
   const min = Math.max(1, Number.parseInt(str(flags, "min") ?? "2", 10) || 2);
   const result = harvestFailures(inputs, {
     min,
+    repro: flags.repro === true,
     catalog: loadFailures(flags, io),
   });
 
@@ -542,6 +555,39 @@ function harvest(paths: string[], flags: Args["flags"], io: CliIo): number {
     io.err(`     ${entry.file}  ${entry.reason}`);
   }
   return 1;
+}
+
+/**
+ * 意味を変えずに定義を短くする。
+ *
+ * 標準出力に出すのは**定義だけ**（`hatake minimize a.yaml > b.yaml` が使えるように）。
+ * 落としたものは標準エラーに出す。黙って短くしないのが要点なので、報告は省けない。
+ */
+function minimize(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("最小化する定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const schema = readSpec(flags, io, SCHEMA_FILE);
+  if (schema === null) return 1;
+  const result = minimizeSource(
+    io.readFile(files[0]),
+    buildReference(schema as Record<string, unknown>),
+  );
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+    return 0;
+  }
+  const out = str(flags, "out");
+  if (out === undefined) {
+    io.out(result.source.trimEnd());
+  } else {
+    io.writeFile(out, result.source);
+    io.out(`書きました: ${out}`);
+  }
+  io.err(renderMinimize(result));
+  return 0;
 }
 
 /**

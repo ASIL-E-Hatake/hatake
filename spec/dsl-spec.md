@@ -1242,6 +1242,28 @@ catalogue. Nothing is ever appended to `failures.json` automatically. The defini
 themselves are not carried out of the scan (file, path and counts only), and diagnoses
 already in the catalogue are counted rather than proposed again.
 
+`--repro` additionally drafts a **minimal reproduction**: the offending definition
+shrunk for as long as the target diagnosis keeps firing and no new one appears. Free
+text (`label` / `title` / `description`) is replaced with symbols afterwards, while
+identifiers stay — so this form does carry definition text, and is off by default.
+
+## Shrinking a definition without changing it
+
+Generated definitions get verbose (a default written out, an empty list left behind).
+
+```bash
+npx hatake minimize page.yaml > short.yaml   # what was dropped goes to stderr
+```
+
+Only two kinds of specification are candidates: a value **equal to the schema default**,
+and an **empty list or object**. Required keys and `dsl_version` are never dropped. Every
+single removal is followed by a check that **the parsed model is byte-identical**, and is
+undone otherwise — so if a parser default ever disagreed with the schema, the tool stops
+dropping rather than changing behaviour. The output is produced by cutting only the
+dropped spans out of the original text, so comments, wrapping and line endings survive. A
+definition with a typo is never minimized (this must not become a tool that silently
+deletes unknown keys).
+
 ## Explaining a definition in prose
 
 Strict parsing, the schema and the warnings all look at spelling and structure only.

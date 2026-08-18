@@ -14,6 +14,7 @@
 
 import { parse as parseYamlText } from "yaml";
 import { type FailureCatalog } from "./failures.js";
+import { reproOf } from "./repro.js";
 import { type DefinitionRegistry } from "./refs.js";
 import { findUnknownKeys } from "./strictKeys.js";
 import { findWarnings } from "./warnings.js";
@@ -53,6 +54,13 @@ export interface FailureCandidate {
   hits: number;
   files: number;
   where: HarvestHit[];
+  /**
+   * 最小の再現の下書き（`--repro` のときだけ）。**定義の本文が入る**ので既定では作らない。
+   * 自由文は記号に置き換えてあるが、id や項目名は残る（[reproOf] 参照）。
+   */
+  wrote?: string[];
+  /** 下書きを作るときに削った箇所の数。 */
+  removed?: number;
   /** 人が書く欄。機械には書けないものだけを並べる。 */
   todo: string[];
 }
@@ -87,6 +95,13 @@ export interface HarvestOptions {
   min?: number;
   /** 定義ごとに一覧が無いときの既定（[HarvestInput.registry] が優先）。 */
   registry?: DefinitionRegistry;
+  /**
+   * 最小の再現（`wrote` の下書き）まで作る。**既定は false**。
+   *
+   * 出力に定義の本文が入るので、既定のまま（作らない）が「定義そのものは持ち出さない」に
+   * 合う。作るときも自由文は記号に置き換えるが、id や項目名は残る。
+   */
+  repro?: boolean;
 }
 
 /** 診断1つの数え上げ。 */
@@ -97,6 +112,10 @@ interface Tally {
   says: string;
   where: HarvestHit[];
   files: Set<string>;
+  /** 最初に見つけた定義（最小の再現を作る元。持ち出す判断は呼ぶ側）。 */
+  found: Record<string, unknown>;
+  /** その定義に効いていた登録済み一覧（外との辻褄の診断を再現するのに要る）。 */
+  registry?: DefinitionRegistry;
 }
 
 /**
@@ -138,6 +157,8 @@ export function harvestFailures(
         says: warning.message,
         file: input.file,
         path: warning.path,
+        document,
+        registry,
       });
     }
     for (const unknown of findUnknownKeys(document)) {
@@ -149,6 +170,8 @@ export function harvestFailures(
           (unknown.suggestion === null ? "" : `（${unknown.suggestion} の間違い？）`),
         file: input.file,
         path: unknown.path === "" ? unknown.key : `${unknown.path}.${unknown.key}`,
+        document,
+        registry,
       });
     }
   }
@@ -174,6 +197,11 @@ export function harvestFailures(
       rare.push(summary);
       continue;
     }
+    // 最小の再現は**頼まれたときだけ**作る（出力に定義の本文が入るので）。
+    const repro =
+      options.repro === true
+        ? reproOf(tally.found, tally.name, { registry: tally.registry })
+        : null;
     candidates.push({
       id: tally.name,
       diagnosis: tally.unknownKey
@@ -183,7 +211,8 @@ export function harvestFailures(
       hits: tally.where.length,
       files: tally.files.size,
       where: tally.where,
-      todo: [...TODO],
+      ...(repro === null ? {} : { wrote: repro.wrote, removed: repro.removed }),
+      todo: repro === null ? [...TODO] : [...TODO_WITH_REPRO],
     });
   }
 
@@ -202,6 +231,16 @@ const TODO = [
   "id: 転び方が分かる名前に付け替える（診断名は diagnosis にあるので要らない）。",
 ];
 
+/** `--repro` で下書きが入っているときの、残った人の仕事。 */
+const TODO_WITH_REPRO = [
+  "why: なぜそう書いてしまうか。この表の価値はここ（対照表に無い列）。",
+  "title: 何をしようとして、どう書いたか（1行）。",
+  "wrote: 下書きが入っている。ラベルは記号に置き換えたが、**id や項目名は元のまま**なので、客先の語彙が残っていないか見る。",
+  "fixed: 直したあとの形（下書きから作る。問題ゼロで通ること）。",
+  "fix: 直し方（1行）。",
+  "id: 転び方が分かる名前に付け替える（診断名は diagnosis にあるので要らない）。",
+];
+
 const byHitsThenName = (a: Tally, b: Tally): number =>
   b.where.length - a.where.length || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 
@@ -213,6 +252,8 @@ function add(
     says: string;
     file: string;
     path: string;
+    document: Record<string, unknown>;
+    registry?: DefinitionRegistry;
   },
 ): void {
   // 警告の規則名と未知キーの名前は別の空間なので、鍵を分ける。
@@ -223,6 +264,8 @@ function add(
     says: found.says,
     where: [],
     files: new Set<string>(),
+    found: found.document,
+    registry: found.registry,
   };
   tally.where.push({ file: found.file, path: found.path });
   tally.files.add(found.file);
@@ -298,6 +341,10 @@ export function renderHarvest(result: HarvestResult, min: number): string {
       }
       if (candidate.where.length > 5) {
         out.push(`  出た所: （ほか ${candidate.where.length - 5} 箇所）`);
+      }
+      if (candidate.wrote !== undefined) {
+        out.push(`  最小の再現（${candidate.removed} 箇所削った下書き）:`);
+        for (const line of candidate.wrote) out.push(`    ${line}`);
       }
       for (const todo of candidate.todo) out.push(`  人が書く: ${todo}`);
     }

@@ -93,6 +93,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 | `hatake_pitfalls` | よくある間違い → なぜ駄目か → 正しい書き方。書く前に眺める / 落ちて直せないとき | `query`、`lang`（ja/en） |
 | `hatake_diff` | **既にある定義を直したとき**：契約（api）を壊すか＋画面・権限・アプリ構成の**確かめてほしい**変化 | `before`、`after` |
 | `hatake_explain` | **検証を通したあと**：書いた定義が何をする画面かを日本語で読み返す（意図と違っていないか）。直したものを人に伝えるときは `before` も渡す | `source`、`before`（直す前＝変更を画面の言葉で言い直す）、`page`（app のとき1枚だけ）、`brief`（1行だけ） |
+| `hatake_minimize` | 定義が長くなったとき：**既定値と同じ指定・空の指定**を落として短くする（意味は変えない） | `source` |
 | `hatake_refs` | アプリに組み込むとき：定義が要求している Repository / プラグイン名などの一覧 | `source` |
 | `hatake_api_shape` | 同じ定義から API の形（DtoSpec / JSON Schema / OpenAPI 3.1 / TS / Java） | `source`、`format`、`basePath`、`package` |
 
@@ -108,6 +109,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 7. 既にある定義を直したときは hatake_diff（壊していないか・確かめてほしい変化はないか）
    直した内容を人に伝えるときは hatake_explain に before を渡す（変更を画面の言葉で）
 8. アプリに組み込むときは hatake_refs（何を登録すればいいか）
+9. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
 ```
 
 `hatake_explain` は「意図どおりか」を見る道具です。strict もスキーマも警告も**綴りと構造しか見ない**ので、条件の向きを間違えた・意図と違う項目を必須にした、は全部通ります。検証のあとに日本語で読み返して、頼まれたことと違っていたら直す。人に見せてレビューしてもらう出力にもなります（読み手は DSL を知らなくてよい）。
@@ -117,6 +119,8 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 `hatake_diff` は変更を **area**（api / ui / access / app）と **impact**（breaking / caution / safe）で返します。`compatible: false` は呼び出し側の修正が要る話、`quiet: false` は「壊れないが人に確かめてほしい」話（列やボタンや選択肢が消えた・権限が変わった・ページやメニューが消えた）。エージェントには**後者を黙って進めず列挙させる**ようにしてあります。
 
 `hatake_refs` → `hatake_validate` の `registry` は繋がっています。前者が「何を登録すればいいか」を出し、それを人が確かめて後者に渡すと、名前の食い違いを機械で拾えます。
+
+`hatake_minimize` は「短くする」道具ですが、狙いは**次に読む側**です。AI が生成した定義は既定値をわざわざ書きがちで、そのぶんレビューが重くなり、次に AI が読むときのコンテキストも太ります。落とすたびに解析後のモデルが変わらないことを確かめているので、意味は変わりません（変わるものは落とさない）。コメントも、落とした所以外の書き方もそのまま残ります。
 
 `hatake_validate` は**未知キーから落とし穴を引いて、直し方を添えます**。「知らないキー `form`」だけでは直せないので、「`form` を持つのは crud/master/detail/form。照会と入力を分けるなら search＋detail を navigate で繋ぐ」まで返します。
 
