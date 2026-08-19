@@ -61,6 +61,13 @@ export interface FailureCandidate {
   wrote?: string[];
   /** 下書きを作るときに削った箇所の数。 */
   removed?: number;
+  /**
+   * 直した形の下書き（`--repro` のときで、**直したら診断がゼロになった**ときだけ）。
+   * 一意に直せない件には入らない（そこは意図が要る＝人の仕事）。
+   */
+  fixed?: string[];
+  /** `fixed` を作れなかった理由。 */
+  fixNote?: string;
   /** 人が書く欄。機械には書けないものだけを並べる。 */
   todo: string[];
 }
@@ -211,8 +218,20 @@ export function harvestFailures(
       hits: tally.where.length,
       files: tally.files.size,
       where: tally.where,
-      ...(repro === null ? {} : { wrote: repro.wrote, removed: repro.removed }),
-      todo: repro === null ? [...TODO] : [...TODO_WITH_REPRO],
+      ...(repro === null
+        ? {}
+        : {
+            wrote: repro.wrote,
+            removed: repro.removed,
+            ...(repro.fixed === undefined ? {} : { fixed: repro.fixed }),
+            ...(repro.fixNote === undefined ? {} : { fixNote: repro.fixNote }),
+          }),
+      todo:
+        repro === null
+          ? [...TODO]
+          : repro.fixed === undefined
+            ? [...TODO_WITH_REPRO]
+            : [...TODO_WITH_FIXED],
     });
   }
 
@@ -228,6 +247,15 @@ const TODO = [
   "title: 何をしようとして、どう書いたか（1行）。",
   "wrote / fixed: 最小の再現。当たった定義から要らない所を削って作る（客先の語彙は残さない）。",
   "fix: 直し方（1行）。",
+  "id: 転び方が分かる名前に付け替える（診断名は diagnosis にあるので要らない）。",
+];
+
+/** 再現と直した形の両方が入っているときの、残った人の仕事（**言葉だけ**）。 */
+const TODO_WITH_FIXED = [
+  "why: なぜそう書いてしまうか。この表の価値はここ（対照表に無い列）。",
+  "title: 何をしようとして、どう書いたか（1行）。",
+  "fix: 直し方（1行）。下書きの wrote と fixed の差を見れば書ける。",
+  "wrote / fixed: 下書きが入っている。ラベルは記号に置き換えたが、**id や項目名は元のまま**なので、客先の語彙が残っていないか見る。",
   "id: 転び方が分かる名前に付け替える（診断名は diagnosis にあるので要らない）。",
 ];
 
@@ -345,6 +373,12 @@ export function renderHarvest(result: HarvestResult, min: number): string {
       if (candidate.wrote !== undefined) {
         out.push(`  最小の再現（${candidate.removed} 箇所削った下書き）:`);
         for (const line of candidate.wrote) out.push(`    ${line}`);
+      }
+      if (candidate.fixed !== undefined) {
+        out.push("  直した形（診断ゼロを確かめた下書き）:");
+        for (const line of candidate.fixed) out.push(`    ${line}`);
+      } else if (candidate.fixNote !== undefined) {
+        out.push(`  直した形: ${candidate.fixNote}`);
       }
       for (const todo of candidate.todo) out.push(`  人が書く: ${todo}`);
     }

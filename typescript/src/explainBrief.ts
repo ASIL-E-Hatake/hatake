@@ -18,7 +18,7 @@ import { isAppSource, noSuchPage, parseAppSource } from "./explainSource.js";
 import { parsePageYaml } from "./parse.js";
 
 /** ページ種別 → 1行に収まる見出し語。 */
-const SHORT_KINDS: Record<string, string> = {
+export const SHORT_KINDS: Record<string, string> = {
   crud: "検索＋一覧＋登録・修正・削除",
   master: "マスタ保守",
   search: "照会（読み取り専用）",

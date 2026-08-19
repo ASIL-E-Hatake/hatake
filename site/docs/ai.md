@@ -106,6 +106,8 @@ npx hatake explain page.yaml           # この定義、結局どういう画面
 npx hatake explain page.yaml --brief   # 1行の要約（app なら画面一覧の表）
 npx hatake explain --diff before.yaml page.yaml  # 何を変えたのか、画面の言葉で
 npx hatake harvest definitions/        # 繰り返し転んでいる所を実例カタログの候補に
+npx hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
+npx hatake diagram app.yaml --out app.svg  # 画面とメニューと遷移の図
 npx hatake minimize page.yaml          # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権限・アプリ構成）
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか
@@ -232,6 +234,28 @@ npx hatake minimize page.yaml > short.yaml   # 落としたものは標準エラ
 ```
 
 落とすのは「既定値と同じ指定」と「空の指定」だけ。**1つ落とすたびに解析後のモデルが1バイトも変わらないことを確かめ、変わったら戻す**ので、意味は変わらない。出力は落とす所だけを切るので、コメントも書き方も改行コードもそのまま（差分が「消えた行」だけになる）。書き間違いのある定義は最小化しない — 未知キーを黙って消す道具になってはいけないので。
+
+### 定義が増えたら、索引で探す
+
+画面が10枚を超えると「どこに何があるか」が分からなくなる。grep では「その画面が何をするか」が出てこないので、1行の要約を集めた索引を作る。
+
+```bash
+npx hatake index definitions/ --find "顧客 検索"
+npx hatake index definitions/ --by size      # 規模の大きい画面から
+npx hatake index definitions/ --json         # AI に渡す（近い画面を探させる入口）
+```
+
+探せるのは**現場の言葉と実装の言葉の両方**（ラベルの「得意先」でも、項目名の `customer` でも当たる）。`--find` は語の AND なので、文ではなく語を並べる。
+
+### 画面と遷移を図にする
+
+```bash
+npx hatake diagram app.yaml --out app.svg
+```
+
+段は「メニューから開ける画面 → そこから遷移で開く画面 → …」。この並べ方にすると**どこからも開けない画面**（メニューにも遷移先にも無い）が自然に落ちてくる。画面が増えると一覧では気づけないやつ。
+
+1枚の画面の中身は図にしない（`explain` のほうが読める）。図は「画面が増えたときの遷移」のためのもの。[図解](/diagrams)のページに載せている3枚も同じコマンドで描いている。
 
 ### 定義の外との食い違いも見られる
 

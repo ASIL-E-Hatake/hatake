@@ -4,8 +4,14 @@
 直したら作り直す（CI が作り直して差分を見るので、絵だけ古いという状態にはならない）。
 
 ```bash
-node docs/tools/render-diagrams.mjs
+for f in docs/diagrams/*.json; do
+  node typescript/dist/cli.js diagram "$f" --out "${f%.json}.svg"
+done
 ```
+
+描いているのは CLI（`hatake diagram`）で、**定義から作る図と同じ描画**を使う
+（[`typescript/src/diagram.ts`](../../typescript/src/diagram.ts)）。資料用と道具用で
+描画を2本持つと、必ず片方が古くなる。
 
 サイトでも同じ絵を出している → <https://asil-e-hatake.github.io/hatake/diagrams>
 
@@ -46,6 +52,19 @@ npx hatake validate page.yaml --registry hatake-registry.json # 突き合わせ�
 
 → 判断に迷う所は [ページ種別の選び方](../guide/page-types.ja.md) と
 [よくある間違い](../../spec/pitfalls.json)（`npx hatake pitfalls <キー名>`）。
+
+## 定義から作る図
+
+手で書く元データの他に、**実際の定義から**図を作れる。
+
+```bash
+npx hatake diagram app.yaml --out app.svg    # 画面とメニューと遷移
+npx hatake diagram app.yaml --json           # 元データだけ（手で直してから描ける）
+```
+
+段は「メニューから開ける画面 → そこから `navigate` で開く画面 → …」。**どこからも開けない
+画面**（メニューにも遷移先にも無い）はこの並べ方で自然に落ちてくるので、そこだけ別に出す。
+1枚の画面の中身は図にしない（`hatake explain` のほうが読める）。
 
 ## 絵を直す・足す
 

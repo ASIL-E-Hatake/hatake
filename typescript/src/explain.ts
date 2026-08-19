@@ -11,6 +11,19 @@
 // （spec/failures.json の diagnosis が空の件が、まさにそれ）。
 
 import {
+  ACTION_TYPES,
+  AGGREGATES,
+  CHART_KINDS,
+  CONDITION_OPERATORS,
+  CONVERTERS,
+  FIELD_TYPES,
+  fill,
+  FILTER_OPERATORS,
+  FORMATTERS,
+  PAGE_KINDS,
+  VALIDATORS,
+} from "./explainPhrases.js";
+import {
   type ActionDefinition,
   ActionTypes,
   type AppDefinition,
@@ -38,134 +51,6 @@ export interface ExplainDocument {
   headline: string;
   sections: ExplainSection[];
 }
-
-/** ページ種別 → その画面が何をするものか。 */
-const PAGE_KINDS: Record<string, { what: string; cannot: string[] }> = {
-  crud: {
-    what: "検索して一覧に出し、その場で登録・修正・削除までできる画面",
-    cannot: [],
-  },
-  master: {
-    what: "マスタをメンテナンスする画面（検索・一覧・登録・修正・削除）",
-    cannot: [],
-  },
-  search: {
-    what: "検索して一覧を見るだけの画面",
-    cannot: ["登録・修正・削除はできない（照会専用）"],
-  },
-  detail: {
-    what: "1件の内容を読むだけの画面",
-    cannot: ["この画面では書き換えられない（読み取り専用）"],
-  },
-  form: {
-    what: "1件を入力する画面（新規と編集の両方）",
-    cannot: ["一覧は無い（開く先は呼び出し側が決める）"],
-  },
-  wizard: {
-    what: "入力をステップに分けた画面",
-    cannot: ["途中では保存しない（最後にまとめて1回）"],
-  },
-  dashboard: {
-    what: "数字とグラフのカードを並べて見せる画面",
-    cannot: ["ここからデータは書き換えられない"],
-  },
-  report: {
-    what: "印刷向けの帳票",
-    cannot: ["画面から書き換えはできない"],
-  },
-};
-
-/** 検索の突合 → 日本語。 */
-const OPERATORS: Record<string, string> = {
-  equals: "完全一致",
-  notEquals: "一致しないもの",
-  contains: "部分一致",
-  startsWith: "前方一致",
-  endsWith: "後方一致",
-  gt: "より大きい",
-  gte: "以上",
-  lt: "より小さい",
-  lte: "以下",
-  between: "期間・範囲（開始と終了の2つ）",
-  in: "いずれかに一致",
-};
-
-/** 条件の演算子 → 日本語（`{field} が …`）。 */
-const CONDITIONS: Record<string, (value: string) => string> = {
-  equals: (v) => `が ${v} のとき`,
-  notEquals: (v) => `が ${v} でないとき`,
-  gt: (v) => `が ${v} より大きいとき`,
-  gte: (v) => `が ${v} 以上のとき`,
-  lt: (v) => `が ${v} より小さいとき`,
-  lte: (v) => `が ${v} 以下のとき`,
-  contains: (v) => `に ${v} を含むとき`,
-  in: (v) => `が ${v} のどれかのとき`,
-  isEmpty: () => "が空のとき",
-  isNotEmpty: () => "が入っているとき",
-};
-
-/** 項目の型 → 入力の見え方。text は既定なので言わない。 */
-const FIELD_TYPES: Record<string, string> = {
-  textarea: "複数行",
-  number: "数値",
-  select: "選択",
-  multiSelect: "複数選択",
-  checkbox: "チェックボックス",
-  radio: "ラジオ",
-  date: "日付",
-  dateTime: "日時",
-  time: "時刻",
-  subTable: "明細（表で複数行）",
-};
-
-const VALIDATORS: Record<string, (params: Record<string, unknown>) => string> = {
-  required: () => "必須",
-  maxLength: (p) => `${p.value} 文字以内`,
-  minLength: (p) => `${p.value} 文字以上`,
-  min: (p) => `${p.value} 以上`,
-  max: (p) => `${p.value} 以下`,
-  pattern: () => "決まった書式",
-  email: () => "メールアドレスの形",
-  postalCode: () => "郵便番号の形",
-  numeric: () => "数字だけ",
-};
-
-/** フォーマッタ → 見え方。**例を見せる**のがレビューには一番早い。 */
-const FORMATTERS: Record<string, string> = {
-  currency: "¥1,234,567 のように",
-  percent: "12.3% のように",
-  date: "2026/07/22 のように",
-  wareki: "令和8年7月22日 のように",
-  postal: "123-4567 のように",
-  mask: "一部を隠して",
-};
-
-const CONVERTERS: Record<string, string> = {
-  toHankaku: "全角→半角",
-  toZenkaku: "半角→全角",
-  hiraToKata: "ひらがな→カタカナ",
-  kataToHira: "カタカナ→ひらがな",
-  trim: "前後の空白を落とす",
-  collapseSpaces: "連続した空白を1つに",
-  parseNumber: "数値に直す",
-};
-
-const ACTIONS: Record<string, string> = {
-  create: "新規入力を開く",
-  edit: "編集を開く",
-  delete: "削除する",
-  navigate: "別の画面へ移る",
-  export: "内容をファイルに出す",
-  plugin: "アプリ側の処理を呼ぶ",
-};
-
-const AGGREGATES: Record<string, string> = {
-  count: "件数",
-  sum: "合計",
-  avg: "平均",
-  min: "最小",
-  max: "最大",
-};
 
 /** 項目名 → ラベル、と 項目名 → (値 → 選択肢のラベル)。条件を人の言葉にするため。 */
 interface Vocabulary {
@@ -231,12 +116,12 @@ export function describeCondition(
   const shown = Array.isArray(raw)
     ? raw.map((v) => valueLabel(vocabulary, field, v)).join(" / ")
     : valueLabel(vocabulary, field, raw);
-  const phrase = CONDITIONS[operator];
+  const phrase = CONDITION_OPERATORS[operator];
   if (phrase === undefined) {
     // 条件が理解しない演算子。ここで嘘をつかず、そう言う（警告でも出る）。
     return `${label} の条件（${operator} は条件では使えません）`;
   }
-  return `${label} ${phrase(shown)}`;
+  return `${label} ${fill(phrase, shown)}`;
 }
 
 const valueLabel = (
@@ -343,7 +228,7 @@ export function explainPage(
 }
 
 function describeFilter(filter: FilterDefinition, vocabulary: Vocabulary): string {
-  const operator = OPERATORS[filter.operator] ?? filter.operator;
+  const operator = FILTER_OPERATORS[filter.operator] ?? filter.operator;
   const options =
     filter.options.length > 0
       ? `。選べるのは ${filter.options.map((o) => o.label).join(" / ")}`
@@ -415,7 +300,8 @@ function describeFields(
 
 function describeField(field: FieldDefinition, vocabulary: Vocabulary): string {
   const notes: string[] = [];
-  const type = FIELD_TYPES[field.type];
+  // text は既定なので言わない（語彙には在るが、書いていないのと同じ見え方なので）。
+  const type = field.type === FieldTypes.text ? undefined : FIELD_TYPES[field.type];
   if (type !== undefined) notes.push(type);
   if (field.required) notes.push("必須");
   const requiredWhen = describeCondition(field.requiredWhen, vocabulary);
@@ -466,8 +352,12 @@ function describeField(field: FieldDefinition, vocabulary: Vocabulary): string {
   return notes.length === 0 ? field.label : `${field.label} … ${notes.join("、")}`;
 }
 
-const describeValidator = (rule: ValidatorDefinition): string =>
-  VALIDATORS[rule.type]?.(rule.params) ?? `${rule.type} の規則`;
+const describeValidator = (rule: ValidatorDefinition): string => {
+  const phrase = VALIDATORS[rule.type];
+  return phrase === undefined
+    ? `${rule.type} の規則`
+    : fill(phrase, rule.params.value);
+};
 
 /** 素の定義から「アクション id → 遷移先ページ id」を拾う。 */
 function navigateTargets(raw: Record<string, unknown>): Map<string, string> {
@@ -484,7 +374,7 @@ function navigateTargets(raw: Record<string, unknown>): Map<string, string> {
 }
 
 function describeAction(action: ActionDefinition, target?: string): string {
-  const what = ACTIONS[action.type] ?? `${action.type}`;
+  const what = ACTION_TYPES[action.type] ?? `${action.type}`;
   const to =
     action.type === ActionTypes.navigate && target !== undefined
       ? `（${target} へ）`
@@ -519,7 +409,7 @@ function describeDashboard(
     lines: items.map((item) => {
       const what =
         item.chart !== undefined
-          ? `${item.chart.kind} のグラフ（${
+          ? `${CHART_KINDS[item.chart.kind] ?? item.chart.kind} のグラフ（${
               labels.get(item.chart.labelField) ?? item.chart.labelField
             }ごと）`
           : item.columns.length > 0

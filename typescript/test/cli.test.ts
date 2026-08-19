@@ -483,6 +483,120 @@ page:
   });
 });
 
+describe("hatake index", () => {
+  const corpus = {
+    "defs/order.yaml": GOOD.replace("customer_master", "order_list").replace(
+      "顧客マスタ",
+      "受注一覧",
+    ),
+    "defs/customer.yaml": GOOD,
+    "defs/pubspec.yaml": "name: demo\n",
+  };
+
+  it("画面の索引を表で出す", () => {
+    const io = fakeIo(corpus);
+    expect(runCli(["index", "defs"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("画面 2 枚");
+    expect(out).toContain("customer_master");
+    expect(out).toContain("order_list");
+  });
+
+  it("--find は語の AND", () => {
+    const io = fakeIo(corpus);
+    expect(runCli(["index", "defs", "--find", "受注"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("画面 1 枚");
+    expect(out).toContain("order_list");
+    expect(out).not.toContain("顧客マスタ");
+  });
+
+  it("--by size は規模も見せる", () => {
+    const io = fakeIo(corpus);
+    expect(runCli(["index", "defs", "--by", "size"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("規模の大きい順");
+  });
+
+  it("--json / --out はそのまま機械に渡せる形", () => {
+    const io = fakeIo(corpus);
+    expect(runCli(["index", "defs", "--json"], io)).toBe(0);
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.screens).toHaveLength(2);
+    expect(result.ignored).toBe(1);
+    expect(result.screens[0].words).toContain("コード");
+
+    const written = fakeIo(corpus);
+    expect(runCli(["index", "defs", "--out", "index.json"], written)).toBe(0);
+    expect(JSON.parse(written.written["index.json"]).screens).toHaveLength(2);
+  });
+
+  it("読めない定義があれば終了コード 1（索引は不完全）", () => {
+    const io = fakeIo({ "defs/broken.yaml": "page:\n  type: crud\n" });
+    expect(runCli(["index", "defs"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("索引は不完全");
+  });
+
+  it("path 指定が要る", () => {
+    expect(runCli(["index"], fakeIo())).toBe(1);
+  });
+});
+
+describe("hatake diagram", () => {
+  const app = `dsl_version: "1.0"
+app:
+  id: sales
+  title: 販売管理
+  menu:
+    - { id: orders, label: 受注, page: order_search }
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      key: orderNo
+      table:
+        columns: [{ field: orderNo, label: 受注番号 }]
+`;
+
+  it("app の定義から図を描く", () => {
+    const io = fakeIo({ "app.yaml": app });
+    expect(runCli(["diagram", "app.yaml"], io)).toBe(0);
+    const svg = io.stdout.join("\n");
+    expect(svg.startsWith("<svg")).toBe(true);
+    expect(svg).toContain("販売管理（sales）の画面と遷移");
+  });
+
+  it("--json は元データ（手で直してから描ける）", () => {
+    const io = fakeIo({ "app.yaml": app });
+    expect(runCli(["diagram", "app.yaml", "--json"], io)).toBe(0);
+    const picture = JSON.parse(io.stdout.join("\n"));
+    expect(picture.rows.length).toBeGreaterThan(1);
+  });
+
+  it("図の元データを渡すと、それを描く（資料の図と同じ描画）", () => {
+    const io = fakeIo({
+      "d.json": JSON.stringify({
+        $comment: "資料の図",
+        title: "図の題",
+        rows: [{ kind: "note", text: "注記" }],
+      }),
+    });
+    expect(runCli(["diagram", "d.json", "--out", "d.svg"], io)).toBe(0);
+    expect(io.written["d.svg"]).toContain("図の題");
+    expect(io.stdout.join("\n")).toContain("書きました: d.svg");
+  });
+
+  it("1枚の画面は図にしない（explain のほうが読める）", () => {
+    const io = fakeIo({ "page.yaml": GOOD });
+    expect(runCli(["diagram", "page.yaml"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("hatake explain");
+  });
+
+  it("ファイルは1つ", () => {
+    expect(runCli(["diagram"], fakeIo())).toBe(1);
+  });
+});
+
 describe("hatake minimize", () => {
   const VERBOSE = `dsl_version: "1.0"
 page:

@@ -1279,6 +1279,41 @@ This is **advice, not a warning**, so it never changes the exit code: a warning 
 Mixing the two would cost the warnings their credibility. That every suggested key really is
 writable at that place is checked in CI against the schema-derived reference.
 
+## The words used to explain a definition
+
+The phrasing `explain` uses (how a formatter looks, how a condition reads, what a page kind is)
+lives in [`vocabulary.json`](vocabulary.json); every edition transcribes it. Keeping the words
+inside one implementation would mean maintaining them twice as soon as another edition — or an
+English rendering — wants to explain a definition.
+
+`{value}` marks a substitution point. Both `ja` and `en` are carried; only the Japanese is
+rendered today (an English `explain` is built from the other column). CI checks three things: the
+TypeScript table matches the `ja` column exactly, every built-in value in `reference.json` has a
+word, and no word is left for a value the DSL no longer has.
+
+## An index of screens
+
+```bash
+npx hatake index definitions/ --find "customer search"
+```
+
+Collects the one-line summaries (`explain --brief`) into a table that answers "which screen is
+where". The searchable words include both what users see (labels) and what implementers write
+(field names, repository keys). `--find` is an AND of terms, `--by size` orders by size, and
+`--json` / `--out` produce the machine-readable form. An `app:` contributes one row per page.
+
+## Screens and navigation as a picture
+
+```bash
+npx hatake diagram app.yaml --out app.svg
+```
+
+Derives a picture (SVG) of screens, menu and navigation from an `app:` definition. Rows are
+layers: screens reachable from the menu, then screens reached by `navigate` from those, and so
+on — which makes **screens nothing can open** fall out on their own. A single page is not drawn
+(`explain` reads better). Passing a diagram source (a JSON with `rows`) draws that instead, so the
+hand-written figures in [`docs/diagrams/`](../docs/diagrams/) and this command share one renderer.
+
 ## Shrinking a definition without changing it
 
 Generated definitions get verbose (a default written out, an empty list left behind).

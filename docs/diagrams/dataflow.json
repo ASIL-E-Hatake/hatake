@@ -1,5 +1,5 @@
 {
-  "$comment": "図解の元データ。直したら node docs/tools/render-diagrams.mjs で .svg を作り直す（CI が差分を見る）。",
+  "$comment": "図解の元データ。直したら npx hatake diagram <このファイル> --out <同名>.svg で作り直す（CI が差分を見る）。",
   "title": "検索して一覧に出し、直して保存するまで",
   "subtitle": "データの出入りは Repository の1点だけ。フレームワークは HTTP も DB も知らない。",
   "rows": [
