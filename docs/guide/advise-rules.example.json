@@ -1,0 +1,38 @@
+{
+  "$comment": "hatake advise --rules に渡す物差しの例（案件ごとの決めごと）。書けるのは3つだけ: off = 合わない規則を止める / options = 組み込みの規則の目盛りを変える / require = 「この場所には必ずこのキーを書く」を足す。知らないキー・知らない規則名はエラーになる（設定が黙って効かないのを防ぐため）。規則名とつまみの一覧は npx hatake advise --help、または typescript/src/adviseRules.ts の BUILTIN_RULES。",
+
+  "off": ["money-without-format"],
+
+  "options": {
+    "no-sortable-column": { "minColumns": 4 },
+    "open-dangerous-action": { "types": ["delete", "export"] }
+  },
+
+  "require": [
+    {
+      "rule": "team-sortable-column",
+      "node": "column",
+      "key": "sortable",
+      "pages": ["crud", "master", "search"],
+      "says": "一覧は並べ替えできるようにする決めごとです（現場は日付順・金額順で見ます）。",
+      "add": "よく並べ替える列に `sortable: true`。"
+    },
+    {
+      "rule": "team-delete-confirm",
+      "node": "action",
+      "key": "confirm",
+      "when": { "type": "delete" },
+      "every": true,
+      "says": "削除は必ず確認を出す決めごとです。",
+      "add": "`confirm: { message: 削除してよろしいですか }`。"
+    },
+    {
+      "rule": "team-column-width",
+      "node": "column",
+      "key": "width",
+      "pages": ["crud", "master", "search"],
+      "says": "一覧の列幅は決めておく決めごとです（画面ごとに幅が違うと現場が戸惑います）。",
+      "add": "どれかに `width` を書く（全部に要るなら every: true にする）。"
+    }
+  ]
+}

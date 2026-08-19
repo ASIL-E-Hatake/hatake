@@ -12,7 +12,12 @@
 // 嘘をつかないための決めごと: 助言が「これを足せ」と言うキーは、**その場所に本当に書ける
 // キー**であること。スキーマから作ったリファレンスで確かめる（試験でも見ている）。名前から
 // 推測している助言（「金額らしいのに桁区切りが無い」）には `guess` を立てて、推測だと言う。
+//
+// 何を言うかは**外から変えられる**（[AdviceRules]）。好みなので、案件ごとの決めごとを
+// 渡せないと「合わないから使わない」になる。渡せるのは「切る・目盛りを変える・足す」の3つ。
 
+import { checkRequired } from "./adviseRequire.js";
+import { type AdviceRules, DEFAULT_RULES, enabled, knob } from "./adviseRules.js";
 import { type DslReference } from "./reference.js";
 
 type Dict = Record<string, unknown>;
@@ -30,6 +35,8 @@ const dicts = (v: unknown): Dict[] => list(v).filter(isDict);
 export interface Advice {
   /** 規則名（安定した識別子）。 */
   rule: string;
+  /** どの画面の話か（app の中の1枚に絞って読むため）。 */
+  page?: string;
   /** 場所（警告と同じ道の書き方）。 */
   where: string;
   /** 何が不便か。 */
@@ -48,25 +55,61 @@ export interface Advice {
 const WRITES = new Set(["crud", "master", "form", "wizard"]);
 
 /** 金額らしい名前（桁区切りが無いと読めない列を拾うための、名前による推測）。 */
-const MONEY = /(amount|price|total|cost|fee|salary|金額|価格|単価|合計|税|料金)/i;
+const MONEY_WORDS = [
+  "amount",
+  "price",
+  "total",
+  "cost",
+  "fee",
+  "salary",
+  "金額",
+  "価格",
+  "単価",
+  "合計",
+  "税",
+  "料金",
+];
 
 /**
  * 助言を集める。素の document を見る（既定値で埋まった姿ではなく、**書いてあるもの**を
  * 見たいので）。
+ *
+ * [rules] を渡すと物差しが変わる（規則を切る・目盛りを変える・案件の決めごとを足す）。
+ * 渡さなければ組み込みの規則を既定の目盛りで全部使う。
  */
-export function findAdvice(document: Dict): Advice[] {
+export function findAdvice(
+  document: Dict,
+  rules: AdviceRules = DEFAULT_RULES,
+): Advice[] {
   const found: Advice[] = [];
   const app = isDict(document.app) ? document.app : undefined;
   if (app !== undefined) {
     dicts(app.pages).forEach((page, i) =>
-      checkPage(page, `app.pages[${i}]`, found),
+      checkPage(page, `app.pages[${i}]`, found, rules),
     );
   }
-  if (isDict(document.page)) checkPage(document.page, "page", found);
+  if (isDict(document.page)) checkPage(document.page, "page", found, rules);
   return found;
 }
 
-function checkPage(page: Dict, path: string, found: Advice[]): void {
+function checkPage(page: Dict, path: string, found: Advice[], rules: AdviceRules): void {
+  const from = found.length;
+  checkBuiltins(page, path, found, rules);
+  checkRequired(page, path, found, rules);
+  // どの画面の話かを添える（app の1枚だけ読むときに絞れるように）。場所の道からも読めるが、
+  // 道は「何番目のページか」しか言わないので、id で引けるほうが使える。
+  const id = str(page.id);
+  if (id !== undefined) {
+    for (let at = from; at < found.length; at++) found[at].page = id;
+  }
+}
+
+function checkBuiltins(
+  page: Dict,
+  path: string,
+  found: Advice[],
+  rules: AdviceRules,
+): void {
   const kind = str(page.type) ?? "";
   const table = isDict(page.table) ? page.table : undefined;
   const columns = table === undefined ? [] : dicts(table.columns);
@@ -78,8 +121,9 @@ function checkPage(page: Dict, path: string, found: Advice[]): void {
   // 一覧はあるのに、並べ替えできる列が1つも無い。
   // 帳票では言わない（印字順は report.sort が決めるので、画面の並べ替えは無い）。
   if (
+    enabled(rules, "no-sortable-column") &&
     kind !== "report" &&
-    columns.length >= 3 &&
+    columns.length >= knob(rules, "no-sortable-column", "minColumns", 3) &&
     !columns.some((column) => column.sortable === true)
   ) {
     found.push({
@@ -93,7 +137,12 @@ function checkPage(page: Dict, path: string, found: Advice[]): void {
   }
 
   // 一覧はあるのに、絞り込みが1つも無い（件数が増えると使えなくなる）。
-  if (columns.length > 0 && filters.length === 0 && kind !== "report") {
+  if (
+    enabled(rules, "no-search-filter") &&
+    columns.length >= knob(rules, "no-search-filter", "minColumns", 1) &&
+    filters.length === 0 &&
+    kind !== "report"
+  ) {
     found.push({
       rule: "no-search-filter",
       where: `${path}.search`,
@@ -107,6 +156,7 @@ function checkPage(page: Dict, path: string, found: Advice[]): void {
   // 1件を指すキーが一覧に出ていない（行を見ても、どのレコードか分からない）。
   const key = str(page.key);
   if (
+    enabled(rules, "key-not-in-table") &&
     key !== undefined &&
     columns.length > 0 &&
     !columns.some((column) => str(column.field) === key)
@@ -123,7 +173,12 @@ function checkPage(page: Dict, path: string, found: Advice[]): void {
 
   // 入力できるのに、必須が1つも無い。
   // 照会（detail）では言わない。項目は並んでいるが、そこから保存はしない。
-  if (WRITES.has(kind) && fields.length > 0 && !fields.some((f) => f.required === true)) {
+  if (
+    enabled(rules, "no-required-field") &&
+    WRITES.has(kind) &&
+    fields.length > 0 &&
+    !fields.some((f) => f.required === true)
+  ) {
     const conditional = fields.some((field) => field.requiredWhen !== undefined);
     if (!conditional) {
       found.push({
@@ -138,17 +193,25 @@ function checkPage(page: Dict, path: string, found: Advice[]): void {
   }
 
   // 消せる・持ち出せるのに、誰に見えるかを決めていない。
+  const dangerous: string[] = knob(rules, "open-dangerous-action", "types", [
+    "delete",
+    "export",
+  ]);
   for (const [index, action] of actions.entries()) {
     const type = str(action.type) ?? "";
-    if (type !== "delete" && type !== "export") continue;
+    if (!enabled(rules, "open-dangerous-action")) break;
+    if (!dangerous.includes(type)) continue;
     if (list(action.roles).length > 0) continue;
     found.push({
       rule: "open-dangerous-action",
       where: `${path}.actions[${index}].roles`,
       says:
-        type === "delete"
-          ? `「${str(action.label) ?? action.id}」は誰でも押せます（消したものは戻りません）。`
-          : `「${str(action.label) ?? action.id}」は誰でも押せます（データを持ち出せます）。`,
+        `「${str(action.label) ?? action.id}」は誰でも押せます` +
+        (type === "delete"
+          ? "（消したものは戻りません）。"
+          : type === "export"
+            ? "（データを持ち出せます）。"
+            : "。"),
       add: "`roles` で見える人を決める（権限はアプリ側の判定と合わせて二重にかける）。",
       key: "roles",
       node: "action",
@@ -156,9 +219,11 @@ function checkPage(page: Dict, path: string, found: Advice[]): void {
   }
 
   // 金額らしい列・項目に見せ方が無い（桁区切りが無いと読めない）。
+  const money: string[] = knob(rules, "money-without-format", "words", MONEY_WORDS);
   for (const [index, column] of columns.entries()) {
+    if (!enabled(rules, "money-without-format")) break;
     const field = str(column.field) ?? "";
-    if (!MONEY.test(field) || column.format !== undefined) continue;
+    if (!looksLikeMoney(field, money) || column.format !== undefined) continue;
     found.push({
       rule: "money-without-format",
       where: `${path}.table.columns[${index}].format`,
@@ -172,6 +237,7 @@ function checkPage(page: Dict, path: string, found: Advice[]): void {
 
   // 明細（subTable）を別テーブルに持つのに、行を指すキーが無い。
   for (const field of fields) {
+    if (!enabled(rules, "subtable-without-parent-key")) break;
     if (str(field.type) !== "subTable") continue;
     const source = isDict(field.source) ? field.source : undefined;
     if (source === undefined || str(source.parentKey) !== undefined) continue;
@@ -186,7 +252,7 @@ function checkPage(page: Dict, path: string, found: Advice[]): void {
   }
 
   // 帳票なのに合計が無い（業務帳票で合計が無いことは、まず無い）。
-  if (kind === "report") {
+  if (kind === "report" && enabled(rules, "report-without-totals")) {
     const report = isDict(page.report) ? page.report : {};
     if (list(report.totals).length === 0) {
       found.push({
@@ -200,6 +266,17 @@ function checkPage(page: Dict, path: string, found: Advice[]): void {
     }
   }
 }
+
+/**
+ * 金額らしい名前か。
+ *
+ * 大文字小文字は無視する（`unitPrice` も `UNIT_PRICE` も拾う）。語は外から差し替えられる
+ * ので、正規表現ではなく語の一覧で持つ（設定に正規表現を書かせない）。
+ */
+const looksLikeMoney = (field: string, words: string[]): boolean => {
+  const name = field.toLowerCase();
+  return words.some((word) => name.includes(word.toLowerCase()));
+};
 
 /** フォームとステップの項目を、区別せず全部。 */
 function formFields(page: Dict): Dict[] {
@@ -229,12 +306,23 @@ export function unwritableAdvice(
   });
 }
 
-/** 人が読む形。**助言であって警告ではない**ことを毎回言う。 */
-export function renderAdvice(advice: Advice[]): string {
+/**
+ * 人が読む形。**助言であって警告ではない**ことを毎回言う。
+ *
+ * 物差しを外から渡したときは**そう書く**。読む人が組み込みの助言だと思ったまま案件の
+ * 決めごとを読むと、話が噛み合わない（「hatake がこう言っている」ではなく「うちがこう
+ * 決めた」なので）。
+ */
+export function renderAdvice(
+  advice: Advice[],
+  options: { rulesFrom?: string; rules?: AdviceRules } = {},
+): string {
+  const ruler = rulerNote(options);
   if (advice.length === 0) {
     return [
       "書き足したほうがいい所は見つかりませんでした。",
       "",
+      ...ruler,
       ADVICE_NOTE,
     ].join("\n");
   }
@@ -246,8 +334,27 @@ export function renderAdvice(advice: Advice[]): string {
     out.push(`  書き足す: ${one.add}`);
   }
   out.push("");
+  out.push(...ruler);
   out.push(ADVICE_NOTE);
   return out.join("\n");
+}
+
+/** どの物差しで見たか（渡していなければ何も言わない）。 */
+function rulerNote(options: { rulesFrom?: string; rules?: AdviceRules }): string[] {
+  if (options.rulesFrom === undefined) return [];
+  const rules = options.rules ?? DEFAULT_RULES;
+  const parts: string[] = [];
+  if (rules.off.length > 0) parts.push(`止めた規則 ${rules.off.length} 件`);
+  if (rules.require.length > 0) {
+    parts.push(`案件の決めごと ${rules.require.length} 件`);
+  }
+  const tuned = Object.keys(rules.options).length;
+  if (tuned > 0) parts.push(`目盛りを変えた規則 ${tuned} 件`);
+  return [
+    `※ 物差しは ${options.rulesFrom} を使いました` +
+      `（${parts.length === 0 ? "組み込みのまま" : parts.join(" / ")}）。`,
+    "",
+  ];
 }
 
 /** 助言の位置づけは毎回書く。読み手が警告と混同すると、警告の信頼が落ちる。 */

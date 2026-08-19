@@ -18,9 +18,15 @@ type Dict = Record<string, unknown>;
 const isDict = (v: unknown): v is Dict =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** `app:` の定義か。1つの入り口で両方受けるための判定。 */
+/**
+ * `app:` の定義か。1つの入り口で両方受けるための判定。
+ *
+ * JSON（`{ "app": { … } }`）も受ける。定義は YAML でも JSON でも同じものなので、書き方で
+ * 道具の答えが変わるのはただの事故（JSON の app を単票として読もうとして落ちる）。行頭か
+ * `{` `,` の後ろに出てくるキーを見るのは、JSON では行頭に `{` が来るため。
+ */
 export const isAppSource = (source: string): boolean =>
-  /^\s*app\s*:/m.test(source);
+  /(^|[{,])\s*"?app"?\s*:/m.test(source);
 
 /** 素の document（YAML でも JSON でも）。 */
 export const rawDocument = (source: string): Dict => {

@@ -61,7 +61,8 @@ export function buildIndex(inputs: IndexInput[]): ScreenIndex {
   let ignored = 0;
 
   for (const input of inputs) {
-    if (!/^\s*(page|app)\s*:/m.test(input.source)) {
+    // YAML でも JSON でも定義は定義（`"page":` も見る）。
+    if (!/(^|[{,])\s*"?(page|app)"?\s*:/m.test(input.source)) {
       ignored++;
       continue;
     }

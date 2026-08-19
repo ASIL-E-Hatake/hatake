@@ -47,10 +47,12 @@ npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「�
 npx hatake explain page.yaml                 # この定義、結局どういう画面？
 npx hatake explain page.yaml --brief         # 1行で（README や PR 本文に貼る用）
 npx hatake explain --diff old.yaml page.yaml # 何を変えたのか、画面の言葉で
+npx hatake explain page.yaml --review        # レビュー用の1枚（説明＋助言）
 npx hatake harvest definitions/              # 繰り返し転んでいる所を実例カタログの候補に
 npx hatake minimize page.yaml                # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake fix page.yaml                     # 直し方が一意な問題だけ直す（--write で上書き）
 npx hatake advise page.yaml                  # 書き足したほうがいい所（助言。警告ではない）
+npx hatake advise page.yaml --rules team.json # 案件ごとの決めごとで見る
 npx hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
 npx hatake diagram app.yaml --out app.svg    # 画面とメニューと遷移の図
 ```
@@ -72,11 +74,12 @@ npx hatake diagram app.yaml --out app.svg    # 画面とメニューと遷移の
 | `failures [query]` | [実際に転んだ実例](../spec/failures.json)。こう書いた → こう言われた → こう直した。**なぜそう書いてしまうか**も持つ |
 | `explain <file> [--page id]` | 定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人がレビューするための出力。`--brief` で1行だけ（`app:` なら画面一覧の表） |
 | `explain --diff <old> <new>` | 変更を**画面の言葉**で言う（「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」）。後方互換の判定はしない＝**終了コードは変えない**（それは `diff` の担当） |
+| `explain <file> --review` | レビュー用の1枚。説明（できること・**できないこと**）＋助言（書き足したほうがいい所）をまとめて出す。`--page` を渡すと助言もその画面だけ。`--rules` も渡せる。**終了コードは変えない** |
 | `harvest <path...>` | 定義の山を走査して、**繰り返し出ている診断**を[実例カタログ](../spec/failures.json)の候補として出す（`--min` で回数、既定 2）。「なぜそう書いてしまうか」は機械には書けないので、人が書く欄は空のまま。`--repro` で**最小の再現**の下書きも作る。読めない定義があれば終了コード 1 |
 | `fix <file>` | **直し方が一意に決まる問題だけ**を直す（綴り違い・入れる値が決まっている指定）。既定は標準出力に出すだけで**ファイルは触らない**（`--write` で上書き）。直さなかったものは理由つきで標準エラーに。残った問題があれば終了コード 1 |
-| `advise <file>` | **書き足したほうがいい所**（並べ替えできる列が無い・絞り込みが無い・誰でも消せる…）。助言なので**終了コードは変えない** |
-| `index <path...>` | 定義の山から**画面の索引**（1行の要約＋探すための語）。`--find "顧客 検索"` は語の AND、`--by size` で規模順、`--json` / `--out` で機械可読 |
-| `diagram <file>` | 図解の SVG。`app:` の定義から**画面とメニューと遷移**の図を作る（どこからも開けない画面も分かる）。図の元データ（`rows` を持つ JSON）を渡すとそれを描く |
+| `advise <file>` | **書き足したほうがいい所**（並べ替えできる列が無い・絞り込みが無い・誰でも消せる…）。助言なので**終了コードは変えない**。`--rules team.json` で**物差しを差し替え**（規則を切る・目盛りを変える・案件の決めごとを足す） |
+| `index <path...>` | 定義の山から**画面の索引**（1行の要約＋探すための語）。`--find "顧客 検索"` は語の AND、`--by size` で規模順、`--json` / `--out` で機械可読。**同じ索引は Dart 版・Java 版にもある**（[下](#索引はどのエディションにもある)） |
+| `diagram <file>` | 図解の SVG。`app:` の定義から**画面とメニューと遷移**の図を作る（遷移は1本ずつ線を引く。どこからも開けない画面も分かる）。図の元データ（`rows` を持つ JSON）を渡すとそれを描く |
 | `minimize <file>` | **意味を変えずに**短くする。既定値と同じ指定・空の指定を落とす。落とすたびに解析後のモデルが変わらないことを確かめる（変わるものは落とさない）。コメントも、落とした所以外の書き方もそのまま。定義は標準出力・落としたものは標準エラー |
 
 `reference` / `examples` / `minimize` は `spec/` を実行時に探す（`--spec <dir>` で明示もできる。
@@ -408,6 +411,80 @@ $ npx hatake advise page.yaml
 勧めるキーが**その場所に本当に書けるキーである**ことは、スキーマから作ったリファレンスで
 CI が確かめている（書けないキーを勧めるのは、間違いを教えるのと同じ）。
 
+#### 物差しを外から渡す（`--rules`）
+
+助言は好みなので、会社と案件で変わる。固定の表しか無いと「うちの決めごとと合わないから使わない」
+で終わるので、外から渡せるようにしてある（例: [`docs/guide/advise-rules.example.json`](../docs/guide/advise-rules.example.json)）。
+
+```json
+{
+  "off": ["money-without-format"],
+  "options": { "no-sortable-column": { "minColumns": 4 } },
+  "require": [
+    {
+      "rule": "team-delete-confirm",
+      "node": "action",
+      "key": "confirm",
+      "when": { "type": "delete" },
+      "every": true,
+      "says": "削除は必ず確認を出す決めごとです。",
+      "add": "`confirm: { message: 削除してよろしいですか }`。"
+    }
+  ]
+}
+```
+
+```bash
+npx hatake advise page.yaml --rules team.json
+```
+
+* `off` … 合わない規則を止める（組み込み・案件の決めごとのどちらも）
+* `options` … 組み込みの規則が**持っているつまみ**だけ（`no-sortable-column.minColumns` /
+  `no-search-filter.minColumns` / `open-dangerous-action.types` / `money-without-format.words`）
+* `require` … 案件の決めごとを「**この場所には必ずこのキーを書く**」の形で。見るのは
+  `page` / `column` / `filter` / `field` / `action` の5か所、`when` でその場所の値で絞り、
+  `every: true` なら全部に要る（既定は1つでもあればよい）
+
+**規則を書くための言語にはしない。** 条件式を書けるようにすると、そこから先は設定ファイルでは
+なく小さなプログラムになり、読める人が減る。書けるのは「どの場所の・どのキーが・書かれているか」
+だけ。
+
+**知らないキー・知らない規則名はエラー**にする（DSL の strict と同じ考え方）。設定が黙って
+効かないのが一番まずい＝止めたつもりの規則が動き続け、足したつもりの決めごとは誰も見ていない、
+が起きる。案件の決めごとが**書けないキー**を勧めていたら、助言を出す前に止める。
+
+物差しを渡したときは**出力にそう書く**（「※ 物差しは team.json を使いました」）。読む人が
+組み込みの助言だと思ったまま案件の決めごとを読むと、話が噛み合わない。
+
+### レビュー用の1枚（`explain --review`）
+
+`explain` の「この画面でできないこと」と `advise` の「書き足したほうがいい所」は隣の話で、
+どちらも**人がレビューするため**に在る。道具ごとに出力が散ると、片方しか読まれない。
+
+```
+$ npx hatake explain page.yaml --review
+受注一覧（order_list）— 検索して一覧に出し、その場で登録・修正・削除までできる画面
+
+## データ
+  ・データの出どころは orderRepository（アプリ側が用意する）。
+（…中略…）
+
+## この画面でできないこと
+  ・絞り込みの条件は無い（一覧は全件から始まる）
+
+## 書き足したほうがいい所（助言）
+  ・絞り込みが無いので、一覧は毎回全件から始まります。件数が増えると使えません。
+    → `search.filters` に、現場が必ず使う条件（コード・名称・日付の範囲）。
+      page.search [no-search-filter]
+
+※ ここは**助言**（書いていないから不便かもしれない所）で、警告ではありません。…
+```
+
+* 助言は**最後の節にまとめる**（混ざると、事実と好みの区別が付かなくなる）
+* `--page` で app の1枚を読むときは、**助言もその画面のものだけ**に絞る（他の画面の指摘が
+  混じると、目の前の画面の話だと読み違える）
+* **終了コードは変えない**。レビューのための紙で CI を落とすと、好みの強制になる
+
 ### どこに何の画面があるか（`index`）
 
 定義が増えると**どこに何があるか**が分からなくなる。grep では「その画面が何をするか」が出て
@@ -435,6 +512,32 @@ $ npx hatake index definitions/ --by size
   飛ばさず、不完全だと言って終了コード 1
 * `--json` / `--out` はそのまま機械に渡せる形（AI に「近い画面」を探させる入口）
 
+#### 索引はどのエディションにもある
+
+索引が要るのは「定義の山を持っている側」なので、CLI だけに在ると**アプリの中からは使えない**
+（Flutter アプリが自分の画面を探せない）。同じものを Dart 版と Java 版にも置いてある。
+
+```dart
+// Dart（hatake_core）— 解析済みの画面から。画面選択やジャンプ窓はこれで作る
+final index = ScreenIndex.ofApp(app);
+for (final screen in index.search('顧客 検索')) print(screen.brief);
+
+// Dart（hatake_yaml）— 定義の文字列の山から
+final index = buildScreenIndex([IndexInput('sales_app.yaml', source)]);
+print(renderScreenIndex(index.bySize(), showSize: true));
+```
+
+```java
+// Java（io.hatake.core）
+ScreenIndex index = ScreenIndex.build(List.of(new ScreenIndex.Source("sales_app.yaml", source)));
+System.out.println(ScreenIndex.render(index.search("顧客 マスタ"), true, false));
+```
+
+3つのエディションで**同じ語**を使う（種別の見出し語は [`spec/vocabulary.json`](../spec/vocabulary.json)
+が正で、各エディションはそれを転記し、一致することを各エディションの試験が見ている）。同じ定義の
+山なら枚数も同じになる。違うのは**バックエンド版がボタン（actions）を持たない**ことだけで、
+そのぶん要約に「ボタン n」は出ず、ボタン名では探せない。
+
 ### 画面と遷移を図にする（`diagram`）
 
 ```bash
@@ -446,6 +549,12 @@ npx hatake diagram docs/diagrams/architecture.json --out architecture.svg
 段は「メニューから開ける画面 → そこから `navigate` で開く画面 → …」。この並べ方にすると
 **どこからも開けない画面**（メニューにも遷移先にも無い）が自然に落ちてくるので、そこだけ別に
 出す。画面が増えると一覧では気づけないやつ。
+
+段のあいだは**1本ずつ線を引く**（→ [受注アプリの遷移図](../docs/diagrams/sales-app-flow.svg)）。
+まとめて1本の矢印にすると「AとBのどちらから開くのか」が読めないため。線を引けるのは隣り合う行の
+あいだだけなので、段の中は**次の段へ進む画面を後ろに**置く。それでも引けない遷移（同じ段の中・
+戻り・行が離れている）は**文で全部挙げる**＝図に出ていない遷移を黙って落とさない（線が無い＝
+遷移が無い、と読まれるのが一番まずい）。
 
 * 1枚の画面の中身は図にしない（`explain` のほうが読める）。図は「画面が増えたときの遷移」用
 * **描画は資料の図解と同じ1本**（[`diagram.ts`](src/diagram.ts)）。定義から作る図と手で書く図で

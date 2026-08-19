@@ -1279,6 +1279,26 @@ This is **advice, not a warning**, so it never changes the exit code: a warning 
 Mixing the two would cost the warnings their credibility. That every suggested key really is
 writable at that place is checked in CI against the schema-derived reference.
 
+The ruler can be supplied from outside (`--rules team.json`; see
+[`docs/guide/advise-rules.example.json`](../docs/guide/advise-rules.example.json)). Advice is a
+preference, so it differs per company and per project — a fixed table alone ends as "does not match
+ours, so we do not use it". Only three things are writable:
+
+* `off` — silence a rule that does not fit
+* `options` — the knobs a built-in rule actually has (column thresholds, the words that look like
+  money, and so on)
+* `require` — a project decision, in the form "**this place must carry this key**" (`page`,
+  `column`, `filter`, `field`, `action`; `when` narrows by value, `every: true` demands it
+  everywhere)
+
+It is deliberately **not a language for writing rules**: allowing expressions would turn the
+configuration into a small program. An unknown key or an unknown rule name is an error — a setting
+that silently does nothing is the worst outcome.
+
+`explain --review` prints the explanation (including what the screen cannot do) and the advice as
+**one sheet**: a reviewer reads one sheet, and output split across tools gets half-read. Even on one
+sheet, advice stays advice and the exit code does not move.
+
 ## The words used to explain a definition
 
 The phrasing `explain` uses (how a formatter looks, how a condition reads, what a page kind is)
@@ -1302,6 +1322,21 @@ where". The searchable words include both what users see (labels) and what imple
 (field names, repository keys). `--find` is an AND of terms, `--by size` orders by size, and
 `--json` / `--out` produce the machine-readable form. An `app:` contributes one row per page.
 
+**Every edition has the index** (`ScreenIndex`). It is needed wherever the pile of definitions
+lives, so a CLI-only index cannot answer "which of my screens does this?" from inside an app:
+
+| Edition | Entry point |
+|---|---|
+| TypeScript | `npx hatake index <path...>` / `buildIndex` |
+| Dart | `ScreenIndex.ofApp(app)` (parsed) / `buildScreenIndex([IndexInput(...)])` (from text) |
+| Java | `ScreenIndex.build(List.of(new ScreenIndex.Source(file, text)))` |
+
+The heading word per page kind comes from `pageKinds[].short` in
+[`vocabulary.json`](vocabulary.json); all three editions transcribe it and each edition's tests
+check the transcription. The same pile of definitions therefore yields **the same count** in every
+edition. The one difference: the backend edition has no buttons (`actions`), so its summaries omit
+them and buttons are not searchable there.
+
 ## Screens and navigation as a picture
 
 ```bash
@@ -1313,6 +1348,13 @@ layers: screens reachable from the menu, then screens reached by `navigate` from
 on — which makes **screens nothing can open** fall out on their own. A single page is not drawn
 (`explain` reads better). Passing a diagram source (a JSON with `rows`) draws that instead, so the
 hand-written figures in [`docs/diagrams/`](../docs/diagrams/) and this command share one renderer.
+
+Navigation between layers is drawn **one line per transition** (summarising them into a single
+arrow hides whether A or B opens the screen). Lines can only join adjacent rows, so within a layer
+the screens that lead to the next layer are placed last. Any transition that still cannot be drawn
+(within a layer, a way back, rows too far apart) is **listed in prose** — a transition missing from
+the picture would read as "there is no transition". See
+[the sales app's flow](../docs/diagrams/sales-app-flow.svg).
 
 ## Shrinking a definition without changing it
 
