@@ -30,6 +30,8 @@ npx hatake explain page.yaml --brief         # one-line summary (a table for an 
 npx hatake explain --diff <old> <new>        # what changed, in the screen's own words
 npx hatake fix page.yaml          # apply only uniquely-determined repairs (--write to overwrite)
 npx hatake advise page.yaml        # what is worth adding (advice, not warnings)
+npx hatake index definitions/ --find "customer search"   # which screen is where
+npx hatake diagram app.yaml --out app.svg  # screens, menu and navigation as a picture
 npx hatake minimize page.yaml     # drop defaults; meaning is unchanged
 npx hatake failures <key>         # real failures: what was written, what the tools said
 npx hatake refs page.yaml --needs-registration     # what the application must register

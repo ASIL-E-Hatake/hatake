@@ -1,0 +1,167 @@
+{
+  "$comment": "定義を人の言葉に開くための語彙（explain の語彙表）。DSL の値1つに対して、人に見せる言い方を持つ。ここが正で、各エディションはこれを転記する（TypeScript 版は typescript/src/explainPhrases.ts。同じ内容であることを CI で確認する）。組み込みの値が増えたらここにも語が要る＝spec/reference.json との突き合わせも CI で見る。{value} は差し込み位置。en は英語版の説明生成のために先に置いてあるが、まだ出力はしていない。",
+  "pageKinds": {
+    "crud": {
+      "what": {
+        "ja": "検索して一覧に出し、その場で登録・修正・削除までできる画面",
+        "en": "search, list, and create/update/delete in place"
+      },
+      "cannot": { "ja": [], "en": [] }
+    },
+    "master": {
+      "what": {
+        "ja": "マスタをメンテナンスする画面（検索・一覧・登録・修正・削除）",
+        "en": "master maintenance (search, list, create/update/delete)"
+      },
+      "cannot": { "ja": [], "en": [] }
+    },
+    "search": {
+      "what": {
+        "ja": "検索して一覧を見るだけの画面",
+        "en": "search and list only"
+      },
+      "cannot": {
+        "ja": ["登録・修正・削除はできない（照会専用）"],
+        "en": ["cannot create, update or delete (read-only)"]
+      }
+    },
+    "detail": {
+      "what": {
+        "ja": "1件の内容を読むだけの画面",
+        "en": "reads one record"
+      },
+      "cannot": {
+        "ja": ["この画面では書き換えられない（読み取り専用）"],
+        "en": ["nothing can be changed here (read-only)"]
+      }
+    },
+    "form": {
+      "what": {
+        "ja": "1件を入力する画面（新規と編集の両方）",
+        "en": "enters one record (both create and edit)"
+      },
+      "cannot": {
+        "ja": ["一覧は無い（開く先は呼び出し側が決める）"],
+        "en": ["there is no list (the caller decides what to open)"]
+      }
+    },
+    "wizard": {
+      "what": {
+        "ja": "入力をステップに分けた画面",
+        "en": "input split into steps"
+      },
+      "cannot": {
+        "ja": ["途中では保存しない（最後にまとめて1回）"],
+        "en": ["nothing is saved midway (once, at the end)"]
+      }
+    },
+    "dashboard": {
+      "what": {
+        "ja": "数字とグラフのカードを並べて見せる画面",
+        "en": "a grid of number and chart cards"
+      },
+      "cannot": {
+        "ja": ["ここからデータは書き換えられない"],
+        "en": ["data cannot be changed from here"]
+      }
+    },
+    "report": {
+      "what": { "ja": "印刷向けの帳票", "en": "a printable report" },
+      "cannot": {
+        "ja": ["画面から書き換えはできない"],
+        "en": ["nothing can be changed from the screen"]
+      }
+    }
+  },
+  "filterOperators": {
+    "equals": { "ja": "完全一致", "en": "exact match" },
+    "notEquals": { "ja": "一致しないもの", "en": "not equal" },
+    "contains": { "ja": "部分一致", "en": "contains" },
+    "startsWith": { "ja": "前方一致", "en": "starts with" },
+    "endsWith": { "ja": "後方一致", "en": "ends with" },
+    "gt": { "ja": "より大きい", "en": "greater than" },
+    "gte": { "ja": "以上", "en": "at least" },
+    "lt": { "ja": "より小さい", "en": "less than" },
+    "lte": { "ja": "以下", "en": "at most" },
+    "between": {
+      "ja": "期間・範囲（開始と終了の2つ）",
+      "en": "a range (start and end)"
+    },
+    "in": { "ja": "いずれかに一致", "en": "one of" }
+  },
+  "conditionOperators": {
+    "equals": { "ja": "が {value} のとき", "en": "is {value}" },
+    "notEquals": { "ja": "が {value} でないとき", "en": "is not {value}" },
+    "gt": { "ja": "が {value} より大きいとき", "en": "is greater than {value}" },
+    "gte": { "ja": "が {value} 以上のとき", "en": "is at least {value}" },
+    "lt": { "ja": "が {value} より小さいとき", "en": "is less than {value}" },
+    "lte": { "ja": "が {value} 以下のとき", "en": "is at most {value}" },
+    "contains": { "ja": "に {value} を含むとき", "en": "contains {value}" },
+    "in": { "ja": "が {value} のどれかのとき", "en": "is one of {value}" },
+    "isEmpty": { "ja": "が空のとき", "en": "is empty" },
+    "isNotEmpty": { "ja": "が入っているとき", "en": "is filled in" }
+  },
+  "fieldTypes": {
+    "text": { "ja": "1行の文字入力", "en": "single-line text" },
+    "textarea": { "ja": "複数行", "en": "multi-line" },
+    "number": { "ja": "数値", "en": "number" },
+    "select": { "ja": "選択", "en": "a choice" },
+    "multiSelect": { "ja": "複数選択", "en": "several choices" },
+    "checkbox": { "ja": "チェックボックス", "en": "checkbox" },
+    "radio": { "ja": "ラジオ", "en": "radio buttons" },
+    "date": { "ja": "日付", "en": "date" },
+    "dateTime": { "ja": "日時", "en": "date and time" },
+    "time": { "ja": "時刻", "en": "time" },
+    "subTable": { "ja": "明細（表で複数行）", "en": "child rows in a table" }
+  },
+  "validators": {
+    "required": { "ja": "必須", "en": "required" },
+    "maxLength": { "ja": "{value} 文字以内", "en": "at most {value} characters" },
+    "minLength": { "ja": "{value} 文字以上", "en": "at least {value} characters" },
+    "min": { "ja": "{value} 以上", "en": "at least {value}" },
+    "max": { "ja": "{value} 以下", "en": "at most {value}" },
+    "pattern": { "ja": "決まった書式", "en": "a fixed format" },
+    "email": { "ja": "メールアドレスの形", "en": "an email address" },
+    "postalCode": { "ja": "郵便番号の形", "en": "a postal code" }
+  },
+  "formatters": {
+    "currency": { "ja": "¥1,234,567 のように", "en": "as ¥1,234,567" },
+    "percent": { "ja": "12.3% のように", "en": "as 12.3%" },
+    "date": { "ja": "2026/07/22 のように", "en": "as 2026/07/22" },
+    "wareki": { "ja": "令和8年7月22日 のように", "en": "in the Japanese era calendar" },
+    "postal": { "ja": "123-4567 のように", "en": "as 123-4567" },
+    "mask": { "ja": "一部を隠して", "en": "partly hidden" }
+  },
+  "converters": {
+    "toHankaku": { "ja": "全角→半角", "en": "full-width to half-width" },
+    "toZenkaku": { "ja": "半角→全角", "en": "half-width to full-width" },
+    "hiraToKata": { "ja": "ひらがな→カタカナ", "en": "hiragana to katakana" },
+    "kataToHira": { "ja": "カタカナ→ひらがな", "en": "katakana to hiragana" },
+    "trim": { "ja": "前後の空白を落とす", "en": "trim surrounding spaces" },
+    "collapseSpaces": {
+      "ja": "連続した空白を1つに",
+      "en": "collapse repeated spaces"
+    },
+    "parseNumber": { "ja": "数値に直す", "en": "parse as a number" }
+  },
+  "actionTypes": {
+    "create": { "ja": "新規入力を開く", "en": "opens a blank form" },
+    "edit": { "ja": "編集を開く", "en": "opens the record for editing" },
+    "delete": { "ja": "削除する", "en": "deletes" },
+    "navigate": { "ja": "別の画面へ移る", "en": "goes to another screen" },
+    "export": { "ja": "内容をファイルに出す", "en": "exports to a file" },
+    "plugin": { "ja": "アプリ側の処理を呼ぶ", "en": "calls the application's own code" }
+  },
+  "aggregates": {
+    "count": { "ja": "件数", "en": "the number of rows" },
+    "sum": { "ja": "合計", "en": "the total" },
+    "avg": { "ja": "平均", "en": "the average" },
+    "min": { "ja": "最小", "en": "the smallest" },
+    "max": { "ja": "最大", "en": "the largest" }
+  },
+  "chartKinds": {
+    "bar": { "ja": "棒", "en": "bar" },
+    "line": { "ja": "折れ線", "en": "line" },
+    "pie": { "ja": "円", "en": "pie" }
+  }
+}

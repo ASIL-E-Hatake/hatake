@@ -1,5 +1,5 @@
 {
-  "$comment": "図解の元データ。直したら node docs/tools/render-diagrams.mjs で .svg を作り直す（CI が差分を見る）。",
+  "$comment": "図解の元データ。直したら npx hatake diagram <このファイル> --out <同名>.svg で作り直す（CI が差分を見る）。",
   "title": "層の責務（どこに何を書くか・書かないか）",
   "subtitle": "迷ったら「その知識はこの層のものか」で決める。○ はしてよいこと、× はしてはいけないこと。",
   "rows": [

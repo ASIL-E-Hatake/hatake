@@ -127,6 +127,18 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 
 `hatake_validate` は**未知キーから落とし穴を引いて、直し方を添えます**。「知らないキー `form`」だけでは直せないので、「`form` を持つのは crud/master/detail/form。照会と入力を分けるなら search＋detail を navigate で繋ぐ」まで返します。
 
+## 道具にしていないもの
+
+CLI にはあるが MCP に出していないものがあります。**道具は「定義の中身を渡す」形で閉じている**
+（サーバはリポジトリの中を勝手に読まない）ので、その形に収まらないものは CLI に置いています。
+
+| CLI | なぜ道具にしないか |
+|---|---|
+| `index`（画面の索引） | 定義の山＝リポジトリ全体が要る。`--json` の出力をエージェントに渡すのが今の形（committed な索引を読ませてもよい） |
+| `harvest`（実例の収穫） | 同じ理由。走らせるのは定義を持っている人 |
+| `advise`（書き足したほうがいい所） | 助言は**好み**なので、渡すと AI は全部やる。何を足すかは人が選ぶ |
+| `diagram`（図） | SVG を受け取ってもエージェントには読めない。人に見せるための出力 |
+
 ## 実装について
 
 **依存ゼロで手書きしています**（`@modelcontextprotocol/sdk` を入れていない）。stdio の MCP は「1行1メッセージの JSON-RPC 2.0」で、必要なのは `initialize` / `tools/list` / `tools/call` だけなので、CLI と同じ判断で依存を増やしませんでした。

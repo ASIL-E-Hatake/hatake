@@ -17,6 +17,7 @@
 
 import { stringify as stringifyYaml } from "yaml";
 import { parseAppMap } from "./appParse.js";
+import { fixSource } from "./fix.js";
 import { parsePageMap } from "./parse.js";
 import { shrink } from "./shrink.js";
 import { findUnknownKeys } from "./strictKeys.js";
@@ -91,6 +92,16 @@ export interface Repro {
   removed: number;
   /** 削ったあとに出ている診断（目当てのものだけになっているか確かめる用）。 */
   diagnoses: string[];
+  /**
+   * 直したあとの形（`failures.json` の `fixed` と同じ形）。
+   *
+   * **直し方が一意に決まって、直したら診断がゼロになったときだけ**入る。`fixed` は
+   * カタログの中で「これなら通る」という約束なので、通ることを確かめられない下書きは
+   * 出さない（人が書く）。
+   */
+  fixed?: string[];
+  /** `fixed` を作れなかった理由（作れたときは無い）。 */
+  fixNote?: string;
 }
 
 /**
@@ -124,5 +135,32 @@ export function reproOf(
     wrote: yaml.split("\n"),
     removed: shrunk.removed.length,
     diagnoses: [...diagnosesOf(scrubbed, options.registry)].sort(),
+    ...fixedOf(yaml, options.registry),
   };
+}
+
+/**
+ * 最小の再現を、そのまま直せるところまで直す（`fixed` の下書き）。
+ *
+ * 使うのは `hatake fix` と同じ機械。**診断がゼロになったときだけ**返す＝カタログの
+ * `fixed` は「これなら通る」という約束なので、通ることを確かめられない形は出さない。
+ * 直せない件（どちらを残すか決められない重複など）は、そう言って人に渡す。
+ */
+function fixedOf(
+  wrote: string,
+  registry?: DefinitionRegistry,
+): { fixed?: string[]; fixNote?: string } {
+  const result = fixSource(wrote, { registry });
+  if (result.applied.length === 0) {
+    return {
+      fixNote:
+        "直し方が一意に決まらないので、直した形は作れていません（意図が要ります）。",
+    };
+  }
+  if (result.remaining.length > 0) {
+    return {
+      fixNote: `一部しか直せません（残り: ${[...new Set(result.remaining)].join(" / ")}）。`,
+    };
+  }
+  return { fixed: result.source.trimEnd().split("\n") };
 }

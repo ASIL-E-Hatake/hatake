@@ -30,6 +30,8 @@ npx hatake explain page.yaml --brief        # 1行の要約（app なら画面�
 npx hatake explain --diff <前> <後>          # 何を変えたのか、画面の言葉で（人への報告用）
 npx hatake fix page.yaml           # 綴り違いなど**一意な直し**だけ機械にやらせる（--write で上書き）
 npx hatake advise page.yaml        # 書き足したほうがいい所（助言。警告ではない）
+npx hatake index definitions/ --find "顧客 検索"   # どこに何の画面があるか（--json で索引を丸ごと）
+npx hatake diagram app.yaml --out app.svg  # 画面とメニューと遷移の図
 npx hatake minimize page.yaml      # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake diff <前> <後>          # 既にある定義を直したとき：契約・画面・権限・アプリ構成への影響
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか（Repository / プラグイン名）

@@ -150,9 +150,26 @@ jobs:
           set -e
           # 図解は生成物。元データ（docs/diagrams/*.json）だけ直せば絵が付いてくる形にして
           # あるので、作り直して差分が出たら「絵が古い」ということ。
-          node docs/tools/render-diagrams.mjs
+          for f in docs/diagrams/*.json; do
+            node typescript/dist/cli.js diagram "$f" --out "${f%.json}.svg"
+          done
           # --ignore-cr-at-eol: Windows のチェックアウト（CRLF）で走らせても同じ判定にする。
           git diff --exit-code --ignore-cr-at-eol -- docs/diagrams
+
+      - name: Diagram and index from real definitions
+        working-directory: typescript
+        run: |
+          set -e
+          # 定義から図を作る（app の遷移図）。描けることと、元データが出せること。
+          node dist/cli.js diagram ../spec/examples/sales_app.yaml --out /tmp/app.svg
+          node dist/cli.js diagram ../spec/examples/sales_app.yaml --json > /tmp/app.diagram.json
+          # 出した元データを描き直せる（定義から作った図も手で直せる形になっている）。
+          node dist/cli.js diagram /tmp/app.diagram.json --out /tmp/app2.svg
+          diff -u /tmp/app.svg /tmp/app2.svg
+          # 画面の索引。同梱の例11枚から18枚の画面が出る（app の中身も1枚ずつ数える）。
+          node dist/cli.js index ../spec/examples --by size | tee /tmp/index.log
+          grep -q '画面 18 枚' /tmp/index.log
+          node dist/cli.js index ../spec/examples --find "顧客 検索"
 
       - name: A definition compared with itself is compatible
         working-directory: typescript

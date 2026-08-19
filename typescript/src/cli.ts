@@ -40,7 +40,7 @@ import {
 } from "./failures.js";
 import { deriveDto } from "./dto.js";
 import { renderExplain } from "./explain.js";
-import { explainSource } from "./explainSource.js";
+import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
 import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
 import { briefSource, renderBrief } from "./explainBrief.js";
 import {
@@ -52,6 +52,19 @@ import {
 import { minimizeSource, renderMinimize } from "./minimize.js";
 import { fixSource, renderFix } from "./fix.js";
 import { findAdvice, renderAdvice } from "./advise.js";
+import {
+  buildIndex,
+  type IndexInput,
+  renderIndex,
+  searchIndex,
+  sizeOf,
+} from "./screenIndex.js";
+import {
+  looksLikeDiagram,
+  parseDiagram,
+  renderDiagram,
+} from "./diagram.js";
+import { appDiagram } from "./appDiagram.js";
 import { diffDefinitions, type DefinitionChange } from "./defDiff.js";
 import {
   collectRefs,
@@ -165,6 +178,15 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       **書き足したほうがいい所**を挙げる（並べ替えできる列が無い・絞り込みが無い・
       誰でも消せる・金額に桁区切りが無い…）。これは助言で警告ではないので、
       終了コードは変えない。「書いたのに効かない」は validate の担当。
+
+  hatake index <path...> [--find "顧客 検索"] [--by size] [--json] [--out file]
+      定義の山から**画面の索引**を作る（1行の要約＋探すための語）。--find は語の AND。
+      --by size で規模の大きい画面から。--json / --out はそのまま機械に渡せる形。
+
+  hatake diagram <file> [--out file.svg] [--json]
+      図解の SVG を出す。app: の定義を渡すと**画面とメニューと遷移**の図を作り
+      （どこからも開けない画面も分かる）、図の元データ（rows を持つ JSON）を渡すと
+      それを描く。--json で元データだけ（手で直してから描けるように）。
 
   hatake registry <path...> [--json] [--out file]
       アプリの実装を読んで「登録済みのもの」の一覧を作る（validate --registry に
@@ -335,6 +357,10 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return fix(positional, flags, io);
       case "advise":
         return advise(positional, flags, io);
+      case "index":
+        return screenIndex(positional, flags, io);
+      case "diagram":
+        return diagram(positional, flags, io);
       case "types":
         return types(positional, flags, io);
       case "new":
@@ -679,6 +705,88 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
     return 0;
   }
   io.out(renderAdvice(advice));
+  return 0;
+}
+
+/**
+ * 画面の索引。
+ *
+ * 索引は「どこに何があるか」を答えるものなので、**読めない定義があっても作る**（消すと
+ * 余計に探せなくなる）。ただし不完全なことは言う＝読めなかった定義があれば終了コード 1。
+ */
+function screenIndex(paths: string[], flags: Args["flags"], io: CliIo): number {
+  if (paths.length === 0) {
+    io.err("索引を作る定義のファイルかディレクトリを指定してください。");
+    return 1;
+  }
+  const inputs: IndexInput[] = collectPaths(paths, io, DEFINITION_EXTENSIONS).map(
+    (path) => ({ file: path, source: io.readFile(path) }),
+  );
+  if (inputs.length === 0) {
+    io.err(
+      `走査できる定義がありません（対象の拡張子: ${DEFINITION_EXTENSIONS.join(" ")}）。`,
+    );
+    return 1;
+  }
+
+  const index = buildIndex(inputs);
+  let found = searchIndex(index, str(flags, "find"));
+  if (str(flags, "by") === "size") {
+    found = [...found].sort((a, b) => sizeOf(b) - sizeOf(a));
+  }
+
+  if (str(flags, "out") !== undefined) {
+    output(JSON.stringify({ ...index, screens: found }, null, 2), flags, io);
+  } else if (flags.json === true) {
+    io.out(JSON.stringify({ ...index, screens: found }, null, 2));
+  } else {
+    io.out(renderIndex(found, { showSize: str(flags, "by") === "size" }));
+  }
+  if (index.unreadable.length === 0) return 0;
+  io.err(`読めなかった定義が ${index.unreadable.length} 件あります（索引は不完全です）:`);
+  for (const one of index.unreadable) io.err(`     ${one.file}  ${one.reason}`);
+  return 1;
+}
+
+/**
+ * 図解を描く。
+ *
+ * 渡されたものが**図の元データ**（`rows` を持つ JSON）ならそれを描き、**定義**なら図を
+ * 作ってから描く。同じコマンドで両方受けるのは、資料の図（手書きの元データ）と定義から
+ * 作る図で**描画を2本持たない**ため。
+ */
+function diagram(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("図にするファイルを1つ指定してください。");
+    return 1;
+  }
+  const source = io.readFile(files[0]);
+  const raw = parseYamlText(source) as Record<string, unknown>;
+  let picture;
+  if (looksLikeDiagram(raw)) {
+    picture = parseDiagram(raw);
+  } else if (isAppSource(source)) {
+    picture = appDiagram(parseAppSource(source).app, raw);
+  } else {
+    io.err(
+      "図にできるのは app: の定義か、図の元データ（rows を持つ JSON）です。" +
+        "1枚の画面は hatake explain のほうが読めます。",
+    );
+    return 1;
+  }
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(picture, null, 2));
+    return 0;
+  }
+  const svg = renderDiagram(picture);
+  const out = str(flags, "out");
+  if (out === undefined) {
+    io.out(svg.trimEnd());
+  } else {
+    io.writeFile(out, svg);
+    io.out(`書きました: ${out}`);
+  }
   return 0;
 }
 
