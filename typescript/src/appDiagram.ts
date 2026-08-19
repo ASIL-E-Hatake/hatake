@@ -12,6 +12,11 @@
 // 行が離れている）は**文で全部挙げる**＝図に出ていない遷移を黙って落とさない（線が無い＝
 // 遷移が無い、と読まれるのが一番まずい）。
 //
+// 権限も重ねる。**ページに `roles` は無い**（書けるのはメニュー項目とボタン）ので、「この画面は
+// 誰に見えるか」は入口から辿るしかない＝[appAccess] が数える。1枚ずつ読んでも出ないのが
+// **誰も開けない画面**（入口の権限が食い違っている）と**誰でも開けて消す/持ち出すができる画面**
+// なので、そこは色を変える。`role` を渡すと**その役割で通れる道**だけの図になる。
+//
 // 1枚の画面の中身は図にしない（`explain` のほうが読める）。図は「画面が増えたときの遷移」の
 // ためのもの。
 
@@ -24,6 +29,13 @@ import {
   packNote,
   roomForBoxes,
 } from "./diagram.js";
+import {
+  type AppAccess,
+  appAccess,
+  type Audience,
+  canOpen,
+  describeAudience,
+} from "./appAccess.js";
 import { type AppDefinition, menuIsGroup, type MenuItem } from "./definition.js";
 import { SHORT_KINDS } from "./explainBrief.js";
 
@@ -40,11 +52,13 @@ const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 /** 1行に並べる箱の数。3つなら画面名（全角16文字ぶん）が入る。 */
 const PER_ROW = 3;
 
-/** 遷移1つ（どのボタンで、どこへ）。 */
+/** 遷移1つ（どのボタンで、どこへ、誰が押せるか）。 */
 interface Move {
   from: string;
   to: string;
   label: string;
+  /** そのボタンを押せる役割（空＝誰でも）。 */
+  roles: string[];
 }
 
 /**
@@ -62,7 +76,12 @@ function movesOf(raw: Dict): Move[] {
     for (const action of list(page.actions).filter(isDict)) {
       const to = str(action.page);
       if (str(action.type) !== "navigate" || to === undefined) continue;
-      moves.push({ from, to, label: str(action.label) ?? str(action.id) ?? "遷移" });
+      moves.push({
+        from,
+        to,
+        label: str(action.label) ?? str(action.id) ?? "遷移",
+        roles: list(action.roles).filter((one): one is string => typeof one === "string"),
+      });
     }
   }
   return moves;
@@ -95,12 +114,48 @@ function clip(text: string, room: number, size: number): string {
 const box = (
   page: { id: string; title: string; type: string },
   tone: DiagramBox["tone"],
+  lines?: string[],
 ): DiagramBox => ({
   id: page.id,
   label: clip(page.title, roomForBoxes(PER_ROW), 15),
   note: page.id,
   tone,
+  ...(lines === undefined ? {} : { lines }),
 });
+
+/** 箱の中に入れる「誰が開けるか」の1行と、箱の色。 */
+function accessOf(
+  id: string,
+  access: AppAccess,
+  role: string | undefined,
+  fallback: DiagramBox["tone"],
+): { line: string; tone: DiagramBox["tone"] } {
+  const audience: Audience = access.audience.get(id) ?? { everyone: true, roles: [] };
+  const danger = access.openDanger.get(id) ?? [];
+  // 印（`・` `○` `×`）は描く側が付けるので、ここで数えるのは**本文だけ**。印と空白のぶん
+  // （全角1つ＋半角1つ）を引いておく。役割名の長さは案件が決めるので、機械が作る図で
+  // 溢れて落ちるのは道具側の責任。
+  const room = roomForBoxes(PER_ROW) - 24;
+  const short = (text: string): string => clip(text, room, 13);
+
+  if (role !== undefined) {
+    // 役割を1つ選んだときは「その役割で通れるか」だけを言う（他の役割の話は邪魔になる）。
+    return canOpen(audience, role)
+      ? { line: `+ ${short(`${role} で開ける`)}`, tone: fallback }
+      : { line: `! ${short(`${role} では開けない`)}`, tone: "outside" };
+  }
+  if (!audience.everyone && audience.roles.length === 0) {
+    // 1枚ずつ読んでも出ない所。入口の権限が食い違っていると、定義は通るのに誰も開けない。
+    return { line: "! 誰も開けない", tone: "outside" };
+  }
+  if (audience.everyone && danger.length > 0) {
+    return {
+      line: `! ${short(`誰でも開ける（${danger.join(" / ")}）`)}`,
+      tone: "warn",
+    };
+  }
+  return { line: short(describeAudience(audience)), tone: fallback };
+}
 
 /** 箱を3つずつの行に割る（多い段は複数行になる。幅は行によらず同じ）。 */
 function boxRows(boxes: DiagramBox[]): { kind: "boxes"; items: DiagramBox[]; slots: number }[] {
@@ -125,18 +180,41 @@ function order(level: string[], sources: Set<string>, reached: Set<string>): str
   });
 }
 
+/** 図の作り方の指定。 */
+export interface AppDiagramOptions {
+  /**
+   * 役割を1つ渡すと「**その役割で通れる道**」の図になる（開けない画面は点線、通れない扉は
+   * 薄い線）。渡さないときは、画面ごとに「誰が開けるか」を重ねる。
+   */
+  role?: string;
+}
+
 /**
  * `app:` の図を作る。
  *
- * [app] は解析済みのアプリ（画面名と種別のため）、[raw] は素の document（遷移のため）。
+ * [app] は解析済みのアプリ（画面名と種別のため）、[raw] は素の document（遷移とボタンの
+ * `roles` のため）。
  */
-export function appDiagram(app: AppDefinition, raw: Dict): Diagram {
+export function appDiagram(
+  app: AppDefinition,
+  raw: Dict,
+  options: AppDiagramOptions = {},
+): Diagram {
   const pages = new Map(app.pages.map((page) => [page.id, page]));
   // 行き先の無い遷移は警告の担当（図では触らない）。
   const moves = movesOf(raw).filter(
     (move) => pages.has(move.from) && pages.has(move.to),
   );
   const fromMenu = menuTargets(app.menu).filter((id) => pages.has(id));
+  const access = appAccess(app, raw);
+  const role = options.role;
+  if (role !== undefined && !access.roles.includes(role)) {
+    // 綴り違いを黙って通すと「全部開ける」に見える＝一番まずい読み違えになる。
+    throw new Error(
+      `役割 "${role}" はこの定義に出てきません` +
+        `（出てくるのは ${access.roles.length === 0 ? "無し" : access.roles.join(" / ")}）。`,
+    );
+  }
 
   // 段に分ける。メニューから開ける画面が1段目、そこから遷移で開く画面が2段目…。
   const levels: string[][] = [];
@@ -179,7 +257,10 @@ export function appDiagram(app: AppDefinition, raw: Dict): Diagram {
     );
     const ordered = order(level, sources, reached);
     const levelRows = boxRows(
-      ordered.map((id) => box(pages.get(id)!, depth === 0 ? "input" : "core")),
+      ordered.map((id) => {
+        const shown = accessOf(id, access, role, depth === 0 ? "input" : "core");
+        return box(pages.get(id)!, shown.tone, [shown.line]);
+      }),
     );
 
     if (depth > 0) {
@@ -189,7 +270,18 @@ export function appDiagram(app: AppDefinition, raw: Dict): Diagram {
         if (!lastRow.includes(move.from) || !firstRow.includes(move.to)) continue;
         if (drawn.has(move)) continue;
         drawn.add(move);
-        links.push({ from: move.from, to: move.to, label: move.label });
+        // 権限で絞ってあるボタンは札にもそう書く（扉の鍵は線の上に見えていないと分からない）。
+        const locked = role !== undefined && move.roles.length > 0 && !move.roles.includes(role);
+        links.push({
+          from: move.from,
+          to: move.to,
+          label: clip(
+            `${move.label}${move.roles.length === 0 ? "" : `（${move.roles.join(" / ")}）`}`,
+            380,
+            13,
+          ),
+          ...(locked ? { back: true } : {}),
+        });
       }
       // 引ける線が1本も無いなら帯は置かない（空の帯は「遷移が無い」に見える）。
       if (links.length > 0) rows.push({ kind: "links", items: links });
@@ -219,7 +311,14 @@ export function appDiagram(app: AppDefinition, raw: Dict): Diagram {
       kind: "note",
       text: "どこからも開けない画面（メニューにも遷移先にも無い）:",
     });
-    rows.push(...boxRows(orphans.map((page) => box(page, "outside"))));
+    rows.push(
+      ...boxRows(
+        orphans.map((page) => {
+          const shown = accessOf(page.id, access, role, "outside");
+          return box(page, "outside", [shown.line]);
+        }),
+      ),
+    );
   }
   rows.push({
     kind: "note",
@@ -228,13 +327,73 @@ export function appDiagram(app: AppDefinition, raw: Dict): Diagram {
         ? "すべての画面がメニューか遷移からたどれる。"
         : `上の ${orphans.length} 枚は、メニューに足すか遷移で繋がないと開けない。`,
   });
+  // 色の意味は、その色を使った図にだけ書く（使っていない凡例は読む邪魔になる）。
+  for (const line of legend(app, access, role)) {
+    rows.push({ kind: "note", text: line });
+  }
 
   return {
     title: `${app.title}（${app.id}）の画面と遷移`,
     subtitle:
-      "段は「メニューから開ける画面 → そこから遷移で開く画面」。線は遷移の向き（札はボタン名）。",
+      role === undefined
+        ? "段は「メニューから開ける画面 → そこから遷移で開く画面」。線は遷移の向き（札はボタン名）。箱の中は誰が開けるか。"
+        : `段は「メニューから開ける画面 → そこから遷移で開く画面」。**${role} で通れる道**だけを見た図。`,
     rows,
   };
+}
+
+/**
+ * 凡例（色の意味）。
+ *
+ * 権限は図の中で**色**にしているので、色の意味を書かないと読めない。ただし使っていない色の
+ * 説明を並べると、それだけで数行取る＝出すのは**その図に本当に出ている色**だけ。
+ */
+function legend(
+  app: AppDefinition,
+  access: AppAccess,
+  role: string | undefined,
+): string[] {
+  const ids = app.pages.map((page) => page.id);
+  const lines: string[] = [];
+  if (role !== undefined) {
+    const shut = ids.filter((id) => {
+      const audience = access.audience.get(id);
+      return audience !== undefined && !canOpen(audience, role);
+    });
+    lines.push(
+      shut.length === 0
+        ? `**${role}** はすべての画面を開ける。`
+        : `点線＝**${role} では開けない画面**（${shut.length} 枚）。薄い線＝その役割では通れない扉。`,
+    );
+    return lines;
+  }
+  const nobody = ids.filter((id) => {
+    const audience = access.audience.get(id);
+    return audience !== undefined && !audience.everyone && audience.roles.length === 0;
+  });
+  const dangerous = ids.filter((id) => {
+    const audience = access.audience.get(id);
+    return (
+      audience?.everyone === true && (access.openDanger.get(id) ?? []).length > 0
+    );
+  });
+  if (dangerous.length > 0) {
+    lines.push(
+      `赤枠＝**誰でも開けて、消す・持ち出すができる画面**（${dangerous.length} 枚）。` +
+        "ボタンの `roles` か、入口の `roles` を決める。",
+    );
+  }
+  if (nobody.length > 0) {
+    lines.push(
+      `点線＝**誰も開けない画面**（${nobody.length} 枚）。入口の権限が食い違っている` +
+        "（画面を見ても気づけない類）。",
+    );
+  }
+  if (access.roles.length > 0) {
+    for (const line of packNote("出てくる役割: ", access.roles)) lines.push(line);
+    lines.push("`--role <役割>` を付けると、その役割で通れる道だけの図になる。");
+  }
+  return lines;
 }
 
 /** 画面名（無ければ id）。線にできなかった遷移を文で言うときに使う。 */

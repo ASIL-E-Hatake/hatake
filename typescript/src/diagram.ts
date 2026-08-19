@@ -17,8 +17,12 @@ export interface DiagramBox {
   note?: string;
   /** 箱の中の箇条書き。先頭が `+` なら○、`!` なら×。 */
   lines?: string[];
-  /** 色味。外から来るもの / フレームワーク / 出来上がるもの / 利用者が用意するもの。 */
-  tone?: "input" | "core" | "output" | "outside";
+  /**
+   * 色味。外から来るもの / フレームワーク / 出来上がるもの / 利用者が用意するもの /
+   * **気をつける所**（`warn`。赤枠。定義から作る図で「誰でも開けて、消す・持ち出すが
+   * できる画面」に使う）。
+   */
+  tone?: "input" | "core" | "output" | "outside" | "warn";
 }
 
 /**
@@ -354,6 +358,7 @@ const STYLE = [
   "    .input { fill: #eff6ff; stroke: #2563eb }",
   "    .output { fill: #f0fdf4; stroke: #16a34a }",
   "    .outside { fill: #fefce8; stroke: #ca8a04; stroke-dasharray: 5 4 }",
+  "    .warn { fill: #fef2f2; stroke: #dc2626 }",
   "    .flow { stroke: #475569; stroke-width: 2 }",
   "    .link { fill: none; stroke-width: 1.6 }",
   "    .back { stroke: #94a3b8 }",
@@ -371,6 +376,7 @@ const STYLE = [
   "      .input { fill: #172554; stroke: #60a5fa }",
   "      .output { fill: #052e16; stroke: #4ade80 }",
   "      .outside { fill: #2a2410; stroke: #facc15 }",
+  "      .warn { fill: #2b1416; stroke: #f87171 }",
   "      .flow { stroke: #cbd5e1 }",
   "      .back { stroke: #64748b }",
   "      .tip { fill: #cbd5e1 }",

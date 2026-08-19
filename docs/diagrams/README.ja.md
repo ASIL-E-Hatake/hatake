@@ -74,6 +74,28 @@ npx hatake diagram app.yaml --json           # 元データだけ（手で直し
 次の段へ進む画面を後ろに置く。それでも引けない遷移（同じ段の中・戻り・行が離れている）は
 **絵の下に文で全部挙げる**＝図に出ていない遷移を黙って落とさない。
 
+## 5. 権限を重ねた図
+
+![権限を重ねた遷移図](roles-app-flow.svg)
+
+元は [`roles-app.yaml`](roles-app.yaml)（この絵のために置いてある小さなアプリ）。**ページに
+`roles` は書けない**ので、「この画面は誰に見えるか」はメニューとボタンの `roles` から**辿って**
+数える。読みどころは、1枚ずつ読んでも出てこない2つ。
+
+* **赤枠**＝誰でも開けて、消す・持ち出すができる画面。1枚だけ見ると「`roles` の無い CSV出力」に
+  見えるが、まずいのは**そこへ誰でも来られる**とき
+* **点線**＝**誰も開けない画面**。admin だけの顧客マスタから manager だけのボタンで繋いだので、
+  両方持っている人が居ない。定義としては通るし、画面を見ても気づけない
+
+役割を1つ選ぶと「**その役割で通れる道**」の図になる（通れない扉は薄い線で残す）。
+
+![admin で通れる道](roles-app-admin.svg)
+
+```bash
+npx hatake diagram docs/diagrams/roles-app.yaml --out docs/diagrams/roles-app-flow.svg
+npx hatake diagram docs/diagrams/roles-app.yaml --role admin   --out docs/diagrams/roles-app-admin.svg
+```
+
 ## 絵を直す・足す
 
 1枚 = `docs/diagrams/<名前>.json`。書けるのは縦積みだけで、行は3種類。

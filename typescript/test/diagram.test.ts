@@ -227,6 +227,125 @@ describe("同梱の図解", () => {
   });
 });
 
+describe("権限を重ねる", () => {
+  // 権限の掛け違いを入れてある小さなアプリ（この絵は資料に載せている生成物）。
+  const source = readFileSync("../docs/diagrams/roles-app.yaml", "utf8");
+  const raw = parseYaml(source) as Record<string, unknown>;
+  const app = parseAppSource(source).app;
+  const boxesOf = (picture: Diagram): { id?: string; tone?: string; lines?: string[] }[] =>
+    picture.rows
+      .filter((row) => row.kind === "boxes")
+      .flatMap((row) => (row as { items: { id?: string }[] }).items);
+  const notesOf = (picture: Diagram): string =>
+    picture.rows
+      .filter((row) => row.kind === "note")
+      .map((row) => (row as { text: string }).text)
+      .join("\n");
+
+  it("箱の中に「誰が開けるか」を書く", () => {
+    const boxes = boxesOf(appDiagram(app, raw));
+    const line = (id: string): string =>
+      boxes.find((box) => box.id === id)?.lines?.[0] ?? "";
+    expect(line("order_detail")).toContain("誰でも開ける");
+    expect(line("customer_master")).toContain("admin だけ");
+    expect(line("order_entry")).toContain("manager だけ");
+  });
+
+  // 1枚ずつ読んでも出ない2つ。ここが色分けの値打ち。
+  it("誰でも開けて持ち出せる画面は赤枠", () => {
+    const box = boxesOf(appDiagram(app, raw)).find((one) => one.id === "order_search");
+    expect(box?.tone).toBe("warn");
+    expect(box?.lines?.[0]).toContain("CSV出力");
+  });
+
+  it("誰も開けない画面は点線（入口の権限が食い違っている）", () => {
+    const box = boxesOf(appDiagram(app, raw)).find((one) => one.id === "price_master");
+    expect(box?.tone).toBe("outside");
+    expect(box?.lines?.[0]).toContain("誰も開けない");
+  });
+
+  it("色の意味は、その色を使ったときだけ書く", () => {
+    const notes = notesOf(appDiagram(app, raw));
+    expect(notes).toContain("赤枠＝**誰でも開けて、消す・持ち出すができる画面**（1 枚）");
+    expect(notes).toContain("点線＝**誰も開けない画面**（1 枚）");
+    expect(notes).toContain("出てくる役割: admin / manager");
+    // 権限を書いていないアプリでは、役割の凡例は出さない。
+    const plain = readFileSync("../spec/examples/sales_app.yaml", "utf8");
+    const plainNotes = notesOf(
+      appDiagram(parseAppSource(plain).app, parseYaml(plain) as Record<string, unknown>),
+    );
+    expect(plainNotes).not.toContain("出てくる役割");
+  });
+
+  it("線の札に、そのボタンを押せる役割を書く", () => {
+    const links = appDiagram(app, raw)
+      .rows.filter((row) => row.kind === "links")
+      .flatMap((row) => (row as { items: { label?: string }[] }).items);
+    expect(links.map((one) => one.label)).toContain("明細編集（manager）");
+  });
+
+  it("役割を渡すと「その役割で通れる道」の図になる", () => {
+    const picture = appDiagram(app, raw, { role: "admin" });
+    expect(picture.subtitle).toContain("**admin で通れる道**");
+    const boxes = boxesOf(picture);
+    const tone = (id: string): string | undefined =>
+      boxes.find((box) => box.id === id)?.tone;
+    expect(tone("customer_master")).toBe("input");
+    expect(tone("order_entry")).toBe("outside"); // manager だけの扉の先
+    expect(tone("price_master")).toBe("outside");
+    expect(notesOf(picture)).toContain("点線＝**admin では開けない画面**（2 枚）");
+  });
+
+  it("通れない扉は薄い線で描く（扉が在ること自体は消さない）", () => {
+    const links = appDiagram(app, raw, { role: "admin" })
+      .rows.filter((row) => row.kind === "links")
+      .flatMap((row) => (row as { items: { to: string; back?: boolean }[] }).items);
+    expect(links.find((one) => one.to === "order_entry")?.back).toBe(true);
+    expect(links.find((one) => one.to === "order_detail")?.back).toBeUndefined();
+  });
+
+  // 綴り違いを黙って通すと「全部開ける」に見える＝一番まずい読み違えになる。
+  it("知らない役割名はエラー（何が在るかまで言う）", () => {
+    expect(() => appDiagram(app, raw, { role: "admn" })).toThrow(
+      /役割 "admn" はこの定義に出てきません（出てくるのは admin \/ manager）/,
+    );
+  });
+
+  it("そのまま描ける（溢れない）", () => {
+    expect(() => renderDiagram(appDiagram(app, raw))).not.toThrow();
+    expect(() => renderDiagram(appDiagram(app, raw, { role: "manager" }))).not.toThrow();
+  });
+
+  // 役割名は案件が決めるので、いくらでも長くなる。機械が作る図で落ちるのは道具側の責任。
+  it("役割名が長くても、箱から溢れない", () => {
+    const long = source.replace(
+      "roles: [admin]",
+      "roles: [system_administrator, regional_sales_manager, warehouse_supervisor]",
+    );
+    const picture = appDiagram(
+      parseAppSource(long).app,
+      parseYaml(long) as Record<string, unknown>,
+    );
+    expect(() => renderDiagram(picture)).not.toThrow();
+    const box = boxesOf(picture).find((one) => one.id === "customer_master");
+    expect(box?.lines?.[0]).toContain("…");
+  });
+
+  // 資料に載せている絵は生成物。元の定義を直したら絵も作り直す（CI でも見る）。
+  it("コミットしてある絵と、いまの描画が一致する", () => {
+    const pairs: [string, Diagram][] = [
+      ["roles-app-flow.svg", appDiagram(app, raw)],
+      ["roles-app-admin.svg", appDiagram(app, raw, { role: "admin" })],
+    ];
+    for (const [file, picture] of pairs) {
+      const committed = readFileSync(`../docs/diagrams/${file}`, "utf8");
+      expect(renderDiagram(picture), file).toBe(
+        committed.replaceAll("\r\n", "\n"),
+      );
+    }
+  });
+});
+
 describe("定義から図を作る", () => {
   const source = readFileSync("../spec/examples/sales_app.yaml", "utf8");
   const raw = parseYaml(source) as Record<string, unknown>;

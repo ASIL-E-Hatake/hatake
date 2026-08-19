@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 510" width="900" height="510" role="img" aria-label="受注（権限つき）（sales_roles）の画面と遷移">
+  <style>
+    .bg { fill: #ffffff }
+    text { font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif; fill: #0f172a }
+    .title { font-size: 19px; font-weight: 700 }
+    .caption { font-size: 13px; fill: #64748b }
+    .label { font-size: 15px; font-weight: 600 }
+    .note { font-size: 13px; fill: #64748b }
+    .body { font-size: 13px; fill: #334155 }
+    .edge { font-size: 13px; fill: #475569 }
+    .strong { font-weight: 700 }
+    .good { fill: #15803d }
+    .bad { fill: #b91c1c }
+    .box { stroke-width: 1.5 }
+    .core { fill: #f1f5f9; stroke: #475569 }
+    .input { fill: #eff6ff; stroke: #2563eb }
+    .output { fill: #f0fdf4; stroke: #16a34a }
+    .outside { fill: #fefce8; stroke: #ca8a04; stroke-dasharray: 5 4 }
+    .warn { fill: #fef2f2; stroke: #dc2626 }
+    .flow { stroke: #475569; stroke-width: 2 }
+    .link { fill: none; stroke-width: 1.6 }
+    .back { stroke: #94a3b8 }
+    .tip { fill: #475569 }
+    .tipBack { fill: #94a3b8 }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #0b1220 }
+      text { fill: #e2e8f0 }
+      .caption, .note { fill: #94a3b8 }
+      .body { fill: #cbd5e1 }
+      .edge { fill: #cbd5e1 }
+      .good { fill: #4ade80 }
+      .bad { fill: #f87171 }
+      .core { fill: #172033; stroke: #94a3b8 }
+      .input { fill: #172554; stroke: #60a5fa }
+      .output { fill: #052e16; stroke: #4ade80 }
+      .outside { fill: #2a2410; stroke: #facc15 }
+      .warn { fill: #2b1416; stroke: #f87171 }
+      .flow { stroke: #cbd5e1 }
+      .back { stroke: #64748b }
+      .tip { fill: #cbd5e1 }
+      .tipBack { fill: #64748b }
+    }
+  </style>
+  <defs>
+    <marker id="tip" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="tip" d="M 0 0 L 10 5 L 0 10 z"/></marker>
+    <marker id="tipBack" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="tipBack" d="M 0 0 L 10 5 L 0 10 z"/></marker>
+  </defs>
+  <rect class="bg" x="0" y="0" width="900" height="510"/>
+  <text class="title" x="24" y="49">受注（権限つき）（sales_roles）の画面と遷移</text>
+  <text class="caption" x="24" y="68">段は「メニューから開ける画面 → そこから遷移で開く画面」。<tspan class="caption strong">admin で通れる道</tspan>だけを見た図。</text>
+  <text class="caption" x="24" y="96">メニューから開ける画面 2 枚 / 全部で 5 枚</text>
+  <text class="caption" x="24" y="132">内訳: 照会（読み取り専用）: 1 / 1件の照会: 1 / 1件の入力: 1 / マスタ保守: 2</text>
+  <rect class="box input" x="24" y="154" width="273.3" height="88" rx="8"/>
+  <text class="label" x="160.7" y="184" text-anchor="middle">受注照会</text>
+  <text class="note" x="160.7" y="203" text-anchor="middle">order_search</text>
+  <text class="body good" x="38.0" y="228">○ admin で開ける</text>
+  <rect class="box input" x="313.3333333333333" y="154" width="273.3" height="88" rx="8"/>
+  <text class="label" x="450.0" y="184" text-anchor="middle">顧客マスタ</text>
+  <text class="note" x="450.0" y="203" text-anchor="middle">customer_master</text>
+  <text class="body good" x="327.3" y="228">○ admin で開ける</text>
+  <path class="flow link" d="M 160.7 252 V 272.0 H 160.7 V 326" marker-end="url(#tip)"/>
+  <text class="edge" x="168.7" y="268.0">詳細</text>
+  <path class="flow link back" d="M 160.7 252 V 288.0 H 450.0 V 326" marker-end="url(#tipBack)"/>
+  <text class="edge" x="305.3" y="284.0" text-anchor="middle">明細編集（manager）</text>
+  <path class="flow link back" d="M 450.0 252 V 304.0 H 739.3 V 326" marker-end="url(#tipBack)"/>
+  <text class="edge" x="594.7" y="300.0" text-anchor="middle">単価（manager）</text>
+  <rect class="box core" x="24" y="326" width="273.3" height="88" rx="8"/>
+  <text class="label" x="160.7" y="356" text-anchor="middle">受注詳細</text>
+  <text class="note" x="160.7" y="375" text-anchor="middle">order_detail</text>
+  <text class="body good" x="38.0" y="400">○ admin で開ける</text>
+  <rect class="box outside" x="313.3333333333333" y="326" width="273.3" height="88" rx="8"/>
+  <text class="label" x="450.0" y="356" text-anchor="middle">受注入力</text>
+  <text class="note" x="450.0" y="375" text-anchor="middle">order_entry</text>
+  <text class="body bad" x="327.3" y="400">× admin では開けない</text>
+  <rect class="box outside" x="602.6666666666666" y="326" width="273.3" height="88" rx="8"/>
+  <text class="label" x="739.3" y="356" text-anchor="middle">単価マスタ</text>
+  <text class="note" x="739.3" y="375" text-anchor="middle">price_master</text>
+  <text class="body bad" x="616.7" y="400">× admin では開けない</text>
+  <text class="caption" x="24" y="438">すべての画面がメニューか遷移からたどれる。</text>
+  <text class="caption" x="24" y="474">点線＝<tspan class="caption strong">admin では開けない画面</tspan>（2 枚）。薄い線＝その役割では通れない扉。</text>
+</svg>

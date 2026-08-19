@@ -34,6 +34,7 @@ npx hatake advise page.yaml        # 書き足したほうがいい所（助言�
 npx hatake advise page.yaml --rules team.json  # 案件ごとの決めごとで見る（規則を切る／目盛りを変える／必ず書くキーを足す）
 npx hatake index definitions/ --find "顧客 検索"   # どこに何の画面があるか（--json で索引を丸ごと）
 npx hatake diagram app.yaml --out app.svg  # 画面とメニューと遷移の図
+npx hatake diagram app.yaml --role admin   # その役割で通れる道だけ（権限は入口から辿って数える）
 npx hatake minimize page.yaml      # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake diff <前> <後>          # 既にある定義を直したとき：契約・画面・権限・アプリ構成への影響
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか（Repository / プラグイン名）
@@ -47,6 +48,7 @@ npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読ん�
 **既定値をわざわざ書かない。** `type: text` / `required: false` / `validators: []` のような指定は、書いても何も足していない。書いてしまったら `minimize` で落とせる（意味は変えない＝落とすたびに解析後のモデルが変わらないことを確かめている）。短い定義のほうが、人のレビューも次に読む AI のコンテキストも軽い。
 **直した内容を人に報告するときは `explain --diff`。** `diff` が返すのは機械の言葉（`ui / column-format-changed / …`）だが、こちらは「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」と画面の言葉で言う。判定（壊すか）は `diff`、言い直し（何が変わったか）は `explain --diff`。後者は終了コードを変えない。
 **人にレビューさせる紙は1枚で出す。** `explain --review` は説明（できること・**できないこと**）と助言（書き足したほうがいい所）をまとめて出す。助言は好みなので、案件の決めごとがあるなら `--rules team.json` で物差しを差し替える（知らないキー・知らない規則名はエラー＝設定が黙って効かないことを作らない）。
+**権限は入口から辿るしかない。** ページに `roles` は書けない（書けるのはメニュー項目とボタン、列・項目・カード）ので、「この画面は誰に見えるか」はメニューとボタンの `roles` から辿って数える。`diagram` はそれを箱の中に書き、**誰でも開けて消す/持ち出せる画面**（赤枠）と**誰も開けない画面**（点線＝入口の権限が食い違っている）を色で分ける。どちらも1枚ずつ読んでも出てこない。
 **画面の索引はどのエディションにもある。** CLI の `index` と同じものが Dart 版（`ScreenIndex.ofApp(app)` / `buildScreenIndex`）と Java 版（`ScreenIndex.build`）にもあるので、アプリの中から自分の画面を探せる。種別の見出し語は `spec/vocabulary.json` が正で、3つのエディションはそれを転記している。
 
 ## 用途別（1〜2ファイルだけ読めばいい）
