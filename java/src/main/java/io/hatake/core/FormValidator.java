@@ -54,23 +54,40 @@ public final class FormValidator {
     public ValidationResult validate(
             FormDefinition form, Map<String, Object> record, String mode) {
         List<ValidationError> errors = new ArrayList<>();
+        // 項目名 から ラベル。項目間の検証のメッセージを画面の言葉で出すために先に集める。
+        Map<String, String> labels = labelsOf(form);
         for (SectionDefinition section : form.sections()) {
             // 隠れている区画の項目は、この画面には無いものとして扱う。
             if (!matches(section.visibleWhen(), record, mode)) {
                 continue;
             }
             for (FieldDefinition field : section.fields()) {
-                validateField(field, record, mode, errors);
+                validateField(field, record, mode, errors, labels);
             }
         }
         return new ValidationResult(errors.isEmpty(), errors);
+    }
+
+    /** 項目名 から ラベル。明細（rowFields）の項目も入れる（行の中の検証でも使う）。 */
+    private static Map<String, String> labelsOf(FormDefinition form) {
+        Map<String, String> labels = new java.util.LinkedHashMap<>();
+        for (SectionDefinition section : form.sections()) {
+            for (FieldDefinition field : section.fields()) {
+                labels.put(field.field(), field.label());
+                for (FieldDefinition row : field.rowFields()) {
+                    labels.putIfAbsent(row.field(), row.label());
+                }
+            }
+        }
+        return labels;
     }
 
     private void validateField(
             FieldDefinition field,
             Map<String, Object> record,
             String mode,
-            List<ValidationError> errors) {
+            List<ValidationError> errors,
+            Map<String, String> labels) {
         // 子行が別 Repository にある明細は、このレコードの一部ではない。
         if (field.isSubTable() && field.hasSubTableSource()) {
             return;
@@ -85,8 +102,10 @@ public final class FormValidator {
             rules.add(new ValidatorDefinition("required", Map.of(), null));
         }
         rules.addAll(field.validators());
+        ValidatorRegistry.ValidationContext context =
+                new ValidatorRegistry.ValidationContext(record, labels, mode);
         for (ValidatorDefinition rule : rules) {
-            String message = registry.run(value, rule);
+            String message = registry.run(value, rule, context);
             if (message != null) {
                 errors.add(new ValidationError(
                         field.field(),

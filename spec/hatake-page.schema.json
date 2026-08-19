@@ -979,7 +979,7 @@
     },
     "validator": {
       "type": "object",
-      "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters (e.g. maxLength uses 'value').",
+      "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters: maxLength / minLength / min / max take 'value', pattern takes 'pattern', and compare takes 'operator' (equals / notEquals / gt / gte / lt / lte) plus 'field' (the field to compare with), optionally 'aggregate' + 'of' to fold a subTable into a number.",
       "required": [
         "type"
       ],
@@ -987,7 +987,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "description": "Validator type (open string). Built-ins: required, maxLength, minLength, pattern, min, max, email, postalCode.",
+          "description": "Validator type (open string). Built-ins: required, maxLength, minLength, pattern, min, max, email, postalCode, compare. compare is the cross-field one: it reads another field of the same record (see the node description for its parameters).",
           "examples": [
             "required",
             "maxLength",
@@ -996,7 +996,8 @@
             "min",
             "max",
             "email",
-            "postalCode"
+            "postalCode",
+            "compare"
           ]
         },
         "message": {

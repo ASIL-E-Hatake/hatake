@@ -225,6 +225,46 @@ jobs:
           grep -q 'この画面でできないこと' /tmp/review.log
           grep -q '警告ではありません' /tmp/review.log
 
+      - name: Cross-field validation and the access warning
+        working-directory: typescript
+        run: |
+          set -e
+          # 項目間の検証（compare）は3エディションで同じ答えになること＝共有フィクスチャで
+          # 見ている（各エディションの試験の中）。ここでは CLI から見える所を確かめる。
+          # 書き間違いは黙って通る類なので、警告で言えていること。
+          cat > /tmp/compare.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - { field: startDate, label: 開始日, type: date }
+                    - field: endDate
+                      label: 終了日
+                      type: date
+                      validators:
+                        - { type: compare, operator: gte, field: startDte }
+          YAML
+          # 規則名は --json にしか出ない（人向けの出力は場所と直し方だけ）。
+          node dist/cli.js validate /tmp/compare.yaml --json > /tmp/compare.json
+          grep -q '"rule": "compare-unknown-field"' /tmp/compare.json
+          # 近い名前を出していること（これが無いと直せない）。
+          grep -q 'startDate の間違い' /tmp/compare.json
+          # 正しく書けば警告ゼロ（--warn-as-error で通ること）。
+          sed -i 's/startDte/startDate/' /tmp/compare.yaml
+          node dist/cli.js validate --warn-as-error /tmp/compare.yaml
+          # 説明は相手の**ラベル**で言う（項目名は出さない）。
+          node dist/cli.js explain /tmp/compare.yaml | tee /tmp/compare-explain.log
+          grep -q '開始日 以上' /tmp/compare-explain.log
+          # 開ける人が居ない画面は警告で言う（同梱の見本に1件わざと入っている）。
+          node dist/cli.js validate ../docs/diagrams/roles-app.yaml --json > /tmp/access.json
+          grep -q '"rule": "page-nobody-can-open"' /tmp/access.json
+          grep -q '入口の roles を見直して' /tmp/access.json
+
       - name: A definition compared with itself is compatible
         working-directory: typescript
         run: |

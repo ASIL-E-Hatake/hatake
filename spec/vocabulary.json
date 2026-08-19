@@ -1,5 +1,5 @@
 {
-  "$comment": "定義を人の言葉に開くための語彙（explain の語彙表）。DSL の値1つに対して、人に見せる言い方を持つ。ここが正で、各エディションはこれを転記する（TypeScript 版は typescript/src/explainPhrases.ts、Dart 版は flutter/packages/hatake_core/lib/src/tooling/page_kind_words.dart、Java 版は java/src/main/java/io/hatake/core/PageKindWords.java。同じ内容であることを各エディションの試験で確認する）。組み込みの値が増えたらここにも語が要る＝spec/reference.json との突き合わせも CI で見る。pageKinds の what は説明の全文で使う言い方、short は1行の要約と画面の索引で使う見出し語（1行に収めるには文ではなく見出し語が要る）。{value} は差し込み位置。en は英語版の説明生成のために先に置いてあるが、まだ出力はしていない。",
+  "$comment": "定義を人の言葉に開くための語彙（explain の語彙表）。DSL の値1つに対して、人に見せる言い方を持つ。ここが正で、各エディションはこれを転記する（TypeScript 版は typescript/src/explainPhrases.ts、Dart 版は flutter/packages/hatake_core/lib/src/tooling/page_kind_words.dart、Java 版は java/src/main/java/io/hatake/core/PageKindWords.java。同じ内容であることを各エディションの試験で確認する）。組み込みの値が増えたらここにも語が要る＝spec/reference.json との突き合わせも CI で見る。pageKinds の what は説明の全文で使う言い方、short は1行の要約と画面の索引で使う見出し語（1行に収めるには文ではなく見出し語が要る）。validators の compare は差し込みだけ＝項目間の検証は「相手のラベル＋突合の言い方」で文になるので、突合の言い方は compareOperators が持つ（validators 側にも文を置くと二重になる）。{value} は差し込み位置。en は英語版の説明生成のために先に置いてあるが、まだ出力はしていない。",
   "pageKinds": {
     "crud": {
       "what": {
@@ -130,7 +130,16 @@
     "max": { "ja": "{value} 以下", "en": "at most {value}" },
     "pattern": { "ja": "決まった書式", "en": "a fixed format" },
     "email": { "ja": "メールアドレスの形", "en": "an email address" },
-    "postalCode": { "ja": "郵便番号の形", "en": "a postal code" }
+    "postalCode": { "ja": "郵便番号の形", "en": "a postal code" },
+    "compare": { "ja": "{value}", "en": "{value}" }
+  },
+  "compareOperators": {
+    "equals": { "ja": "{value} と同じ値", "en": "the same value as {value}" },
+    "notEquals": { "ja": "{value} と違う値", "en": "a different value from {value}" },
+    "gt": { "ja": "{value} より大きい値", "en": "greater than {value}" },
+    "gte": { "ja": "{value} 以上", "en": "at least {value}" },
+    "lt": { "ja": "{value} より小さい値", "en": "less than {value}" },
+    "lte": { "ja": "{value} 以下", "en": "at most {value}" }
   },
   "formatters": {
     "currency": { "ja": "¥1,234,567 のように", "en": "as ¥1,234,567" },

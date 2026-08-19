@@ -42,11 +42,13 @@ class FormValidator {
     String? mode,
   }) {
     final errors = <ValidationError>[];
+    // 項目名 → ラベル。項目間の検証のメッセージを画面の言葉で出すために先に集める。
+    final labels = _labelsOf(form);
     for (final section in form.sections) {
       // 隠れているセクションの項目は、この画面には無いものとして扱う。
       if (!_matches(section.visibleWhen, record, mode)) continue;
       for (final field in section.fields) {
-        _validateField(field, record, mode, errors);
+        _validateField(field, record, mode, errors, labels);
       }
     }
     return ValidationResult(errors);
@@ -57,6 +59,7 @@ class FormValidator {
     DataRecord record,
     String? mode,
     List<ValidationError> errors,
+    Map<String, String> labels,
   ) {
     // Repository-backed child rows are not part of this record.
     if (field.type == FieldTypes.subTable && field.source != null) return;
@@ -70,7 +73,11 @@ class FormValidator {
       ...field.validators,
     ];
     for (final rule in rules) {
-      final message = registry.run(value, rule);
+      final message = registry.run(
+        value,
+        rule,
+        ValidationContext(record: record, labels: labels, mode: mode),
+      );
       if (message != null) {
         errors.add(
           ValidationError(field: field.field, message: rule.message ?? message),
@@ -108,6 +115,20 @@ class FormValidator {
   ) =>
       field.requiredWhen != null &&
       evaluateCondition(field.requiredWhen, record, mode: mode);
+
+  /// 項目名 → ラベル。明細（`rowFields`）の項目も入れる（行の中の検証でも使う）。
+  Map<String, String> _labelsOf(FormDefinition form) {
+    final labels = <String, String>{};
+    for (final section in form.sections) {
+      for (final field in section.fields) {
+        labels[field.field] = field.label;
+        for (final row in field.rowFields) {
+          labels.putIfAbsent(row.field, () => row.label);
+        }
+      }
+    }
+    return labels;
+  }
 
   /// 条件が無ければ true（＝制限なし）。
   bool _matches(

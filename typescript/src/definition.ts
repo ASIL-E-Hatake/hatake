@@ -648,4 +648,6 @@ export const ValidatorTypes = {
   max: "max",
   email: "email",
   postalCode: "postalCode",
+  /** 他の項目と比べる（項目間の検証）。`operator` と `field` を取る。 */
+  compare: "compare",
 } as const;

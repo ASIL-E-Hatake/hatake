@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   buildReference,
+  COMPARE_OPERATORS,
   type DslReference,
   em,
   explainPhrases,
@@ -32,6 +33,9 @@ const SOURCES: Record<PhraseCategory, () => string[]> = {
   conditionOperators: () => builtInValues("condition", "operator"),
   fieldTypes: () => builtInValues("field", "type"),
   validators: () => builtInValues("validator", "type"),
+  // compare の突合はスキーマの enum ではなく**検証のパラメータ**なので、
+  // 突き合わせの相手は実装側の一覧になる（片方だけ増えたらここで落ちる）。
+  compareOperators: () => [...COMPARE_OPERATORS],
   formatters: () => builtInValues("column", "format"),
   converters: () => builtInValues("field", "normalize"),
   actionTypes: () => builtInValues("action", "type"),

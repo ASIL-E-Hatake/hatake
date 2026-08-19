@@ -14,15 +14,22 @@ public final class MessageResolver {
 
     /** 既定（日本語）のバリデーションメッセージ。{@code {value}} などのプレースホルダを持つ。 */
     public static final Map<String, Map<String, String>> DEFAULT_VALIDATION_MESSAGES = Map.of(
-            "ja", Map.of(
-                    "required", "必須項目です",
-                    "maxLength", "{value}文字以内で入力してください",
-                    "minLength", "{value}文字以上で入力してください",
-                    "min", "{value}以上で入力してください",
-                    "max", "{value}以下で入力してください",
-                    "pattern", "形式が正しくありません",
-                    "email", "メールアドレスの形式が正しくありません",
-                    "postalCode", "郵便番号の形式が正しくありません"));
+            "ja", Map.ofEntries(
+                    Map.entry("required", "必須項目です"),
+                    Map.entry("maxLength", "{value}文字以内で入力してください"),
+                    Map.entry("minLength", "{value}文字以上で入力してください"),
+                    Map.entry("min", "{value}以上で入力してください"),
+                    Map.entry("max", "{value}以下で入力してください"),
+                    Map.entry("pattern", "形式が正しくありません"),
+                    Map.entry("email", "メールアドレスの形式が正しくありません"),
+                    Map.entry("postalCode", "郵便番号の形式が正しくありません"),
+                    // 項目間の検証（compare）。{target} には比べる相手の<b>ラベル</b>が入る。
+                    Map.entry("compare.equals", "{target}と同じ値にしてください"),
+                    Map.entry("compare.notEquals", "{target}と違う値にしてください"),
+                    Map.entry("compare.gt", "{target}より大きい値にしてください"),
+                    Map.entry("compare.gte", "{target}以上にしてください"),
+                    Map.entry("compare.lt", "{target}より小さい値にしてください"),
+                    Map.entry("compare.lte", "{target}以下にしてください")));
 
     private final String locale;
     private final Map<String, Map<String, String>> messages;

@@ -332,6 +332,7 @@ actions:
 | `pattern` | `pattern`(正規表現) | 形式 |
 | `email` | — | メール形式 |
 | `postalCode` | — | 郵便番号形式 |
+| `compare` | `operator` / `field`（＋`aggregate` / `of`） | **他の項目と比べる**（`{ type: compare, operator: gte, field: startDate }` ＝開始日以上。`aggregate: sum, of: amount` で明細の和と比べる） |
 
 `message` を足すと既定（日本語）メッセージを上書き。全体のロケール切替・文言差し替えは `MessageResolver`（既定 `ja`）を `ValidatorRegistry(custom, messages)` に注入する（Dart/TS/Java の3言語で同名・同挙動）。
 

@@ -6,6 +6,9 @@
 #   ・**誰も開けない画面**（admin だけの画面から manager だけのボタンで繋いだので、
 #     admin ∩ manager = 誰も居ない。定義としては通るし、画面を見ても気づけない）
 #
+# 最後のは `hatake validate` が警告（page-nobody-can-open）で言う。**わざと残してある**ので、
+# 直さないでください（絵と警告の両方の見本になっている）。
+#
 # 絵は生成物。作り直しは:
 #   npx hatake diagram docs/diagrams/roles-app.yaml --out docs/diagrams/roles-app-flow.svg
 #   npx hatake diagram docs/diagrams/roles-app.yaml --role admin --out docs/diagrams/roles-app-admin.svg

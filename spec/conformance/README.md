@@ -19,6 +19,7 @@
 | `conditions.json` | 条件表示 `evaluateCondition`（3言語） | `{ condition, record, mode?, expected: bool }`。`mode` は `{ mode: create/edit }` のリーフを判定するための状態（省略＝分からない＝mode のリーフは false） |
 | `option_filter.json` | 選択肢の連動 `visibleOptions` / `optionValueIsStale`（**Dart / TS のみ**、Java は strict のキーだけ） | `{ cases: [{ name, as?, field, record, visible, stale }] }`。`visible` は出す選択肢の `value` を宣言順に並べたもの、`stale` は「親が変わって子の値が選べなくなった」＝呼び出し側が値を捨てる合図。`as: filter` のケースは同じ判定を**検索条件の形**で確認する（入力用と検索用に判定を2つ持っていないことの証明） |
 | `registry_snapshot.json` | 「登録済みのもの」の一覧の**語彙と形**（静的に読む `hatake registry`／実行時に聞く `registrySnapshot`。TS と Flutter） | `{ kinds, runtimeKinds, sample: { registered, expected } }`。`kinds` は種類の名前で、TS の `RefKinds` と Dart の `RegistryKinds` の両方に一致すること。`sample` は「アプリがこれだけ登録したら、こう出る」＝組み込みと同じ名前は出さない・空の種類は出さない・名前順、が決まる |
+| `cross_field_validation.json` | 項目間の検証（3言語） | `{ page, cases: [{ name, record, expected: [{field,message}] }] }`。固定するのは「相手の項目の値と比べる」「数として読めれば数・読めなければ文字（ISO の日付は文字の大小＝日付の前後）」「`aggregate` で明細を畳んだ数と比べる」「どちらかが空なら通す」「メッセージは相手のラベルで出す」 |
 | `conditional_validation.json` | 条件つきの検証（3言語） | `{ page, cases: [{ name, record, mode?, expected: [{field,message}] }] }`。固定するのは「`visibleWhen` で隠れている項目（と区画）は検証しない」「`requiredWhen` が成立したら必須になる」「`mode` を渡さない呼び出しでは mode のリーフが false ＝検証は緩む方に倒れる」 |
 | `computed.json` | 計算項目 `ComputedRegistry.compute`（3言語） | `{ computed, record, expected }`（数値は数値比較） |
 | `access.json` | 権限制御 `isAllowed`（3言語） | `{ roles, userRoles, expected: bool }` |
@@ -42,8 +43,8 @@
 |---|---|---|
 | Flutter/Dart | `flutter/packages/hatake_core/test/conformance_test.dart` | `../../../spec/conformance` |
 | Flutter（`registry_snapshot` のみ。Renderer と scope が要るため `hatake_material` 側） | `flutter/packages/hatake_material/test/registry_snapshot_test.dart` | `../../../spec/conformance` |
-| Flutter/Dart（`subtable_*` / `wizard_*` / `conditional_validation` / `report` / `strict_keys` のみ。ページ解析が必要なため `hatake_yaml` 側） | `flutter/packages/hatake_yaml/test/conformance_subtable_test.dart`・`conformance_wizard_test.dart`・`conformance_conditional_test.dart`・`conformance_report_test.dart`・`conformance_strict_keys_test.dart` | `../../../spec/conformance` |
-| TypeScript | `typescript/test/conformance.test.ts`（`dashboard_aggregate` は `conformanceAggregate.test.ts`、`csv`/`report` は `conformanceOutput.test.ts`、`strict_keys` は `strictKeys.test.ts`、`conditional_validation` は `conformanceConditional.test.ts`） | `../spec/conformance` |
-| Java | `java/src/test/java/io/hatake/core/ConformanceTest.java`（`dashboard_aggregate` は `AggregateConformanceTest.java`、`csv`/`report` は `OutputConformanceTest.java`、`strict_keys` は `StrictKeysConformanceTest.java`、`conditional_validation` は `ConditionalValidationConformanceTest.java`） | `../spec/conformance` |
+| Flutter/Dart（`subtable_*` / `wizard_*` / `conditional_validation` / `report` / `strict_keys` のみ。ページ解析が必要なため `hatake_yaml` 側） | `flutter/packages/hatake_yaml/test/conformance_subtable_test.dart`・`conformance_wizard_test.dart`・`conformance_conditional_test.dart`・`conformance_cross_field_test.dart`・`conformance_report_test.dart`・`conformance_strict_keys_test.dart` | `../../../spec/conformance` |
+| TypeScript | `typescript/test/conformance.test.ts`（`dashboard_aggregate` は `conformanceAggregate.test.ts`、`csv`/`report` は `conformanceOutput.test.ts`、`strict_keys` は `strictKeys.test.ts`、`conditional_validation` は `conformanceConditional.test.ts`、`cross_field_validation` は `conformanceCrossField.test.ts`） | `../spec/conformance` |
+| Java | `java/src/test/java/io/hatake/core/ConformanceTest.java`（`dashboard_aggregate` は `AggregateConformanceTest.java`、`csv`/`report` は `OutputConformanceTest.java`、`strict_keys` は `StrictKeysConformanceTest.java`、`conditional_validation` は `ConditionalValidationConformanceTest.java`、`cross_field_validation` は `CrossFieldConformanceTest.java`） | `../spec/conformance` |
 
 新しい formatter/converter/validator を足したら、まずここに期待値を書いてから各言語を実装する（spec 先行）。

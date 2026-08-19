@@ -877,9 +877,51 @@ computed: { op: sum, fields: [price, tax] }
 | `pattern` | `pattern`（正規表現） | 正規表現に一致すること。 |
 | `email` | — | メールアドレス形式であること。 |
 | `postalCode` | — | 郵便番号形式（`1234567` / `123-4567`）。 |
+| `compare` | `operator` / `field`（＋`aggregate` / `of`） | **他の項目と比べる**（下記）。 |
 
 `message` を書くと既定（日本語）メッセージを上書きできる。既定文言をまるごと差し替えたい
 （別ロケールにしたい）ときは `ValidatorRegistry` に `MessageResolver` を注入する。
+
+### 項目間の検証（`compare`）
+
+1つの項目だけでは書けない規則（「開始日 ≤ 終了日」「合計＝明細の和」）は `compare` で書く。
+**他の項目の値を見る**のはこの検証だけで、他の組込は自分の値しか見ない。
+
+```yaml
+- field: endDate
+  label: 終了日
+  type: date
+  validators:
+    - { type: compare, operator: gte, field: startDate }   # 開始日 以上
+
+- field: total
+  label: 合計
+  type: number
+  validators:
+    # 明細（subTable）を畳んだ数と比べる＝「合計＝明細の和」
+    - { type: compare, operator: equals, field: lines, aggregate: sum, of: amount }
+```
+
+| パラメータ | 意味 |
+|---|---|
+| `operator` | `equals` / `notEquals` / `gt` / `gte` / `lt` / `lte`（既定 `gte`）。大小を比べられるものだけ |
+| `field` | 比べる相手の**項目名**（同じフォームの中）。必須 |
+| `aggregate` | 相手が明細のとき、畳み方（`sum` / `avg` / `min` / `max` / `count`。ダッシュボードと同じ集約） |
+| `of` | 畳む行の項目名（`count` のときは要らない） |
+
+決めごと:
+
+* 比べ方は**数として読めれば数、読めなければ文字**。ISO の日付（`2026-01-05`）は桁が揃っている
+  ので文字の大小＝日付の前後になる（日付の解釈は言語ごとに違うので、型を持ち込まない）
+* **判定できないときは通す**。自分が空なら `required` の担当、相手が空・相手の項目が無ければ
+  相手側の検証の担当。「黙って落とす」方には倒さない
+* メッセージは相手の**ラベル**で出る（「開始日以上にしてください」）。項目名ではなく画面の言葉
+* 書き間違い（相手の項目名の綴り違い・比べられない突合・`of` の抜け）は**静かに通ってしまう**ので、
+  `hatake validate` が警告で言う（`compare-unknown-field` / `compare-bad-operator` /
+  `compare-aggregate-without-of` / `compare-with-itself` / `compare-without-field`）
+* 3エディションで同じ答えになることは
+  [`spec/conformance/cross_field_validation.json`](conformance/cross_field_validation.json) で固定
+  （このファイル自体が動く実例）
 
 ## action
 
@@ -1035,6 +1077,8 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `required-as-validator-only` | `validators` の要素がオブジェクトでない → 検証が増えない |
 | `requiredwhen-with-required` / `readonlywhen-with-readonly` | 常に効く指定と条件つきの指定の両方 → 条件が意味を持たない |
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | 選択肢の連動の辻褄（入力項目・検索条件の両方） |
+| `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | 項目間の検証（`compare`）の書き間違い → **その検証が黙って通る** |
+| `page-nobody-can-open` | 入口（メニュー項目・遷移ボタン）の `roles` が食い違っている → **その画面を開ける人が誰も居ない** |
 
 **エラーではない**（Repository の実装やプラグインの登録次第で成立する書き方もあるため）。
 遷移先の検査は `app:` の定義だけ（単票の定義は他のページを知らないので判定しない）。

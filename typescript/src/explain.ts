@@ -14,6 +14,7 @@ import {
   ACTION_TYPES,
   AGGREGATES,
   CHART_KINDS,
+  COMPARE_WORDS,
   CONDITION_OPERATORS,
   CONVERTERS,
   FIELD_TYPES,
@@ -38,6 +39,7 @@ import {
   type PageDefinition,
   type SectionDefinition,
   type ValidatorDefinition,
+  ValidatorTypes,
 } from "./definition.js";
 
 /** 説明のひとまとまり（見出し＋行）。行はそのまま人に見せる文。 */
@@ -324,7 +326,9 @@ function describeField(field: FieldDefinition, vocabulary: Vocabulary): string {
   if (field.optionsSource !== undefined) {
     notes.push(`選択肢は ${field.optionsSource.repository} から引く`);
   }
-  const rules = field.validators.map(describeValidator).filter((r) => r !== "");
+  const rules = field.validators
+    .map((rule) => describeValidator(rule, vocabulary))
+    .filter((r) => r !== "");
   if (rules.length > 0) notes.push(rules.join("・"));
   if (field.normalize.length > 0) {
     notes.push(
@@ -352,12 +356,41 @@ function describeField(field: FieldDefinition, vocabulary: Vocabulary): string {
   return notes.length === 0 ? field.label : `${field.label} … ${notes.join("、")}`;
 }
 
-const describeValidator = (rule: ValidatorDefinition): string => {
+const describeValidator = (
+  rule: ValidatorDefinition,
+  vocabulary: Vocabulary,
+): string => {
   const phrase = VALIDATORS[rule.type];
-  return phrase === undefined
-    ? `${rule.type} の規則`
-    : fill(phrase, rule.params.value);
+  if (phrase === undefined) return `${rule.type} の規則`;
+  // 項目間の検証は「相手のラベル＋突合の言い方」で文にする（相手を項目名で言うと、
+  // DSL を知らない人には読めない）。
+  if (rule.type === ValidatorTypes.compare) {
+    return fill(phrase, compareTarget(rule, vocabulary));
+  }
+  return fill(phrase, rule.params.value);
 };
+
+/** 項目間の検証の言い方（「開始日 以上」「明細 の合計 と同じ値」）。 */
+function compareTarget(
+  rule: ValidatorDefinition,
+  vocabulary: Vocabulary,
+): string {
+  const target = typeof rule.params.field === "string" ? rule.params.field : "";
+  if (target === "") return "他の項目と比べる（比べる相手が書いてありません）";
+  const label = vocabulary.labels.get(target) ?? target;
+  const aggregate =
+    typeof rule.params.aggregate === "string" ? rule.params.aggregate : undefined;
+  const shown =
+    aggregate === undefined
+      ? label
+      : `${label} の${AGGREGATES[aggregate] ?? aggregate}`;
+  const operator =
+    typeof rule.params.operator === "string" ? rule.params.operator : "gte";
+  const phrase = COMPARE_WORDS[operator];
+  return phrase === undefined
+    ? `${shown} と比べる（${operator} は比べ方として使えません）`
+    : fill(phrase, shown);
+}
 
 /** 素の定義から「アクション id → 遷移先ページ id」を拾う。 */
 function navigateTargets(raw: Record<string, unknown>): Map<string, string> {

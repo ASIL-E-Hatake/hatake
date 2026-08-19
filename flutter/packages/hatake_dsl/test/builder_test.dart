@@ -126,4 +126,24 @@ void main() {
       )),
     );
   });
+
+  test('compareWith writes a cross-field rule (項目間の検証)', () {
+    // 「開始日 ≤ 終了日」は1つの項目では書けない。ビルダーからも同じ形で書ける。
+    final rule = compareWith('startDate');
+    expect(rule.type, ValidatorTypes.compare);
+    expect(rule.params, {'operator': 'gte', 'field': 'startDate'});
+
+    final total = compareWith(
+      'lines',
+      operator: 'equals',
+      aggregate: 'sum',
+      of: 'amount',
+    );
+    expect(total.params, {
+      'operator': 'equals',
+      'field': 'lines',
+      'aggregate': 'sum',
+      'of': 'amount',
+    });
+  });
 }

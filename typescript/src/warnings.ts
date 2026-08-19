@@ -7,13 +7,16 @@
 //   ・`groupBy` に `sort` が無い … グループが分裂して小計が何度も出る
 //   ・条件で `between` … 条件は理解しないので、その項目が永久に出てこない
 //   ・`sum` に `field` が無い … 集計が null になる
+//   ・入口の権限が食い違っている … その画面を**開ける人が誰も居ない**
+//   ・項目間の検証で相手の項目名を間違えた … その検証は**黙って通る**
 // どれも**エラーにならず、画面を見ても気づきにくい**。だから警告として言う。
 //
 // 見るのは素の document（strict と同じ）。解析後のモデルでは、落とされた情報や
 // 既定値で埋まった情報が見えなくなるものがあるので。
 
+import { appAccess, describeAudience, nobodyCanOpen } from "./appAccess.js";
 import { ConditionOperators } from "./conditionEvaluator.js";
-import { AggregateOps } from "./definition.js";
+import { AggregateOps, ValidatorTypes } from "./definition.js";
 import {
   builtInNames,
   collectRefs,
@@ -21,6 +24,7 @@ import {
   type RefKind,
 } from "./refs.js";
 import { closestKey } from "./strictKeys.js";
+import { COMPARE_OPERATORS } from "./validators.js";
 
 /** 構造の間違い1つ。`pitfall` があれば対照表（spec/pitfalls.json）を引ける。 */
 export interface DefinitionWarning {
@@ -75,6 +79,7 @@ export function findWarnings(
       pages.map((p) => str(p.id)).filter((id): id is string => id !== undefined),
     );
     checkApp(app, pages, pageIds, found);
+    checkAccess(document, pages, found);
     pages.forEach((p, i) =>
       checkPage(p, `app.pages[${i}]`, pageIds, found),
     );
@@ -223,6 +228,50 @@ function warn(
   pitfall?: string,
 ): void {
   found.push({ rule, path, message, fix, ...(pitfall ? { pitfall } : {}) });
+}
+
+/**
+ * 開ける人が居ない画面。
+ *
+ * ページに `roles` は書けないので、「この画面は誰に見えるか」は**入口から辿って**しか出せない
+ * （[appAccess]）。入口を書いたのに権限が食い違っていると、**定義は通るのに誰も開けない**
+ * 画面ができる。1枚ずつ読んでも出ないし、画面を見ても気づけないので、機械に言わせる。
+ *
+ * **入口がまったく無い画面は言わない。** メニューにも遷移先にも無いのは、アプリ側のコードから
+ * 開くつもりで置いてあることがある（意図の話なので、言うなら助言＝`hatake advise` の担当）。
+ * ここで言うのは「入口を書いたのに、その入口を通れる人が居ない」という**事実**だけ。
+ */
+function checkAccess(document: Dict, pages: Dict[], found: DefinitionWarning[]): void {
+  const access = appAccess(document);
+  pages.forEach((page, index) => {
+    const id = str(page.id);
+    if (id === undefined) return;
+    const audience = access.audience.get(id);
+    const entries = access.entries.get(id) ?? [];
+    if (audience === undefined || entries.length === 0) return;
+    if (!nobodyCanOpen(audience)) return;
+    warn(
+      found,
+      "page-nobody-can-open",
+      `app.pages[${index}]`,
+      `画面 "${id}" を開ける人が居ません。入口はありますが、権限が食い違っています` +
+        `（${entries.map((one) => describeEntry(one, access)).join(" / ")}）。`,
+      "入口の roles を見直してください（入口側を広げるか、その手前の画面を開ける人に合わせる）。",
+    );
+  });
+}
+
+/** 入口1つの言い方（「顧客マスタ の「単価」= manager。顧客マスタ は admin だけ」）。 */
+function describeEntry(
+  entry: { from: string; label: string; roles: string[] },
+  access: ReturnType<typeof appAccess>,
+): string {
+  const gate = entry.roles.length === 0 ? "誰でも" : entry.roles.join(" / ");
+  if (entry.from === "menu") return `メニュー「${entry.label}」= ${gate}`;
+  const source = access.audience.get(entry.from);
+  const who =
+    source === undefined ? "" : `。${entry.from} を開けるのは「${describeAudience(source)}」`;
+  return `${entry.from} の「${entry.label}」= ${gate}${who}`;
 }
 
 /** アプリ全体で辻褄が合っているか（ページの重複・初期ルート・メニューの行き先）。 */
@@ -488,6 +537,7 @@ function checkFieldEntry(
   siblings: Set<string> = new Set(),
 ): void {
   checkOptions(field, path, found, siblings);
+  checkCompare(field, path, found, siblings);
   list(field.validators).forEach((raw, i) => {
     if (isDict(raw)) return;
     warn(
@@ -534,6 +584,84 @@ function checkFieldEntry(
       checkFieldEntry(raw, `${path}.fields[${i}]`, found, rowFields);
     }
   });
+}
+
+/**
+ * 項目間の検証（`compare`）の辻褄。
+ *
+ * この検証は**書き間違えても静かに通る**（比べる相手が見つからなければ判定しない）ので、
+ * 相手の項目名の綴り違いは画面を見ても気づけない。だから機械に言わせる。
+ */
+function checkCompare(
+  field: Dict,
+  path: string,
+  found: DefinitionWarning[],
+  siblings: Set<string>,
+): void {
+  const own = str(field.field);
+  list(field.validators)
+    .filter(isDict)
+    .forEach((rule, index) => {
+      if (str(rule.type) !== ValidatorTypes.compare) return;
+      const at = `${path}.validators[${index}]`;
+      const target = str(rule.field);
+      if (target === undefined) {
+        warn(
+          found,
+          "compare-without-field",
+          at,
+          "比べる相手（`field`）がありません。この検証は何も判定しません。",
+          "`field: <相手の項目名>` を書いてください（`operator` の既定は gte）。",
+        );
+        return;
+      }
+      if (target === own) {
+        warn(
+          found,
+          "compare-with-itself",
+          `${at}.field`,
+          `自分（"${target}"）と比べています。いつも同じ値なので、判定は変わりません。`,
+          "比べたい**別の**項目名を書いてください。",
+        );
+      } else if (siblings.size > 0 && !siblings.has(target)) {
+        const near = closestKey(target, [...siblings]);
+        warn(
+          found,
+          "compare-unknown-field",
+          `${at}.field`,
+          `比べる相手 "${target}" が同じフォームにありません。相手の値が取れないので、` +
+            "この検証は**黙って通ります**。",
+          near === null
+            ? "同じフォームの項目名を書いてください（明細の中なら、その行の項目名）。"
+            : `${near} の間違いではないですか？`,
+        );
+      }
+      const operator = str(rule.operator);
+      if (operator !== undefined && !COMPARE_OPERATORS.includes(operator as never)) {
+        warn(
+          found,
+          "compare-bad-operator",
+          `${at}.operator`,
+          `突合 "${operator}" では大小を比べられないので、この検証は何も判定しません。`,
+          `使えるのは ${COMPARE_OPERATORS.join(" / ")} です。`,
+        );
+      }
+      const aggregate = str(rule.aggregate);
+      if (
+        aggregate !== undefined &&
+        aggregate !== AggregateOps.count &&
+        str(rule.of) === undefined
+      ) {
+        warn(
+          found,
+          "compare-aggregate-without-of",
+          `${at}.of`,
+          `${aggregate} で畳む項目（\`of\`）がありません。相手の値が null になるので、` +
+            "この検証は**黙って通ります**。",
+          "`of: <行の項目名>` を書いてください（`count` だけは要りません）。",
+        );
+      }
+    });
 }
 
 /** 選択肢の連動（`optionsFrom` / `when` / `optionsSource`）の辻褄。 */
