@@ -194,10 +194,14 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       定義の山から**画面の索引**を作る（1行の要約＋探すための語）。--find は語の AND。
       --by size で規模の大きい画面から。--json / --out はそのまま機械に渡せる形。
 
-  hatake diagram <file> [--out file.svg] [--json]
+  hatake diagram <file> [--out file.svg] [--role admin] [--json]
       図解の SVG を出す。app: の定義を渡すと**画面とメニューと遷移**の図を作り
       （どこからも開けない画面も分かる）、図の元データ（rows を持つ JSON）を渡すと
       それを描く。--json で元データだけ（手で直してから描けるように）。
+      箱の中には**誰が開けるか**も出る（ページに roles は書けないので、メニューと
+      ボタンの roles から辿って数える）。赤枠＝誰でも開けて消す/持ち出すができる画面、
+      点線＝誰も開けない画面（入口の権限が食い違っている）。--role を渡すと
+      **その役割で通れる道**だけの図になる（知らない役割名はエラー）。
 
   hatake registry <path...> [--json] [--out file]
       アプリの実装を読んで「登録済みのもの」の一覧を作る（validate --registry に
@@ -837,7 +841,9 @@ function diagram(files: string[], flags: Args["flags"], io: CliIo): number {
   if (looksLikeDiagram(raw)) {
     picture = parseDiagram(raw);
   } else if (isAppSource(source)) {
-    picture = appDiagram(parseAppSource(source).app, raw);
+    picture = appDiagram(parseAppSource(source).app, raw, {
+      role: str(flags, "role"),
+    });
   } else {
     io.err(
       "図にできるのは app: の定義か、図の元データ（rows を持つ JSON）です。" +

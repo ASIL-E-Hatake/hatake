@@ -34,6 +34,7 @@ npx hatake advise page.yaml        # what is worth adding (advice, not warnings)
 npx hatake advise page.yaml --rules team.json  # judge by the project's own ruler (silence a rule / tune a knob / demand a key)
 npx hatake index definitions/ --find "customer search"   # which screen is where
 npx hatake diagram app.yaml --out app.svg  # screens, menu and navigation as a picture
+npx hatake diagram app.yaml --role admin   # only the paths that role can walk
 npx hatake minimize page.yaml     # drop defaults; meaning is unchanged
 npx hatake failures <key>         # real failures: what was written, what the tools said
 npx hatake refs page.yaml --needs-registration     # what the application must register
@@ -46,6 +47,7 @@ It can also check **names the definition expects from outside**: a `repository:`
 `diff` grades every change: breaking (callers break), caution (nothing breaks but a human should confirm — a column, button or option disappeared, permissions changed, a page or menu entry is gone), safe (additions). **Never pass over cautions silently.**
 **When reporting a change to a human, use `explain --diff`.** `diff` answers in machine terms (`ui / column-format-changed / …`); this one says it the way a reviewer reads it (「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」). Judgement (does it break) is `diff`; restating (what changed) is `explain --diff`, which never changes the exit code.
 **Give a reviewer one sheet.** `explain --review` prints the explanation (what the screen does and what it **cannot** do) together with the advice. Advice is a preference, so a project with its own decisions supplies its own ruler: `--rules team.json` (an unknown key or rule name is an error — a setting that silently does nothing is the worst outcome).
+**Roles can only be answered by following the way in.** A page cannot carry `roles` (menu items and buttons can, plus columns, fields and cards), so "who can see this screen" is counted from the menu and button `roles`. `diagram` writes that inside each box and colours the two things a screen-by-screen read never surfaces: **anyone can open it and it can delete/export** (red border) and **nobody can open it** (dashed — the ways in disagree about roles).
 **Every edition has the screen index.** The same thing the CLI's `index` builds exists in Dart (`ScreenIndex.ofApp(app)` / `buildScreenIndex`) and Java (`ScreenIndex.build`), so an app can search its own screens. The heading word per page kind comes from `spec/vocabulary.json`, which all three editions transcribe.
 
 ## Examples (copy them; all are schema-checked in CI)

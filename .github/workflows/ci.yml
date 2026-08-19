@@ -155,6 +155,9 @@ jobs:
           done
           # 定義から作る図も生成物（資料とサイトに出しているので、古いままにしない）。
           node typescript/dist/cli.js diagram spec/examples/sales_app.yaml             --out docs/diagrams/sales-app-flow.svg
+          # 権限を重ねた図（全体と、admin で通れる道だけ）。元は roles-app.yaml。
+          node typescript/dist/cli.js diagram docs/diagrams/roles-app.yaml             --out docs/diagrams/roles-app-flow.svg
+          node typescript/dist/cli.js diagram docs/diagrams/roles-app.yaml --role admin             --out docs/diagrams/roles-app-admin.svg
           # --ignore-cr-at-eol: Windows のチェックアウト（CRLF）で走らせても同じ判定にする。
           git diff --exit-code --ignore-cr-at-eol -- docs/diagrams
 
@@ -177,6 +180,25 @@ jobs:
           grep -q 'class="flow link"' /tmp/app.svg
           # 線にできなかった遷移は文で挙げる（図から黙って消えない）。
           grep -q '線にできなかった遷移' /tmp/app.svg
+
+      - name: Roles on the diagram
+        working-directory: typescript
+        run: |
+          set -e
+          # 権限は入口から辿るしかない（ページに roles は書けない）。1枚ずつ読んでも
+          # 出ない2つ＝「誰でも開けて持ち出せる画面」と「誰も開けない画面」が出ること。
+          node dist/cli.js diagram ../docs/diagrams/roles-app.yaml --json > /tmp/roles.json
+          grep -q '"warn"' /tmp/roles.json
+          grep -q '誰も開けない' /tmp/roles.json
+          grep -q 'admin だけ' /tmp/roles.json
+          # 役割を渡すと「その役割で通れる道」の図になる。
+          node dist/cli.js diagram ../docs/diagrams/roles-app.yaml --role admin --json             > /tmp/roles-admin.json
+          grep -q 'admin で通れる道' /tmp/roles-admin.json
+          # 綴り違いは黙って通さない（通すと「全部開ける」に見える）。
+          if node dist/cli.js diagram ../docs/diagrams/roles-app.yaml --role admn               2> /tmp/roles-typo.log; then
+            echo "知らない役割名を通してしまった"; exit 1
+          fi
+          grep -q '出てくるのは admin / manager' /tmp/roles-typo.log
 
       - name: Advice can be judged by an outside ruler
         working-directory: typescript
@@ -269,6 +291,8 @@ jobs:
         run: |
           pip install --quiet 'jsonschema[format]' pyyaml openapi-spec-validator
           python spec/tools/validate_schema.py
+          # 資料の絵の元になっている定義も、スキーマで見る（絵だけ通って定義が腐るのを防ぐ）。
+          python spec/tools/validate_schema.py docs/diagrams/roles-app.yaml
       - name: Charset tables are up to date
         run: |
           set -e

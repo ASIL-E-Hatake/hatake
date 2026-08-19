@@ -1356,6 +1356,22 @@ the screens that lead to the next layer are placed last. Any transition that sti
 the picture would read as "there is no transition". See
 [the sales app's flow](../docs/diagrams/sales-app-flow.svg).
 
+**Roles are overlaid too.** A page cannot carry `roles` — only menu items and buttons can (plus
+columns, fields and cards) — so "who can see this screen" is only answerable by **following the way
+in**. The picture counts that and writes it inside each box, colouring the two things a
+screen-by-screen read never surfaces:
+
+* **red border** — anyone can open it, and it can delete or export (on its own the button just looks
+  like one without `roles`; what makes it a problem is that *anyone can get there*)
+* **dashed** — **nobody can open it**: the ways in disagree about roles. The definition parses, and
+  looking at the screen tells you nothing
+
+`--role admin` narrows the picture to **the paths that role can walk** (doors it cannot pass stay,
+drawn faintly). An unknown role name is an error — silently accepting a typo would read as "opens
+everything". A group's `roles` apply to its children. See
+[the roles picture](../docs/diagrams/roles-app-flow.svg) and
+[what admin can walk](../docs/diagrams/roles-app-admin.svg).
+
 ## Shrinking a definition without changing it
 
 Generated definitions get verbose (a default written out, an empty list left behind).

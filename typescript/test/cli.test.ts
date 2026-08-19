@@ -595,6 +595,55 @@ app:
   it("ファイルは1つ", () => {
     expect(runCli(["diagram"], fakeIo())).toBe(1);
   });
+
+  const gated = `dsl_version: "1.0"
+app:
+  id: sales
+  title: 販売管理
+  menu:
+    - { id: orders, label: 受注, page: order_search }
+    - { id: masters, label: マスタ, page: customer_master, roles: [admin] }
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      key: orderNo
+      table:
+        columns: [{ field: orderNo, label: 受注番号 }]
+      actions:
+        - { id: csv, type: export, label: CSV出力 }
+    - type: master
+      id: customer_master
+      title: 顧客マスタ
+      repository: customerRepository
+      key: code
+      table:
+        columns: [{ field: code, label: コード }]
+`;
+
+  it("箱の中に「誰が開けるか」が出る", () => {
+    const io = fakeIo({ "app.yaml": gated });
+    expect(runCli(["diagram", "app.yaml", "--json"], io)).toBe(0);
+    const lines = JSON.stringify(JSON.parse(io.stdout.join("\n")));
+    expect(lines).toContain("admin だけ");
+    // 誰でも開けて持ち出せる画面は赤枠。
+    expect(lines).toContain('"warn"');
+  });
+
+  it("--role でその役割で通れる道だけの図になる", () => {
+    const io = fakeIo({ "app.yaml": gated });
+    expect(runCli(["diagram", "app.yaml", "--role", "admin", "--json"], io)).toBe(0);
+    const picture = JSON.parse(io.stdout.join("\n"));
+    expect(picture.subtitle).toContain("admin で通れる道");
+  });
+
+  // 綴り違いを黙って通すと「全部開ける」に見える＝一番まずい読み違えになる。
+  it("知らない役割名はエラー", () => {
+    const io = fakeIo({ "app.yaml": gated });
+    expect(runCli(["diagram", "app.yaml", "--role", "admn"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("出てくるのは admin");
+  });
 });
 
 describe("hatake minimize", () => {
