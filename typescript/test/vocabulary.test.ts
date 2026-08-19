@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildReference,
   type DslReference,
+  em,
   explainPhrases,
   fill,
   type PhraseCategory,
+  SHORT_KINDS,
 } from "../src/index.js";
 
 /** 語彙の正。各エディションはここを転記する。 */
@@ -52,6 +54,7 @@ describe("語彙は spec が正", () => {
         if (category === "pageKinds") {
           expect(mine[name], where).toEqual({
             what: entry.what.ja,
+            short: entry.short.ja,
             cannot: entry.cannot.ja,
           });
         } else {
@@ -67,8 +70,10 @@ describe("語彙は spec が正", () => {
         const entry = value as Record<string, any>;
         const where = `${category}.${name}`;
         if (category === "pageKinds") {
-          expect(entry.what.en, where).toBeTypeOf("string");
-          expect(entry.what.en.length, where).toBeGreaterThan(0);
+          for (const key of ["what", "short"] as const) {
+            expect(entry[key].en, `${where}.${key}`).toBeTypeOf("string");
+            expect(entry[key].en.length, `${where}.${key}`).toBeGreaterThan(0);
+          }
           expect(entry.cannot.en.length, where).toBe(entry.cannot.ja.length);
         } else {
           expect(entry.en, where).toBeTypeOf("string");
@@ -101,6 +106,16 @@ describe("語彙は spec が正", () => {
           `${category}: ${name} は DSL の組み込みの値ではない`,
         ).toBe(true);
       }
+    }
+  });
+
+  // 短い見出し語は「1行に収める」ためだけに在る。長い語を書いたら索引の桁が崩れるので、
+  // 語を足すときに気づけるようにしておく（全角15文字ぶんを上限とする）。
+  it("見出し語（short）は1行に収まる長さ", () => {
+    for (const [kind, value] of Object.entries(vocabulary.pageKinds)) {
+      const short = (value as Record<string, any>).short.ja as string;
+      expect(em(short), `${kind}: ${short}`).toBeLessThanOrEqual(15);
+      expect(SHORT_KINDS[kind], kind).toBe(short);
     }
   });
 

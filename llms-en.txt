@@ -28,8 +28,10 @@ npx hatake diff <old> <new>       # what a change breaks, and what to confirm
 npx hatake explain page.yaml      # read back what this screen does (Japanese)
 npx hatake explain page.yaml --brief         # one-line summary (a table for an app)
 npx hatake explain --diff <old> <new>        # what changed, in the screen's own words
+npx hatake explain page.yaml --review       # one sheet for review (explanation + advice; exit code unchanged)
 npx hatake fix page.yaml          # apply only uniquely-determined repairs (--write to overwrite)
 npx hatake advise page.yaml        # what is worth adding (advice, not warnings)
+npx hatake advise page.yaml --rules team.json  # judge by the project's own ruler (silence a rule / tune a knob / demand a key)
 npx hatake index definitions/ --find "customer search"   # which screen is where
 npx hatake diagram app.yaml --out app.svg  # screens, menu and navigation as a picture
 npx hatake minimize page.yaml     # drop defaults; meaning is unchanged
@@ -43,6 +45,8 @@ It can also check **names the definition expects from outside**: a `repository:`
 **Validation only sees spelling and structure.** A condition pointing the wrong way, or the wrong field made required, passes everything — so read the definition back with `explain` (Japanese prose, no DSL key names) and compare it against what you were asked for. `failures` collects real incidents, **including the ones no tool catches**, each with a note on what a reviewer should look for.
 `diff` grades every change: breaking (callers break), caution (nothing breaks but a human should confirm — a column, button or option disappeared, permissions changed, a page or menu entry is gone), safe (additions). **Never pass over cautions silently.**
 **When reporting a change to a human, use `explain --diff`.** `diff` answers in machine terms (`ui / column-format-changed / …`); this one says it the way a reviewer reads it (「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」). Judgement (does it break) is `diff`; restating (what changed) is `explain --diff`, which never changes the exit code.
+**Give a reviewer one sheet.** `explain --review` prints the explanation (what the screen does and what it **cannot** do) together with the advice. Advice is a preference, so a project with its own decisions supplies its own ruler: `--rules team.json` (an unknown key or rule name is an error — a setting that silently does nothing is the worst outcome).
+**Every edition has the screen index.** The same thing the CLI's `index` builds exists in Dart (`ScreenIndex.ofApp(app)` / `buildScreenIndex`) and Java (`ScreenIndex.build`), so an app can search its own screens. The heading word per page kind comes from `spec/vocabulary.json`, which all three editions transcribe.
 
 ## Examples (copy them; all are schema-checked in CI)
 - [Customers / crud](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/customer_master.yaml)

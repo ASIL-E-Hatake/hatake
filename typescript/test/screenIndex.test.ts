@@ -123,6 +123,26 @@ describe("画面の索引", () => {
     expect(result.screens).toHaveLength(1);
   });
 
+  // 定義は YAML でも JSON でも同じもの。書き方で索引から消えるのは、ただの事故。
+  it("JSON の定義も索引に載る", () => {
+    const json = JSON.stringify({
+      page: {
+        type: "detail",
+        id: "order_detail",
+        title: "受注詳細",
+        repository: "orderRepository",
+        key: "orderNo",
+        form: {
+          sections: [{ fields: [{ field: "orderNo", label: "受注番号" }] }],
+        },
+      },
+    });
+    const result = buildIndex([{ file: "order_detail.json", source: json }]);
+    expect(result.ignored).toBe(0);
+    expect(result.screens.map((one) => one.id)).toEqual(["order_detail"]);
+    expect(result.screens[0].what).toBe("1件の照会");
+  });
+
   it("綴り間違いのある定義も索引に載せる（消すと余計に探せない）", () => {
     const typo = PAGE.replace("label: 金額", "label: 金額, witdh: 140");
     const result = buildIndex([{ file: "page.yaml", source: typo }]);

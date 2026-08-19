@@ -10,6 +10,8 @@
 
 /** 箱1つ。 */
 export interface DiagramBox {
+  /** 箱どうしに線を引くときの名前（[DiagramLink] から指す）。図の中で重複させない。 */
+  id?: string;
   label: string;
   /** 見出しの下の小さい字（1行）。 */
   note?: string;
@@ -19,10 +21,31 @@ export interface DiagramBox {
   tone?: "input" | "core" | "output" | "outside";
 }
 
+/**
+ * 箱どうしの線1本（どの箱から、どの箱へ）。
+ *
+ * 上の行の箱と下の行の箱を繋ぐ。どちら向きかは**どちらの行に居るか**で決まる（`from` が
+ * 下の行なら上向き＝戻る遷移）。同じ行の中は繋げない（縦積みの作図器では線が箱に重なる）。
+ */
+export interface DiagramLink {
+  from: string;
+  to: string;
+  /** 線に添える札（ボタン名など）。 */
+  label?: string;
+  /** true = 細い灰色で描く（戻り・補助の遷移）。 */
+  back?: boolean;
+}
+
 /** 縦に積む行1つ。 */
 export type DiagramRow =
-  | { kind: "boxes"; items: DiagramBox[] }
+  /**
+   * 箱を横に並べる行。[slots] を渡すと、その数で割った幅に**左詰め**で置く（同じ段が
+   * 複数行に分かれるとき、行ごとに箱の幅が変わらないように）。
+   */
+  | { kind: "boxes"; items: DiagramBox[]; slots?: number }
   | { kind: "arrow"; label?: string; back?: string }
+  /** 直前の箱の行と直後の箱の行のあいだに、1本ずつ線を引く。 */
+  | { kind: "links"; items: DiagramLink[] }
   | { kind: "note"; text: string };
 
 /** 図1枚ぶんの元データ（`docs/diagrams/*.json` と同じ形）。 */
@@ -46,9 +69,24 @@ const S = {
   textSize: 13,
 } as const;
 
+/** 箱の幅（1行に [count] 個並べたとき）。 */
+const boxWidth = (count: number): number =>
+  (S.width - S.pad * 2 - S.gap * (count - 1)) / count;
+
+/** 左端の位置（[count] 個並べたときの [index] 番目）。 */
+const boxLeft = (index: number, count: number): number =>
+  S.pad + index * (boxWidth(count) + S.gap);
+
+/** 中心の位置（線を引く先）。 */
+const boxCenter = (index: number, count: number): number =>
+  boxLeft(index, count) + boxWidth(count) / 2;
+
 /** 箱に文字を入れられる幅（1行に [count] 個並べたとき）。 */
 export const roomForBoxes = (count: number): number =>
-  (S.width - S.pad * 2 - S.gap * (count - 1)) / count - S.boxPad * 2;
+  boxWidth(count) - S.boxPad * 2;
+
+/** 線の帯（上の余白・1本ぶんの高さ・下の余白）。 */
+const LINK = { top: 12, lane: 16, bottom: 14 } as const;
 
 /** 箱の高さ。見出し1行＋（あれば）注記＋本文の行数で決まる。 */
 const boxHeight = (box: DiagramBox): number =>
@@ -103,13 +141,14 @@ interface Drawn {
   height: number;
 }
 
-function renderBoxes(items: DiagramBox[], y: number): Drawn {
-  const width = (S.width - S.pad * 2 - S.gap * (items.length - 1)) / items.length;
+function renderBoxes(items: DiagramBox[], y: number, slots?: number): Drawn {
+  const count = Math.max(slots ?? items.length, items.length);
+  const width = boxWidth(count);
   const height = Math.max(...items.map(boxHeight));
   const room = width - S.boxPad * 2;
   const out: string[] = [];
   items.forEach((box, index) => {
-    const x = S.pad + index * (width + S.gap);
+    const x = boxLeft(index, count);
     const middle = x + width / 2;
     out.push(
       `  <rect class="box ${box.tone ?? "core"}" x="${x}" y="${y}" width="${width.toFixed(1)}" height="${height}" rx="${S.radius}"/>`,
@@ -166,6 +205,73 @@ function renderArrow(row: { label?: string; back?: string }, y: number): Drawn {
   return { svg: out, height: S.arrow };
 }
 
+/** 箱の行（線を引くときに、上下の行として使うもの）。 */
+type BoxesRow = { kind: "boxes"; items: DiagramBox[]; slots?: number };
+
+const slotsOf = (row: BoxesRow): number =>
+  Math.max(row.slots ?? row.items.length, row.items.length);
+
+/**
+ * 箱どうしの線を引く。
+ *
+ * 1本ごとに横に走る高さ（レーン）を分けるので、線が重なって「どれがどれへ」が読めなくなる
+ * ことはない。行の中の位置は [boxCenter] で数えているだけ（文字を測らないのと同じ考え方）。
+ *
+ * 指した箱が上下の行に居なければ**描かずに落ちる**。図に出ていない遷移を黙って落とすと、
+ * 「線が無い＝遷移が無い」と読まれるので、それが一番まずい。
+ */
+function renderLinks(
+  items: DiagramLink[],
+  y: number,
+  above: BoxesRow | undefined,
+  below: BoxesRow | undefined,
+): Drawn {
+  const height = LINK.top + Math.max(1, items.length) * LINK.lane + LINK.bottom;
+  if (above === undefined || below === undefined) {
+    throw new Error(
+      "箱どうしの線は、箱の行と箱の行のあいだにしか引けません（links の上下に boxes が要る）。",
+    );
+  }
+  const out: string[] = [];
+  const at = (row: BoxesRow, id: string): number =>
+    row.items.findIndex((box) => box.id === id);
+
+  items.forEach((link, lane) => {
+    const down = at(above, link.from) >= 0 && at(below, link.to) >= 0;
+    const up = at(below, link.from) >= 0 && at(above, link.to) >= 0;
+    if (!down && !up) {
+      throw new Error(
+        `線を引けません（${link.from} → ${link.to}）。` +
+          "どちらかの箱が、線の上下の行に居ません。",
+      );
+    }
+    const upper = down ? at(above, link.from) : at(above, link.to);
+    const lower = down ? at(below, link.to) : at(below, link.from);
+    const top = boxCenter(upper, slotsOf(above));
+    const bottom = boxCenter(lower, slotsOf(below));
+    const laneY = y + LINK.top + lane * LINK.lane + LINK.lane / 2;
+    // 行きは上から下へ、戻りは下から上へ。矢印の向きは道の終わりに付く（marker-end）ので、
+    // 描き始めを入れ替えるだけで向きが変わる。
+    const path = down
+      ? `M ${top.toFixed(1)} ${y} V ${laneY.toFixed(1)} H ${bottom.toFixed(1)} V ${y + height}`
+      : `M ${bottom.toFixed(1)} ${y + height} V ${laneY.toFixed(1)} H ${top.toFixed(1)} V ${y}`;
+    out.push(
+      `  <path class="flow link${link.back === true ? " back" : ""}" d="${path}" ` +
+        `marker-end="url(#${link.back === true ? "tipBack" : "tip"})"/>`,
+    );
+    if (link.label === undefined) return;
+    fits(link.label, S.textSize, S.width - S.pad * 2, `線の札: ${link.label}`);
+    // 札は横に走る所の上。真下に降りるだけの線は札が重なるので、右にずらす。
+    const straight = Math.abs(top - bottom) < 1;
+    out.push(
+      `  <text class="edge" x="${(straight ? top + 8 : (top + bottom) / 2).toFixed(1)}" ` +
+        `y="${(laneY - 4).toFixed(1)}"${straight ? "" : ' text-anchor="middle"'}>` +
+        `${span(link.label, "edge")}</text>`,
+    );
+  });
+  return { svg: out, height };
+}
+
 function renderNote(text: string, y: number): Drawn {
   fits(text, S.textSize, S.width - S.pad * 2, `下の注記: ${text}`);
   return {
@@ -189,16 +295,25 @@ export function renderDiagram(diagram: Diagram): string {
   }
   y += 14;
 
-  for (const row of diagram.rows) {
+  // 線の行は上下の箱の行を見るので、行の並びを先に持っておく。
+  const boxesAt = (index: number): BoxesRow | undefined => {
+    const row = diagram.rows[index];
+    return row?.kind === "boxes" ? row : undefined;
+  };
+
+  diagram.rows.forEach((row, index) => {
     const drawn =
       row.kind === "arrow"
         ? renderArrow(row, y)
         : row.kind === "note"
           ? renderNote(row.text, y)
-          : renderBoxes(row.items, y);
+          : row.kind === "links"
+            ? renderLinks(row.items, y, boxesAt(index - 1), boxesAt(index + 1))
+            : renderBoxes(row.items, y, row.slots);
     body.push(...drawn.svg);
-    y += drawn.height + (row.kind === "arrow" ? 0 : 10);
-  }
+    // 矢印と線は帯の中に余白を持っているので、行のあいだの隙間を足さない。
+    y += drawn.height + (row.kind === "arrow" || row.kind === "links" ? 0 : 10);
+  });
   const height = Math.round(y + S.pad - 10);
 
   return [
@@ -240,6 +355,7 @@ const STYLE = [
   "    .output { fill: #f0fdf4; stroke: #16a34a }",
   "    .outside { fill: #fefce8; stroke: #ca8a04; stroke-dasharray: 5 4 }",
   "    .flow { stroke: #475569; stroke-width: 2 }",
+  "    .link { fill: none; stroke-width: 1.6 }",
   "    .back { stroke: #94a3b8 }",
   "    .tip { fill: #475569 }",
   "    .tipBack { fill: #94a3b8 }",

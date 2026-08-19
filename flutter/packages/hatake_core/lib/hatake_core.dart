@@ -55,6 +55,13 @@ export 'src/definition/menu_item.dart';
 export 'src/definition/theme_definition.dart';
 export 'src/definition/app_definition.dart';
 
+// Tooling (reading definitions back: kinds, wording, one-line summary, index).
+export 'src/tooling/page_kinds.dart';
+export 'src/tooling/page_kind_words.dart';
+export 'src/tooling/page_parts.dart';
+export 'src/tooling/screen_brief.dart';
+export 'src/tooling/screen_index.dart';
+
 // Repository contract.
 export 'src/repository/repository.dart';
 

@@ -4,8 +4,13 @@
 // 全体を見ないと分からない。そこだけ図にする。
 //
 // 並べ方は**段**（メニューから開ける画面が1段目、そこから `navigate` で開く画面が2段目…）。
-// 縦積みしか描けない作図器で遷移を表すのに、これが素直な形になる。段に分けると
-// **どこからも開けない画面**が自然に落ちてくる＝図にする一番の値打ちはそこ。
+// 段に分けると**どこからも開けない画面**が自然に落ちてくる＝図にする一番の値打ちはそこ。
+//
+// 段のあいだは**1本ずつ線を引く**（どの画面からどの画面へ）。まとめて1本の矢印にすると
+// 「AとBのどちらから開くのか」が読めない。線を引けるのは隣り合う行のあいだだけなので、
+// 段の中の並びは**次の段へ進む画面を後ろに**置く。それでも引けない遷移（同じ段の中・戻り・
+// 行が離れている）は**文で全部挙げる**＝図に出ていない遷移を黙って落とさない（線が無い＝
+// 遷移が無い、と読まれるのが一番まずい）。
 //
 // 1枚の画面の中身は図にしない（`explain` のほうが読める）。図は「画面が増えたときの遷移」の
 // ためのもの。
@@ -13,6 +18,7 @@
 import {
   type Diagram,
   type DiagramBox,
+  type DiagramLink,
   type DiagramRow,
   em,
   packNote,
@@ -90,18 +96,33 @@ const box = (
   page: { id: string; title: string; type: string },
   tone: DiagramBox["tone"],
 ): DiagramBox => ({
+  id: page.id,
   label: clip(page.title, roomForBoxes(PER_ROW), 15),
   note: page.id,
   tone,
 });
 
-/** 箱を3つずつの行に割る（多い段は複数行になる）。 */
-function boxRows(boxes: DiagramBox[]): DiagramRow[] {
-  const rows: DiagramRow[] = [];
+/** 箱を3つずつの行に割る（多い段は複数行になる。幅は行によらず同じ）。 */
+function boxRows(boxes: DiagramBox[]): { kind: "boxes"; items: DiagramBox[]; slots: number }[] {
+  const rows: { kind: "boxes"; items: DiagramBox[]; slots: number }[] = [];
   for (let at = 0; at < boxes.length; at += PER_ROW) {
-    rows.push({ kind: "boxes", items: boxes.slice(at, at + PER_ROW) });
+    rows.push({ kind: "boxes", items: boxes.slice(at, at + PER_ROW), slots: PER_ROW });
   }
   return rows;
+}
+
+/**
+ * 段の中の並び。
+ *
+ * 線を引けるのは隣り合う行のあいだだけなので、**次の段へ進む画面を後ろへ**（後ろ＝下の段に
+ * 近い行）、**前の段の最後の行から来た画面を前へ**置く。段が1行に収まるなら何も変わらない。
+ */
+function order(level: string[], sources: Set<string>, reached: Set<string>): string[] {
+  return [...level].sort((a, b) => {
+    const source = Number(sources.has(a)) - Number(sources.has(b));
+    if (source !== 0) return source;
+    return Number(reached.has(b)) - Number(reached.has(a));
+  });
 }
 
 /**
@@ -111,7 +132,10 @@ function boxRows(boxes: DiagramBox[]): DiagramRow[] {
  */
 export function appDiagram(app: AppDefinition, raw: Dict): Diagram {
   const pages = new Map(app.pages.map((page) => [page.id, page]));
-  const moves = movesOf(raw);
+  // 行き先の無い遷移は警告の担当（図では触らない）。
+  const moves = movesOf(raw).filter(
+    (move) => pages.has(move.from) && pages.has(move.to),
+  );
   const fromMenu = menuTargets(app.menu).filter((id) => pages.has(id));
 
   // 段に分ける。メニューから開ける画面が1段目、そこから遷移で開く画面が2段目…。
@@ -125,7 +149,6 @@ export function appDiagram(app: AppDefinition, raw: Dict): Diagram {
     for (const move of moves) {
       if (!current.includes(move.from)) continue;
       if (seen.has(move.to) || next.includes(move.to)) continue;
-      if (!pages.has(move.to)) continue; // 行き先が無いのは警告の担当
       next.push(move.to);
     }
     current = next;
@@ -140,29 +163,54 @@ export function appDiagram(app: AppDefinition, raw: Dict): Diagram {
   for (const line of packNote("内訳: ", kindCounts(app))) {
     rows.push({ kind: "note", text: line });
   }
+
+  // 段を行に割りながら、隣り合う行のあいだに線を引く。
+  const drawn = new Set<Move>();
+  let lastRow: string[] = [];
   levels.forEach((level, depth) => {
-    if (depth > 0) {
-      // その段へ入る遷移のボタン名を札にする（同じ名前は1つに）。
-      const labels = [
-        ...new Set(
-          moves
-            .filter(
-              (move) => level.includes(move.to) && levels[depth - 1].includes(move.from),
-            )
-            .map((move) => move.label),
-        ),
-      ];
-      rows.push({
-        kind: "arrow",
-        label: clip(`遷移（${labels.join(" / ")}）`, 380, 13),
-      });
-    }
-    rows.push(
-      ...boxRows(
-        level.map((id) => box(pages.get(id)!, depth === 0 ? "input" : "core")),
-      ),
+    const next = levels[depth + 1] ?? [];
+    const sources = new Set(
+      moves
+        .filter((move) => level.includes(move.from) && next.includes(move.to))
+        .map((move) => move.from),
     );
+    const reached = new Set(
+      moves.filter((move) => lastRow.includes(move.from)).map((move) => move.to),
+    );
+    const ordered = order(level, sources, reached);
+    const levelRows = boxRows(
+      ordered.map((id) => box(pages.get(id)!, depth === 0 ? "input" : "core")),
+    );
+
+    if (depth > 0) {
+      const firstRow = levelRows[0].items.map((one) => one.id!);
+      const links: DiagramLink[] = [];
+      for (const move of moves) {
+        if (!lastRow.includes(move.from) || !firstRow.includes(move.to)) continue;
+        if (drawn.has(move)) continue;
+        drawn.add(move);
+        links.push({ from: move.from, to: move.to, label: move.label });
+      }
+      // 引ける線が1本も無いなら帯は置かない（空の帯は「遷移が無い」に見える）。
+      if (links.length > 0) rows.push({ kind: "links", items: links });
+    }
+    rows.push(...levelRows);
+    lastRow = levelRows[levelRows.length - 1].items.map((one) => one.id!);
   });
+
+  // 線にできなかった遷移。図から消すと「遷移が無い」と読まれるので、文で全部挙げる。
+  const missed = moves.filter((move) => !drawn.has(move));
+  if (missed.length > 0) {
+    rows.push({
+      kind: "note",
+      text: "線にできなかった遷移（同じ段の中・戻り・行が離れているもの）:",
+    });
+    const label = (move: Move): string =>
+      `${title(pages, move.from)} → ${title(pages, move.to)}（${move.label}）`;
+    for (const line of packNote("  ", missed.map(label))) {
+      rows.push({ kind: "note", text: line });
+    }
+  }
 
   // どこからも開けない画面。図にする一番の値打ちはここ（一覧では気づけない）。
   const orphans = app.pages.filter((page) => !seen.has(page.id));
@@ -183,10 +231,17 @@ export function appDiagram(app: AppDefinition, raw: Dict): Diagram {
 
   return {
     title: `${app.title}（${app.id}）の画面と遷移`,
-    subtitle: "段は「メニューから開ける画面 → そこから遷移で開く画面」。",
+    subtitle:
+      "段は「メニューから開ける画面 → そこから遷移で開く画面」。線は遷移の向き（札はボタン名）。",
     rows,
   };
 }
+
+/** 画面名（無ければ id）。線にできなかった遷移を文で言うときに使う。 */
+const title = (
+  pages: Map<string, { title: string }>,
+  id: string,
+): string => pages.get(id)?.title ?? id;
 
 /**
  * 種別の内訳（「マスタ保守: 2」の並び）。

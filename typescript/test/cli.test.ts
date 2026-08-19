@@ -771,6 +771,81 @@ describe("hatake advise", () => {
   it("ファイルは1つ", () => {
     expect(runCli(["advise"], fakeIo())).toBe(1);
   });
+
+  it("--rules で物差しを差し替えられる（切った規則は出ない）", () => {
+    const io = fakeIo({
+      "page.yaml": THIN,
+      "team.json": JSON.stringify({ off: ["open-dangerous-action"] }),
+    });
+    expect(runCli(["advise", "page.yaml", "--rules", "team.json"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).not.toContain("open-dangerous-action");
+    expect(out).toContain("物差しは team.json を使いました");
+  });
+
+  it("--rules で案件の決めごとを足せる", () => {
+    const io = fakeIo({
+      "page.yaml": THIN,
+      "team.json": JSON.stringify({
+        require: [
+          { rule: "team-column-width", node: "column", key: "width", every: true },
+        ],
+      }),
+    });
+    expect(runCli(["advise", "page.yaml", "--rules", "team.json"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("team-column-width");
+  });
+
+  // 設定が黙って効かないのが一番まずいので、読めない物差しは止める。
+  it("読めない物差しはエラー（黙って組み込みに戻さない）", () => {
+    const io = fakeIo({
+      "page.yaml": THIN,
+      "team.json": JSON.stringify({ off: ["no-such-rule"] }),
+    });
+    expect(runCli(["advise", "page.yaml", "--rules", "team.json"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("規則名ではありません");
+  });
+});
+
+describe("hatake explain --review", () => {
+  const THIN = `page:
+  type: crud
+  id: order_list
+  title: 受注一覧
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号, required: true }
+  actions:
+    - { id: remove, type: delete, label: 削除 }
+`;
+
+  it("説明と助言が1枚に出る", () => {
+    const io = fakeIo({ "page.yaml": THIN });
+    expect(runCli(["explain", "page.yaml", "--review"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("受注一覧（order_list）");
+    expect(out).toContain("## 書き足したほうがいい所（助言）");
+    expect(out).toContain("警告ではありません");
+  });
+
+  it("助言があっても終了コードは 0（レビューの紙で CI を落とさない）", () => {
+    const io = fakeIo({ "page.yaml": THIN });
+    expect(runCli(["explain", "page.yaml", "--review"], io)).toBe(0);
+  });
+
+  it("--json は説明と助言の両方を持つ", () => {
+    const io = fakeIo({ "page.yaml": THIN });
+    expect(runCli(["explain", "page.yaml", "--review", "--json"], io)).toBe(0);
+    const document = JSON.parse(io.stdout.join("\n"));
+    expect(document.explain.headline).toContain("受注一覧");
+    expect(document.advice.length).toBeGreaterThan(0);
+  });
 });
 
 describe("hatake failures", () => {

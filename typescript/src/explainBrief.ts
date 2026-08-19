@@ -15,19 +15,19 @@ import {
   type PageDefinition,
 } from "./definition.js";
 import { isAppSource, noSuchPage, parseAppSource } from "./explainSource.js";
+import { PAGE_KINDS } from "./explainPhrases.js";
 import { parsePageYaml } from "./parse.js";
 
-/** ページ種別 → 1行に収まる見出し語。 */
-export const SHORT_KINDS: Record<string, string> = {
-  crud: "検索＋一覧＋登録・修正・削除",
-  master: "マスタ保守",
-  search: "照会（読み取り専用）",
-  detail: "1件の照会",
-  form: "1件の入力",
-  wizard: "段階入力",
-  dashboard: "数字とグラフ",
-  report: "帳票",
-};
+/**
+ * ページ種別 → 1行に収まる見出し語。
+ *
+ * 語の正は [`spec/vocabulary.json`](../../spec/vocabulary.json)（`pageKinds[].short`）。
+ * ここで書き直さずに引くのは、**同じ語を2か所に持たないため**（Dart 版・Java 版の索引も
+ * 同じ語を転記しているので、ズレたら現場と実装で画面の呼び方が変わる）。
+ */
+export const SHORT_KINDS: Record<string, string> = Object.fromEntries(
+  Object.entries(PAGE_KINDS).map(([kind, words]) => [kind, words.short]),
+);
 
 export interface PageBrief {
   id: string;

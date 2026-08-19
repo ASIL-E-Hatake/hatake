@@ -1,11 +1,12 @@
 {
-  "$comment": "定義を人の言葉に開くための語彙（explain の語彙表）。DSL の値1つに対して、人に見せる言い方を持つ。ここが正で、各エディションはこれを転記する（TypeScript 版は typescript/src/explainPhrases.ts。同じ内容であることを CI で確認する）。組み込みの値が増えたらここにも語が要る＝spec/reference.json との突き合わせも CI で見る。{value} は差し込み位置。en は英語版の説明生成のために先に置いてあるが、まだ出力はしていない。",
+  "$comment": "定義を人の言葉に開くための語彙（explain の語彙表）。DSL の値1つに対して、人に見せる言い方を持つ。ここが正で、各エディションはこれを転記する（TypeScript 版は typescript/src/explainPhrases.ts、Dart 版は flutter/packages/hatake_core/lib/src/tooling/page_kind_words.dart、Java 版は java/src/main/java/io/hatake/core/PageKindWords.java。同じ内容であることを各エディションの試験で確認する）。組み込みの値が増えたらここにも語が要る＝spec/reference.json との突き合わせも CI で見る。pageKinds の what は説明の全文で使う言い方、short は1行の要約と画面の索引で使う見出し語（1行に収めるには文ではなく見出し語が要る）。{value} は差し込み位置。en は英語版の説明生成のために先に置いてあるが、まだ出力はしていない。",
   "pageKinds": {
     "crud": {
       "what": {
         "ja": "検索して一覧に出し、その場で登録・修正・削除までできる画面",
         "en": "search, list, and create/update/delete in place"
       },
+      "short": { "ja": "検索＋一覧＋登録・修正・削除", "en": "search + list + create/update/delete" },
       "cannot": { "ja": [], "en": [] }
     },
     "master": {
@@ -13,6 +14,7 @@
         "ja": "マスタをメンテナンスする画面（検索・一覧・登録・修正・削除）",
         "en": "master maintenance (search, list, create/update/delete)"
       },
+      "short": { "ja": "マスタ保守", "en": "master maintenance" },
       "cannot": { "ja": [], "en": [] }
     },
     "search": {
@@ -20,6 +22,7 @@
         "ja": "検索して一覧を見るだけの画面",
         "en": "search and list only"
       },
+      "short": { "ja": "照会（読み取り専用）", "en": "read-only list" },
       "cannot": {
         "ja": ["登録・修正・削除はできない（照会専用）"],
         "en": ["cannot create, update or delete (read-only)"]
@@ -30,6 +33,7 @@
         "ja": "1件の内容を読むだけの画面",
         "en": "reads one record"
       },
+      "short": { "ja": "1件の照会", "en": "reads one record" },
       "cannot": {
         "ja": ["この画面では書き換えられない（読み取り専用）"],
         "en": ["nothing can be changed here (read-only)"]
@@ -40,6 +44,7 @@
         "ja": "1件を入力する画面（新規と編集の両方）",
         "en": "enters one record (both create and edit)"
       },
+      "short": { "ja": "1件の入力", "en": "one record input" },
       "cannot": {
         "ja": ["一覧は無い（開く先は呼び出し側が決める）"],
         "en": ["there is no list (the caller decides what to open)"]
@@ -50,6 +55,7 @@
         "ja": "入力をステップに分けた画面",
         "en": "input split into steps"
       },
+      "short": { "ja": "段階入力", "en": "stepped input" },
       "cannot": {
         "ja": ["途中では保存しない（最後にまとめて1回）"],
         "en": ["nothing is saved midway (once, at the end)"]
@@ -60,6 +66,7 @@
         "ja": "数字とグラフのカードを並べて見せる画面",
         "en": "a grid of number and chart cards"
       },
+      "short": { "ja": "数字とグラフ", "en": "numbers and charts" },
       "cannot": {
         "ja": ["ここからデータは書き換えられない"],
         "en": ["data cannot be changed from here"]
@@ -67,6 +74,7 @@
     },
     "report": {
       "what": { "ja": "印刷向けの帳票", "en": "a printable report" },
+      "short": { "ja": "帳票", "en": "printable report" },
       "cannot": {
         "ja": ["画面から書き換えはできない"],
         "en": ["nothing can be changed from the screen"]

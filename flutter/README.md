@@ -57,6 +57,34 @@ python spec/tools/validate_schema.py path/to/def.yaml
 
 具体的な使い方（`main.dart` とか Repository の書き方）は [Flutter 版の紹介記事](../docs/blog/introducing-hatake-flutter.md) が手っ取り早い。
 
+## 自分の画面を探す（画面の索引）
+
+画面が増えると「どこに何の画面があるか」が分からなくなる。CLI（`npx hatake index`）と同じものが
+`hatake_core` にも入っているので、**アプリの中から自分の画面を引ける**（画面選択・ジャンプ窓・
+管理者向けの画面一覧はこれで作る）。
+
+```dart
+// 解析済みの画面から（アプリの中）
+final index = ScreenIndex.ofApp(app);
+for (final screen in index.search('顧客 検索')) {
+  print(screen.brief);   // 顧客マスタ（customer_master）… 検索＋一覧＋登録・修正・削除。列 4、項目 6…
+}
+
+// 定義の文字列の山から（資産・ファイル）— hatake_yaml
+final index = buildScreenIndex([IndexInput('sales_app.yaml', source)]);
+print(renderScreenIndex(index.bySize(), showSize: true));
+```
+
+* 探せるのは**現場の言葉と実装の言葉の両方**（ラベルの「得意先」でも `customer` でも
+  `orderRepository` でも当たる）。`search` は**語の AND**
+* 1行の要約（`briefOf`）は CLI の `hatake explain --brief` と同じ言い方。種別の見出し語は
+  [`spec/vocabulary.json`](../spec/vocabulary.json) が正で、Dart 版はそれを転記している（一致する
+  ことを試験で見ているので、CLI と画面で同じ画面の呼び方が変わることはない）
+* `app:` は**中の画面を1枚ずつ**数える。読めなかった定義は黙って落とさず
+  `ScreenIndex.unreadable` に入る（索引が不完全だと言えるように）
+* ページの部品を種別ごとの `switch` なしで読みたいときは `PageParts`
+  （`page.tableArea` / `page.formArea` / `page.pageActions` …）
+
 ## 開発状況
 
 CrudPage と SearchPage が動いてる。中身はこんな感じ。

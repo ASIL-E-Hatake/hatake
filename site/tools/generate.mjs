@@ -235,7 +235,7 @@ for (const a of assets) copyFileSync(join(repoRoot, a.from), join(publicDir, a.t
 
 // --- 図解（docs/diagrams/*.svg）---
 // 絵の正もリポジトリ側（元データから生成したもの）。ここでは複製するだけなので、
-// 絵を直すのは docs/diagrams/*.json → node docs/tools/render-diagrams.mjs。
+// 絵を直すのは docs/diagrams/*.json → npx hatake diagram <元データ> --out <絵>。
 const diagramsFrom = join(repoRoot, 'docs', 'diagrams');
 const diagramsTo = join(publicDir, 'diagrams');
 mkdirSync(diagramsTo, { recursive: true });

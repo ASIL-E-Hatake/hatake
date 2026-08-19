@@ -153,6 +153,8 @@ jobs:
           for f in docs/diagrams/*.json; do
             node typescript/dist/cli.js diagram "$f" --out "${f%.json}.svg"
           done
+          # 定義から作る図も生成物（資料とサイトに出しているので、古いままにしない）。
+          node typescript/dist/cli.js diagram spec/examples/sales_app.yaml             --out docs/diagrams/sales-app-flow.svg
           # --ignore-cr-at-eol: Windows のチェックアウト（CRLF）で走らせても同じ判定にする。
           git diff --exit-code --ignore-cr-at-eol -- docs/diagrams
 
@@ -167,9 +169,39 @@ jobs:
           node dist/cli.js diagram /tmp/app.diagram.json --out /tmp/app2.svg
           diff -u /tmp/app.svg /tmp/app2.svg
           # 画面の索引。同梱の例11枚から18枚の画面が出る（app の中身も1枚ずつ数える）。
+          # 同じ枚数を Dart 版・Java 版の試験でも見ている（エディションで答えが変わらない）。
           node dist/cli.js index ../spec/examples --by size | tee /tmp/index.log
           grep -q '画面 18 枚' /tmp/index.log
           node dist/cli.js index ../spec/examples --find "顧客 検索"
+          # 定義から作った遷移図に、線が1本ずつ引かれていること（まとめ矢印に戻っていない）。
+          grep -q 'class="flow link"' /tmp/app.svg
+          # 線にできなかった遷移は文で挙げる（図から黙って消えない）。
+          grep -q '線にできなかった遷移' /tmp/app.svg
+
+      - name: Advice can be judged by an outside ruler
+        working-directory: typescript
+        run: |
+          set -e
+          # 助言は好みなので、物差しを外から渡せる。同梱の例の物差しがそのまま通ること。
+          node dist/cli.js advise ../spec/examples/sales_app.yaml             --rules ../docs/guide/advise-rules.example.json > /tmp/advise.log
+          grep -q '物差しは ../docs/guide/advise-rules.example.json を使いました' /tmp/advise.log
+          # 切った規則は出ない（money-without-format を off にしてある）。
+          if grep -q 'money-without-format' /tmp/advise.log; then
+            echo "off にした規則が出ている"; exit 1
+          fi
+          # 案件の決めごとは出る（並べ替えの無い一覧が例の中にある）。
+          grep -q 'team-sortable-column' /tmp/advise.log
+          # 知らない規則名を書いた物差しは、黙って無視せずエラーにする。
+          printf '%s' '{"off":["no-such-rule"]}' > /tmp/bad-rules.json
+          if node dist/cli.js advise ../spec/examples/sales_app.yaml               --rules /tmp/bad-rules.json 2> /tmp/bad-rules.log; then
+            echo "読めない物差しを通してしまった"; exit 1
+          fi
+          grep -q '規則名ではありません' /tmp/bad-rules.log
+          # レビュー用の1枚（説明＋助言）。助言が出ても終了コードは 0。
+          node dist/cli.js explain ../spec/examples/sales_app.yaml --review             --page order_search > /tmp/review.log
+          grep -q '書き足したほうがいい所（助言）' /tmp/review.log
+          grep -q 'この画面でできないこと' /tmp/review.log
+          grep -q '警告ではありません' /tmp/review.log
 
       - name: A definition compared with itself is compatible
         working-directory: typescript

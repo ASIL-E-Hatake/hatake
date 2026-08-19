@@ -51,7 +51,9 @@ import {
 } from "./harvest.js";
 import { minimizeSource, renderMinimize } from "./minimize.js";
 import { fixSource, renderFix } from "./fix.js";
-import { findAdvice, renderAdvice } from "./advise.js";
+import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
+import { type AdviceRules, DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
+import { renderReview, reviewSource } from "./review.js";
 import {
   buildIndex,
   type IndexInput,
@@ -149,6 +151,12 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --page でその1枚を詳しく。--brief は1行だけ（app なら画面一覧の表）で、
       README や PR 本文に貼る用。
 
+  hatake explain <file> --review [--page <id>] [--rules team.json] [--json]
+      レビュー用の1枚。説明（何ができて、何ができないか）と助言（書き足したほうが
+      いい所）をまとめて出す。レビューする人が見る紙は1枚がいいので、道具を2回
+      叩かせない。助言は最後の節にまとめ、警告ではないと毎回書く（終了コードは
+      変えない）。--page を渡すと、助言もその画面のものだけに絞る。
+
   hatake explain --diff <old file> <new file> [--json]
       変更を**画面の言葉**で言う（「枠「請求先」は、区分 が 法人 のときだけ出る
       ようになりました」）。diff は機械の言葉で言うので、人のレビューには一段
@@ -174,10 +182,13 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       1件ずつ当てて「問題が減る・新しい問題が出ない」ことを確かめ、崩れたら何もしない。
       直さなかったものは**理由つきで**標準エラーに出す（意図が要るものは人の仕事）。
 
-  hatake advise <file> [--json]
+  hatake advise <file> [--rules team.json] [--json]
       **書き足したほうがいい所**を挙げる（並べ替えできる列が無い・絞り込みが無い・
       誰でも消せる・金額に桁区切りが無い…）。これは助言で警告ではないので、
       終了コードは変えない。「書いたのに効かない」は validate の担当。
+      --rules で**物差しを渡せる**（合わない規則を切る・目盛りを変える・案件の
+      決めごと「この場所には必ずこのキーを書く」を足す）。知らないキーや知らない
+      規則名を書いた物差しは、黙って無視せずエラーにする。
 
   hatake index <path...> [--find "顧客 検索"] [--by size] [--json] [--out file]
       定義の山から**画面の索引**を作る（1行の要約＋探すための語）。--find は語の AND。
@@ -253,6 +264,7 @@ const BOOLEAN_FLAGS = new Set([
   "json",
   "diff",
   "brief",
+  "review",
   "repro",
   "write",
   "no-strict",
@@ -488,7 +500,7 @@ function loadRegistry(
 }
 
 /**
- * 定義を人の言葉に開く。`--diff` で前後、`--brief` で1行。
+ * 定義を人の言葉に開く。`--diff` で前後、`--brief` で1行、`--review` で助言も1枚に。
  *
  * 生成系と同じく strict で読む（書き間違いのある定義を説明すると、書いていない
  * つもりの機能まで説明してしまう）。読み方そのものは explainSource に置いてある
@@ -502,6 +514,7 @@ function explain(files: string[], flags: Args["flags"], io: CliIo): number {
   }
   const source = io.readFile(files[0]);
   const wanted = str(flags, "page");
+  if (flags.review === true) return review(source, wanted, flags, io);
   const document =
     flags.brief === true
       ? briefSource(source, { page: wanted })
@@ -699,12 +712,70 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
     io.err("定義（map）として読めません。");
     return 1;
   }
-  const advice = findAdvice(document as Record<string, unknown>);
+  const rules = loadAdviceRules(flags, io);
+  const advice = findAdvice(document as Record<string, unknown>, rules);
+  // 物差しが「その場所に書けないキー」を勧めていたら、助言を出す前に止める。
+  // 間違いを教える助言は、無いほうがまし。
+  if (unwritable(advice, flags, io) > 0) return 1;
+
   if (flags.json === true) {
     io.out(JSON.stringify(advice, null, 2));
     return 0;
   }
-  io.out(renderAdvice(advice));
+  io.out(renderAdvice(advice, { rulesFrom: str(flags, "rules"), rules }));
+  return 0;
+}
+
+/**
+ * 助言の物差し。`--rules` を渡さなければ組み込みのまま。
+ *
+ * 読めない物差しは**例外で落とす**（黙って組み込みに戻すと、渡したつもりで効いていない
+ * ことに気づけない）。runCli が捕まえて理由を出す。
+ */
+function loadAdviceRules(flags: Args["flags"], io: CliIo): AdviceRules {
+  const path = str(flags, "rules");
+  if (path === undefined) return DEFAULT_RULES;
+  return parseAdviceRules(JSON.parse(io.readFile(path)));
+}
+
+/**
+ * 助言が挙げるキーが本当に書けるかを、リファレンス（スキーマ由来）で確かめる。
+ *
+ * spec/ が無い場所でも助言は使えるべきなので、**リファレンスが無ければ確かめない**
+ * （黙って確かめないのではなく、そう言う）。
+ */
+function unwritable(advice: Advice[], flags: Args["flags"], io: CliIo): number {
+  const schema = optionalSpec(flags, io, SCHEMA_FILE);
+  if (schema === null) return 0;
+  const bad = unwritableAdvice(advice, buildReference(schema as Record<string, unknown>));
+  for (const one of bad) {
+    io.err(
+      `助言 [${one.rule}] は ${one.node} に書けないキー "${one.key}" を勧めています` +
+        `（${one.where}）。物差しの node と key を直してください。`,
+    );
+  }
+  return bad.length;
+}
+
+/**
+ * 助言と説明を1枚にする（レビュー用）。
+ *
+ * **終了コードは変えない**。1枚にしても助言は助言のままで、止めるための道具ではない。
+ */
+function review(
+  source: string,
+  page: string | undefined,
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const rules = loadAdviceRules(flags, io);
+  const document = reviewSource(source, { page, rules });
+  if (unwritable(document.advice, flags, io) > 0) return 1;
+  if (flags.json === true) {
+    io.out(JSON.stringify(document, null, 2));
+    return 0;
+  }
+  io.out(renderReview(document, { rulesFrom: str(flags, "rules"), rules }));
   return 0;
 }
 
@@ -1117,6 +1188,26 @@ function scaffoldCommand(
     io.out(`書きました: ${out}`);
   }
   return 0;
+}
+
+/**
+ * spec/ の中の1ファイルを、**あれば**読む（無ければ null で、エラーにしない）。
+ *
+ * spec/ を持たない場所でも動くべき道具（助言・レビュー）が、確かめられるときだけ確かめる
+ * ために使う。無いことを黙るのではなく、呼ぶ側が「確かめていない」と言えるようにしている。
+ */
+function optionalSpec(
+  flags: Args["flags"],
+  io: CliIo,
+  ...names: string[]
+): unknown | null {
+  const dir = findSpecDir(str(flags, "spec"));
+  if (dir === null) return null;
+  try {
+    return JSON.parse(io.readFile(join(dir, ...names)));
+  } catch {
+    return null;
+  }
 }
 
 /** spec/ の中の1ファイルを読む。見つからなければ理由を出して null。 */

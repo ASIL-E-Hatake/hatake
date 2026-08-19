@@ -17,6 +17,7 @@
     .output { fill: #f0fdf4; stroke: #16a34a }
     .outside { fill: #fefce8; stroke: #ca8a04; stroke-dasharray: 5 4 }
     .flow { stroke: #475569; stroke-width: 2 }
+    .link { fill: none; stroke-width: 1.6 }
     .back { stroke: #94a3b8 }
     .tip { fill: #475569 }
     .tipBack { fill: #94a3b8 }

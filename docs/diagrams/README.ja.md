@@ -53,12 +53,16 @@ npx hatake validate page.yaml --registry hatake-registry.json # 突き合わせ�
 → 判断に迷う所は [ページ種別の選び方](../guide/page-types.ja.md) と
 [よくある間違い](../../spec/pitfalls.json)（`npx hatake pitfalls <キー名>`）。
 
-## 定義から作る図
+## 4. 定義から作った遷移図
 
-手で書く元データの他に、**実際の定義から**図を作れる。
+![受注アプリの画面と遷移](sales-app-flow.svg)
+
+手で書く元データの他に、**実際の定義から**図を作れる。上の絵は同梱の例
+（[`spec/examples/sales_app.yaml`](../../spec/examples/sales_app.yaml)）から作ったもので、これも
+生成物（CI が作り直して差分を見る）。
 
 ```bash
-npx hatake diagram app.yaml --out app.svg    # 画面とメニューと遷移
+npx hatake diagram spec/examples/sales_app.yaml --out docs/diagrams/sales-app-flow.svg
 npx hatake diagram app.yaml --json           # 元データだけ（手で直してから描ける）
 ```
 
@@ -66,14 +70,19 @@ npx hatake diagram app.yaml --json           # 元データだけ（手で直し
 画面**（メニューにも遷移先にも無い）はこの並べ方で自然に落ちてくるので、そこだけ別に出す。
 1枚の画面の中身は図にしない（`hatake explain` のほうが読める）。
 
+段のあいだの遷移は**1本ずつ線**にする。線を引けるのは隣り合う行のあいだだけなので、段の中では
+次の段へ進む画面を後ろに置く。それでも引けない遷移（同じ段の中・戻り・行が離れている）は
+**絵の下に文で全部挙げる**＝図に出ていない遷移を黙って落とさない。
+
 ## 絵を直す・足す
 
 1枚 = `docs/diagrams/<名前>.json`。書けるのは縦積みだけで、行は3種類。
 
 | 行 | 中身 |
 | --- | --- |
-| `boxes` | 横に並べる箱（`label` / `note` / `lines` / `tone`）。`lines` の先頭が `+` なら○、`!` なら× |
+| `boxes` | 横に並べる箱（`label` / `note` / `lines` / `tone` / 線を引くなら `id`）。`lines` の先頭が `+` なら○、`!` なら×。`slots` を渡すと、その数で割った幅に左詰めで置く（段が複数行に分かれても箱の幅が揃う） |
 | `arrow` | 下向きの矢印。`label` が行き、`back` があれば右に戻りの矢印も描く |
+| `links` | 直前の行の箱と直後の行の箱を、**1本ずつ**繋ぐ線（`from` / `to` / `label` / `back`）。箱に `id` を付けておく。向きは上下どちらの行に居るかで決まる |
 | `note` | 幅いっぱいの注記（絵の下に添える1行） |
 
 `tone` は `input`（外から入るもの）/ `core`（フレームワーク）/ `output`（出来上がるもの）/

@@ -12,38 +12,54 @@
 //
 // `{value}` は差し込み位置（[fill] で埋める）。
 
-/** ページ種別 → その画面が何をするものか。 */
-export const PAGE_KINDS: Record<string, { what: string; cannot: string[] }> = {
+/**
+ * ページ種別 → その画面が何をするものか。
+ *
+ * `what` は説明の全文で使う言い方、`short` は1行の要約（[briefPage]）と画面の索引で使う
+ * 見出し語。1行に収めるには文ではなく見出し語が要るので、同じ種別に2つの言い方がある。
+ */
+export const PAGE_KINDS: Record<
+  string,
+  { what: string; short: string; cannot: string[] }
+> = {
   crud: {
     what: "検索して一覧に出し、その場で登録・修正・削除までできる画面",
+    short: "検索＋一覧＋登録・修正・削除",
     cannot: [],
   },
   master: {
     what: "マスタをメンテナンスする画面（検索・一覧・登録・修正・削除）",
+    short: "マスタ保守",
     cannot: [],
   },
   search: {
     what: "検索して一覧を見るだけの画面",
+    short: "照会（読み取り専用）",
     cannot: ["登録・修正・削除はできない（照会専用）"],
   },
   detail: {
     what: "1件の内容を読むだけの画面",
+    short: "1件の照会",
     cannot: ["この画面では書き換えられない（読み取り専用）"],
   },
   form: {
     what: "1件を入力する画面（新規と編集の両方）",
+    short: "1件の入力",
     cannot: ["一覧は無い（開く先は呼び出し側が決める）"],
   },
   wizard: {
     what: "入力をステップに分けた画面",
+    short: "段階入力",
     cannot: ["途中では保存しない（最後にまとめて1回）"],
   },
   dashboard: {
     what: "数字とグラフのカードを並べて見せる画面",
+    short: "数字とグラフ",
     cannot: ["ここからデータは書き換えられない"],
   },
   report: {
     what: "印刷向けの帳票",
+    short: "帳票",
     cannot: ["画面から書き換えはできない"],
   },
 };

@@ -10,6 +10,7 @@
 - **FormValidator** … フォーム定義からサーバ側バリデーション。組込ルール（required / maxLength / minLength / min / max / pattern / email）＋ `ValidatorRegistry` で独自ルールも足せる。
 - **QueryBuilder** … 検索フィルタ定義 + リクエストの params から、フレームワーク非依存の `QuerySpec`（conditions / sort / pagination）を組み立てる。**フィルタに無い項目は無視（許可リスト方式）**なので、任意項目での検索を弾ける。
 - **FormatterRegistry / ConverterRegistry** … Flutter版と同名・同挙動。formatter（currency / percent / date / wareki / postal / mask）で帳票・CSV 出力を整形、converter（toHankaku / toZenkaku / hiraToKata / kataToHira / trim / collapseSpaces / parseNumber）で入力正規化。`postalCode` バリデータも。
+- **画面の索引** … 定義の山から「どこに何の画面があるか」を引く（`ScreenIndex.build` / `search` / `render`）。1行の要約（`ScreenBrief`）＋探すための語で、TypeScript 版の `npx hatake index` と同じもの。種別の言い方は [`spec/vocabulary.json`](../spec/vocabulary.json) が正で、この版はそれを転記している（一致は試験で見る）。**この版はボタン（actions）を持たない**ので、要約に「ボタン n」は出ず、ボタン名では探せない。
 - **JPA アダプタ（opt-in）** … `QuerySpec` を JPQL 文字列＋バインドパラメータ＋ページングへ翻訳する `JpaQueryTranslator`（`io.hatake.core.adapter`）。**JPA への依存は持たない**（＝本体に依存を持ち込まない、純粋な翻訳）。実行は利用者の `EntityManager` で。
 
 ```java
@@ -18,6 +19,12 @@ var result = new FormValidator().validate(page.form(), requestBody);
 if (!result.valid()) {
     // result.errors() を 400 で返すなど
 }
+```
+
+```java
+// 画面の索引（どこに何の画面があるか）
+var index = ScreenIndex.build(List.of(new ScreenIndex.Source("sales_app.yaml", yamlText)));
+System.out.println(ScreenIndex.render(index.search("顧客 マスタ"), true, false));
 ```
 
 ## 開発（Docker）

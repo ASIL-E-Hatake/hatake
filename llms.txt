@@ -28,8 +28,10 @@ npx hatake failures <キー名>       # 実際に転んだ実例（なぜそう�
 npx hatake explain page.yaml       # この定義は何をする画面か（日本語で読み返す）
 npx hatake explain page.yaml --brief        # 1行の要約（app なら画面一覧の表）
 npx hatake explain --diff <前> <後>          # 何を変えたのか、画面の言葉で（人への報告用）
+npx hatake explain page.yaml --review       # レビュー用の1枚（説明＋助言。終了コードは変えない）
 npx hatake fix page.yaml           # 綴り違いなど**一意な直し**だけ機械にやらせる（--write で上書き）
 npx hatake advise page.yaml        # 書き足したほうがいい所（助言。警告ではない）
+npx hatake advise page.yaml --rules team.json  # 案件ごとの決めごとで見る（規則を切る／目盛りを変える／必ず書くキーを足す）
 npx hatake index definitions/ --find "顧客 検索"   # どこに何の画面があるか（--json で索引を丸ごと）
 npx hatake diagram app.yaml --out app.svg  # 画面とメニューと遷移の図
 npx hatake minimize page.yaml      # 既定値と同じ指定を落として短く（意味は変えない）
@@ -44,6 +46,8 @@ npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読ん�
 `diff` は変更を3段で返す。`✗ 破壊的`＝呼び出し側が壊れる、`△ 要確認`＝壊れないが人に確かめてほしい（列・ボタン・選択肢が消えた／権限が変わった／ページ・メニューが消えた）、`・安全`＝増えただけ。**要確認は黙って進めず、意図した変更か確かめる**こと。
 **既定値をわざわざ書かない。** `type: text` / `required: false` / `validators: []` のような指定は、書いても何も足していない。書いてしまったら `minimize` で落とせる（意味は変えない＝落とすたびに解析後のモデルが変わらないことを確かめている）。短い定義のほうが、人のレビューも次に読む AI のコンテキストも軽い。
 **直した内容を人に報告するときは `explain --diff`。** `diff` が返すのは機械の言葉（`ui / column-format-changed / …`）だが、こちらは「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」と画面の言葉で言う。判定（壊すか）は `diff`、言い直し（何が変わったか）は `explain --diff`。後者は終了コードを変えない。
+**人にレビューさせる紙は1枚で出す。** `explain --review` は説明（できること・**できないこと**）と助言（書き足したほうがいい所）をまとめて出す。助言は好みなので、案件の決めごとがあるなら `--rules team.json` で物差しを差し替える（知らないキー・知らない規則名はエラー＝設定が黙って効かないことを作らない）。
+**画面の索引はどのエディションにもある。** CLI の `index` と同じものが Dart 版（`ScreenIndex.ofApp(app)` / `buildScreenIndex`）と Java 版（`ScreenIndex.build`）にもあるので、アプリの中から自分の画面を探せる。種別の見出し語は `spec/vocabulary.json` が正で、3つのエディションはそれを転記している。
 
 ## 用途別（1〜2ファイルだけ読めばいい）
 - [ドキュメント目次](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/index.ja.md): 「やりたいこと → 読むファイル」の索引
