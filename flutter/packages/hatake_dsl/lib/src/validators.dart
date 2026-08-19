@@ -42,3 +42,27 @@ ValidatorDefinition pattern(String regex, {String? message}) =>
 
 ValidatorDefinition email({String? message}) =>
     ValidatorDefinition(type: ValidatorTypes.email, message: message);
+
+/// Cross-field rule: compares this field with [field].
+///
+/// `compareWith('startDate')` reads 「開始日 以上」 (the default operator is
+/// `gte`). With [aggregate] the other side is a child table folded into a
+/// number — `compareWith('lines', operator: 'equals', aggregate: 'sum', of:
+/// 'amount')` is 「合計＝明細の和」.
+ValidatorDefinition compareWith(
+  String field, {
+  String operator = 'gte',
+  String? aggregate,
+  String? of,
+  String? message,
+}) =>
+    ValidatorDefinition(
+      type: ValidatorTypes.compare,
+      params: {
+        'operator': operator,
+        'field': field,
+        if (aggregate != null) 'aggregate': aggregate,
+        if (of != null) 'of': of,
+      },
+      message: message,
+    );

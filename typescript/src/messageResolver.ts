@@ -9,6 +9,13 @@ export const defaultValidationMessages: Record<string, Record<string, string>> =
     pattern: "形式が正しくありません",
     email: "メールアドレスの形式が正しくありません",
     postalCode: "郵便番号の形式が正しくありません",
+    // 項目間の検証（compare）。{target} は比べる相手の**ラベル**が入る。
+    "compare.equals": "{target}と同じ値にしてください",
+    "compare.notEquals": "{target}と違う値にしてください",
+    "compare.gt": "{target}より大きい値にしてください",
+    "compare.gte": "{target}以上にしてください",
+    "compare.lt": "{target}より小さい値にしてください",
+    "compare.lte": "{target}以下にしてください",
   },
 };
 

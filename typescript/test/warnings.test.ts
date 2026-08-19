@@ -502,6 +502,172 @@ page:
   });
 });
 
+describe("項目間の検証（compare）", () => {
+  const form = (validators: string) => `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - { field: startDate, label: 開始日, type: date }
+          - field: endDate
+            label: 終了日
+            type: date
+            validators:
+${validators}
+`;
+
+  // 相手が見つからないと**黙って通る**ので、画面を見ても気づけない。
+  it("相手の項目名が同じフォームに無ければ言う（近い名前も出す）", () => {
+    const found = warningsOf(
+      form("              - { type: compare, operator: gte, field: startDte }"),
+    ).filter((one) => one.rule === "compare-unknown-field");
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain("黙って通ります");
+    expect(found[0].fix).toContain("startDate");
+  });
+
+  it("相手が書いていなければ言う", () => {
+    const found = warningsOf(form("              - { type: compare, operator: gte }"));
+    expect(found.map((one) => one.rule)).toContain("compare-without-field");
+  });
+
+  it("自分と比べていれば言う（いつも同じ値）", () => {
+    const found = warningsOf(
+      form("              - { type: compare, operator: gte, field: endDate }"),
+    );
+    expect(found.map((one) => one.rule)).toContain("compare-with-itself");
+  });
+
+  it("大小を比べられない突合は言う（何が使えるかまで）", () => {
+    const found = warningsOf(
+      form("              - { type: compare, operator: contains, field: startDate }"),
+    ).filter((one) => one.rule === "compare-bad-operator");
+    expect(found).toHaveLength(1);
+    expect(found[0].fix).toContain("gte");
+  });
+
+  it("畳む項目が無い集約は言う（count 以外）", () => {
+    const found = warningsOf(
+      form(
+        "              - { type: compare, operator: equals, field: startDate, aggregate: sum }",
+      ),
+    );
+    expect(found.map((one) => one.rule)).toContain("compare-aggregate-without-of");
+  });
+
+  it("正しく書いてあれば何も言わない", () => {
+    expect(
+      rulesOf(form("              - { type: compare, operator: gte, field: startDate }")),
+    ).toEqual([]);
+  });
+
+  it("共有フィクスチャ（conformance）は警告ゼロで書けている", () => {
+    // 「書けると書いてあるのに、その書き方が警告される」を防ぐ。
+    const fixture = JSON.parse(
+      readFileSync("../spec/conformance/cross_field_validation.json", "utf8"),
+    );
+    expect(findWarnings(fixture.page)).toEqual([]);
+  });
+});
+
+describe("開ける人が居ない画面", () => {
+  /** admin だけの画面から manager だけのボタンで繋ぐ＝両方持っている人が居ない。 */
+  const app = (roles: string) => `app:
+  id: sales
+  title: 販売
+  menu:
+    - group: マスタ
+      roles: [admin]
+      items:
+        - { label: 顧客, page: customer_master }
+  pages:
+    - type: master
+      id: customer_master
+      title: 顧客マスタ
+      repository: customerRepository
+      key: code
+      table:
+        columns: [{ field: code, label: コード }]
+      actions:
+        - { id: openPrice, type: navigate, label: 単価, page: price_master${roles} }
+    - type: master
+      id: price_master
+      title: 単価マスタ
+      repository: priceRepository
+      key: code
+      table:
+        columns: [{ field: code, label: コード }]
+`;
+
+  // ページに roles は書けないので、1枚ずつ読んでも絶対に出てこない。
+  it("入口の権限が食い違っていると言う（どこを直すかまで）", () => {
+    const found = warningsOf(app(", roles: [manager]")).filter(
+      (one) => one.rule === "page-nobody-can-open",
+    );
+    expect(found).toHaveLength(1);
+    expect(found[0].path).toBe("app.pages[1]");
+    expect(found[0].message).toContain('画面 "price_master" を開ける人が居ません');
+    // 入口と、その手前の画面を開ける人を言う（これが無いと直せない）。
+    expect(found[0].message).toContain("customer_master の「単価」= manager");
+    expect(found[0].message).toContain("admin だけ");
+    expect(found[0].fix).toContain("roles");
+  });
+
+  it("噛み合っていれば言わない", () => {
+    expect(rulesOf(app(", roles: [admin]"))).not.toContain("page-nobody-can-open");
+    expect(rulesOf(app(""))).not.toContain("page-nobody-can-open");
+  });
+
+  // 入口が無いのは「アプリ側のコードから開く」ことがある＝意図の話なので、警告にはしない。
+  it("入口がまったく無い画面は言わない（意図の話は助言の担当）", () => {
+    const orphan = `app:
+  id: sales
+  title: 販売
+  menu:
+    - { id: customers, label: 顧客, page: customer_master }
+  pages:
+    - type: master
+      id: customer_master
+      title: 顧客マスタ
+      repository: customerRepository
+      key: code
+      table:
+        columns: [{ field: code, label: コード }]
+    - type: master
+      id: price_master
+      title: 単価マスタ
+      repository: priceRepository
+      key: code
+      table:
+        columns: [{ field: code, label: コード }]
+`;
+    expect(rulesOf(orphan)).not.toContain("page-nobody-can-open");
+  });
+
+  it("単票の定義では言わない（入口の話が無い）", () => {
+    const page = `page:
+  type: master
+  id: price_master
+  title: 単価マスタ
+  repository: priceRepository
+  key: code
+  table:
+    columns: [{ field: code, label: コード }]
+`;
+    expect(rulesOf(page)).not.toContain("page-nobody-can-open");
+  });
+
+  it("同梱の見本（roles-app.yaml）はこの警告を1件持っている", () => {
+    // わざと残してある（図と警告の両方の見本）。消えたら、見本が見本でなくなる。
+    const source = readFileSync("../docs/diagrams/roles-app.yaml", "utf8");
+    expect(rulesOf(source).filter((one) => one === "page-nobody-can-open")).toHaveLength(1);
+  });
+});
+
 describe("同梱の資料との辻褄", () => {
   it("同梱の例はすべて警告ゼロ（＝規則がうるさすぎない証拠）", () => {
     const dir = "../spec/examples";

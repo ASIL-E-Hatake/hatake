@@ -1,0 +1,145 @@
+{
+  "_comment": "項目間の検証（compare）。各エディションが `page` を解析し、case ごとに `record` をフォームで検証して、エラーを {field,message} の順不同の集合で比べる。ここで固定したいのは5つ: (1) 相手の項目の値と比べる（開始日 ≤ 終了日）、(2) 比べ方は数として読めれば数・読めなければ文字（ISO の日付は文字の大小＝日付の前後）、(3) `aggregate` を付けると明細を畳んだ数と比べる（合計＝明細の和）、(4) 自分か相手が空なら通す（required の担当）、(5) メッセージは相手の**ラベル**で出す（項目名ではなく画面の言葉）。",
+  "page": {
+    "dsl_version": "1.0",
+    "page": {
+      "type": "form",
+      "id": "order_entry",
+      "title": "受注入力",
+      "repository": "orderRepository",
+      "key": "orderNo",
+      "form": {
+        "sections": [
+          {
+            "title": "期間",
+            "fields": [
+              { "field": "startDate", "label": "開始日", "type": "date" },
+              {
+                "field": "endDate",
+                "label": "終了日",
+                "type": "date",
+                "validators": [
+                  { "type": "compare", "operator": "gte", "field": "startDate" }
+                ]
+              },
+              {
+                "field": "qty",
+                "label": "数量",
+                "type": "number",
+                "validators": [
+                  { "type": "compare", "operator": "lte", "field": "stock" }
+                ]
+              },
+              { "field": "stock", "label": "在庫数", "type": "number" },
+              {
+                "field": "confirmEmail",
+                "label": "確認用メール",
+                "validators": [
+                  { "type": "compare", "operator": "equals", "field": "email" }
+                ]
+              },
+              { "field": "email", "label": "メール" },
+              {
+                "field": "total",
+                "label": "合計",
+                "type": "number",
+                "validators": [
+                  {
+                    "type": "compare",
+                    "operator": "equals",
+                    "field": "lines",
+                    "aggregate": "sum",
+                    "of": "amount"
+                  }
+                ]
+              },
+              {
+                "field": "lines",
+                "label": "明細",
+                "type": "subTable",
+                "fields": [
+                  { "field": "amount", "label": "金額", "type": "number" }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "空のレコードは何も言わない（比べる相手が無い）",
+      "record": {},
+      "expected": []
+    },
+    {
+      "name": "開始日 ≤ 終了日 は通る（ISO の日付は文字の大小で前後が合う）",
+      "record": { "startDate": "2026-01-05", "endDate": "2026-02-01" },
+      "expected": []
+    },
+    {
+      "name": "同じ日も通る（gte なので）",
+      "record": { "startDate": "2026-01-05", "endDate": "2026-01-05" },
+      "expected": []
+    },
+    {
+      "name": "終了日が前だと、相手のラベルで言う",
+      "record": { "startDate": "2026-02-01", "endDate": "2026-01-05" },
+      "expected": [{ "field": "endDate", "message": "開始日以上にしてください" }]
+    },
+    {
+      "name": "相手が空なら通す（相手側の検証の担当）",
+      "record": { "endDate": "2026-01-05" },
+      "expected": []
+    },
+    {
+      "name": "自分が空なら通す（required の担当）",
+      "record": { "startDate": "2026-02-01", "endDate": "" },
+      "expected": []
+    },
+    {
+      "name": "数は数として比べる（文字で来ても）",
+      "record": { "qty": "12", "stock": 100 },
+      "expected": []
+    },
+    {
+      "name": "在庫を超えた数量は言う（10 と 9 を文字で比べると通ってしまう所）",
+      "record": { "qty": 10, "stock": 9 },
+      "expected": [{ "field": "qty", "message": "在庫数以下にしてください" }]
+    },
+    {
+      "name": "文字は文字として比べる（確認用メールの一致）",
+      "record": { "email": "a@example.com", "confirmEmail": "a@example.com" },
+      "expected": []
+    },
+    {
+      "name": "確認用が違えば言う",
+      "record": { "email": "a@example.com", "confirmEmail": "b@example.com" },
+      "expected": [{ "field": "confirmEmail", "message": "メールと同じ値にしてください" }]
+    },
+    {
+      "name": "合計＝明細の和なら通る",
+      "record": {
+        "total": 300,
+        "lines": [{ "amount": 100 }, { "amount": 200 }]
+      },
+      "expected": []
+    },
+    {
+      "name": "合計が明細の和と違えば言う（相手は「明細 の sum」と言う）",
+      "record": {
+        "total": 250,
+        "lines": [{ "amount": 100 }, { "amount": 200 }]
+      },
+      "expected": [
+        { "field": "total", "message": "明細 の sumと同じ値にしてください" }
+      ]
+    },
+    {
+      "name": "明細が空なら和は 0（合計 0 なら通る）",
+      "record": { "total": 0, "lines": [] },
+      "expected": []
+    }
+  ]
+}

@@ -306,6 +306,61 @@ app:
   });
 });
 
+describe("項目間の検証の言い方", () => {
+  const explainOf = (validators: string): string =>
+    all(`page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - { field: startDate, label: 開始日, type: date }
+          - field: endDate
+            label: 終了日
+            type: date
+            validators:
+${validators}
+          - { field: total, label: 合計, type: number }
+          - field: lines
+            label: 明細
+            type: subTable
+            fields:
+              - { field: amount, label: 金額, type: number }
+`);
+
+  // 相手を項目名で言うと、DSL を知らない人には読めない。
+  it("相手はラベルで言う", () => {
+    const text = explainOf("              - { type: compare, operator: gte, field: startDate }");
+    expect(text).toContain("開始日 以上");
+    expect(text).not.toContain("startDate");
+  });
+
+  it("突合ごとに言い方が変わる", () => {
+    expect(
+      explainOf("              - { type: compare, operator: lt, field: startDate }"),
+    ).toContain("開始日 より小さい値");
+    expect(
+      explainOf("              - { type: compare, operator: notEquals, field: startDate }"),
+    ).toContain("開始日 と違う値");
+  });
+
+  it("明細の畳み込みも言葉にする（合計＝明細の和）", () => {
+    const text = explainOf(
+      "              - { type: compare, operator: equals, field: lines, aggregate: sum, of: amount }",
+    );
+    expect(text).toContain("明細 の合計 と同じ値");
+  });
+
+  it("相手が書いていなければ、そう言う（黙って通ることを隠さない）", () => {
+    expect(explainOf("              - { type: compare, operator: gte }")).toContain(
+      "比べる相手が書いてありません",
+    );
+  });
+});
+
 describe("同梱の例", () => {
   it("すべての例が説明できて、中身が空にならない", () => {
     const dir = "../spec/examples";

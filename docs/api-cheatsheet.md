@@ -259,6 +259,7 @@ Note the difference: `between` / `startsWith` / `endsWith` are search-only, whil
 | `pattern` | `pattern` (regex) | matches |
 | `email` | — | email shape |
 | `postalCode` | — | Japanese postal code (`1234567` / `123-4567`) |
+| `compare` | `operator` / `field` (+ `aggregate` / `of`) | **Compares with another field** (`{ type: compare, operator: gte, field: startDate }`; `aggregate: sum, of: amount` compares with a child table's sum) |
 
 `message` overrides the default (Japanese) text for that rule. To change the defaults wholesale, inject a `MessageResolver` (default locale `ja`) into `ValidatorRegistry`.
 

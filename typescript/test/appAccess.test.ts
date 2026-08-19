@@ -9,9 +9,16 @@ import {
   parseAppSource,
 } from "../src/index.js";
 
-/** 定義の文字列から「誰が開けるか」を数える。 */
-const access = (source: string) =>
-  appAccess(parseAppSource(source).app, parseYaml(source) as Record<string, unknown>);
+/**
+ * 定義の文字列から「誰が開けるか」を数える。
+ *
+ * 素の document だけで足りる（入口＝メニューとボタンは素のまま読める）。読める定義である
+ * ことは [parseAppSource] で別に確かめる。
+ */
+const access = (source: string) => {
+  parseAppSource(source); // strict で読めない定義は、そもそも権限の話にならない
+  return appAccess(parseYaml(source) as Record<string, unknown>);
+};
 
 const who = (source: string, page: string): Audience =>
   access(source).audience.get(page)!;

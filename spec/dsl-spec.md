@@ -959,10 +959,56 @@ parameter.
 | `pattern` | `pattern` (regex) | Must match the regular expression. |
 | `email` | — | Must be a valid email address. |
 | `postalCode` | — | Japanese postal code (`1234567` or `123-4567`). |
+| `compare` | `operator` / `field` (+ `aggregate` / `of`) | **Compares with another field** (below). |
 
 `message` overrides the default (Japanese) message. To replace the defaults
 wholesale — including for another locale — inject a `MessageResolver` into the
 `ValidatorRegistry`.
+
+### Cross-field validation (`compare`)
+
+Rules a single field cannot express (「開始日 ≤ 終了日」, 「合計＝明細の和」) are written with
+`compare`. It is the only built-in that reads **another field's value**; every other one sees
+only its own.
+
+```yaml
+- field: endDate
+  label: 終了日
+  type: date
+  validators:
+    - { type: compare, operator: gte, field: startDate }   # at least 開始日
+
+- field: total
+  label: 合計
+  type: number
+  validators:
+    # folds the child rows (subTable) into a number — 「合計＝明細の和」
+    - { type: compare, operator: equals, field: lines, aggregate: sum, of: amount }
+```
+
+| Parameter | Meaning |
+|---|---|
+| `operator` | `equals` / `notEquals` / `gt` / `gte` / `lt` / `lte` (default `gte`) — only the ordered ones |
+| `field` | The **field name** to compare with (in the same form). Required |
+| `aggregate` | When the other side is a child table: how to fold it (`sum` / `avg` / `min` / `max` / `count` — the dashboard's aggregates) |
+| `of` | The row field to fold (not needed for `count`) |
+
+Decisions:
+
+* Compared **as numbers when both read as numbers, as text otherwise**. An ISO date
+  (`2026-01-05`) is zero-padded, so text order is date order — no date type is involved,
+  because date parsing differs per language
+* **Passes when it cannot judge**: this field empty is `required`'s job; the other field empty
+  or absent is that field's own rules. It never fails silently in the other direction
+* The message names the other field by its **label** (「開始日以上にしてください」), not by its
+  field name
+* Writing mistakes (a typo'd target, an operator with no order, a missing `of`) would pass
+  **silently**, so `hatake validate` warns about them (`compare-unknown-field`,
+  `compare-bad-operator`, `compare-aggregate-without-of`, `compare-with-itself`,
+  `compare-without-field`)
+* That all three editions answer the same is pinned by
+  [`spec/conformance/cross_field_validation.json`](conformance/cross_field_validation.json) —
+  the file is itself a runnable example
 
 ## action
 
@@ -1118,6 +1164,8 @@ npx hatake validate page.yaml --no-warn --json
 | `required-as-validator-only` | a `validators` element that is not an object — no validation is added |
 | `requiredwhen-with-required` / `readonlywhen-with-readonly` | an unconditional flag next to its conditional twin — the condition cannot matter |
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | linked options that do not line up (input fields and search filters alike) |
+| `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | a mistake in a cross-field rule (`compare`) — **that rule passes silently** |
+| `page-nobody-can-open` | the `roles` on the ways in (menu items, navigate buttons) disagree — **nobody can open that screen** |
 
 These are **not errors** (some of these shapes can be made to work by a
 repository or a registered plugin). Navigation targets are only checked for `app:`

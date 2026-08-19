@@ -118,6 +118,23 @@ export const VALIDATORS: Record<string, string> = {
   pattern: "決まった書式",
   email: "メールアドレスの形",
   postalCode: "郵便番号の形",
+  // 項目間の検証は「相手のラベル＋突合の言い方」で文になるので、ここは差し込みだけ。
+  compare: "{value}",
+};
+
+/**
+ * 項目間の検証（`compare`）の突合 → 日本語。
+ *
+ * 条件の言い方（[CONDITION_OPERATORS]）とは別に持つ。条件は「が {value} のとき」で文が
+ * 終わるが、検証は「{value} 以上」で名詞句になる＝同じ演算子でも言い方が違う。
+ */
+export const COMPARE_WORDS: Record<string, string> = {
+  equals: "{value} と同じ値",
+  notEquals: "{value} と違う値",
+  gt: "{value} より大きい値",
+  gte: "{value} 以上",
+  lt: "{value} より小さい値",
+  lte: "{value} 以下",
 };
 
 /** フォーマッタ → 見え方。**例を見せる**のがレビューには一番早い。 */
@@ -174,6 +191,7 @@ export const explainPhrases = {
   conditionOperators: CONDITION_OPERATORS,
   fieldTypes: FIELD_TYPES,
   validators: VALIDATORS,
+  compareOperators: COMPARE_WORDS,
   formatters: FORMATTERS,
   converters: CONVERTERS,
   actionTypes: ACTION_TYPES,

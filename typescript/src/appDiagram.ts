@@ -206,7 +206,7 @@ export function appDiagram(
     (move) => pages.has(move.from) && pages.has(move.to),
   );
   const fromMenu = menuTargets(app.menu).filter((id) => pages.has(id));
-  const access = appAccess(app, raw);
+  const access = appAccess(raw);
   const role = options.role;
   if (role !== undefined && !access.roles.includes(role)) {
     // 綴り違いを黙って通すと「全部開ける」に見える＝一番まずい読み違えになる。
