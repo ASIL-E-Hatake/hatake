@@ -27,6 +27,7 @@ npx hatake new <kind> --id <id> --title <title>   # crud/search/master/detail/fo
 npx hatake diff <old> <new>       # what a change breaks, and what to confirm
 npx hatake fix page.yaml --todo   # hand the leftovers (what a machine cannot decide) to the next round
 npx hatake refs app.yaml --unused # the reverse: registrations no definition uses
+npx hatake paper report.yaml      # read a report as the paper it would print (text; makes sample rows)
 npx hatake explain page.yaml      # read back what this screen does (Japanese)
 npx hatake explain page.yaml --brief         # one-line summary (a table for an app)
 npx hatake explain --diff <old> <new>        # what changed, in the screen's own words

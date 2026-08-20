@@ -44,6 +44,7 @@ npx hatake reference rowsPerPage             # このキー、どこに書くの
 npx hatake examples 帳票                      # 近い例を探す
 npx hatake refs page.yaml --needs-registration # アプリ側に何を登録すればいいか
 npx hatake refs app.yaml --unused              # 逆向き：登録したのに誰も使っていないもの
+npx hatake paper report.yaml                   # 帳票を「刷ったらどう見えるか」に開く（文字で）
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「登録済み」の一覧を作る
 npx hatake explain page.yaml                 # この定義、結局どういう画面？
 npx hatake explain page.yaml --brief         # 1行で（README や PR 本文に貼る用）
@@ -244,6 +245,43 @@ OK   sales_app.yaml (app: 8 ページ)
 
 `--registry` を省いても、定義の隣（無ければカレント）に `hatake-registry.json` があれば黙って拾う
 （同梱のデモは [`flutter/packages/hatake_example/assets/hatake-registry.json`](../flutter/packages/hatake_example/assets/hatake-registry.json)）。
+
+### 帳票は紙を見る（`paper`）
+
+`explain` は「何ができる画面か」を言うが、**紙の上でどう見えるか**は言わない。列の並び・
+列の幅の分かれ方・小計の位置・右寄せが効いているか・列に収まらず切れた文字は、座標を
+文字に落とせば読める。
+
+```
+$ npx hatake paper spec/examples/sales_report.yaml --columns 100
+売上明細表: 595.28 x 841.89pt の紙 2 枚（100 桁に縮めて表示。位置関係はそのまま）
+
+--- 1 枚目 ---
+      売上明細表                                                                         1 / 2
+      受注番号                 受注日               状態                                  金額
+      ========================================================================================
+      顧客: 顧客A
+      ----------------------------------------------------------------------------------------
+      受注番号1                2026-04-01           状態1                              ¥1,200
+      受注番号2                2026-04-02           状態2                                 ¥98
+      受注番号3                2026-04-03           状態3                          ¥1,250,000
+      ----------------------------------------------------------------------------------------
+      小計                                                                  ¥1,251,298 / 3 件
+```
+
+* **行を渡さなくても見える。** 渡さなければ定義の項目名と型から**見本の行**を作る
+  （データを用意しないと紙が見られない、では誰も確かめない）。作った行のときは必ずそう書く
+* 本物のデータで見るなら `--rows rows.json`（行の配列）。`--role admin` でその人に見える紙、
+  `--json` で紙の上の座標そのもの
+* **右寄せは右端が揃うように置く**（文字の実寸と1桁の幅は比例しないので、実寸から数えると
+  揃っているかどうかが読めなくなる）。総計の上の二重線は罫線の行が2つ続いて見える
+* 刷る（PDF / プリンタ）のは opt-in の [`hatake_print`](../flutter/packages/hatake_print/)。
+  **座標は同じ計算**で、[共有フィクスチャ](../spec/conformance/report_layout.json)が
+  「Dart と TS で1つも違わない」ことを縛っている＝**ここで見た紙と刷った紙は同じ**
+* 紙に入らない定義（列幅の合計が紙幅を超える等）は `validate` の警告で言う
+
+MCP の `hatake_print_preview` も同じものを返す。**AI は画面も紙も見られない**ので、
+書いた帳票を自分で確かめる手はこれしかない。
 
 ### 書けたものを読み返す（`explain`）
 

@@ -96,6 +96,8 @@ await Printing.layoutPdf(onLayout: (_) => bytes); // プリンタに送るなら
      （幅の指定がある 3 列で 600pt）。刷ると全体が縮められて、どの列も読めなくなります。
 ```
 
+刷る前に紙そのものを見るなら `npx hatake paper <file>`。列の並び・小計の位置・右寄せ・切れた文字が文字で読める（行を渡さなければ見本の行を作る）。
+
 画面の `width` をそのまま持ってくると（px のつもりで 200 を3列）これに当たる。用紙の実寸は [`spec/papers.json`](https://github.com/ASIL-E-Hatake/hatake/blob/main/spec/papers.json) が正で、刷る側と警告が同じ数を見ている。
 
 余白・脚注・ページ番号は定義ではなく `PrintStyle` に書く。紙の体裁は業務ではなく印刷所の話なので、定義に持ち込まない。

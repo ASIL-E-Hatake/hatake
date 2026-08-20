@@ -51,7 +51,7 @@ for (final sheet in layout.pages) {
 }
 ```
 
-中立な形を挟んでいる理由はもう1つある。**座標は数なので、1バイト単位で固定できる**。第三者のレイアウトエンジンに組み替えると、体裁が黙って変わったことに気づけなくなる。
+中立な形を挟んでいる理由はもう1つある。**座標は数なので、1バイト単位で固定できる**。TypeScript 版が同じ `PrintLayout` を組んで**紙を文字で見せる**（`npx hatake paper`）のも、この形があるから＝AI も人も、刷る前に紙を読める。第三者のレイアウトエンジンに組み替えると、体裁が黙って変わったことに気づけなくなる。
 
 ## 体裁（`PrintStyle`）
 
@@ -105,7 +105,10 @@ reportPdf(page, rows, font: PdfFont.helvetica);  // 英数だけの帳票（日�
 - フォントの埋め込み、図形・画像・ロゴ、1枚の中でのフォント混在
 - 「以下余白」・繰越／前頁計・複数レベルの改ページ制御（ロードマップの「帳票の次段」）
 - xlsx 出力（`PrintLayout` からなら書けるが、別パッケージの話）
-- TypeScript 版・Java 版（いまは Dart だけ。中立な形があるので後から足せる）
+- Java 版（いまは Dart と TypeScript だけ）。TypeScript には `PrintLayout` までが在り
+  （`npx hatake paper` / MCP の `hatake_print_preview` が紙を**文字で見せる**）、PDF を書くのは
+  この版だけ。座標が1つも違わないことは
+  [`spec/conformance/report_layout.json`](../../../spec/conformance/report_layout.json) が縛る
 
 ## 見本
 
