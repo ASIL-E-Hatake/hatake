@@ -14,6 +14,7 @@
 // 担当で、両方要る。混ぜると「見え方が変わっただけ」で CI が落ちる道具になる。
 
 import { type ExplainDocument, explainApp, explainPage } from "./explain.js";
+import { pageAccess } from "./explainAccess.js";
 import {
   isAppSource,
   parseAppSource,
@@ -319,16 +320,26 @@ export function explainDiffSources(
 
   const was = parseAppSource(before);
   const now = parseAppSource(after);
-  const whole = explainApp(now.app);
-  const changes = diffExplanations(explainApp(was.app), whole);
+  const whole = explainApp(now.app, now.access);
+  const changes = diffExplanations(explainApp(was.app, was.access), whole);
   for (const page of now.app.pages) {
     const rawBefore = was.raw.get(page.id);
     const rawAfter = now.raw.get(page.id);
     if (rawBefore === undefined || rawAfter === undefined) continue;
+    // 権限も渡す＝**入口を1つ直すと遠くの画面が開けなくなる**類の変化が、その画面の
+    // 節に出る（機械の言葉の差分では、直した入口の行しか動かない）。
     changes.push(
       ...diffExplanations(
-        explainPage(parseOnePage(rawBefore), rawBefore),
-        explainPage(parseOnePage(rawAfter), rawAfter),
+        explainPage(
+          parseOnePage(rawBefore),
+          rawBefore,
+          pageAccess(was.access, page.id),
+        ),
+        explainPage(
+          parseOnePage(rawAfter),
+          rawAfter,
+          pageAccess(now.access, page.id),
+        ),
         page.title,
       ),
     );

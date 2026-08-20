@@ -8,9 +8,11 @@
 // 説明してしまう**（`witdh` は捨てられるので、幅を指定した気になった説明が出る）。
 
 import { parse as parseYamlText } from "yaml";
+import { appAccess, type AppAccess } from "./appAccess.js";
 import { parseAppYaml } from "./appParse.js";
 import { type AppDefinition, type PageDefinition } from "./definition.js";
 import { type ExplainDocument, explainApp, explainPage } from "./explain.js";
+import { pageAccess } from "./explainAccess.js";
 import { parsePageJson, parsePageYaml } from "./parse.js";
 
 type Dict = Record<string, unknown>;
@@ -52,6 +54,13 @@ export interface ParsedApp {
   pages: PageDefinition[];
   /** ページ id → 素のページ（解析後のモデルが落としているものを補う用）。 */
   raw: Map<string, Dict>;
+  /**
+   * 誰がどの画面を開けるか。
+   *
+   * 1枚ずつ読んでも出ない値なので、app を読んだここで1度だけ数えて配る（説明・
+   * 差分・図・警告が**同じ計算**を使う＝違うことを言わない）。
+   */
+  access: AppAccess;
 }
 
 export function parseAppSource(source: string): ParsedApp {
@@ -65,6 +74,7 @@ export function parseAppSource(source: string): ParsedApp {
         .filter((page) => typeof page.id === "string")
         .map((page) => [page.id as string, page]),
     ),
+    access: appAccess(rawDocument(source)),
   };
 }
 
@@ -90,8 +100,8 @@ export function explainSource(
       (rawDocument(source).page ?? {}) as Dict,
     );
   }
-  const { app, raw } = parseAppSource(source);
-  if (options.page === undefined) return explainApp(app);
+  const { app, raw, access } = parseAppSource(source);
+  if (options.page === undefined) return explainApp(app, access);
   const one = raw.get(options.page);
   if (one === undefined) {
     throw noSuchPage(
@@ -99,5 +109,5 @@ export function explainSource(
       app.pages.map((page) => page.id),
     );
   }
-  return explainPage(parseOnePage(one), one);
+  return explainPage(parseOnePage(one), one, pageAccess(access, options.page));
 }

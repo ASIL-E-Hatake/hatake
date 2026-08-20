@@ -264,6 +264,72 @@ jobs:
           node dist/cli.js validate ../docs/diagrams/roles-app.yaml --json > /tmp/access.json
           grep -q '"rule": "page-nobody-can-open"' /tmp/access.json
           grep -q '入口の roles を見直して' /tmp/access.json
+          # **書き忘れ**は警告にできない（書いていないので）。助言で勧めること。
+          cat > /tmp/no-compare.yaml <<'YAML'
+          page:
+            type: form
+            id: reservation
+            title: 予約
+            repository: reservationRepository
+            form:
+              sections:
+                - fields:
+                    - { field: startDate, label: 開始日, type: date, required: true }
+                    - { field: endDate, label: 終了日, type: date, required: true }
+            actions:
+              - { id: save, type: create, label: 登録 }
+          YAML
+          node dist/cli.js advise /tmp/no-compare.yaml > /tmp/no-compare.log
+          grep -q 'dates-without-compare' /tmp/no-compare.log
+          grep -q '「終了日」は「開始日」より前の値でも保存できます' /tmp/no-compare.log
+          # 助言は好みなので、終了コードは変えない。
+          node dist/cli.js advise /tmp/no-compare.yaml > /dev/null
+
+      - name: Who can open a screen, and PR-ready output
+        working-directory: typescript
+        run: |
+          set -e
+          # 「この画面を開けるのは誰か」は1枚だけ読んでも出ない値。図（diagram --roles）と
+          # 警告（page-nobody-can-open）と説明が、同じ答えを言うこと。
+          node dist/cli.js explain ../docs/diagrams/roles-app.yaml > /tmp/explain-roles.log
+          grep -q '## 画面を開ける人' /tmp/explain-roles.log
+          grep -q '単価マスタ（price_master） … 誰も開けない' /tmp/explain-roles.log
+          node dist/cli.js explain ../docs/diagrams/roles-app.yaml --page price_master > /tmp/explain-one.log
+          grep -q 'この画面を開ける人' /tmp/explain-one.log
+          # どこから来られるかまで言う（入口が分からないと直せない）。
+          grep -q '入口「単価」（customer_master から）' /tmp/explain-one.log
+          # レビュー用の1枚にも乗る（レビューは紙1枚で読むので、図を開かせない）。
+          node dist/cli.js explain ../docs/diagrams/roles-app.yaml --review --page price_master \
+            | grep -q '誰も開けない'
+          # PR 本文の形。見出しと箇条書きで出て、`<file>` が HTML に食われないこと。
+          node dist/cli.js explain ../docs/diagrams/roles-app.yaml --markdown > /tmp/explain.md
+          grep -q '^## ' /tmp/explain.md
+          grep -q '^### 画面を開ける人' /tmp/explain.md
+          grep -q 'hatake explain &lt;file&gt;' /tmp/explain.md
+          if grep -q '<file>' /tmp/explain.md; then
+            echo "HTML に食われる書き方が残っている"; exit 1
+          fi
+          # 形は1つだけ選ぶ（貼った先で形が違う、という気づきにくい事故を作らない）。
+          if node dist/cli.js explain ../docs/diagrams/roles-app.yaml --json --markdown 2> /tmp/both.log; then
+            echo "--json と --markdown の同時指定を通してしまった"; exit 1
+          fi
+          grep -q '同時に使えません' /tmp/both.log
+          # 変更前は git から取れる（HEAD と作業中を比べるので、浅いクローンでも動く）。
+          cp ../docs/diagrams/roles-app.yaml /tmp/roles-backup.yaml
+          node dist/cli.js explain --diff --git HEAD ../docs/diagrams/roles-app.yaml > /tmp/git-same.log
+          grep -q '見え方は変わりません' /tmp/git-same.log
+          # 入口の roles を1つ直すと、**遠くの画面**の「開ける人」が変わったと言うこと。
+          sed -i 's/roles: \[manager\]/roles: [admin]/g' ../docs/diagrams/roles-app.yaml
+          node dist/cli.js explain --diff --git HEAD ../docs/diagrams/roles-app.yaml --markdown > /tmp/git-diff.md
+          grep -q '単価マスタ' /tmp/git-diff.md
+          grep -q 'admin だけ' /tmp/git-diff.md
+          # 後方互換の判定も同じ書き方で、表にできる。
+          node dist/cli.js diff --git HEAD ../docs/diagrams/roles-app.yaml --markdown > /tmp/git-api.md || true
+          grep -q '| 影響 | 区分 | 場所 | 内容 |' /tmp/git-api.md
+          cp /tmp/roles-backup.yaml ../docs/diagrams/roles-app.yaml
+          # 触った見本を1バイト単位で元に戻せていること（後の段が同じファイルを見る）。
+          # git diff では見ない（改行の扱いが環境で違うので、ここでは byte で比べる）。
+          cmp /tmp/roles-backup.yaml ../docs/diagrams/roles-app.yaml
 
       - name: A definition compared with itself is compatible
         working-directory: typescript

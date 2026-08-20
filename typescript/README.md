@@ -230,6 +230,35 @@ $ npx hatake explain spec/examples/customer_form.yaml
 ラベルで言うので、`{ field: kind, value: corp }` ではなく「区分 が 法人 のとき」と読める。
 `app:` を渡すと画面の一覧とメニュー、`--page <id>` でその1枚を詳しく。
 
+#### この画面を開けるのは誰か
+
+`app:` を渡すと、**画面ごとに「開けるのは誰か」も出す**。
+
+```
+$ npx hatake explain docs/diagrams/roles-app.yaml
+...
+## 画面を開ける人
+  ・受注照会（order_search） … 誰でも開ける
+  ・受注入力（order_entry） … manager だけ
+  ・顧客マスタ（customer_master） … admin だけ
+  ・単価マスタ（price_master） … 誰も開けない（入口の権限が食い違っている）
+
+$ npx hatake explain docs/diagrams/roles-app.yaml --page price_master
+...
+## この画面を開ける人
+  ・開けるのは … 誰も開けない（入口はあるが、権限が食い違っている）
+  ・入口「単価」（customer_master から） … manager だけが通れる
+```
+
+**ページに `roles` は書けない。** 権限が書けるのはメニュー項目とボタン（と列・項目・カード）
+なので、「この画面を開けるのは誰か」は**入口から辿って**しか出せない。1枚だけ読んでも出ない
+値で、いままで答えを持っていたのは図（`diagram --roles`）だけだった＝**図を開かないと分から
+なかった**。レビューは1枚の紙で読むので、紙に載っていない権限は見られないまま通る。
+
+計算は図・警告（`page-nobody-can-open`）と**同じもの**を使う（3か所が違うことを言わない）。
+「開ける人」と「画面の中で隠れるもの（列・項目・ボタンの `roles`）」は別の節に分けてある。
+単票の定義（`page:`）には出さない（入口の話が無い）。
+
 `--brief` は1行だけ。README・PR 本文・画面一覧に貼る形で、`app:` なら表になる。
 
 ```
@@ -267,6 +296,50 @@ $ npx hatake explain --diff old.yaml new.yaml
 
 **終了コードは変えない**（変わっていても 0）。ここは読むための道具で、止めるための道具は
 `diff`。混ぜると「見え方が変わっただけ」で CI が落ちるようになる。
+
+権限も見る。**入口を1つ直すと、遠くの画面が開けなくなる**ことがあり、機械の言葉の差分では
+直した入口の行しか動かないので気づけない。
+
+```
+$ npx hatake explain --diff old.yaml new.yaml
+## 画面を開ける人
+  ・「単価マスタ（price_master）」が変わりました
+      前: 単価マスタ（price_master） … 誰も開けない（入口の権限が食い違っている）
+      後: 単価マスタ（price_master） … admin だけ
+```
+
+#### 変更前は git から取る（`--git`）
+
+「変更前のファイル」を手で書き出させている限り、この道具は CI に置けない。変更前は git が
+持っているので、そこから読む。
+
+```bash
+npx hatake explain --diff --git HEAD~1..HEAD spec/examples/customer_form.yaml
+npx hatake explain --diff --git main...HEAD  spec/examples/customer_form.yaml  # 枝分かれした所と比べる（PR の中身）
+npx hatake explain --diff --git HEAD         spec/examples/customer_form.yaml  # いまの作業中と比べる
+npx hatake diff          --git main...HEAD   spec/examples/customer_form.yaml  # 後方互換の判定も同じ書き方
+```
+
+書ける範囲は3つだけ（`A..B` / `A...B` / `A`）。**リビジョンの指定を書くための言語にはしない。**
+そのリビジョンにファイルが無いとき・git を呼べないときは、**理由まで言って**落ちる（別の失敗に
+化けさせない）。
+
+#### PR 本文に貼る形（`--markdown`）
+
+読む場所が PR やチケットなら、貼れる形でないと結局貼られない＝説明が在っても読まれない。
+
+```bash
+npx hatake explain page.yaml --markdown            # 説明
+npx hatake explain page.yaml --review --markdown   # レビュー1枚（説明＋助言）
+npx hatake explain app.yaml --brief --markdown     # 画面一覧（表）
+npx hatake explain --diff --git main...HEAD page.yaml --markdown   # PR に貼る変更点
+npx hatake diff --git main...HEAD page.yaml --markdown             # 何が壊れるかの表（終了コードは変わらない）
+```
+
+見出しは h2 から（本文の題は PR の題）、長い節は `<details>` で折りたたむ（列が30本ある画面の
+説明で PR が埋まると、レビューの本題が見えない）。`<` `>` は逃がすが、`` ` `` で囲んだ中は
+触らない（`hatake explain <file>` のような行が HTML として食われて消えるのを防ぐ）。
+`--json` との併用はエラー（貼った先で形が違う、という気づきにくい事故を作らない）。
 
 ### 実際に転んだ実例（`failures`）
 
@@ -398,7 +471,14 @@ $ npx hatake advise page.yaml
 
 見るのは、並べ替えできる列が無い / 絞り込みが無い / キーが一覧に出ていない / 必須が1つも無い /
 消せる・持ち出せるのに権限が無い / 金額らしいのに桁区切りが無い / 明細に親のキーが無い /
-帳票に合計が無い、の8つ。
+帳票に合計が無い / **開始と終了の組に向きの縛りが無い** / **合計を明細の和と突き合わせて
+いない**、の10。
+
+後ろの2つは `compare`（項目間の検証）を勧めるもの。書けるようになっても**書き忘れる**し、
+書き忘れても定義は通って画面も動き、**間違ったデータだけが入る**（終了日が開始日より前の
+予約・明細と合わない合計）。見つけ方は名前（`endDate` の隣に `startDate` が居る、`total` の
+隣に明細が居る）なので `guess` を立てる＝推測だと言う。日付に限らない（`priceFrom` /
+`priceTo` にも同じ話）。合計が `computed` なら言わない（明細から出しているので）。
 
 **これは警告ではなく助言。** この2つは混ぜない:
 
@@ -441,7 +521,9 @@ npx hatake advise page.yaml --rules team.json
 
 * `off` … 合わない規則を止める（組み込み・案件の決めごとのどちらも）
 * `options` … 組み込みの規則が**持っているつまみ**だけ（`no-sortable-column.minColumns` /
-  `no-search-filter.minColumns` / `open-dangerous-action.types` / `money-without-format.words`）
+  `no-search-filter.minColumns` / `open-dangerous-action.types` / `money-without-format.words` /
+  `dates-without-compare.startWords` / `dates-without-compare.endWords` /
+  `total-without-compare.words`）
 * `require` … 案件の決めごとを「**この場所には必ずこのキーを書く**」の形で。見るのは
   `page` / `column` / `filter` / `field` / `action` の5か所、`when` でその場所の値で絞り、
   `every: true` なら全部に要る（既定は1つでもあればよい）

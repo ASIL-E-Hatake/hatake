@@ -16,6 +16,7 @@
 // 何を言うかは**外から変えられる**（[AdviceRules]）。好みなので、案件ごとの決めごとを
 // 渡せないと「合わないから使わない」になる。渡せるのは「切る・目盛りを変える・足す」の3つ。
 
+import { checkCompare } from "./adviseCompare.js";
 import { checkRequired } from "./adviseRequire.js";
 import { type AdviceRules, DEFAULT_RULES, enabled, knob } from "./adviseRules.js";
 import { type DslReference } from "./reference.js";
@@ -95,6 +96,7 @@ export function findAdvice(
 function checkPage(page: Dict, path: string, found: Advice[], rules: AdviceRules): void {
   const from = found.length;
   checkBuiltins(page, path, found, rules);
+  checkCompare(page, path, formFields(page), found, rules);
   checkRequired(page, path, found, rules);
   // どの画面の話かを添える（app の1枚だけ読むときに絞れるように）。場所の道からも読めるが、
   // 道は「何番目のページか」しか言わないので、id で引けるほうが使える。

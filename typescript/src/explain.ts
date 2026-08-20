@@ -10,6 +10,14 @@
 // 警告では捕まえられない。それを人が読んで気づくための出力でもある
 // （spec/failures.json の diagnosis が空の件が、まさにそれ）。
 
+import { type AppAccess } from "./appAccess.js";
+import {
+  ACCESS_OVERVIEW_TITLE,
+  accessLines,
+  accessOverviewLines,
+  ACCESS_TITLE,
+  type PageAccess,
+} from "./explainAccess.js";
 import {
   ACTION_TYPES,
   AGGREGATES,
@@ -142,6 +150,7 @@ const valueLabel = (
 export function explainPage(
   page: PageDefinition,
   raw: Record<string, unknown> = {},
+  access?: PageAccess,
 ): ExplainDocument {
   const kind = PAGE_KINDS[page.kind] ?? { what: page.kind, cannot: [] };
   const vocabulary = emptyVocabulary();
@@ -217,8 +226,15 @@ export function explainPage(
     });
   }
 
+  // 「開ける人」は「画面の中で隠れるもの」より先に出す。**そこへ来られるか**が
+  // 決まってからでないと、中で誰に何が見えるかの話は読めない。
+  if (access !== undefined) {
+    sections.push({ title: ACCESS_TITLE, lines: accessLines(access) });
+  }
   const gated = collectRoles(page);
-  if (gated.length > 0) sections.push({ title: "誰に見えるか", lines: gated });
+  if (gated.length > 0) {
+    sections.push({ title: "画面の中で隠れるもの（権限）", lines: gated });
+  }
 
   const cannot = [...kind.cannot, ...impliedLimits(page)];
   if (cannot.length > 0) sections.push({ title: "この画面でできないこと", lines: cannot });
@@ -540,7 +556,10 @@ function impliedLimits(page: PageDefinition): string[] {
 }
 
 /** アプリ全体（`app:`）の説明。ページは1行ずつで、詳しくは1枚ずつ引く。 */
-export function explainApp(app: AppDefinition): ExplainDocument {
+export function explainApp(
+  app: AppDefinition,
+  access?: AppAccess,
+): ExplainDocument {
   // 入れ子は道（`マスタ > 商品`）で表す。字下げは箇条書きの中で読みにくいので。
   const menu: string[] = [];
   const walk = (items: MenuItem[], trail: string[]): void => {
@@ -574,6 +593,16 @@ export function explainApp(app: AppDefinition): ExplainDocument {
       {
         title: "最初に開く画面",
         lines: [app.home ?? "指定なし（先頭のページ）"],
+      },
+      {
+        title: ACCESS_OVERVIEW_TITLE,
+        lines:
+          access === undefined
+            ? []
+            : accessOverviewLines(
+                access,
+                app.pages.map((page) => ({ id: page.id, title: page.title })),
+              ),
       },
       {
         title: "見た目",

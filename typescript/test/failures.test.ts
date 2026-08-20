@@ -93,6 +93,22 @@ describe("実際に転んだ実例のカタログ", () => {
     expect(text).toContain("区分 が 個人 のときは直せない");
   });
 
+  // 同じく言い放ちを許さない。向きを逆に書いた件は、explain が向きを日本語で言う。
+  it("向きを逆に書いた件は、explain が「以下」と読み上げる", () => {
+    const failure = catalog.failures.find((f) => f.id === "compare-reversed");
+    expect(failure).toBeDefined();
+    const wrote = renderExplain(
+      explainPage(parsePageYaml(failureSource(failure!.wrote), { strict: true })),
+    );
+    expect(wrote).toContain("開始日 以下");
+    // 直したものは「以上」になる（読み返して気づける、が本当であること）。
+    const fixed = renderExplain(
+      explainPage(parsePageYaml(failureSource(failure!.fixed), { strict: true })),
+    );
+    expect(fixed).toContain("開始日 以上");
+    expect(fixed).not.toContain("開始日 以下");
+  });
+
   it("どの件も「なぜそう書くか」を持つ（対照表との違いはそこ）", () => {
     for (const failure of catalog.failures) {
       expect(failure.why.length, failure.id).toBeGreaterThan(20);

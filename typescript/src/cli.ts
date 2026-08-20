@@ -8,6 +8,7 @@
 // 依存は増やさない: 引数解析も出力も手書き。CLI が npm の流行に引きずられると、
 // 「業務システムを10年動かす」側の都合と合わなくなる。
 
+import { execFileSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -43,6 +44,14 @@ import { renderExplain } from "./explain.js";
 import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
 import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
 import { briefSource, renderBrief } from "./explainBrief.js";
+import {
+  briefMarkdown,
+  definitionDiffMarkdown,
+  explainDiffMarkdown,
+  explainMarkdown,
+  reviewMarkdown,
+} from "./explainMarkdown.js";
+import { readGitPair } from "./gitRange.js";
 import {
   DEFINITION_EXTENSIONS,
   harvestFailures,
@@ -110,6 +119,13 @@ export interface CliIo {
    * ディレクトリでなければ null。
    */
   listFiles(path: string): string[] | null;
+  /**
+   * git を1回呼ぶ（`--git`）。標準出力を返し、失敗したら投げる。
+   *
+   * 任意なのは、git が無い所でも CLI を動かすため（試験・生成された環境）。無ければ
+   * `--git` だけが使えないと言う。
+   */
+  git?(args: string[]): string;
 }
 
 export const nodeIo: CliIo = {
@@ -121,6 +137,13 @@ export const nodeIo: CliIo = {
     if (dir && !existsSync(dir)) mkdirSync(dir, { recursive: true });
     writeFileSync(path, content, "utf8");
   },
+  git: (args) =>
+    execFileSync("git", args, {
+      encoding: "utf8",
+      // 定義1つぶんなので小さいが、既定の 1MB は大きい定義で足りない。
+      maxBuffer: 32 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "pipe"],
+    }),
   listFiles: (path) => {
     if (!existsSync(path) || !statSync(path).isDirectory()) return null;
     const found: string[] = [];
@@ -145,22 +168,28 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       辻褄（Repository / プラグイン / 独自の型の名前）も見る。省略しても
       定義の隣の hatake-registry.json があれば拾う。
 
-  hatake explain <file> [--page <id>] [--brief] [--json]
+  hatake explain <file> [--page <id>] [--brief] [--json] [--markdown]
       定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人が、AI に
       書かせた定義をレビューするための出力。app: を渡すと画面の一覧とメニュー、
-      --page でその1枚を詳しく。--brief は1行だけ（app なら画面一覧の表）で、
-      README や PR 本文に貼る用。
+      --page でその1枚を詳しく。**app なら「この画面を開けるのは誰か」も出す**
+      （1枚だけ読んでも出ない値で、いままで図しか知らなかった）。--brief は1行だけ
+      （app なら画面一覧）。--markdown は PR 本文に貼れる形（見出し・箇条書き・表・
+      長い節は折りたたみ）。
 
-  hatake explain <file> --review [--page <id>] [--rules team.json] [--json]
+  hatake explain <file> --review [--page <id>] [--rules team.json] [--json] [--markdown]
       レビュー用の1枚。説明（何ができて、何ができないか）と助言（書き足したほうが
       いい所）をまとめて出す。レビューする人が見る紙は1枚がいいので、道具を2回
       叩かせない。助言は最後の節にまとめ、警告ではないと毎回書く（終了コードは
       変えない）。--page を渡すと、助言もその画面のものだけに絞る。
 
-  hatake explain --diff <old file> <new file> [--json]
+  hatake explain --diff <old file> <new file> [--json] [--markdown]
+  hatake explain --diff --git <range> <file> [--json] [--markdown]
       変更を**画面の言葉**で言う（「枠「請求先」は、区分 が 法人 のときだけ出る
       ようになりました」）。diff は機械の言葉で言うので、人のレビューには一段
       足りない。後方互換の判定はしない（それは hatake diff）。
+      --git は変更前を git から取る（HEAD~1..HEAD / main...HEAD＝枝分かれした所と
+      比べる / HEAD＝いまの作業中と比べる）。--markdown と組めば、PR 本文に
+      そのまま貼れる。
 
   hatake harvest <path...> [--min 2] [--repro] [--json] [--registry hatake-registry.json]
       定義の山を走査して、**繰り返し出ている診断**を実例カタログ
@@ -217,10 +246,13 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
   hatake dto <file> [--json]
       API の形（DtoSpec）を出す。
 
-  hatake diff <old file> <new file> [--json] [--caution-as-error] [--api-only]
+  hatake diff <old file> <new file> [--json] [--markdown] [--caution-as-error] [--api-only]
+  hatake diff --git <range> <file> [--json] [--markdown] [--caution-as-error] [--api-only]
       定義を変えたときの影響範囲。API の形（壊すか）と、画面・権限・アプリ構成の
       変化（確かめてほしいか）を出す。app: どうしの比較にも対応。
       壊す変更があれば終了コード 1（--caution-as-error で「要確認」でも 1）。
+      --git は変更前を git から取る（explain --diff と同じ書き方）ので、
+      「変更前のファイル」を手で書き出さずに CI に置ける。
 
   hatake schema <file>
       JSON Schema 2020-12 を出す。
@@ -266,6 +298,7 @@ interface Args {
  */
 const BOOLEAN_FLAGS = new Set([
   "json",
+  "markdown",
   "diff",
   "brief",
   "review",
@@ -511,6 +544,7 @@ function loadRegistry(
  * （CLI と MCP で結論が違うことが無いように）。
  */
 function explain(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (bothFormats(flags, io)) return 1;
   if (flags.diff === true) return explainChanges(files, flags, io);
   if (files.length !== 1) {
     io.err("説明する定義ファイルを1つ指定してください。");
@@ -528,12 +562,29 @@ function explain(files: string[], flags: Args["flags"], io: CliIo): number {
     io.out(JSON.stringify(document, null, 2));
     return 0;
   }
-  io.out(
-    flags.brief === true
-      ? renderBrief(document as ReturnType<typeof briefSource>)
-      : renderExplain(document as ReturnType<typeof explainSource>),
-  );
+  const markdown = flags.markdown === true;
+  if (flags.brief === true) {
+    const brief = document as ReturnType<typeof briefSource>;
+    io.out(markdown ? briefMarkdown(brief) : renderBrief(brief));
+    return 0;
+  }
+  const explained = document as ReturnType<typeof explainSource>;
+  io.out(markdown ? explainMarkdown(explained) : renderExplain(explained));
   return 0;
+}
+
+/**
+ * 形は1つだけ選ぶ。
+ *
+ * 両方渡されたときに片方を黙って無視すると、**貼った先で形が違う**という気づきにくい
+ * 事故になる（CI が JSON を期待しているのに Markdown が出る）。
+ */
+function bothFormats(flags: Args["flags"], io: CliIo): boolean {
+  if (flags.json === true && flags.markdown === true) {
+    io.err("--json と --markdown は同時に使えません（どちらか1つ）。");
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -547,18 +598,78 @@ function explainChanges(
   flags: Args["flags"],
   io: CliIo,
 ): number {
-  if (files.length !== 2) {
-    io.err("変更前と変更後の定義ファイルを2つ指定してください。");
-    return 1;
-  }
-  const [before, after] = files.map((file) => io.readFile(file));
-  const diff = explainDiffSources(before, after);
+  const pair = sourcePair(files, flags, io, "explain --diff");
+  if (pair === null) return 1;
+  const diff = explainDiffSources(pair.before, pair.after);
   if (flags.json === true) {
     io.out(JSON.stringify(diff, null, 2));
     return 0;
   }
+  if (flags.markdown === true) {
+    // 何と何を比べたかは、貼った先では**本文からしか分からない**。
+    if (pair.label !== undefined) io.out(`_${pair.label}_\n`);
+    io.out(explainDiffMarkdown(diff));
+    return 0;
+  }
+  if (pair.label !== undefined) io.out(`（${pair.label}）`);
   io.out(renderExplainDiff(diff));
   return 0;
+}
+
+/** 比べる2つの定義（ファイル2つ、または `--git` の範囲＋ファイル1つ）。 */
+interface SourcePair {
+  before: string;
+  after: string;
+  /** `--git` のときだけ、何と何を比べたか。 */
+  label?: string;
+}
+
+/**
+ * 比べる2つを揃える。
+ *
+ * `--git` を足したのは、**変更前は git が持っている**から。手で書き出させている限り
+ * 「変更のたびに説明が付く」は CI に置けない。
+ */
+function sourcePair(
+  files: string[],
+  flags: Args["flags"],
+  io: CliIo,
+  command: string,
+): SourcePair | null {
+  const range = str(flags, "git");
+  if (range === undefined) {
+    if (files.length !== 2) {
+      io.err(
+        `変更前と変更後の定義ファイルを2つ指定してください` +
+          `（git から取るなら ${command} --git HEAD~1..HEAD <file>）。`,
+      );
+      return null;
+    }
+    return { before: io.readFile(files[0]), after: io.readFile(files[1]) };
+  }
+  if (files.length !== 1) {
+    io.err("--git を使うときは、定義ファイルを1つだけ指定してください。");
+    return null;
+  }
+  const git = io.git;
+  if (git === undefined) {
+    io.err("この環境では --git を使えません（git を呼ぶ口がありません）。");
+    return null;
+  }
+  // 先に git そのものを1回叩く。これをしないと、git が無い所での失敗が
+  // 「そのリビジョンにファイルが無い」に化けて、直しようのない案内になる。
+  try {
+    git(["--version"]);
+  } catch {
+    io.err("git を実行できません（PATH に git がありますか）。");
+    return null;
+  }
+  try {
+    return readGitPair(range, files[0], git, (path) => io.readFile(path));
+  } catch (error) {
+    io.err(error instanceof Error ? error.message : String(error));
+    return null;
+  }
 }
 
 /**
@@ -779,7 +890,12 @@ function review(
     io.out(JSON.stringify(document, null, 2));
     return 0;
   }
-  io.out(renderReview(document, { rulesFrom: str(flags, "rules"), rules }));
+  const options = { rulesFrom: str(flags, "rules"), rules };
+  io.out(
+    flags.markdown === true
+      ? reviewMarkdown(document, options)
+      : renderReview(document, options),
+  );
   return 0;
 }
 
@@ -1071,12 +1187,12 @@ function emit(
  * 「壊すつもりが無い変更」を CI で守れる（壊すときは意図して外す）。
  */
 function diff(files: string[], flags: Args["flags"], io: CliIo): number {
-  if (files.length !== 2) {
-    io.err("変更前と変更後の定義ファイルを2つ指定してください。");
-    return 1;
-  }
+  if (bothFormats(flags, io)) return 1;
+  const pair = sourcePair(files, flags, io, "diff");
+  if (pair === null) return 1;
   // 生成系と同じく常に strict で読む（書き間違いを差分として見せないため）。
-  const [before, after] = files.map((file) => readDocument(file, io));
+  const before = readSource(pair.before, pair.label ?? files[0]);
+  const after = readSource(pair.after, files[0]);
   const result = diffDefinitions(before, after);
   const changes =
     flags["api-only"] === true
@@ -1089,6 +1205,11 @@ function diff(files: string[], flags: Args["flags"], io: CliIo): number {
 
   if (flags.json === true) {
     io.out(JSON.stringify({ ...result, changes }, null, 2));
+    return failed ? 1 : 0;
+  }
+  if (flags.markdown === true) {
+    if (pair.label !== undefined) io.out(`_${pair.label}_\n`);
+    io.out(definitionDiffMarkdown(result, changes));
     return failed ? 1 : 0;
   }
   if (changes.length === 0) {
@@ -1123,8 +1244,12 @@ const mark = (change: DefinitionChange): string =>
  * 「書き間違いを差分として見せない」ための門番。
  */
 function readDocument(file: string, io: CliIo): Record<string, unknown> {
-  const source = io.readFile(file);
-  parseDefinition(source, file, { strict: true });
+  return readSource(io.readFile(file), file);
+}
+
+/** 読んだ文字列から（`--git` は文字列で来るので、ファイル読みとは別にする）。 */
+function readSource(source: string, where: string): Record<string, unknown> {
+  parseDefinition(source, where, { strict: true });
   return parseYamlText(source) as Record<string, unknown>;
 }
 

@@ -236,3 +236,138 @@ describe("嘘をつかない", () => {
     expect(total).toBeLessThanOrEqual(15);
   });
 });
+
+describe("項目間の検証（compare）を勧める", () => {
+  /** 予約のような「期間」を持つ入力画面。 */
+  const period = (fields: string) => `page:
+  type: form
+  id: reservation
+  title: 予約
+  repository: reservationRepository
+  form:
+    sections:
+      - fields:
+${fields}
+  actions:
+    - { id: save, type: create, label: 登録 }
+`;
+
+  /** 明細（subTable）と合計を持つ入力画面。 */
+  const withDetails = (total: string, rows = "number") => `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号, required: true }
+          - field: lines
+            label: 明細
+            type: subTable
+            columns:
+              - { field: item, label: 品名 }
+              - { field: amount, label: 金額, type: ${rows} }
+            fields:
+              - { field: item, label: 品名, required: true }
+              - { field: amount, label: 金額, type: ${rows}, required: true }
+${total}
+  actions:
+    - { id: save, type: create, label: 登録 }
+`;
+
+  it("開始と終了の組が居るのに、向きを縛っていない", () => {
+    const source = period(`          - { field: startDate, label: 開始日, type: date, required: true }
+          - { field: endDate, label: 終了日, type: date, required: true }`);
+    expect(rules(source)).toContain("dates-without-compare");
+    const one = advise(source).find((a) => a.rule === "dates-without-compare");
+    expect(one?.says).toContain("「終了日」は「開始日」より前の値でも保存できます");
+    expect(one?.add).toContain("field: startDate");
+    // 名前からの推測なので、そう言う（押し付けない）。
+    expect(one?.guess).toBe(true);
+  });
+
+  it("日付でなくても、対になっていれば言う（priceFrom / priceTo）", () => {
+    const source = period(`          - { field: priceFrom, label: 単価（下限）, type: number }
+          - { field: priceTo, label: 単価（上限）, type: number }`);
+    expect(rules(source)).toContain("dates-without-compare");
+  });
+
+  it("すでに compare が書いてあれば言わない", () => {
+    const source = period(`          - { field: startDate, label: 開始日, type: date }
+          - { field: endDate, label: 終了日, type: date, validators: [{ type: compare, operator: gte, field: startDate }] }`);
+    expect(rules(source)).not.toContain("dates-without-compare");
+  });
+
+  it("対になる相手が居なければ言わない", () => {
+    const source = period(`          - { field: endDate, label: 終了日, type: date }
+          - { field: memo, label: 備考, type: textarea }`);
+    expect(rules(source)).not.toContain("dates-without-compare");
+  });
+
+  it("合計を手で入れられるのに、明細の和と突き合わせていない", () => {
+    const source = withDetails(
+      "          - { field: total, label: 合計金額, type: number }",
+    );
+    expect(rules(source)).toContain("total-without-compare");
+    const one = advise(source).find((a) => a.rule === "total-without-compare");
+    expect(one?.says).toContain("「合計金額」は手で入れられる");
+    expect(one?.add).toContain("field: lines, aggregate: sum, of: amount");
+  });
+
+  it("計算項目の合計には言わない（明細から出しているので）", () => {
+    const source = withDetails(
+      "          - { field: total, label: 合計金額, computed: { op: sum, fields: [amount] } }",
+    );
+    expect(rules(source)).not.toContain("total-without-compare");
+  });
+
+  it("明細に数の列が無ければ言わない（足せる相手が分からないので）", () => {
+    const source = withDetails(
+      "          - { field: total, label: 合計金額, type: number }",
+      "text",
+    );
+    expect(rules(source)).not.toContain("total-without-compare");
+  });
+
+  it("明細が無ければ言わない", () => {
+    const source = period(
+      "          - { field: total, label: 合計金額, type: number }",
+    );
+    expect(rules(source)).not.toContain("total-without-compare");
+  });
+
+  it("物差しで切れる・語を差し替えられる", () => {
+    const source = period(`          - { field: startDate, label: 開始日, type: date }
+          - { field: endDate, label: 終了日, type: date }`);
+    const off = findAdvice(parseYaml(source) as Record<string, unknown>, {
+      off: ["dates-without-compare"],
+      options: {},
+      require: [],
+    });
+    expect(off.map((a) => a.rule)).not.toContain("dates-without-compare");
+
+    // 語を「自 / 至」だけにすると、start / end では鳴らない。
+    const narrowed = findAdvice(parseYaml(source) as Record<string, unknown>, {
+      off: [],
+      options: {
+        "dates-without-compare": { startWords: ["自"], endWords: ["至"] },
+      },
+      require: [],
+    });
+    expect(narrowed.map((a) => a.rule)).not.toContain("dates-without-compare");
+  });
+
+  it("勧めるキーは、その場所に本当に書ける（validators）", () => {
+    const sources = [
+      period(`          - { field: startDate, label: 開始日, type: date }
+          - { field: endDate, label: 終了日, type: date }`),
+      withDetails("          - { field: total, label: 合計金額, type: number }"),
+    ];
+    for (const source of sources) {
+      const advice = advise(source);
+      expect(advice.length).toBeGreaterThan(0);
+      expect(unwritableAdvice(advice, reference)).toEqual([]);
+    }
+  });
+});

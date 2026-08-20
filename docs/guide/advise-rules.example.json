@@ -5,7 +5,8 @@
 
   "options": {
     "no-sortable-column": { "minColumns": 4 },
-    "open-dangerous-action": { "types": ["delete", "export"] }
+    "open-dangerous-action": { "types": ["delete", "export"] },
+    "dates-without-compare": { "startWords": ["start", "from", "開始", "自"], "endWords": ["end", "to", "終了", "至"] }
   },
 
   "require": [
