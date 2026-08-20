@@ -415,7 +415,11 @@ the repository's job — and the same value appearing twice apart makes two grou
 **Printing itself is outside the framework.** Definition + rows produce a neutral
 report document; the renderer draws it at the paper's shape (a preview). Turning
 it into PDF or sending it to a printer is an opt-in adapter's job — the same
-position `QuerySpec` holds.
+position `QuerySpec` holds. `hatake_print` is that adapter (`reportPdf(page,
+rows)` returns PDF bytes; pure Dart, so a batch with no UI can print too).
+**A definition needs no change to be printed** — margins, footers and page
+numbers are a print shop's concern, not the business's, so the caller passes
+them to the adapter.
 
 ```yaml
 dsl_version: "1.0"

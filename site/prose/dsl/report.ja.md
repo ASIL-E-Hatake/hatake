@@ -75,3 +75,25 @@ totals:
 ## CSV も出せる
 
 `type: export` のアクションを置けば、帳票の列と行から CSV が出る。用紙の指定は CSV には関係しないので、小計行や改ページは CSV には現れない（明細だけが出る）。
+
+## PDF にする・プリンタに送る
+
+画面のプレビューまでが Framework の担当で、**紙に出すのは opt-in の `hatake_print`**（純 Dart）。定義は1文字も変えない。
+
+```dart
+final bytes = reportPdf(page, rows);              // PDF のバイト列
+await Printing.layoutPdf(onLayout: (_) => bytes); // プリンタに送るなら printing
+```
+
+書式（`format`）・列幅（`column.width`）・見えない列（`roles`）・枚数は**画面の帳票と同じ**規則で組まれる。画面で 3 枚に見えた帳票は 3 枚で刷られる。
+
+`column.width` は紙の上ではポイント（1pt = 1/72 inch）として使われ、指定の無い列が残りを分ける。全部足して紙幅を超えたら全体を同じ率で縮めるので、**紙から溢れることはない**（`rowsPerPage` が多いときは行の高さと文字も縮む）。
+
+余白・脚注・ページ番号は定義ではなく `PrintStyle` に書く。紙の体裁は業務ではなく印刷所の話なので、定義に持ち込まない。
+
+```dart
+reportPdf(page, rows, style: const PrintStyle(footer: '営業部 - {page}/{pages}'));
+```
+
+日本語のフォントは**埋め込まない**（PDF が数KBで済み、どこで刷っても同じバイト列になる）。代わりに書体は開いた環境が決めるので、字面まで固定したい帳票には向かない。UI が無いところ（夜間バッチ・サーバ側）でも同じ1行で刷れるのは、この割り切りのおかげ。
+
