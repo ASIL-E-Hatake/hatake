@@ -416,7 +416,10 @@ the repository's job — and the same value appearing twice apart makes two grou
 report document; the renderer draws it at the paper's shape (a preview). Turning
 it into PDF or sending it to a printer is an opt-in adapter's job — the same
 position `QuerySpec` holds. `hatake_print` is that adapter (`reportPdf(page,
-rows)` returns PDF bytes; pure Dart, so a batch with no UI can print too).
+rows)` returns PDF bytes; pure Dart, so a batch with no UI can print too). To read
+the paper before printing it, `npx hatake paper <file>` renders the same layout as
+text (so does the MCP tool `hatake_print_preview`); the coordinates come from the
+same computation, pinned by a [shared fixture](conformance/report_layout.json).
 **A definition needs no change to be printed** — margins, footers and page
 numbers are a print shop's concern, not the business's, so the caller passes
 them to the adapter.

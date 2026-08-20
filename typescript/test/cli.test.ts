@@ -1608,3 +1608,105 @@ describe("hatake fix --todo（残りを次の1往復に渡す）", () => {
     expect(io.stdout.join("\n")).toContain("ほかの所は触らないこと");
   });
 });
+
+describe("hatake paper（紙を文字で見せる）", () => {
+  const REPORT = `page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  table:
+    columns:
+      - { field: item, label: 品名, width: 200 }
+      - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+  report:
+    rowsPerPage: 30
+    totals: [{ field: amount, aggregate: sum }]
+`;
+
+  it("行を渡さなくても紙が見える（見本の行を作る）", () => {
+    const io = fakeIo({ "r.yaml": REPORT });
+    expect(runCli(["paper", "r.yaml"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("の紙 1 枚");
+    expect(out).toContain("品名");
+    expect(out).toContain("合計");
+    // 作った行であることは必ず言う（本物のデータだと読まれたら困る）。
+    expect(io.stderr.join("\n")).toContain("行は**見本**です");
+  });
+
+  it("行を渡せばその紙になる", () => {
+    const io = fakeIo({
+      "r.yaml": REPORT,
+      "rows.json": JSON.stringify([{ item: "特注品", amount: 12345 }]),
+    });
+    expect(runCli(["paper", "r.yaml", "--rows", "rows.json"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("特注品");
+    expect(out).toContain("¥12,345");
+    // 渡した行のときは見本の注記を出さない。
+    expect(io.stderr.join("\n")).not.toContain("見本");
+  });
+
+  it("--json は紙の上の座標そのもの", () => {
+    const io = fakeIo({ "r.yaml": REPORT });
+    expect(runCli(["paper", "r.yaml", "--json"], io)).toBe(0);
+    const layout = JSON.parse(io.stdout.join("\n"));
+    expect(layout.paper).toEqual({ width: 595.28, height: 841.89 });
+    expect(layout.pages).toHaveLength(1);
+    expect(layout.pages[0].items[0]).toMatchObject({ kind: "text", bold: true });
+  });
+
+  it("桁数を選べる", () => {
+    const io = fakeIo({ "r.yaml": REPORT });
+    runCli(["paper", "r.yaml", "--columns", "60"], io);
+    expect(io.stdout.join("\n")).toContain("60 桁に縮めて表示");
+  });
+
+  it("役割を渡すと、その人に見えない列は紙にも出ない", () => {
+    const io = fakeIo({
+      "r.yaml": REPORT.replace(
+        "  report:",
+        `      - { field: cost, label: 原価, type: number, roles: [manager] }
+  report:`,
+      ),
+    });
+    runCli(["paper", "r.yaml", "--role", "staff"], io);
+    expect(io.stdout.join("\n")).not.toContain("原価");
+  });
+
+  it("帳票でない定義には、そう言う", () => {
+    const io = fakeIo({ "page.yaml": GOOD });
+    expect(runCli(["paper", "page.yaml"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("帳票（type: report）の定義がありません");
+  });
+
+  it("app に帳票が2枚あれば、選ばせる（何が在るかまで言う）", () => {
+    const app = `
+app:
+  id: sales
+  title: 受注
+  pages:
+    - type: report
+      id: sales_report
+      title: 売上明細表
+      repository: orderRepository
+      table:
+        columns: [{ field: amount, label: 金額, type: number }]
+      report: { rowsPerPage: 30 }
+    - type: report
+      id: stock_report
+      title: 在庫表
+      repository: stockRepository
+      table:
+        columns: [{ field: qty, label: 数量, type: number }]
+      report: { rowsPerPage: 30 }
+`;
+    const io = fakeIo({ "app.yaml": app });
+    expect(runCli(["paper", "app.yaml"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("sales_report / stock_report");
+    const chosen = fakeIo({ "app.yaml": app });
+    expect(runCli(["paper", "app.yaml", "--page", "stock_report"], chosen)).toBe(0);
+    expect(chosen.stdout.join("\n")).toContain("在庫表");
+  });
+});

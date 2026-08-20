@@ -1,0 +1,366 @@
+{
+  "$comment": "帳票を紙に組んだ結果（PrintLayout）が、刷る側（Dart の hatake_print）と読ませる側（TypeScript）で1つも違わないこと。定義と行から座標が決まるので、ズレると『AI や人が読んだ紙』と『実際に刷った紙』が別物になる。",
+  "encoding": "1ページ = 文字列の配列。文字は `T|x|y|幅|大きさ|寄せ|太字(bold/-)|中身`、罫線は `R|x|y|幅|太さ`。並びは出た順（読み手が見る順）。数は小数2桁までで、末尾の 0 と小数点は落とす。書式を通していない数の項目は、言語をまたいで文字列にしたときの差（100 と 100.0）を避けるため整数だけを使う。",
+  "cases": [
+    {
+      "name": "明細だけ（幅の指定なし）＝残りを等分し、表題とページ番号が付く",
+      "page": {
+        "type": "report",
+        "id": "order_list",
+        "title": "受注一覧表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            },
+            {
+              "field": "qty",
+              "label": "数量",
+              "type": "number"
+            }
+          ]
+        },
+        "report": {
+          "rowsPerPage": 30
+        }
+      },
+      "rows": [
+        {
+          "orderNo": "SO-1",
+          "qty": 3
+        },
+        {
+          "orderNo": "SO-2",
+          "qty": 12
+        }
+      ],
+      "expected": [
+        [
+          "T|36|48|495.28|12|left|bold|受注一覧表",
+          "T|36|48|523.28|8|right|-|1 / 1",
+          "T|36|62|258.64|8|left|-|受注番号",
+          "T|300.64|62|258.64|8|right|-|数量",
+          "R|36|65.6|523.28|0.5",
+          "T|36|78.8|258.64|9|left|-|SO-1",
+          "T|300.64|78.8|258.64|9|right|-|3",
+          "T|36|94.8|258.64|9|left|-|SO-2",
+          "T|300.64|94.8|258.64|9|right|-|12"
+        ]
+      ]
+    },
+    {
+      "name": "幅の指定と指定なしの混在＝指定はそのまま、残りを分ける",
+      "page": {
+        "type": "report",
+        "id": "order_list",
+        "title": "受注一覧表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "width": 140
+            },
+            {
+              "field": "customer",
+              "label": "顧客"
+            },
+            {
+              "field": "qty",
+              "label": "数量",
+              "type": "number",
+              "width": 100
+            }
+          ]
+        },
+        "report": {
+          "rowsPerPage": 30
+        }
+      },
+      "rows": [
+        {
+          "orderNo": "SO-1",
+          "customer": "山田商事",
+          "qty": 3
+        }
+      ],
+      "expected": [
+        [
+          "T|36|48|495.28|12|left|bold|受注一覧表",
+          "T|36|48|523.28|8|right|-|1 / 1",
+          "T|36|62|140|8|left|-|受注番号",
+          "T|182|62|271.28|8|left|-|顧客",
+          "T|459.28|62|100|8|right|-|数量",
+          "R|36|65.6|523.28|0.5",
+          "T|36|78.8|140|9|left|-|SO-1",
+          "T|182|78.8|271.28|9|left|-|山田商事",
+          "T|459.28|78.8|100|9|right|-|3"
+        ]
+      ]
+    },
+    {
+      "name": "幅の合計が紙幅を超える＝全体を同じ率で縮めて収める",
+      "page": {
+        "type": "report",
+        "id": "order_list",
+        "title": "受注一覧表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "a",
+              "label": "あ",
+              "width": 400
+            },
+            {
+              "field": "b",
+              "label": "い",
+              "width": 400
+            }
+          ]
+        },
+        "report": {
+          "rowsPerPage": 30
+        }
+      },
+      "rows": [
+        {
+          "a": "1",
+          "b": "2"
+        }
+      ],
+      "expected": [
+        [
+          "T|36|48|495.28|12|left|bold|受注一覧表",
+          "T|36|48|523.28|8|right|-|1 / 1",
+          "T|36|62|258.64|8|left|-|あ",
+          "T|300.64|62|258.64|8|left|-|い",
+          "R|36|65.6|523.28|0.5",
+          "T|36|78.8|258.64|9|left|-|1",
+          "T|300.64|78.8|258.64|9|left|-|2"
+        ]
+      ]
+    },
+    {
+      "name": "グループ見出し・小計・総計（総計の上は二重線）",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "width": 120
+            },
+            {
+              "field": "amount",
+              "label": "金額",
+              "type": "number",
+              "format": "currency",
+              "config": {
+                "symbol": "¥"
+              }
+            }
+          ]
+        },
+        "report": {
+          "rowsPerPage": 30,
+          "sort": {
+            "field": "customer"
+          },
+          "groupBy": [
+            {
+              "field": "customer",
+              "label": "顧客"
+            }
+          ],
+          "totals": [
+            {
+              "field": "amount",
+              "aggregate": "sum"
+            },
+            {
+              "field": "amount",
+              "aggregate": "count"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "orderNo": "SO-1",
+          "customer": "山田商事",
+          "amount": 100
+        },
+        {
+          "orderNo": "SO-2",
+          "customer": "佐藤物産",
+          "amount": 250
+        }
+      ],
+      "expected": [
+        [
+          "T|36|48|495.28|12|left|bold|売上明細表",
+          "T|36|48|523.28|8|right|-|1 / 1",
+          "T|36|62|120|8|left|-|受注番号",
+          "T|162|62|397.28|8|right|-|金額",
+          "R|36|65.6|523.28|0.5",
+          "T|36|78.8|523.28|9|left|bold|顧客: 山田商事",
+          "R|36|83.6|523.28|0.4",
+          "T|36|94.8|120|9|left|-|SO-1",
+          "T|162|94.8|397.28|9|right|-|¥100",
+          "R|36|99.6|523.28|0.4",
+          "T|36|110.8|120|9|left|bold|小計",
+          "T|162|110.8|397.28|9|right|bold|¥100 / 1 件",
+          "T|36|126.8|523.28|9|left|bold|顧客: 佐藤物産",
+          "R|36|131.6|523.28|0.4",
+          "T|36|142.8|120|9|left|-|SO-2",
+          "T|162|142.8|397.28|9|right|-|¥250",
+          "R|36|147.6|523.28|0.4",
+          "T|36|158.8|120|9|left|bold|小計",
+          "T|162|158.8|397.28|9|right|bold|¥250 / 1 件",
+          "R|36|163.6|523.28|0.4",
+          "R|36|165.2|523.28|0.4",
+          "T|36|174.8|120|9|left|bold|合計",
+          "T|162|174.8|397.28|9|right|bold|¥350 / 2 件"
+        ]
+      ]
+    },
+    {
+      "name": "1枚の行数が多い＝行の高さと文字を縮めて必ず収める",
+      "page": {
+        "type": "report",
+        "id": "order_list",
+        "title": "受注一覧表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "report": {
+          "rowsPerPage": 60
+        }
+      },
+      "rows": [
+        {
+          "orderNo": "SO-1"
+        }
+      ],
+      "expected": [
+        [
+          "T|36|48|495.28|12|left|bold|受注一覧表",
+          "T|36|48|523.28|8|right|-|1 / 1",
+          "T|36|62|523.28|8|left|-|受注番号",
+          "R|36|65.6|523.28|0.5",
+          "T|36|76.21|523.28|7.63|left|-|SO-1"
+        ]
+      ]
+    },
+    {
+      "name": "権限で見えない列は組まない（幅の分け方も変わる）",
+      "page": {
+        "type": "report",
+        "id": "order_list",
+        "title": "受注一覧表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            },
+            {
+              "field": "cost",
+              "label": "原価",
+              "type": "number",
+              "roles": [
+                "manager"
+              ]
+            }
+          ]
+        },
+        "report": {
+          "rowsPerPage": 30
+        }
+      },
+      "rows": [
+        {
+          "orderNo": "SO-1",
+          "cost": 80
+        }
+      ],
+      "roles": [
+        "staff"
+      ],
+      "expected": [
+        [
+          "T|36|48|495.28|12|left|bold|受注一覧表",
+          "T|36|48|523.28|8|right|-|1 / 1",
+          "T|36|62|523.28|8|left|-|受注番号",
+          "R|36|65.6|523.28|0.5",
+          "T|36|78.8|523.28|9|left|-|SO-1"
+        ]
+      ]
+    },
+    {
+      "name": "横向き・ページ番号なし・脚注あり（列に収まらない文字は切る）",
+      "page": {
+        "type": "report",
+        "id": "order_list",
+        "title": "受注一覧表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "note",
+              "label": "備考",
+              "width": 60
+            },
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "report": {
+          "paper": {
+            "size": "A4",
+            "orientation": "landscape"
+          },
+          "rowsPerPage": 30
+        }
+      },
+      "rows": [
+        {
+          "note": "とても長い備考がここに入る",
+          "orderNo": "SO-1"
+        }
+      ],
+      "style": {
+        "pageNumber": "",
+        "footer": "営業部 - {page}/{pages}"
+      },
+      "expected": [
+        [
+          "T|36|48|769.89|12|left|bold|受注一覧表",
+          "T|36|62|60|8|left|-|備考",
+          "T|102|62|703.89|8|left|-|受注番号",
+          "R|36|65.6|769.89|0.5",
+          "T|36|78.8|60|9|left|-|とても長い…",
+          "T|102|78.8|703.89|9|left|-|SO-1",
+          "T|36|567.28|769.89|8|left|-|営業部 - 1/1"
+        ]
+      ]
+    }
+  ]
+}

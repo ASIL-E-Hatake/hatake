@@ -11,10 +11,15 @@ import { parse as parseYamlText } from "yaml";
 import { deriveDto } from "./dto.js";
 import { diffDefinitions } from "./defDiff.js";
 import { renderExplain } from "./explain.js";
-import { explainSource } from "./explainSource.js";
+import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
 import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
 import { briefSource, renderBrief } from "./explainBrief.js";
 import { minimizeSource } from "./minimize.js";
+import { buildReport } from "./report.js";
+import { layoutReport } from "./reportLayout.js";
+import { renderPaperText } from "./paperText.js";
+import { sampleRows } from "./sampleRows.js";
+import { type ReportPageDefinition } from "./definition.js";
 import { fixSource, fixTodo } from "./fix.js";
 import {
   collectRefs,
@@ -77,12 +82,14 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 4. 書けたら必ず hatake_validate にかける（知らないキーは黙って捨てられるので、書いた気になって効いていない事故が起きる）
    問題が出たら hatake_fix に通す（綴り違いのような**一意な直し**は自分で書き直さない。別の所を壊す）
    そのあと hatake_explain で読み返す（**書いたものが意図どおりか**は、警告では分からない）
-5. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
-6. バックエンドの形が要るなら hatake_api_shape
-7. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
+5. **帳票（type: report）を書いたら hatake_print_preview**（刷ったらどう見えるかを文字で返す。
+   列の並び・小計の位置・切れた文字は、explain では分からない）
+6. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
+7. バックエンドの形が要るなら hatake_api_shape
+8. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
    直した内容を人に伝えるときは hatake_explain に before を渡す（変更を画面の言葉で言い直す）
-8. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグインの一覧）
-9. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
+9. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグインの一覧）
+10. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
 
 原則: Flutter の Widget や API のコードを手で書かず、定義を書く。定義に無い機能は
 DSL の拡張（プラグイン）で足す。`;
@@ -481,6 +488,97 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             : `${found.fix}（実際に同じ書き方で転んだ例がある: ${found.id}）`;
         };
         return pretty({ ...result, todo: fixTodo(result, hint) });
+      },
+    },
+    {
+      name: "hatake_print_preview",
+      title: "帳票を刷ったらどう見えるかを文字で返す",
+      description:
+        "帳票（type: report）を**紙に組んで、その紙を文字で**返す。AI は画面も紙も見られないので、" +
+        "書いた帳票が意図どおりに刷れるかを確かめる手が他に無い（hatake_validate は綴りと構造、" +
+        "hatake_explain は「何ができる画面か」しか言わない）。読めるのは" +
+        "**列の並び・列の幅の分かれ方・グループ見出しと小計の位置・総計の二重線・" +
+        "右寄せが効いているか・列に収まらず切れた文字（末尾が … になる）・紙が何枚になるか**。" +
+        "rows を渡さなければ**見本の行を作る**（定義の項目名と型から。データが無いと紙を見られない、" +
+        "では確かめられないので）。作った行のときは、出力の最後にそう書く。" +
+        "座標は刷る側（opt-in の hatake_print が PDF/プリンタに出すもの）と**同じ計算**なので、" +
+        "ここで見た紙と刷った紙は同じ（共有フィクスチャで縛っている）。" +
+        "紙に入らない定義（列幅の合計が紙幅を超える等）は hatake_validate が警告で言う。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description: "定義の中身そのもの（page: でも app: でも可）。",
+          },
+          page: {
+            type: "string",
+            description:
+              "app: に帳票が2枚以上あるとき、どれを見るか（ページ id）。1枚なら省略できる。",
+          },
+          rows: {
+            type: "array",
+            description:
+              "刷る行（オブジェクトの配列）。省略すると見本の行を作る。" +
+              "グループのある帳票は、グループの項目で並んだ行を渡すこと（コントロールブレイク）。",
+            items: { type: "object" },
+          },
+          role: {
+            type: "string",
+            description:
+              "その紙を刷る人の役割。**その人に見えない列は紙にも出ない**（roles を書いた列の確認に使う）。",
+          },
+          columns: {
+            type: "number",
+            description: "紙の幅を何桁で表すか（既定 110）。狭くすると読みやすく、粗くなる。",
+          },
+        },
+        required: ["source"],
+      },
+      run(args) {
+        const source = required(args, "source");
+        const wanted = str(args, "page");
+        const pages = isAppSource(source)
+          ? parseAppSource(source).pages
+          : [parsePageYaml(source, { strict: true })];
+        const reports = pages.filter(
+          (one): one is ReportPageDefinition => one.kind === "report",
+        );
+        if (reports.length === 0) {
+          throw new Error("帳票（type: report）の定義がありません。");
+        }
+        const page =
+          wanted === undefined
+            ? reports[0]
+            : reports.find((one) => one.id === wanted);
+        if (page === undefined) {
+          throw new Error(
+            `帳票 "${wanted}" はありません（${reports.map((one) => one.id).join(" / ")}）。`,
+          );
+        }
+        if (wanted === undefined && reports.length > 1) {
+          throw new Error(
+            `帳票が ${reports.length} 枚あります。page で選んでください` +
+              `（${reports.map((one) => one.id).join(" / ")}）。`,
+          );
+        }
+        const given = Array.isArray(args.rows)
+          ? (args.rows as Record<string, unknown>[])
+          : undefined;
+        const rows = given ?? sampleRows(page);
+        const role = str(args, "role");
+        const columns =
+          typeof args.columns === "number" ? args.columns : undefined;
+        const text = renderPaperText(
+          layoutReport(page, buildReport(page.report, rows), {
+            roles: role === undefined ? [] : [role],
+          }),
+          columns === undefined ? {} : { columns },
+        );
+        return given === undefined
+          ? `${text}\n\n※ 行は**見本**です（定義の項目名と型から作ったそれらしい値）。` +
+              "本物のデータで見るなら rows に行の配列を渡してください。"
+          : text;
       },
     },
     {

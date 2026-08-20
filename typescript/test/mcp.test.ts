@@ -91,6 +91,7 @@ describe("MCP プロトコル", () => {
       "hatake_diff",
       "hatake_explain",
       "hatake_fix",
+      "hatake_print_preview",
       "hatake_minimize",
       "hatake_refs",
       "hatake_api_shape",
@@ -603,3 +604,44 @@ describe("道具の一覧と説明", () => {
 // 型だけの確認（返り値の形を間違えるとクライアントが黙って無視する）。
 const _shape: JsonRpcMessage = { jsonrpc: "2.0", id: 1, result: {} };
 void _shape;
+
+describe("hatake_print_preview", () => {
+  const REPORT = `page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  table:
+    columns:
+      - { field: item, label: 品名, width: 200 }
+      - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+  report:
+    rowsPerPage: 30
+    totals: [{ field: amount, aggregate: sum }]
+`;
+
+  it("紙を文字で返す（行を渡さなければ見本を作り、そう書く）", () => {
+    const { text, isError } = call("hatake_print_preview", { source: REPORT });
+    expect(isError).toBeFalsy();
+    expect(text).toContain("の紙 1 枚");
+    expect(text).toContain("合計");
+    expect(text).toContain("行は**見本**です");
+  });
+
+  it("行を渡せばその紙になる（見本の注記は出さない）", () => {
+    const { text } = call("hatake_print_preview", {
+      source: REPORT,
+      rows: [{ item: "特注品", amount: 12345 }],
+    });
+    expect(text).toContain("特注品");
+    expect(text).toContain("¥12,345");
+    expect(text).not.toContain("見本");
+  });
+
+  it("帳票でなければ失敗として返す", () => {
+    const { isError } = call("hatake_print_preview", {
+      source: "page: { type: crud, id: x, title: X, repository: xRepository }",
+    });
+    expect(isError).toBe(true);
+  });
+});

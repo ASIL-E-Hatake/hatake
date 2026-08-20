@@ -52,6 +52,11 @@ import {
   reviewMarkdown,
 } from "./explainMarkdown.js";
 import { readGitPair } from "./gitRange.js";
+import { buildReport } from "./report.js";
+import { layoutReport } from "./reportLayout.js";
+import { renderPaperText } from "./paperText.js";
+import { sampleRows } from "./sampleRows.js";
+import { printStyle } from "./printStyle.js";
 import {
   DEFINITION_EXTENSIONS,
   harvestFailures,
@@ -93,7 +98,10 @@ import {
 } from "./reference.js";
 import { toJsonSchema } from "./jsonSchema.js";
 import { toOpenApi } from "./openApi.js";
-import { type PageDefinition } from "./definition.js";
+import {
+  type PageDefinition,
+  type ReportPageDefinition,
+} from "./definition.js";
 import {
   DefinitionParseError,
   parsePageYaml,
@@ -246,6 +254,13 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       要るもの」だけ。出力はそのまま --registry に渡せる形。
       --unused は**逆向き**＝登録してあるのに、どの定義も使っていないものを出す
       （登録済みの一覧が要る。消し忘れた登録は「使われている」と誤解される）。
+
+  hatake paper <file> [--page <id>] [--rows rows.json] [--role admin]
+              [--columns 110] [--json]
+      帳票を「刷ったらどう見えるか」に開く（文字で）。列の並び・小計の位置・
+      切れた文字・右寄せが読める。**行を渡さなければ見本の行を作る**（データが
+      無いと紙を見られない、では誰も確かめない）。--json で紙の上の座標そのもの。
+      刷る（PDF/プリンタ）のは opt-in の hatake_print で、同じ座標を使う。
 
   hatake dto <file> [--json]
       API の形（DtoSpec）を出す。
@@ -416,6 +431,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return screenIndex(positional, flags, io);
       case "diagram":
         return diagram(positional, flags, io);
+      case "paper":
+        return paper(positional, flags, io);
       case "types":
         return types(positional, flags, io);
       case "new":
@@ -1343,6 +1360,97 @@ function readDocument(file: string, io: CliIo): Record<string, unknown> {
 function readSource(source: string, where: string): Record<string, unknown> {
   parseDefinition(source, where, { strict: true });
   return parseYamlText(source) as Record<string, unknown>;
+}
+
+/**
+ * 帳票を「刷ったらどう見えるか」に開く（文字で）。
+ *
+ * 刷るのは Dart 版（`hatake_print`）。ここは**読ませるため**に同じ座標を組んで文字に
+ * 落とす。列の並び・小計の位置・切れた文字・右寄せは、座標を見れば分かる。
+ *
+ * 行を渡さなければ**見本の行を作る**（データを用意しないと紙が見られない、では
+ * 誰も確かめない）。作った行であることは必ず言う。
+ */
+function paper(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("帳票の定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const page = reportPageOf(io.readFile(files[0]), str(flags, "page"), io);
+  if (page === null) return 1;
+
+  const rowsFile = str(flags, "rows");
+  let rows: Record<string, unknown>[];
+  if (rowsFile === undefined) {
+    rows = sampleRows(page);
+  } else {
+    const parsed = JSON.parse(io.readFile(rowsFile));
+    if (!Array.isArray(parsed)) {
+      io.err("--rows には行の配列（JSON）を渡してください。");
+      return 1;
+    }
+    rows = parsed as Record<string, unknown>[];
+  }
+
+  const role = str(flags, "role");
+  const layout = layoutReport(page, buildReport(page.report, rows), {
+    roles: role === undefined ? [] : [role],
+    style: printStyle(),
+  });
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(layout, null, 2));
+    return 0;
+  }
+  const columns = Number.parseInt(str(flags, "columns") ?? "110", 10);
+  io.out(renderPaperText(layout, { columns: Number.isNaN(columns) ? 110 : columns }));
+  if (rowsFile === undefined) {
+    io.err("");
+    io.err(
+      "※ 行は**見本**です（定義の項目名と型から作ったそれらしい値）。" +
+        "本物のデータで見るなら --rows に行の配列（JSON）を渡してください。",
+    );
+  }
+  return 0;
+}
+
+/**
+ * 帳票のページを1枚取り出す。
+ *
+ * `app:` なら `--page` で選ぶ。帳票が1枚しか無ければ選ばなくてよい（そこで手間を
+ * 取らせる意味がない）。何が在るかまで言って落ちる。
+ */
+function reportPageOf(
+  source: string,
+  wanted: string | undefined,
+  io: CliIo,
+): ReportPageDefinition | null {
+  const pages: PageDefinition[] = isAppSource(source)
+    ? parseAppSource(source).pages
+    : [parsePageYaml(source, { strict: true })];
+  const reports = pages.filter(
+    (page): page is ReportPageDefinition => page.kind === "report",
+  );
+  if (reports.length === 0) {
+    io.err("帳票（type: report）の定義がありません。");
+    return null;
+  }
+  if (wanted === undefined) {
+    if (reports.length === 1) return reports[0];
+    io.err(
+      `帳票が ${reports.length} 枚あります。--page で選んでください` +
+        `（${reports.map((one) => one.id).join(" / ")}）。`,
+    );
+    return null;
+  }
+  const found = reports.find((one) => one.id === wanted);
+  if (found === undefined) {
+    io.err(
+      `帳票 "${wanted}" はありません（${reports.map((one) => one.id).join(" / ")}）。`,
+    );
+    return null;
+  }
+  return found;
 }
 
 function types(files: string[], flags: Args["flags"], io: CliIo): number {

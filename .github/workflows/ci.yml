@@ -410,6 +410,54 @@ jobs:
           # 同梱の帳票の例は、当然どちらも言われないこと（誤検出しない）。
           node dist/cli.js validate --warn-as-error ../spec/examples/sales_report.yaml
 
+      - name: Show the paper (a report as text, for a human or an AI)
+        working-directory: typescript
+        run: |
+          set -e
+          # 刷るのは Dart 版。TS 版は同じ座標を組んで**文字で見せる**（AI は紙を見られない）。
+          # 行を渡さなくても見えること（見本の行を作る）と、そう書くこと。
+          node dist/cli.js paper ../spec/examples/sales_report.yaml --columns 100 \
+            > /tmp/paper.log 2> /tmp/paper.err
+          grep -q '595.28 x 841.89pt の紙' /tmp/paper.log
+          # 同梱の例は得意先ごとに改ページするので、紙は複数枚になる。
+          grep -q -- '--- 2 枚目 ---' /tmp/paper.log
+          grep -q '顧客: ' /tmp/paper.log
+          grep -q '小計' /tmp/paper.log
+          grep -q '行は\*\*見本\*\*です' /tmp/paper.err
+          # 右寄せの数は右端が揃うこと（揃っていなければ、揃っているかを読めない）。
+          # 数えるのは**表示幅**（全角は2桁）。文字数で数えると、全角の数が違う行
+          # （小計の「件」）だけズレて見える。
+          node -e "
+            const fs = require('fs');
+            const half = (c) => {
+              const x = c.codePointAt(0);
+              return (x >= 0x20 && x <= 0x7e) || (x >= 0xff61 && x <= 0xffdc) ||
+                (x >= 0xffe8 && x <= 0xffee);
+            };
+            const cells = (s) => [...s].reduce((n, c) => n + (half(c) ? 1 : 2), 0);
+            const ends = fs.readFileSync('/tmp/paper.log', 'utf8').split('\n')
+              .filter((line) => line.includes('¥'))
+              .map((line) => cells(line.trimEnd()));
+            const uniq = [...new Set(ends)];
+            if (ends.length < 3 || uniq.length !== 1) {
+              console.error('右端が揃っていない: ' + JSON.stringify(uniq));
+              process.exit(1);
+            }
+          "
+          # 本物の行を渡したときは、見本の注記を出さないこと。
+          printf '%s' '[{"orderNo":"SO-1","orderDate":"2026-04-01","status":"出荷済","customer":"山田商事","amount":1234}]' > /tmp/rows.json
+          node dist/cli.js paper ../spec/examples/sales_report.yaml --rows /tmp/rows.json \
+            > /tmp/paper2.log 2> /tmp/paper2.err
+          grep -q '¥1,234' /tmp/paper2.log
+          if grep -q '見本' /tmp/paper2.err; then
+            echo "渡した行なのに見本と言っている"; exit 1
+          fi
+          # 帳票でない定義には、そう言って落ちること。
+          if node dist/cli.js paper ../spec/examples/customer_master.yaml 2> /tmp/paper3.err; then
+            echo "帳票でない定義を通してしまった"; exit 1
+          fi
+          grep -q '帳票（type: report）の定義がありません' /tmp/paper3.err
+
       - name: A definition compared with itself is compatible
         working-directory: typescript
         run: |

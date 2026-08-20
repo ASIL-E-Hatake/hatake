@@ -387,7 +387,9 @@ page:
 Framework が作り、Renderer はそれを用紙の比率で描く（プレビュー）。PDF 化や
 プリンタ送出は opt-in アダプタの領分（`QuerySpec` と同じ立ち位置）。実装は
 `hatake_print`（`reportPdf(page, rows)` で PDF のバイト列。純 Dart なので UI が
-無い所でも刷れる）。**定義は印刷のために1文字も変わらない**＝紙の体裁（余白・
+無い所でも刷れる）。**刷る前に紙を見る**なら `npx hatake paper <file>`（紙の上の座標を
+文字にして返す。MCP の `hatake_print_preview` も同じ）＝座標は刷る側と同じ計算で、
+[共有フィクスチャ](conformance/report_layout.json)が一致を縛っている。**定義は印刷のために1文字も変わらない**＝紙の体裁（余白・
 脚注・ページ番号）は業務ではなく印刷所の話なので、アダプタを呼ぶ側が渡す。
 
 ```yaml
