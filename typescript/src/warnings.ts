@@ -16,7 +16,7 @@
 
 import { appAccess, describeAudience, nobodyCanOpen } from "./appAccess.js";
 import { ConditionOperators } from "./conditionEvaluator.js";
-import { AggregateOps, ValidatorTypes } from "./definition.js";
+import { ActionTypes, AggregateOps, ValidatorTypes } from "./definition.js";
 import {
   builtInNames,
   collectRefs,
@@ -361,6 +361,7 @@ function checkPage(
   );
 
   checkActions(actions, `${path}.actions`, pageIds, found);
+  checkPrint(page, actions, path, found);
   checkTable(page, actionIds, path, found);
   checkSearch(page, path, found);
   checkForm(page, path, found);
@@ -396,6 +397,39 @@ function checkActions(
     if (onSuccess !== undefined) {
       checkTarget(str(onSuccess.page), `${at}.onSuccess.page`, pageIds, found);
     }
+  });
+}
+
+/**
+ * 紙の無い画面に置いた印刷ボタン。
+ *
+ * `type: print` が刷るのは**帳票**。紙の形（用紙・1枚の行数・グループ・小計）は
+ * `report` が決めているので、`report` が無い画面には刷るものが無い。定義としては
+ * 通る（アクションの型は開いた文字列＝プラグインで足せる）ので、**ボタンは出て、
+ * 押すと「このページでは刷れません」と言われる**。押すまで分からないのは遅い。
+ *
+ * 一覧を持ち出したいだけなら `type: export`（CSV）で、そちらはどのページでも動く。
+ */
+function checkPrint(
+  page: Dict,
+  actions: Dict[],
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  if (isDict(page.report)) return;
+  actions.forEach((action, i) => {
+    if (str(action.type) !== ActionTypes.print) return;
+    const label = str(action.label) ?? str(action.id) ?? "印刷";
+    warn(
+      found,
+      "print-without-report",
+      `${path}.actions[${i}].type`,
+      `「${label}」は紙に刷るボタンですが、この画面には report がありません。` +
+        `刷る紙が無いので、押しても何も出ません。`,
+      "帳票の画面（`type: report` ＋ `report:`）に置いてください。" +
+        "一覧をファイルに持ち出すだけなら `type: export`（CSV）です。",
+      "print-without-report",
+    );
   });
 }
 

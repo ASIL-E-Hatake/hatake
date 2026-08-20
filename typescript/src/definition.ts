@@ -595,6 +595,8 @@ export const ActionTypes = {
   plugin: "plugin",
   /** Build the page's rows as a document (CSV); writing it out is the app's. */
   export: "export",
+  /** Put the page's report on paper; making the bytes is an opt-in adapter's. */
+  print: "print",
   navigate: "navigate",
 } as const;
 

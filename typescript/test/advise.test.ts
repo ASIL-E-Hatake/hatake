@@ -92,6 +92,17 @@ describe("書き足したほうがいい所", () => {
     );
   });
 
+  it("紙に刷るボタンも持ち出しの口として数える", () => {
+    // 画面の外に出たものは取り戻せない。紙も同じ（消す・CSV と並べて言う）。
+    const source = crud({
+      actions: "    - { id: printPdf, type: print, label: 印刷 }",
+    });
+    expect(rules(source)).toContain("open-dangerous-action");
+    expect(
+      advise(source).find((a) => a.rule === "open-dangerous-action")?.says,
+    ).toContain("紙で持ち出せます");
+  });
+
   it("roles を書いてあれば言わない", () => {
     const source = crud({
       actions: "    - { id: remove, type: delete, label: 削除, roles: [admin] }",

@@ -142,12 +142,12 @@ function doorEntries(app: Dict): { page: string; entry: AccessEntry }[] {
   return found;
 }
 
-/** 危ない操作（消す・持ち出す）を、権限で絞らずに置いているボタンのラベル。 */
+/** 危ない操作（消す・持ち出す・紙に出す）を、権限で絞らずに置いているボタンのラベル。 */
 function openDangerOf(page: Dict): string[] {
   const found: string[] = [];
   for (const action of list(page.actions).filter(isDict)) {
     const type = str(action.type) ?? "";
-    if (type !== "delete" && type !== "export") continue;
+    if (type !== "delete" && type !== "export" && type !== "print") continue;
     if (strings(action.roles).length > 0) continue;
     found.push(str(action.label) ?? str(action.id) ?? type);
   }

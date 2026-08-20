@@ -47,7 +47,7 @@ class _MaterialReportPage extends StatelessWidget {
                     Text(definition.title, style: theme.textTheme.headlineSmall),
               ),
               ..._pageActionButtons(context, definition.actions, controller,
-                  onExport: _export),
+                  onExport: _export, onPrint: _print),
             ],
           ),
           const SizedBox(height: 12),
@@ -74,6 +74,20 @@ class _MaterialReportPage extends StatelessWidget {
       rows: (_) async => controller.rows,
       formatters: formatters,
       fallbackName: definition.title,
+    );
+  }
+
+  /// `type: print` hands the paper's contents to the scope's print sink. The
+  /// screen already draws the sheet at the paper's shape; this is the same
+  /// report going out the other exit, so it prints **the rows on screen** and
+  /// re-reads nothing.
+  Future<bool> _print(BuildContext context, ActionDefinition action) {
+    return _runPrintAction(
+      context,
+      action,
+      page: definition,
+      rows: controller.rows,
+      formatters: formatters,
     );
   }
 

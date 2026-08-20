@@ -198,6 +198,8 @@ function checkBuiltins(
   const dangerous: string[] = knob(rules, "open-dangerous-action", "types", [
     "delete",
     "export",
+    // 紙も持ち出しの口（画面の外に出たものは取り戻せない）。
+    "print",
   ]);
   for (const [index, action] of actions.entries()) {
     const type = str(action.type) ?? "";
@@ -213,7 +215,9 @@ function checkBuiltins(
           ? "（消したものは戻りません）。"
           : type === "export"
             ? "（データを持ち出せます）。"
-            : "。"),
+            : type === "print"
+              ? "（紙で持ち出せます）。"
+              : "。"),
       add: "`roles` で見える人を決める（権限はアプリ側の判定と合わせて二重にかける）。",
       key: "roles",
       node: "action",

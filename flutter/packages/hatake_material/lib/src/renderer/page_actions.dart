@@ -4,8 +4,10 @@ part of '../material_renderer.dart';
 ///
 /// Every page kind declares `actions`; this keeps the button row and the
 /// dispatch in one place instead of once per page renderer.
-/// Handles an `export` action for a page that has rows to export.
-typedef _ExportRunner = Future<bool> Function(
+/// Runs an action that needs the page's own data — `export` (rows to a file)
+/// and `print` (a report to paper). The page hands one of these in, so the
+/// dispatch below never has to know which page kind it is looking at.
+typedef _PageDataRunner = Future<bool> Function(
   BuildContext context,
   ActionDefinition action,
 );
@@ -15,7 +17,8 @@ List<Widget> _pageActionButtons(
   List<ActionDefinition> actions,
   ChangeNotifier controller, {
   DataRecord? record,
-  _ExportRunner? onExport,
+  _PageDataRunner? onExport,
+  _PageDataRunner? onPrint,
 }) {
   final roles = HatakeScope.of(context).roles;
   return [
@@ -24,7 +27,7 @@ List<Widget> _pageActionButtons(
         FilledButton(
           key: Key('hatake.action.${action.id}'),
           onPressed: () => _runPageAction(context, action, controller,
-              record: record, onExport: onExport),
+              record: record, onExport: onExport, onPrint: onPrint),
           child: Text(action.label),
         ),
         const SizedBox(width: 8),
@@ -42,13 +45,17 @@ Future<void> _runPageAction(
   ActionDefinition action,
   ChangeNotifier controller, {
   DataRecord? record,
-  _ExportRunner? onExport,
+  _PageDataRunner? onExport,
+  _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
 }) async {
   if (!await _confirmAction(context, action.confirm)) return;
   if (!context.mounted) return;
   if (!await _dispatchAction(context, action, controller,
-      record: record, onExport: onExport, onCreate: onCreate)) {
+      record: record,
+      onExport: onExport,
+      onPrint: onPrint,
+      onCreate: onCreate)) {
     return;
   }
   if (!context.mounted) return;
@@ -62,7 +69,8 @@ Future<bool> _dispatchAction(
   ActionDefinition action,
   ChangeNotifier controller, {
   DataRecord? record,
-  _ExportRunner? onExport,
+  _PageDataRunner? onExport,
+  _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
 }) async {
   if (action.type == ActionTypes.create) {
@@ -108,6 +116,17 @@ Future<bool> _dispatchAction(
       return false;
     }
     return onExport(context, action);
+  }
+  if (action.type == ActionTypes.print) {
+    // 刷れるのは帳票だけ（紙の形は report が決めるので、report が無ければ紙が無い）。
+    if (onPrint == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('アクション "${action.id}" はこのページでは刷れません'
+            '（type: print は帳票の画面だけ）')),
+      );
+      return false;
+    }
+    return onPrint(context, action);
   }
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text('アクション "${action.id}" は未実装です')),

@@ -205,7 +205,8 @@ describe("見えるもの・できること", () => {
       page({
         actions: `    - { id: remove, type: delete, label: 削除,
         onSuccess: { message: 消しました } }
-    - { id: detail, type: navigate, label: 詳細, page: customer_detail }`,
+    - { id: detail, type: navigate, label: 詳細, page: customer_detail }
+    - { id: printPdf, type: print, label: 印刷 }`,
       }),
       "できる操作",
     );
@@ -213,6 +214,7 @@ describe("見えるもの・できること", () => {
       "削除 … 削除する。押すと確認を出す（削除は既定で確認する）。終わったら「消しました」と出す",
     );
     expect(text[1]).toBe("詳細 … 別の画面へ移る（customer_detail へ）");
+    expect(text[2]).toBe("印刷 … 紙に刷る");
   });
 
   it("行ごとの操作は、宣言されたボタンのラベルで言う", () => {

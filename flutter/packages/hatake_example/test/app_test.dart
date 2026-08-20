@@ -84,6 +84,8 @@ void main() {
     expect(report.report.totals.map((t) => t.aggregate),
         [AggregateOps.sum, AggregateOps.count]);
     expect(report.actions.any((a) => a.type == ActionTypes.export), isTrue);
+    // 同じ紙を CSV でも紙でも出せる（刷るのは opt-in の hatake_print）。
+    expect(report.actions.any((a) => a.type == ActionTypes.print), isTrue);
 
     // The order list exports the same columns it shows.
     final search = app.pageById('order_search') as SearchPageDefinition;

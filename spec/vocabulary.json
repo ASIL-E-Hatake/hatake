@@ -167,6 +167,7 @@
     "delete": { "ja": "削除する", "en": "deletes" },
     "navigate": { "ja": "別の画面へ移る", "en": "goes to another screen" },
     "export": { "ja": "内容をファイルに出す", "en": "exports to a file" },
+    "print": { "ja": "紙に刷る", "en": "prints to paper" },
     "plugin": { "ja": "アプリ側の処理を呼ぶ", "en": "calls the application's own code" }
   },
   "aggregates": {

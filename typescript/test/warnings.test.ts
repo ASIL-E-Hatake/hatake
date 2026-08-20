@@ -816,3 +816,46 @@ describe("同梱の資料との辻褄", () => {
     expect([...ConditionOperators].sort()).toEqual([...declared!].sort());
   });
 });
+
+describe("紙の無い画面の印刷ボタン", () => {
+  it("report が無い画面の type: print を指摘する", () => {
+    const found = warningsOf(`
+page:
+  type: crud
+  id: order_list
+  title: 受注一覧
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - { id: printPdf, type: print, label: 印刷 }
+`);
+    const print = found.find((w) => w.rule === "print-without-report");
+    expect(print?.path).toBe("page.actions[0].type");
+    expect(print?.message).toContain("「印刷」");
+    expect(print?.message).toContain("report がありません");
+    // 持ち出したいだけなら CSV がある、まで言う（直し方が2つあるので）。
+    expect(print?.fix).toContain("type: export");
+    // 対照表が引ける（間違い → 正しい書き方）。
+    expect(print?.pitfall).toBe("print-without-report");
+  });
+
+  it("帳票に置いた印刷ボタンには何も言わない", () => {
+    expect(
+      rulesOf(`
+page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  table:
+    columns: [{ field: amount, label: 金額, type: number }]
+  report:
+    rowsPerPage: 30
+  actions:
+    - { id: printPdf, type: print, label: 印刷, config: { filename: 売上明細 } }
+`),
+    ).toEqual([]);
+  });
+});

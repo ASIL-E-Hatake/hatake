@@ -10,6 +10,7 @@ import 'export_dialog.dart';
 import 'order_line_repository.dart';
 import 'order_repository.dart';
 import 'playground.dart';
+import 'print_dialog.dart';
 import 'product_repository.dart';
 
 Future<void> main() async {
@@ -93,6 +94,14 @@ class HatakeExampleApp extends StatelessWidget {
           final context = navigatorKey.currentContext;
           if (context == null) return;
           await ExportDialog.show(context, request);
+        },
+        // Where `type: print` actions send their report. The framework hands
+        // over the paper's contents; making the PDF is the opt-in adapter
+        // (hatake_print), and getting it to a printer or a file is this app's.
+        printSink: (request) async {
+          final context = navigatorKey.currentContext;
+          if (context == null) return;
+          await PrintDialog.show(context, request);
         },
         // Plugin action: each page declares
         //   { type: plugin, plugin: showDefinition, config: { page: <id> } }

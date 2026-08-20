@@ -713,6 +713,49 @@
         "            required: true",
         "            visibleWhen: { field: kind, value: corp }"
       ]
+    },
+    {
+      "id": "print-without-report",
+      "keys": [
+        "actions",
+        "report"
+      ],
+      "pageKinds": [
+        "crud",
+        "master",
+        "search",
+        "detail",
+        "form",
+        "wizard",
+        "dashboard"
+      ],
+      "wrong": {
+        "ja": "一覧の画面に `type: print` の印刷ボタンを置く",
+        "en": "Putting a `type: print` button on a list screen"
+      },
+      "why": {
+        "ja": "紙の形（用紙・1枚の行数・グループ・小計）を決めているのは `report` なので、`report` の無い画面には刷るものが無い。定義は通り、ボタンも出るが、押すと「このページでは刷れません」と言われる（押すまで分からない）。",
+        "en": "The shape of the paper — sheet size, lines per sheet, groups, totals — comes from `report`, so a screen without one has nothing to print. The definition parses and the button appears, but pressing it only reports that this page cannot print."
+      },
+      "fix": {
+        "ja": "印刷は帳票（`type: report`）に置く。一覧をそのまま持ち出したいなら `type: export`（CSV）で、こちらはどの画面でも動く。",
+        "en": "Put printing on a report page (`type: report`). To take a list away as a file, use `type: export` (CSV) instead — that works on any screen."
+      },
+      "good": [
+        "page:",
+        "  type: report",
+        "  id: sales_report",
+        "  title: 売上明細表",
+        "  repository: orderRepository",
+        "  table:",
+        "    columns:",
+        "      - { field: amount, label: 金額, type: number }",
+        "  report:",
+        "    paper: { size: A4 }",
+        "    rowsPerPage: 30",
+        "  actions:",
+        "    - { id: printPdf, type: print, label: 印刷 }"
+      ]
     }
   ]
 }
