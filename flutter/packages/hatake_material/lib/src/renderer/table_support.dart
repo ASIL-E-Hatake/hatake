@@ -20,3 +20,69 @@ Widget _sizedColumn(ColumnDefinition column, Widget child) {
     ),
   );
 }
+
+/// 一括実行のための行の選択。
+///
+/// `DataTable` は `DataRow.onSelectChanged` を渡すとチェックボックス列と全選択を
+/// 自分で描くので、ここが持つのは**何を選んだか**だけ。
+///
+/// 覚えるのはキーで、渡すのは行そのもの（[pick]）。行が入れ替わったら選択は捨てる
+/// （[syncRows]）＝検索し直した・ページを変えた・一括実行後に読み直した後で、
+/// 画面に無い行に対して実行できてしまうのを防ぐ。
+class _RowSelection {
+  final Set<Object?> _keys = {};
+
+  /// 選択を採った時点の行。入れ替わりの判定にだけ使う（中身は見ない）。
+  List<DataRecord>? _rows;
+
+  bool get isEmpty => _keys.isEmpty;
+
+  bool has(Object? key) => _keys.contains(key);
+
+  void toggle(Object? key, {required bool selected, required List<DataRecord> rows}) {
+    _rows = rows;
+    if (selected) {
+      _keys.add(key);
+    } else {
+      _keys.remove(key);
+    }
+  }
+
+  /// いま画面に出ている行のうち、選ばれているもの。
+  List<DataRecord> pick(List<DataRecord> rows, String keyField) =>
+      [for (final row in rows) if (_keys.contains(row[keyField])) row];
+
+  /// 行が入れ替わっていたら選択を捨てる。捨てたかどうかを返す（再描画の判断用）。
+  bool syncRows(List<DataRecord> rows) {
+    if (_rows == null || identical(_rows, rows)) return false;
+    _rows = rows;
+    if (_keys.isEmpty) return false;
+    _keys.clear();
+    return true;
+  }
+
+  void clear() => _keys.clear();
+}
+
+/// この画面に「選んだ行に対して実行する」ボタンが在るか。
+///
+/// 在るかどうかで表が選択可能になる＝**チェックボックスだけ出て何もできない**、
+/// **一括ボタンだけ出て選べない**、のどちらも書けない形にしてある。
+bool _hasSelectionAction(List<ActionDefinition> actions, Set<String> roles) {
+  return actions.any(
+    (a) => a.scope == ActionScopes.selection && isAllowed(a.roles, roles),
+  );
+}
+
+/// 一括ボタンの見せ方。選んだ件数を出す（0 件なら押せない）。
+Widget _bulkButton({
+  required ActionDefinition action,
+  required int count,
+  required VoidCallback onPressed,
+}) {
+  return FilledButton(
+    key: Key('hatake.action.${action.id}'),
+    onPressed: count == 0 ? null : onPressed,
+    child: Text(count == 0 ? action.label : '${action.label}（$count 件）'),
+  );
+}

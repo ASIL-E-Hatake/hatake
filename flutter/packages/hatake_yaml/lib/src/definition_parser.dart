@@ -469,6 +469,7 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
     id: m.reqString('id', at: 'action.id'),
     type: m.reqString('type', at: 'action.type'),
     label: m.reqString('label', at: 'action.label'),
+    scope: m.optString('scope') ?? ActionScopes.page,
     plugin: m.optString('plugin'),
     confirm: _parseConfirm(m.optMap('confirm')),
     onSuccess: _parseActionSuccess(m.optMap('onSuccess')),

@@ -578,6 +578,48 @@ HatakeScope(
 座標は刷る側と同じ計算で、[共有フィクスチャ](conformance/report_layout.json)が一致を
 縛っている）。
 
+## まとめて実行する（`scope: selection`）
+
+`action` に `scope: selection` を書くと、**その画面の表にチェックボックスが出る**。
+押したときにハンドラが受け取るのは、選ばれた**行そのもの**。
+
+```yaml
+table:
+  columns:
+    - { field: orderNo, label: 受注番号 }
+    - { field: status, label: 状態, type: badge }
+actions:
+  - id: approveSelected
+    type: plugin
+    plugin: approveOrders
+    label: 一括承認
+    scope: selection
+    confirm: { message: 選んだ受注を承認します }
+```
+
+| 決めごと | なぜ |
+|---|---|
+| **選べるようになるのは、一括のボタンが在るときだけ** | 別のキーで表を選択可能にすると、「チェックボックスは出るが何もできない表」と「一括ボタンは出るが選べない画面」の2つが書けてしまう。片方だけでは意味が無いので、1つの宣言にした |
+| **選ぶまで押せない**（件数がラベルに出る） | 押しても何も起きないボタンは、画面が壊れていると教える |
+| **行が入れ替わったら選択は消える** | 検索し直した・ページを変えた・実行後に読み直した後で、**画面に無い行に対して実行できてしまう**のが一番危ない |
+| **実行できたら選択は解ける** | 同じ行に二度実行するのは、まず事故 |
+| 実行できるのは `type: plugin` **だけ** | 一括の中身（承認・締め・出荷確定）は業務で、Framework は業務を持たない |
+| **消すのを複数まとめる口は無い** | 取り消せない操作は、事故が件数ぶん大きくなる。消すのは1件ずつ（行アクションの `delete`） |
+| 渡すのは**行**（キーではない） | 一括の判断には状態や金額が要る。キーだけ渡すと、ハンドラが件数ぶん読み直すことになる |
+
+Flutter では登録したハンドラが `ActionContext.records` で受け取る。**呼び出しは1回**なので、
+API も1回で済ませられる（件数ぶんの往復にしない）。
+
+```dart
+'approveOrders': (ctx) async {
+  await api.approve([for (final r in ctx.records) r['orderNo']]);
+  await (ctx.controller as ListController).load();   // 一覧を読み直す
+},
+```
+
+表の無い画面（フォーム・ウィザード・ダッシュボード）に置いた場合と、`plugin` 以外の型に
+書いた場合は `validate` が警告する。
+
 ## search
 
 | キー | 型 | 既定 | 説明 |
@@ -983,6 +1025,7 @@ computed: { op: sum, fields: [price, tax] }
 | `id` | string | ✅ | 安定したid（`rowActions` から参照）。 |
 | `type` | string | ✅ | アクション型（[アクション型](#アクション型)参照）。 |
 | `label` | string | ✅ | ボタンラベル。 |
+| `scope` | string | | 何に対して実行するか。`page`（既定）＝画面、`selection`＝**選んだ行**（[まとめて実行する](#まとめて実行するscope-selection)）。 |
 | `plugin` | string | | Plugin キー（`type: plugin` のとき）。 |
 | `confirm` | [confirm](#confirm) | | 実行前に確認する。 |
 | `onSuccess` | [onSuccess](#onsuccess) | | 成功したあとの後処理。 |
@@ -1133,6 +1176,8 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | 選択肢の連動の辻褄（入力項目・検索条件の両方） |
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | 項目間の検証（`compare`）の書き間違い → **その検証が黙って通る** |
 | `page-nobody-can-open` | 入口（メニュー項目・遷移ボタン）の `roles` が食い違っている → **その画面を開ける人が誰も居ない** |
+| `selection-without-table` | `scope: selection` のボタンを**表の無い画面**に置いた → 選ぶ手段が無いので、押せないボタンが出たままになる |
+| `selection-unsupported-type` | `scope: selection` を `plugin` 以外の型に書いた → 押しても実行されない（一括の中身は業務＝アプリ側の処理） |
 | `print-without-report` | `type: print` のボタンを **`report` の無い画面**に置いた → 刷る紙が無いので、ボタンは出るのに押すと「このページでは刷れません」と言われる |
 | `columns-wider-than-paper` / `rows-per-page-too-many` | 帳票が**紙に入らない**（列幅の合計が紙幅を超える・1枚の行数が多すぎて1行が読めない高さになる）→ 刷る側が全体を縮めるので、例外は出ずに**読めない紙が出てくる**。用紙の実寸は [`spec/papers.json`](papers.json) |
 

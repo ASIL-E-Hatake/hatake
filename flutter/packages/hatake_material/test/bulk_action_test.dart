@@ -1,0 +1,261 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hatake_material/hatake_material.dart';
+
+/// 選んだ行に対して実行する（`scope: selection`）。
+///
+/// ここで見るのは「選べること」ではなく、**選べる状態と押せる状態が食い違わない**
+/// こと: チェックボックスは一括ボタンが在るときだけ出て、ボタンは選ぶまで押せず、
+/// 実行したら選択は解ける。行が入れ替わったら選択は消える（画面に無い行に実行
+/// できてしまうのが一番危ない）。
+class _Orders implements Repository {
+  final List<DataRecord> rows;
+  int searches = 0;
+
+  _Orders(this.rows);
+
+  @override
+  Future<PageResult> search(RepositoryQuery query) async {
+    searches++;
+    final status = query.filters['status'];
+    final matched = status == null || '$status'.isEmpty
+        ? rows
+        : rows.where((r) => r['status'] == status).toList();
+    final start = query.page * query.pageSize;
+    return PageResult(
+      items: matched.skip(start).take(query.pageSize).toList(),
+      totalCount: matched.length,
+    );
+  }
+
+  @override
+  Future<DataRecord?> findByKey(Object key) async => null;
+  @override
+  Future<DataRecord> create(DataRecord data) async => data;
+  @override
+  Future<DataRecord> update(Object key, DataRecord data) async => data;
+  @override
+  Future<void> delete(Object key) async {}
+}
+
+List<DataRecord> _rows() => [
+      {'orderNo': 'SO-1', 'status': '未出荷', 'amount': 100},
+      {'orderNo': 'SO-2', 'status': '未出荷', 'amount': 200},
+      {'orderNo': 'SO-3', 'status': '出荷済', 'amount': 300},
+    ];
+
+const _table = TableDefinition(
+  pagination: PaginationDefinition(pageSize: 2),
+  columns: [
+    ColumnDefinition(field: 'orderNo', label: '受注番号'),
+    ColumnDefinition(field: 'status', label: '状態'),
+  ],
+);
+
+const _approve = ActionDefinition(
+  id: 'approve',
+  type: ActionTypes.plugin,
+  plugin: 'approveOrders',
+  label: '一括承認',
+  scope: ActionScopes.selection,
+);
+
+const _page = SearchPageDefinition(
+  id: 'order_search',
+  title: '受注照会',
+  repository: 'orderRepository',
+  keyField: 'orderNo',
+  search: SearchDefinition(
+    filters: [FilterDefinition(field: 'status', label: '状態')],
+  ),
+  table: _table,
+  actions: [_approve],
+);
+
+Widget _harness(
+  Repository repository, {
+  ActionHandler? approve,
+  SearchPageDefinition definition = _page,
+  Set<String> roles = const {},
+}) {
+  return MaterialApp(
+    home: Scaffold(
+      body: HatakeScope(
+        repositories: RepositoryRegistry({'orderRepository': repository}),
+        renderer: const MaterialRenderer(),
+        roles: roles,
+        actions: ActionRegistry({
+          'approveOrders': approve ?? (ctx) async {},
+        }),
+        child: HatakePageView(definition: definition),
+      ),
+    ),
+  );
+}
+
+Finder _button() => find.byKey(const Key('hatake.action.approve'));
+bool _enabled(WidgetTester tester) =>
+    (tester.widget(_button()) as FilledButton).onPressed != null;
+
+void main() {
+  testWidgets('一括ボタンが在るときだけ、行が選べるようになる', (tester) async {
+    await tester.pumpWidget(_harness(_Orders(_rows())));
+    await tester.pumpAndSettle();
+    // 2行 ＋ 全選択で3つ。
+    expect(find.byType(Checkbox), findsNWidgets(3));
+
+    // 一括ボタンの無い画面には出さない（選べても何もできない表を作らない）。
+    await tester.pumpWidget(_harness(
+      _Orders(_rows()),
+      definition: const SearchPageDefinition(
+        id: 'order_search',
+        title: '受注照会',
+        repository: 'orderRepository',
+        keyField: 'orderNo',
+        table: _table,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.byType(Checkbox), findsNothing);
+  });
+
+  testWidgets('選ぶまで押せない。選ぶと件数が出る', (tester) async {
+    await tester.pumpWidget(_harness(_Orders(_rows())));
+    await tester.pumpAndSettle();
+
+    expect(_enabled(tester), isFalse);
+    expect(find.text('一括承認'), findsOneWidget);
+
+    await tester.tap(find.byType(Checkbox).at(1)); // 1行目
+    await tester.pumpAndSettle();
+    expect(_enabled(tester), isTrue);
+    expect(find.text('一括承認（1 件）'), findsOneWidget);
+
+    await tester.tap(find.byType(Checkbox).at(2)); // 2行目
+    await tester.pumpAndSettle();
+    expect(find.text('一括承認（2 件）'), findsOneWidget);
+  });
+
+  testWidgets('ハンドラは選んだ行そのものを受け取る（キーだけではない）',
+      (tester) async {
+    List<DataRecord>? got;
+    await tester.pumpWidget(_harness(
+      _Orders(_rows()),
+      approve: (ctx) async => got = ctx.records,
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(Checkbox).at(2)); // 2行目だけ
+    await tester.pumpAndSettle();
+    await tester.tap(_button());
+    await tester.pumpAndSettle();
+
+    expect(got, [
+      {'orderNo': 'SO-2', 'status': '未出荷', 'amount': 200},
+    ]);
+  });
+
+  testWidgets('実行できたら選択は解ける', (tester) async {
+    await tester.pumpWidget(_harness(_Orders(_rows())));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(_button());
+    await tester.pumpAndSettle();
+
+    expect(_enabled(tester), isFalse);
+    expect(find.text('一括承認'), findsOneWidget);
+  });
+
+  testWidgets('行が入れ替わったら選択は消える（画面に無い行に実行させない）',
+      (tester) async {
+    await tester.pumpWidget(_harness(_Orders(_rows())));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.pumpAndSettle();
+    expect(_enabled(tester), isTrue);
+
+    // 次のページへ（同じキーの行はもう画面に無い）。
+    await tester.tap(find.byKey(const Key('hatake.next')));
+    await tester.pumpAndSettle();
+    expect(_enabled(tester), isFalse);
+  });
+
+  testWidgets('検索し直しても選択は消える', (tester) async {
+    await tester.pumpWidget(_harness(_Orders(_rows())));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.pumpAndSettle();
+    expect(_enabled(tester), isTrue);
+
+    await tester.enterText(
+      find.byKey(const Key('hatake.filter.status')),
+      '出荷済',
+    );
+    await tester.tap(find.byKey(const Key('hatake.search')));
+    await tester.pumpAndSettle();
+    expect(_enabled(tester), isFalse);
+  });
+
+  testWidgets('その役割に見えない一括ボタンなら、チェックボックスも出ない',
+      (tester) async {
+    await tester.pumpWidget(_harness(
+      _Orders(_rows()),
+      definition: const SearchPageDefinition(
+        id: 'order_search',
+        title: '受注照会',
+        repository: 'orderRepository',
+        keyField: 'orderNo',
+        table: _table,
+        actions: [
+          ActionDefinition(
+            id: 'approve',
+            type: ActionTypes.plugin,
+            plugin: 'approveOrders',
+            label: '一括承認',
+            scope: ActionScopes.selection,
+            roles: ['manager'],
+          ),
+        ],
+      ),
+      roles: const {'staff'},
+    ));
+    await tester.pumpAndSettle();
+
+    expect(_button(), findsNothing);
+    expect(find.byType(Checkbox), findsNothing);
+  });
+
+  testWidgets('plugin 以外の型に scope: selection を書いたら、そう言う',
+      (tester) async {
+    await tester.pumpWidget(_harness(
+      _Orders(_rows()),
+      definition: const SearchPageDefinition(
+        id: 'order_search',
+        title: '受注照会',
+        repository: 'orderRepository',
+        keyField: 'orderNo',
+        table: _table,
+        actions: [
+          ActionDefinition(
+            id: 'approve',
+            type: ActionTypes.export,
+            label: '一括出力',
+            scope: ActionScopes.selection,
+          ),
+        ],
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('hatake.action.approve')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('選んだ行に対しては'), findsOneWidget);
+  });
+}

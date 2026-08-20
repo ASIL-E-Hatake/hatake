@@ -250,6 +250,28 @@ page:
       );
     });
 
+    test('scope を読む（既定は page、選んだ行に対しては selection）', () {
+      final page = parsePageYaml('''
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - { id: csv, type: export, label: CSV出力 }
+    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+''', strict: true) as SearchPageDefinition;
+      expect(page.actions[0].scope, ActionScopes.page);
+      expect(page.actions[1].scope, ActionScopes.selection);
+    });
+
     test('読めないものは理由つきで落ちる', () {
       // 閉じていない引用符は YAML として壊れている。
       expect(() => decodeDefinitionYaml('page: "unterminated'),

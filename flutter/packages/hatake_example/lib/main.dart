@@ -3,6 +3,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:hatake_material/hatake_material.dart';
 import 'package:hatake_yaml/hatake_yaml.dart';
 
+import 'bulk_dialog.dart';
 import 'customer_repository.dart';
 import 'definition_dialog.dart';
 import 'definition_source.dart';
@@ -107,6 +108,9 @@ class HatakeExampleApp extends StatelessWidget {
         //   { type: plugin, plugin: showDefinition, config: { page: <id> } }
         // and this handler shows the matching slice of the YAML.
         actions: ActionRegistry({
+          // 選んだ行に対して実行する（定義側は scope: selection）。Framework は
+          // 選ばれた行を渡すところまでで、まとめて何をするかは業務。
+          'approveOrders': BulkDialog.show,
           'showDefinition': (ctx) async {
             final pageId = ctx.action.config['page']?.toString() ?? '';
             final yaml = extractPageYaml(source, pageId);

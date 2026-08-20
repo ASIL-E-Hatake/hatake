@@ -21,6 +21,28 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
   late final FormatterRegistry _formatters =
       widget.formatters ?? FormatterRegistry();
 
+  /// 一括実行のために選んだ行（`scope: selection` のボタンが在るときだけ使う）。
+  final _selection = _RowSelection();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onRowsChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onRowsChanged);
+    super.dispose();
+  }
+
+  /// 行が入れ替わったら選択を捨てる（画面に無い行へ実行できてしまうのを防ぐ）。
+  void _onRowsChanged() {
+    if (_selection.syncRows(widget.controller.items) && mounted) {
+      setState(() {});
+    }
+  }
+
   CrudLike get _def => widget.definition;
   CrudController get _controller => widget.controller;
   Set<String> get _roles => HatakeScope.of(context).roles;
@@ -44,17 +66,25 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
 
   /// One dispatcher for every page kind (see `_runPageAction`), so `confirm` /
   /// `onSuccess` behave the same wherever the action sits.
-  Future<void> _onAction(ActionDefinition action) {
-    return _runPageAction(
+  Future<void> _onAction(ActionDefinition action) async {
+    final selected = action.scope == ActionScopes.selection
+        ? _selection.pick(_controller.items, _def.keyField)
+        : const <DataRecord>[];
+    final ran = await _runPageAction(
       context,
       action,
       _controller,
+      records: selected,
       onExport: _export,
       onCreate: () {
         _controller.startCreate();
         return _openForm();
       },
     );
+    // 実行できたら選択を解く（同じ行に二度実行するのは、まず事故）。
+    if (ran && selected.isNotEmpty && mounted) {
+      setState(_selection.clear);
+    }
   }
 
   /// Re-query so the CSV holds the whole result, not just the page shown.
@@ -84,11 +114,20 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
               ),
               for (final action in _def.actions)
                 if (isAllowed(action.roles, _roles)) ...[
-                  FilledButton(
-                    key: Key('hatake.action.${action.id}'),
-                    onPressed: () => _onAction(action),
-                    child: Text(action.label),
-                  ),
+                  if (action.scope == ActionScopes.selection)
+                    _bulkButton(
+                      action: action,
+                      count: _selection
+                          .pick(_controller.items, _def.keyField)
+                          .length,
+                      onPressed: () => _onAction(action),
+                    )
+                  else
+                    FilledButton(
+                      key: Key('hatake.action.${action.id}'),
+                      onPressed: () => _onAction(action),
+                      child: Text(action.label),
+                    ),
                   const SizedBox(width: 8),
                 ],
             ],
@@ -133,12 +172,15 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
     final rowActions = _def.table.rowActions;
     final hasRowActions = rowActions.contains(ActionTypes.edit) ||
         rowActions.contains(ActionTypes.delete);
+    final selectable = _hasSelectionAction(_def.actions, _roles);
 
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
+          // 表が選択可能になるのは、選んだ行に対して実行するボタンが在るときだけ。
+          showCheckboxColumn: selectable,
           columns: [
             for (final column in columns)
               DataColumn(
@@ -153,6 +195,14 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
           rows: [
             for (final record in _controller.items)
               DataRow(
+                selected: selectable && _selection.has(record[_def.keyField]),
+                onSelectChanged: !selectable
+                    ? null
+                    : (value) => setState(() => _selection.toggle(
+                          record[_def.keyField],
+                          selected: value ?? false,
+                          rows: _controller.items,
+                        )),
                 cells: [
                   for (final column in columns)
                     DataCell(_sizedColumn(

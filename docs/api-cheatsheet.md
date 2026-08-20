@@ -271,6 +271,8 @@ Note the difference: `between` / `startsWith` / `endsWith` are search-only, whil
 <!-- vocab: action.type -->
 `create` `edit` `delete` `navigate` `plugin` `export` `print`
 
+`scope: selection` (default `page`) runs the action over **the rows the user checked**: the table becomes selectable, the button stays disabled until something is selected (the count shows in the label), the handler gets the records in `ctx.records` and is called **once**. The selection is dropped when the rows change and cleared once it ran. Only `type: plugin` can do this, and **there is no bulk delete** (an irreversible action scales its accidents with the row count).
+
 `table.rowActions` is an array of action **ids** (strings), not objects. `edit` and `delete` are built in.
 
 ### Confirming and reacting (`confirm` / `onSuccess`)

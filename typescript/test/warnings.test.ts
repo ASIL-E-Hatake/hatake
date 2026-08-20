@@ -817,6 +817,64 @@ describe("同梱の資料との辻褄", () => {
   });
 });
 
+describe("選んだ行に対して実行するボタン", () => {
+  it("表の無い画面に置いたら、選ぶ手段が無いと言う", () => {
+    const found = warningsOf(`
+page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  form:
+    sections:
+      - fields: [{ field: orderNo, label: 受注番号, required: true }]
+  actions:
+    - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認, scope: selection }
+`);
+    const w = found.find((x) => x.rule === "selection-without-table");
+    expect(w?.path).toBe("page.actions[0].scope");
+    expect(w?.message).toContain("表が");
+    expect(w?.fix).toContain("search");
+  });
+
+  it("plugin 以外の型に書いたら、実行されないと言う", () => {
+    const found = warningsOf(`
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - { id: csv, type: export, label: 一括出力, scope: selection }
+`);
+    const w = found.find((x) => x.rule === "selection-unsupported-type");
+    expect(w?.path).toBe("page.actions[0].type");
+    expect(w?.fix).toContain("type: plugin");
+  });
+
+  it("一覧に置いた plugin なら黙る", () => {
+    expect(
+      rulesOf(`
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  search:
+    filters: [{ field: status, label: 状態 }]
+  table:
+    columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+  actions:
+    - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認, scope: selection, roles: [manager] }
+`),
+    ).toEqual([]);
+  });
+});
+
 describe("出す口が繋がっていない", () => {
   const report = `
 page:

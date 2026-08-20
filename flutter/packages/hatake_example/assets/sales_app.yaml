@@ -169,6 +169,10 @@ app:
         - { id: openEntryPaged, type: navigate, label: 明細（別テーブル）, page: order_entry_paged, params: { id: "$row.orderNo" } }
         # 一覧の CSV。表示中のページではなく検索結果全体を出す。
         - { id: csv, type: export, label: CSV出力, config: { filename: 受注一覧, bom: true } }
+        # 選んだ行に対して実行する。scope: selection を書くと表にチェックボックスが
+        # 出て、ボタンは選ぶまで押せない。一括の中身は業務なので type: plugin＝
+        # 選んだ行（records）を受け取るのはアプリ側。
+        - { id: approveSelected, type: plugin, plugin: approveOrders, label: 一括承認, scope: selection }
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: order_search } }
 
     # 帳票: 一覧の印刷版。明細の列は table から取り、report が「紙の構造」を足す。

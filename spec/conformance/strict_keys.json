@@ -191,6 +191,29 @@
       ]
     },
     {
+      "name": "一括実行の scope（正しい綴りは通り、綴り違いは提案する）",
+      "document": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "search",
+          "id": "order_search",
+          "title": "受注照会",
+          "repository": "orderRepository",
+          "key": "orderNo",
+          "table": { "columns": [{ "field": "orderNo", "label": "受注番号" }] },
+          "actions": [
+            { "id": "approve", "type": "plugin", "plugin": "approveOrders",
+              "label": "一括承認", "scope": "selection" },
+            { "id": "hold", "type": "plugin", "plugin": "holdOrders",
+              "label": "保留", "sope": "selection" }
+          ]
+        }
+      },
+      "expected": [
+        { "path": "page.actions[1]", "key": "sope", "suggestion": "scope" }
+      ]
+    },
+    {
       "name": "未知のページ種別は種別エラーの領分なので、キーは見ない",
       "document": {
         "page": { "type": "kanban", "id": "board", "title": "板", "repository": "taskRepository", "lanes": [] }

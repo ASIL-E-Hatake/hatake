@@ -143,6 +143,18 @@
           "required": true
         },
         {
+          "key": "scope",
+          "type": "string",
+          "required": false,
+          "description": "What the action runs on. 'page' (default) acts on the screen; 'selection' acts on the rows the user checked, and makes the table selectable.",
+          "default": "page",
+          "values": [
+            "page",
+            "selection"
+          ],
+          "open": false
+        },
+        {
           "key": "plugin",
           "type": "string",
           "required": false,
@@ -2861,6 +2873,9 @@
     ],
     "rowsPerPage": [
       "report"
+    ],
+    "scope": [
+      "action"
     ],
     "search": [
       "crudPage",

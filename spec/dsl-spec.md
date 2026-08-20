@@ -622,6 +622,38 @@ To read the paper before printing it, `npx hatake paper <file>` renders the same
 coordinates as text; a [shared fixture](conformance/report_layout.json) pins them
 to what the printer produces.
 
+## Running over a selection (`scope: selection`)
+
+Declaring `scope: selection` on an action makes **the table on that page
+selectable**, and the handler receives the rows that were checked — the rows
+themselves, not their keys.
+
+```yaml
+actions:
+  - id: approveSelected
+    type: plugin
+    plugin: approveOrders
+    label: Approve selected
+    scope: selection
+    confirm: { message: Approve the selected orders? }
+```
+
+| Decision | Why |
+|---|---|
+| **Rows become selectable only when a bulk action exists** | A separate "selectable" key would allow two broken screens: checkboxes with nothing to do, and a bulk button with no way to choose rows. One declaration cannot drift from itself |
+| **Disabled until something is selected** (the count is in the label) | A button that does nothing when pressed teaches the user the screen is broken |
+| **The selection is dropped when the rows change** | After a new search, a page change or a reload, acting on rows that are no longer on screen is the dangerous case |
+| **The selection clears once the action ran** | Running the same rows twice is, almost always, an accident |
+| Only `type: plugin` can run over a selection | What a bulk operation *does* (approve, close, confirm shipment) is business logic, and the framework holds none |
+| **There is no bulk delete** | An irreversible action scales its accidents with the row count. Delete one row at a time (the `delete` row action) |
+| The handler gets **records**, not keys | A bulk decision needs a status or an amount; keys alone would force the handler to read every row back |
+
+In Flutter the registered handler reads `ActionContext.records`. It is called
+**once**, so the API can be called once too.
+
+A `scope: selection` action on a page with no table, or on a type other than
+`plugin`, is reported by `validate`.
+
 ## search
 
 | Key | Type | Default | Description |
@@ -1074,6 +1106,7 @@ Decisions:
 | `id` | string | ✅ | Stable id (referenced by `rowActions`). |
 | `type` | string | ✅ | Action type (see [action types](#action-types)). |
 | `label` | string | ✅ | Button label. |
+| `scope` | string | | What it runs on. `page` (default) = the screen, `selection` = **the rows the user checked** (see [running over a selection](#running-over-a-selection-scope-selection)). |
 | `plugin` | string | | Plugin key (when `type: plugin`). |
 | `confirm` | [confirm](#confirm) | | Ask before running it. |
 | `onSuccess` | [onSuccess](#onsuccess) | | What to do once it succeeded. |
@@ -1224,6 +1257,8 @@ npx hatake validate page.yaml --no-warn --json
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | linked options that do not line up (input fields and search filters alike) |
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | a mistake in a cross-field rule (`compare`) — **that rule passes silently** |
 | `page-nobody-can-open` | the `roles` on the ways in (menu items, navigate buttons) disagree — **nobody can open that screen** |
+| `selection-without-table` | a `scope: selection` button on a page with **no table** — there is no way to choose rows, so the button stays unpressable |
+| `selection-unsupported-type` | `scope: selection` on a type other than `plugin` — pressing it does nothing (what a bulk operation *does* is business logic, so it belongs to the application) |
 | `print-without-report` | a `type: print` button on a page with **no `report`** — there is no paper to print, so the button appears and pressing it only reports that this page cannot print |
 | `columns-wider-than-paper` / `rows-per-page-too-many` | the report does not fit its paper (declared column widths exceed the sheet, or a sheet holds so many rows that a line has no readable height) — the printer shrinks everything instead of failing, so you get an unreadable sheet rather than an error. Paper sizes live in [`spec/papers.json`](papers.json) |
 

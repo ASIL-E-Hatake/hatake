@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'action_scopes.dart';
 import 'action_success_definition.dart';
 import 'action_types.dart';
 import 'confirm_definition.dart';
@@ -14,6 +15,12 @@ class ActionDefinition extends Equatable {
 
   /// Display label.
   final String label;
+
+  /// What the action runs on (see [ActionScopes]). `page` acts on the screen;
+  /// `selection` acts on the rows the user checked — which is also what makes
+  /// the table selectable, so a checkbox column can never appear with nothing
+  /// to do, and a bulk button can never appear with no way to choose rows.
+  final String scope;
 
   /// When [type] is `plugin`, the registered action plugin key to invoke.
   final String? plugin;
@@ -34,6 +41,7 @@ class ActionDefinition extends Equatable {
     required this.id,
     required this.type,
     required this.label,
+    this.scope = ActionScopes.page,
     this.plugin,
     this.confirm,
     this.onSuccess,
@@ -43,5 +51,5 @@ class ActionDefinition extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, type, label, plugin, confirm, onSuccess, config, roles];
+      [id, type, label, scope, plugin, confirm, onSuccess, config, roles];
 }

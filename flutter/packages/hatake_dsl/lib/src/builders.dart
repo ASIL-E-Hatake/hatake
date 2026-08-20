@@ -313,6 +313,7 @@ ActionDefinition action(
   String id, {
   required String type,
   required String label,
+  String scope = ActionScopes.page,
   String? plugin,
   Map<String, Object?> config = const {},
   List<String> roles = const [],
@@ -321,6 +322,7 @@ ActionDefinition action(
     id: id,
     type: type,
     label: label,
+    scope: scope,
     plugin: plugin,
     config: config,
     roles: roles,
