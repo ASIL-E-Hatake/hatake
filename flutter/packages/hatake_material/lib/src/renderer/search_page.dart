@@ -20,6 +20,29 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
   late final FormatterRegistry _formatters =
       widget.formatters ?? FormatterRegistry();
 
+  /// 一括実行のために選んだ行（`scope: selection` のボタンが在るときだけ使う）。
+  final _selection = _RowSelection();
+
+  @override
+  void initState() {
+    super.initState();
+    // 行が入れ替わったら選択を捨てる（検索し直した・ページを変えた・一括実行の
+    // あとで読み直した後に、画面に無い行へ実行できてしまうのを防ぐ）。
+    widget.controller.addListener(_onRowsChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onRowsChanged);
+    super.dispose();
+  }
+
+  void _onRowsChanged() {
+    if (_selection.syncRows(widget.controller.items) && mounted) {
+      setState(() {});
+    }
+  }
+
   SearchPageDefinition get _def => widget.definition;
   ListController get _controller => widget.controller;
   Set<String> get _roles => HatakeScope.of(context).roles;
@@ -33,14 +56,22 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
 
   /// One dispatcher for every page kind (see `_runPageAction`), so `confirm` /
   /// `onSuccess` behave the same wherever the action sits.
-  Future<void> _runAction(ActionDefinition action, {DataRecord? record}) {
-    return _runPageAction(
+  Future<void> _runAction(ActionDefinition action, {DataRecord? record}) async {
+    final selected = action.scope == ActionScopes.selection
+        ? _selection.pick(_controller.items, _def.keyField)
+        : const <DataRecord>[];
+    final ran = await _runPageAction(
       context,
       action,
       _controller,
       record: record,
+      records: selected,
       onExport: _export,
     );
+    // 実行できたら選択を解く（同じ行に二度実行するのは、まず事故）。
+    if (ran && selected.isNotEmpty && mounted) {
+      setState(_selection.clear);
+    }
   }
 
   /// Re-query so the CSV holds the whole result, not just the page on screen.
@@ -74,11 +105,18 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
                 child: Text(_def.title, style: theme.textTheme.headlineSmall),
               ),
               for (final action in pageActions) ...[
-                FilledButton(
-                  key: Key('hatake.action.${action.id}'),
-                  onPressed: () => _runAction(action),
-                  child: Text(action.label),
-                ),
+                if (action.scope == ActionScopes.selection)
+                  _bulkButton(
+                    action: action,
+                    count: _selection.pick(_controller.items, _def.keyField).length,
+                    onPressed: () => _runAction(action),
+                  )
+                else
+                  FilledButton(
+                    key: Key('hatake.action.${action.id}'),
+                    onPressed: () => _runAction(action),
+                    child: Text(action.label),
+                  ),
                 const SizedBox(width: 8),
               ],
             ],
@@ -123,11 +161,15 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
         .where((a) => isAllowed(a.roles, _roles))
         .toList();
 
+    // 表が選択可能になるのは、選んだ行に対して実行するボタンが在るときだけ。
+    final selectable = _hasSelectionAction(_def.actions, _roles);
+
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
+          showCheckboxColumn: selectable,
           columns: [
             for (final column in columns)
               DataColumn(
@@ -142,6 +184,15 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
           rows: [
             for (final record in _controller.items)
               DataRow(
+                selected: selectable &&
+                    _selection.has(record[_def.keyField]),
+                onSelectChanged: !selectable
+                    ? null
+                    : (value) => setState(() => _selection.toggle(
+                          record[_def.keyField],
+                          selected: value ?? false,
+                          rows: _controller.items,
+                        )),
                 cells: [
                   for (final column in columns)
                     DataCell(_sizedColumn(

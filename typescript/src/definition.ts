@@ -197,6 +197,8 @@ export interface ActionDefinition {
   id: string;
   type: string;
   label: string;
+  /** What it runs on (see ActionScopes). `selection` = the rows the user checked. */
+  scope: string;
   plugin?: string;
   /** Ask before running. */
   confirm?: ConfirmDefinition;
@@ -598,6 +600,18 @@ export const ActionTypes = {
   /** Put the page's report on paper; making the bytes is an opt-in adapter's. */
   print: "print",
   navigate: "navigate",
+} as const;
+
+/**
+ * What an action runs on. **Closed set** — unlike an action type this is not a
+ * plugin point: a renderer can add kinds of button, but "what is it about" only
+ * has these two answers.
+ */
+export const ActionScopes = {
+  /** The screen (default). */
+  page: "page",
+  /** The rows the user checked. Declaring it makes the table selectable. */
+  selection: "selection",
 } as const;
 
 /** Built-in dashboard card kinds. Open strings — extensible via plugins. */

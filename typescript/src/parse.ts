@@ -1,6 +1,7 @@
 import { parse as parseYamlText } from "yaml";
 import { findUnknownKeys, type UnknownKey } from "./strictKeys.js";
 import {
+  ActionScopes,
   kDslVersion,
   type ActionDefinition,
   type ActionSuccessDefinition,
@@ -538,6 +539,7 @@ function parseAction(m: Dict): ActionDefinition {
     id: reqString(m, "id", "action.id"),
     type: reqString(m, "type", "action.type"),
     label: reqString(m, "label", "action.label"),
+    scope: optString(m, "scope") ?? ActionScopes.page,
     plugin: optString(m, "plugin"),
     confirm: parseConfirm(optDict(m, "confirm")),
     onSuccess: parseActionSuccess(optDict(m, "onSuccess")),

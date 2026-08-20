@@ -206,7 +206,9 @@ describe("見えるもの・できること", () => {
         actions: `    - { id: remove, type: delete, label: 削除,
         onSuccess: { message: 消しました } }
     - { id: detail, type: navigate, label: 詳細, page: customer_detail }
-    - { id: printPdf, type: print, label: 印刷 }`,
+    - { id: printPdf, type: print, label: 印刷 }
+    - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
+        scope: selection }`,
       }),
       "できる操作",
     );
@@ -215,6 +217,9 @@ describe("見えるもの・できること", () => {
     );
     expect(text[1]).toBe("詳細 … 別の画面へ移る（customer_detail へ）");
     expect(text[2]).toBe("印刷 … 紙に刷る");
+    expect(text[3]).toBe(
+      "一括承認 … アプリ側の処理を呼ぶ（approveOrders）。選んだ行に対して実行する",
+    );
   });
 
   it("行ごとの操作は、宣言されたボタンのラベルで言う", () => {

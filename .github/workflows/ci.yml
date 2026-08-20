@@ -514,6 +514,48 @@ jobs:
             echo "登録済みの口まで未登録と言っている"; exit 1
           fi
 
+      - name: A bulk action says what it runs on, and where it may not sit
+        working-directory: typescript
+        run: |
+          set -e
+          # デモの一覧には「選んだ行にまとめて実行する」ボタンがある（警告ゼロで通る）。
+          node dist/cli.js validate --warn-as-error             ../flutter/packages/hatake_example/assets/sales_app.yaml
+          # 説明は「選んだ行に対して実行する」と読み上げる（何件動くかは人が判断する）。
+          node dist/cli.js explain ../flutter/packages/hatake_example/assets/sales_app.yaml             --page order_search > /tmp/bulk.log
+          grep -q '選んだ行に対して実行する' /tmp/bulk.log
+          # 表の無い画面に置いたら、押せないボタンになると言うこと。
+          cat > /tmp/bulk-nowhere.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            form:
+              sections:
+                - fields: [{ field: orderNo, label: 受注番号, required: true }]
+            actions:
+              - { id: approve, type: plugin, plugin: approveOrders,
+                  label: 一括承認, scope: selection }
+          YAML
+          if node dist/cli.js validate --warn-as-error /tmp/bulk-nowhere.yaml               2> /tmp/bulk-nowhere.err; then
+            echo "表の無い画面の一括ボタンを通してしまった"; exit 1
+          fi
+          grep -q 'selection-without-table'             <(node dist/cli.js validate --json /tmp/bulk-nowhere.yaml)
+          # plugin 以外の型に書いたら、実行されないと言うこと。
+          cat > /tmp/bulk-export.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - { id: csv, type: export, label: 一括出力, scope: selection }
+          YAML
+          grep -q 'selection-unsupported-type'             <(node dist/cli.js validate --json /tmp/bulk-export.yaml)
+
       - name: A definition compared with itself is compatible
         working-directory: typescript
         run: |

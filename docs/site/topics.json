@@ -335,6 +335,16 @@
       "demo": null
     },
     {
+      "id": "bulk-actions",
+      "section": "dsl",
+      "title": "選んだ行にまとめて実行する",
+      "blurb": "一覧にチェックボックスを出して、選んだ行に対してボタンを1回押す。",
+      "keys": [
+        "scope"
+      ],
+      "demo": "order_search"
+    },
+    {
       "id": "plugin-config",
       "section": "dsl",
       "title": "拡張を差し込む（config）",

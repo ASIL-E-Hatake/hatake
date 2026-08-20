@@ -376,6 +376,8 @@ actions:
 <!-- vocab: action.type -->
 `create` `edit` `delete` `navigate` `plugin` `export` `print`
 
+**まとめて実行する**なら `scope: selection`（既定は `page`）。表にチェックボックスが出て、選ぶまで押せない（件数がラベルに出る）。ハンドラは選んだ**行そのもの**を `ctx.records` で受け取り、**呼び出しは1回**（API も1回で済ませられる）。行が入れ替わったら選択は消え、実行できたら解ける。実行できるのは `type: plugin` だけで、**一括の削除は無い**（取り消せない操作は事故が件数ぶん大きくなる）。
+
 `plugin` は `plugin: <key>` で登録ハンドラにディスパッチ。`navigate` は `page` と `params`、`export` は CSV 出力（上記）、`print` は帳票の印刷（下記）。`table.rowActions` は**アクション id の文字列配列**（`edit` / `delete` は組み込みなので宣言不要）。
 
 ### 確認と後処理（`confirm` / `onSuccess`）

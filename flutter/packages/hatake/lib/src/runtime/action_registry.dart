@@ -19,11 +19,20 @@ class ActionContext {
   /// page-level actions.
   final DataRecord? record;
 
+  /// The rows the user had checked, for an action declared with
+  /// `scope: selection`. Empty for every other action.
+  ///
+  /// Full records, not keys: a bulk handler usually needs a field or two to
+  /// decide (状態・金額), and making it read them back one by one would turn one
+  /// button into N requests.
+  final List<DataRecord> records;
+
   const ActionContext({
     required this.buildContext,
     required this.controller,
     required this.action,
     this.record,
+    this.records = const [],
   });
 }
 

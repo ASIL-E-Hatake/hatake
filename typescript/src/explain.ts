@@ -34,6 +34,7 @@ import {
 } from "./explainPhrases.js";
 import {
   type ActionDefinition,
+  ActionScopes,
   ActionTypes,
   type AppDefinition,
   type ColumnDefinition,
@@ -430,6 +431,8 @@ function describeAction(action: ActionDefinition, target?: string): string {
       : action.type === ActionTypes.plugin && action.plugin !== undefined
         ? `（${action.plugin}）`
         : "";
+  const on =
+    action.scope === ActionScopes.selection ? "。選んだ行に対して実行する" : "";
   const confirm =
     action.confirm !== undefined
       ? "。押すと確認を出す"
@@ -444,7 +447,7 @@ function describeAction(action: ActionDefinition, target?: string): string {
         : "";
   const roles =
     action.roles.length > 0 ? `。${action.roles.join(" / ")} だけに出る` : "";
-  return `${action.label} … ${what}${to}${confirm}${after}${roles}`;
+  return `${action.label} … ${what}${to}${on}${confirm}${after}${roles}`;
 }
 
 function describeDashboard(

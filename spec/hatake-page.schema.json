@@ -1034,6 +1034,12 @@
         "label": {
           "type": "string"
         },
+        "scope": {
+          "type": "string",
+          "enum": ["page", "selection"],
+          "default": "page",
+          "description": "What the action runs on. 'page' (default) acts on the screen; 'selection' acts on the rows the user checked, and makes the table selectable."
+        },
         "plugin": {
           "type": "string",
           "description": "Registered action plugin key (used when type is 'plugin')."

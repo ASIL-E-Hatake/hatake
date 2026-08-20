@@ -91,6 +91,10 @@ void main() {
     final search = app.pageById('order_search') as SearchPageDefinition;
     final csv = search.actions.firstWhere((a) => a.id == 'csv');
     expect(csv.type, ActionTypes.export);
+    // 選んだ行に対して実行するボタン（表にチェックボックスが出る側）。
+    final bulk = search.actions.firstWhere((a) => a.id == 'approveSelected');
+    expect(bulk.scope, ActionScopes.selection);
+    expect(bulk.type, ActionTypes.plugin);
     expect(csv.config['bom'], isTrue);
     expect(app.menu.any((m) => m.page == 'sales_report'), isTrue);
   });

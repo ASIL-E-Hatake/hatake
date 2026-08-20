@@ -16,7 +16,12 @@
 
 import { appAccess, describeAudience, nobodyCanOpen } from "./appAccess.js";
 import { ConditionOperators } from "./conditionEvaluator.js";
-import { ActionTypes, AggregateOps, ValidatorTypes } from "./definition.js";
+import {
+  ActionScopes,
+  ActionTypes,
+  AggregateOps,
+  ValidatorTypes,
+} from "./definition.js";
 import {
   builtInNames,
   collectRefs,
@@ -369,6 +374,7 @@ function checkPage(
 
   checkActions(actions, `${path}.actions`, pageIds, found);
   checkPrint(page, actions, path, found);
+  checkSelection(page, actions, path, found);
   checkTable(page, actionIds, path, found);
   checkSearch(page, path, found);
   checkForm(page, path, found);
@@ -403,6 +409,53 @@ function checkActions(
     const onSuccess = isDict(action.onSuccess) ? action.onSuccess : undefined;
     if (onSuccess !== undefined) {
       checkTarget(str(onSuccess.page), `${at}.onSuccess.page`, pageIds, found);
+    }
+  });
+}
+
+/**
+ * 選んだ行に対して実行するボタン（`scope: selection`）の置き場所。
+ *
+ * 選ぶのは**表の行**なので、表が無い画面（フォーム・ウィザード・ダッシュボード）に
+ * 置くと選ぶ手段が無い＝**押せないボタン**が出たままになる。
+ *
+ * 実行できるのは `type: plugin` だけ。一括の中身は業務（承認・締め・出荷確定）で、
+ * Framework は業務を持たない。**消すのを複数まとめる口は用意していない**
+ * （取り消せない操作は、事故が件数ぶん大きくなる）。
+ */
+function checkSelection(
+  page: Dict,
+  actions: Dict[],
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  const hasTable = isDict(page.table);
+  actions.forEach((action, i) => {
+    if (str(action.scope) !== ActionScopes.selection) return;
+    const label = str(action.label) ?? str(action.id) ?? "ボタン";
+    if (!hasTable) {
+      warn(
+        found,
+        "selection-without-table",
+        `${path}.actions[${i}].scope`,
+        `「${label}」は選んだ行に対して実行するボタンですが、この画面には表が` +
+          `ありません。選ぶ手段が無いので、押せないままになります。`,
+        "一覧のある画面（`search` / `crud` / `master`）に置くか、`scope` を外して" +
+          "画面全体に対する操作にしてください。",
+      );
+      return;
+    }
+    const type = str(action.type) ?? "";
+    if (type !== ActionTypes.plugin) {
+      warn(
+        found,
+        "selection-unsupported-type",
+        `${path}.actions[${i}].type`,
+        `「${label}」は選んだ行に対して実行できません（\`${type}\` は画面全体の操作です）。` +
+          `押しても実行されません。`,
+        "一括の中身は業務なので `type: plugin`（＋`plugin:`）で書き、" +
+          "選んだ行はハンドラが受け取ってください。",
+      );
     }
   });
 }

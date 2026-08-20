@@ -38,28 +38,34 @@ List<Widget> _pageActionButtons(
 /// Runs an action, with its declared hooks around it: `confirm` first, then the
 /// action itself, then `onSuccess` — and `onSuccess` only when it worked.
 ///
+/// Returns whether the action ran, so a caller that owns state around it (a
+/// table's row selection) can react to success without guessing.
+///
 /// `navigate` moves through the router, `plugin` delegates to the registered
 /// handler. Anything else is reported rather than silently ignored.
-Future<void> _runPageAction(
+Future<bool> _runPageAction(
   BuildContext context,
   ActionDefinition action,
   ChangeNotifier controller, {
   DataRecord? record,
+  List<DataRecord> records = const [],
   _PageDataRunner? onExport,
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
 }) async {
-  if (!await _confirmAction(context, action.confirm)) return;
-  if (!context.mounted) return;
+  if (!await _confirmAction(context, action.confirm)) return false;
+  if (!context.mounted) return false;
   if (!await _dispatchAction(context, action, controller,
       record: record,
+      records: records,
       onExport: onExport,
       onPrint: onPrint,
       onCreate: onCreate)) {
-    return;
+    return false;
   }
-  if (!context.mounted) return;
+  if (!context.mounted) return true;
   _afterActionSuccess(context, action.onSuccess, record: record);
+  return true;
 }
 
 /// The action itself. Returns whether it succeeded (so `onSuccess` does not run
@@ -69,10 +75,21 @@ Future<bool> _dispatchAction(
   ActionDefinition action,
   ChangeNotifier controller, {
   DataRecord? record,
+  List<DataRecord> records = const [],
   _PageDataRunner? onExport,
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
 }) async {
+  // 選んだ行に対して実行できるのは、いまはアプリ側の処理（plugin）だけ。
+  // 「消す」を複数まとめるのは、取り消せない操作の事故を大きくするので入れていない。
+  if (action.scope == ActionScopes.selection &&
+      action.type != ActionTypes.plugin) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('アクション "${action.id}" は選んだ行に対しては'
+          '実行できません（scope: selection は type: plugin だけ）')),
+    );
+    return false;
+  }
   if (action.type == ActionTypes.create) {
     if (onCreate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -104,6 +121,7 @@ Future<bool> _dispatchAction(
       controller: controller,
       action: action,
       record: record,
+      records: records,
     ));
     return true;
   }
