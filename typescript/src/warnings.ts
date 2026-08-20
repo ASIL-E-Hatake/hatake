@@ -106,6 +106,13 @@ const REF_KINDS: Record<
     happens: "画面は出ますがデータが来ません（実行時に引き先が見つからない）。",
     fix: "アプリ側の `RepositoryRegistry` に同じ名前で登録するか、定義の名前を直してください。",
   },
+  sinks: {
+    rule: "unregistered-sink",
+    what: "出力先",
+    happens: "ボタンは出ますが、押すと「出力先が未登録です」と言われます。",
+    fix: "`HatakeScope` に登録してください（CSV は `exportSink`、印刷は `printSink`）。"
+      + "Framework は文書までを作り、ファイルを書く・刷るのはアプリの担当です。",
+  },
   plugins: {
     rule: "unknown-plugin",
     what: "プラグイン",

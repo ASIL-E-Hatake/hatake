@@ -256,6 +256,8 @@ describe("デモアプリとの辻褄", () => {
       needed.repositories,
     );
     expect([...(registry.plugins ?? [])].sort()).toEqual(needed.plugins);
+    // 出す口（CSV / 印刷）も同じ列で数える。
+    expect([...(registry.sinks ?? [])].sort()).toEqual(needed.sinks);
   });
 
   // 一覧が実装とズレたら警告そのものが嘘になる。その確認は

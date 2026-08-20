@@ -1,0 +1,30 @@
+name: hatake_http
+description: >-
+  REST Repository for hatake: talks to exactly the API the definition's OpenAPI
+  declares. An opt-in adapter — pure Dart with no transport dependency (you hand
+  it a send function), so it works on web, mobile and in a batch.
+version: 0.0.1
+repository: https://github.com/ASIL-E-Hatake/hatake
+homepage: https://github.com/ASIL-E-Hatake/hatake
+issue_tracker: https://github.com/ASIL-E-Hatake/hatake/issues
+topics:
+  - http
+  - rest
+  - repository
+  - declarative
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  hatake_core: ^0.0.1
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0
+
+# During monorepo development, resolve siblings from the local path.
+# Ignored when publishing (pub.dev uses the hosted version constraints above).
+dependency_overrides:
+  hatake_core:
+    path: ../hatake_core

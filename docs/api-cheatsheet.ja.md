@@ -7,8 +7,9 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
 - ここに無いキーは**引く**: `npx hatake reference <キー名>`（[DSL リファレンス](../spec/reference.json)）／
   近い例を探す: `npx hatake examples <やりたいこと>`（[例のカタログ](../spec/examples/README.md)）／
   書けたら `npx hatake validate <file>`
-- アプリに組み込むとき: `npx hatake refs <file> --needs-registration`（Repository / プラグインの名前を
-  何を登録すればいいか）／その一覧を `validate --registry <file>` に渡すと**名前の食い違い**も見る
+- アプリに組み込むとき: `npx hatake refs <file> --needs-registration`（Repository・プラグイン・
+  **出す口**（`exportSink` / `printSink`）＝何を登録すればいいか）／その一覧を
+  `validate --registry <file>` に渡すと**名前の食い違い**と**繋いでいない口**も見る
 - 定義を直したとき: `npx hatake diff <前> <後>`（`✗ 破壊的`＝呼び出し側が壊れる／`△ 要確認`＝壊れないが
   確かめてほしい＝列・ボタン・選択肢が消えた・権限が変わった・ページが消えた）
 
@@ -63,9 +64,26 @@ parsePageYaml(source, { strict: true });          // TypeScript
 DefinitionParser.parsePageYaml(source, true);     // Java
 ```
 
+## Repository（データの口）
+
+REST に繋ぐなら opt-in の `hatake_http`。`npx hatake openapi` が定義から宣言する API と**同じ形**で話す（一覧は `{items, totalCount}`、1件は `<collection>/{key}`、404 は null、絞り込みは項目名そのまま・空と null は送らない・配列は同じ名前を2回）。
+
+```dart
+repositories: RepositoryRegistry(restRepositories(
+  baseUrl: '/api',
+  send: send,                       // 通信は持たない＝送る関数を1つ渡す（http でも dio でも）
+  headers: () async => {'authorization': 'Bearer ${await session.token()}'},  // 毎回聞く
+  collections: {'orderRepository': 'orders', 'customerRepository': 'customers'},
+));
+```
+
+失敗は型で返る（401/403・400＝項目ごとの検証結果・その他・**宣言と違う形**）。宣言と違う形で落ちるのは意図的で、黙って合わせると `items` が読めず「0 件」＝空の画面になって原因が通信まで遡れない。合わない API は曲げずに `Repository` を手で書く（5メソッドの interface）。
+
 ## アプリ（ナビゲーション）
 
 複数ページを束ねてアプリにするときはルートを `page:` でなく `app:` にする。Flutter は `HatakeApp(app: ...)` で描画（シェル＋ルータ）。
+
+**Web では URL が画面に付いてくる**（既定 ON）。`/<画面id>?<params>` で、リンクを踏める・リロードで戻らない・ブラウザの戻るが効く。外側に自前のルータがあるアプリは `HatakeApp(app: …, syncUrl: false)` で切る（address bar を2人で取り合わない）。URL の params は**文字で戻る**（URL に型は無いので、`0012` を 12 にしない）。この app に無い画面 id は引き受けないので、別のビルドの URL で空白の画面にはならない（home が出る）。
 
 ```yaml
 app:

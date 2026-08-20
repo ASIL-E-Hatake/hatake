@@ -1259,6 +1259,7 @@ automatically, so the list only needs what you registered yourself.
 |---|---|
 | `unknown-repository` | the screen renders, no data arrives |
 | `unknown-plugin` | the button appears, tapping it does nothing |
+| `unregistered-sink` | no sink for the output (`exportSink` for CSV, `printSink` for printing) — the button appears and says "not registered" when pressed |
 | `unknown-validator` / `unknown-converter` | that validation / normalization is **silently skipped** |
 | `unknown-formatter` | the raw value is shown unformatted |
 | `unknown-computed-op` / `unknown-aggregate` | nothing is computed; the value stays empty |

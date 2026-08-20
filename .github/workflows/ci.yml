@@ -18,7 +18,7 @@ jobs:
       - name: Analyze & test
         run: |
           set -e
-          for pkg in hatake_core hatake_yaml hatake_dsl hatake_encoding hatake_print; do
+          for pkg in hatake_core hatake_yaml hatake_dsl hatake_encoding hatake_print hatake_http; do
             echo "::group::$pkg"
             (cd "flutter/packages/$pkg" && dart pub get && dart analyze && { if [ -d test ]; then dart test; fi; })
             echo "::endgroup::"
@@ -493,6 +493,26 @@ jobs:
           # 紙も持ち出しの口として数えること（権限で絞っていなければ助言が出る）。
           node dist/cli.js advise /tmp/print-nowhere.yaml > /tmp/print-advise.log
           grep -q '紙で持ち出せます' /tmp/print-advise.log
+
+      - name: What the definition needs from the application (including sinks)
+        working-directory: typescript
+        run: |
+          set -e
+          # 定義が外に要求しているもの。Repository とプラグインだけでなく、
+          # **出す口**（CSV は exportSink、印刷は printSink）も出ること。ここが
+          # 抜けていると「ボタンは出るのに押すと未登録です」を空のリポジトリから
+          # 始める人が踏む。
+          node dist/cli.js refs ../spec/examples/sales_report.yaml             --needs-registration > /tmp/needs.log
+          grep -q 'exportSink' /tmp/needs.log
+          grep -q 'printSink' /tmp/needs.log
+          # 口が繋がっていなければ、押す前に言う（登録済み一覧との突き合わせ）。
+          printf '%s' '{"repositories":["orderRepository"],"sinks":["exportSink"]}'             > /tmp/half-wired.json
+          node dist/cli.js validate ../spec/examples/sales_report.yaml             --registry /tmp/half-wired.json --json > /tmp/half-wired-out.json
+          grep -q '"rule": "unregistered-sink"' /tmp/half-wired-out.json
+          grep -q 'printSink' /tmp/half-wired-out.json
+          if grep -q '"exportSink"' /tmp/half-wired-out.json; then
+            echo "登録済みの口まで未登録と言っている"; exit 1
+          fi
 
       - name: A definition compared with itself is compatible
         working-directory: typescript

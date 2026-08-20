@@ -21,6 +21,7 @@ export 'src/runtime/print_sink.dart';
 export 'src/runtime/registry_snapshot.dart';
 export 'src/runtime/report_controller.dart';
 export 'src/runtime/repository_registry.dart';
+export 'src/runtime/route_url.dart';
 export 'src/runtime/sub_table_controller.dart';
 export 'src/runtime/wizard_controller.dart';
 export 'src/widgets/hatake_app.dart';

@@ -26,6 +26,7 @@ Business Definition (YAML / JSON / Dart)
 | `hatake` | Renderer 契約・ランタイム・描画 API（Flutter） | core |
 | `hatake_material` | Material3 Renderer 実装 | hatake |
 | `hatake_print` | 帳票 → PDF（opt-in アダプタ）。**純 Dart**＝UI 無しでも刷れる | core |
+| `hatake_http` | 定義が宣言している REST API と話す Repository（opt-in アダプタ）。**通信は持たない**＝送る関数を1つ受け取る | core |
 | `hatake_encoding` | 文字コード変換（cp932 / Shift_JIS / EUC-JP。opt-in アダプタ） | なし |
 | `hatake_example` | サンプルアプリ | all |
 
@@ -100,6 +101,8 @@ CrudPage と SearchPage が動いてる。中身はこんな感じ。
 | `hatake_material` CrudPage 描画（検索/一覧/ページング/削除） | ✅ 完了（widget テスト済み） |
 | `hatake_print` 帳票 → PDF（座標まで中立な PrintLayout 経由） | ✅ 完了（見本の PDF を1バイト単位で固定・別実装で読み返す） |
 | 定義から刷る（`type: print` → `HatakeScope(printSink:)`） | ✅ 完了（Framework は紙の中身までを渡す＝本体は `hatake_print` を知らない） |
+| Web の URL 同期（リンク・リロード・戻る） | ✅ 完了（`HatakeApp(syncUrl:)`。`/画面id?params`。URL は差し替え可能な口の裏なので、ブラウザ無しで試験できる） |
+| `hatake_http` REST Repository | ✅ 完了（`hatake openapi` が宣言する形と1対1。名前の一致は [`conformance/rest_query.json`](../spec/conformance/rest_query.json) が縛る） |
 | フォーム（新規/編集/バリデーション・ダイアログ） | ✅ 完了（widget テスト済み） |
 | バリデーションエンジン（純Dart・Plugin拡張可） | ✅ 完了（ユニットテスト済み） |
 | `hatake_example` サンプルアプリ（YAML→描画） | ✅ 完了（widget テスト済み） |

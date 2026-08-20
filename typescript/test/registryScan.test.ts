@@ -103,6 +103,36 @@ final scope = HatakeScope(
   });
 });
 
+describe("出力先（sink）は「書いてあれば在る」", () => {
+  it("HatakeScope に渡した関数を、名前だけで登録済みと数える", () => {
+    // 出力先は名前と値の対応表ではなく関数1つなので、中身は読まない。
+    const result = scan(`
+void main() {
+  runApp(HatakeScope(
+    exportSink: (request) async => await ExportDialog.show(context, request),
+    printSink: (request) async => await PrintDialog.show(context, request),
+    child: const HatakeApp(app: app),
+  ));
+}
+`);
+    expect(result.registry.sinks).toEqual(["exportSink", "printSink"]);
+    expect(result.unreadable).toEqual([]);
+  });
+
+  it("コメントアウトした出力先は数えない（在ることにならない）", () => {
+    const result = scan(`
+void main() {
+  runApp(HatakeScope(
+    // printSink: (request) async => print(request),
+    exportSink: save,
+    child: child,
+  ));
+}
+`);
+    expect(result.registry.sinks).toEqual(["exportSink"]);
+  });
+});
+
 describe("読めないものを黙って落とさない", () => {
   it("変数や関数から作った登録は、読めなかったものとして出す", () => {
     const result = scan(`
