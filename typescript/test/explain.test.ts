@@ -229,13 +229,14 @@ describe("見えるもの・できること", () => {
     ]);
   });
 
-  it("権限で絞っているものは「誰に見えるか」にまとめる", () => {
+  // 「画面の中で隠れるもの」と「この画面を開ける人」は別の話（後者は入口から辿る）。
+  it("権限で絞っているものは「画面の中で隠れるもの」にまとめる", () => {
     const text = lines(
       page({
         columns: "      - { field: amount, label: 金額, roles: [admin] }",
         actions: "    - { id: create, type: create, label: 新規登録, roles: [admin, staff] }",
       }),
-      "誰に見えるか",
+      "画面の中で隠れるもの（権限）",
     );
     expect(text).toEqual([
       "列「金額」 … admin だけ",

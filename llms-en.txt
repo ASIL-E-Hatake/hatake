@@ -28,7 +28,9 @@ npx hatake diff <old> <new>       # what a change breaks, and what to confirm
 npx hatake explain page.yaml      # read back what this screen does (Japanese)
 npx hatake explain page.yaml --brief         # one-line summary (a table for an app)
 npx hatake explain --diff <old> <new>        # what changed, in the screen's own words
+npx hatake explain --diff --git main...HEAD <file>  # take the "before" from git (a PR's own diff)
 npx hatake explain page.yaml --review       # one sheet for review (explanation + advice; exit code unchanged)
+npx hatake explain page.yaml --markdown     # paste-ready for a PR body (also with --review / --diff / --brief)
 npx hatake fix page.yaml          # apply only uniquely-determined repairs (--write to overwrite)
 npx hatake advise page.yaml        # what is worth adding (advice, not warnings)
 npx hatake advise page.yaml --rules team.json  # judge by the project's own ruler (silence a rule / tune a knob / demand a key)

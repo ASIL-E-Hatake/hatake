@@ -5,7 +5,11 @@ import { parseArgs, runCli, type CliIo } from "../src/cli.js";
 import { parsePageYaml, scaffold, scaffoldKinds } from "../src/index.js";
 
 /** Collects what the CLI wrote, and serves files from memory. */
-function fakeIo(files: Record<string, string> = {}): CliIo & {
+function fakeIo(
+  files: Record<string, string> = {},
+  // `--git` の試験に本物の git を要らなくする（無ければ「使えません」と言う道も試す）。
+  git?: (args: string[]) => string,
+): CliIo & {
   stdout: string[];
   stderr: string[];
   written: Record<string, string>;
@@ -17,6 +21,7 @@ function fakeIo(files: Record<string, string> = {}): CliIo & {
     stdout,
     stderr,
     written,
+    ...(git === undefined ? {} : { git }),
     out: (text) => stdout.push(text),
     err: (text) => stderr.push(text),
     readFile: (path) => {
@@ -394,10 +399,130 @@ describe("hatake explain --diff", () => {
     expect(io.stdout.join("\n")).toContain("hatake diff で見てください");
   });
 
-  it("2ファイル要る", () => {
+  it("2ファイル要る（git から取る道も案内する）", () => {
     const io = fakeIo({ "a.yaml": GOOD });
     expect(runCli(["explain", "--diff", "a.yaml"], io)).toBe(1);
     expect(io.stderr.join("")).toContain("2つ指定");
+    expect(io.stderr.join("")).toContain("--git HEAD~1..HEAD");
+  });
+});
+
+describe("PR 本文の形（--markdown）", () => {
+  const CHANGED = GOOD.replace(
+    "{ field: code, label: コード }",
+    "{ field: code, label: コード, format: mask }",
+  );
+
+  it("説明を Markdown で出す", () => {
+    const io = fakeIo({ "a.yaml": GOOD });
+    expect(runCli(["explain", "a.yaml", "--markdown"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toMatch(/^## 顧客マスタ/);
+    expect(out).toContain("### 一覧に出る列");
+    expect(out).toContain("- コード");
+  });
+
+  it("レビュー1枚も Markdown で出せる", () => {
+    const io = fakeIo({ "a.yaml": GOOD });
+    expect(runCli(["explain", "a.yaml", "--review", "--markdown"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("### 書き足したほうがいい所（助言）");
+  });
+
+  it("変更も Markdown で出せる", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "b.yaml": CHANGED });
+    expect(
+      runCli(["explain", "--diff", "a.yaml", "b.yaml", "--markdown"], io),
+    ).toBe(0);
+    expect(io.stdout.join("\n")).toContain("変わったところ **");
+  });
+
+  it("--json と --markdown は同時に使えない（貼った先で形が違う事故を作らない）", () => {
+    const io = fakeIo({ "a.yaml": GOOD });
+    expect(runCli(["explain", "a.yaml", "--json", "--markdown"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("同時に使えません");
+  });
+});
+
+describe("変更前を git から取る（--git）", () => {
+  const WITH_FORMAT_FOR_GIT = GOOD.replace(
+    "{ field: code, label: コード }",
+    "{ field: code, label: コード, format: mask }",
+  );
+
+  /** `git show <rev>:./<name>` に答える偽の git。 */
+  const gitWith = (answers: Record<string, string>) => (args: string[]) => {
+    const key = args.join(" ");
+    if (args[0] === "--version") return "git version 2.0.0\n";
+    for (const [rev, source] of Object.entries(answers)) {
+      if (key.includes(`${rev}:./`)) return source;
+    }
+    throw new Error(`fatal: no such path (${key})`);
+  };
+
+  it("explain --diff が、前の版を git から読む", () => {
+    const io = fakeIo(
+      { "a.yaml": WITH_FORMAT_FOR_GIT },
+      gitWith({ "HEAD~1": GOOD }),
+    );
+    expect(
+      runCli(["explain", "--diff", "--git", "HEAD~1", "a.yaml"], io),
+    ).toBe(0);
+    const out = io.stdout.join("\n");
+    // 何と何を比べたかを本文に書く（貼った先ではコマンドが見えない）。
+    expect(out).toContain("HEAD~1 → 作業中 の a.yaml");
+    expect(out).toContain("「コード」が変わりました");
+  });
+
+  it("diff も Markdown で表にできる（落ちた理由は PR で読む）", () => {
+    const io = fakeIo(
+      { "a.yaml": TIGHTENED_FOR_EXPLAIN },
+      gitWith({ HEAD: GOOD }),
+    );
+    expect(runCli(["diff", "--git", "HEAD", "a.yaml", "--markdown"], io)).toBe(1);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("## 定義の変更 — **後方互換を壊します**");
+    expect(out).toContain("| 影響 | 区分 | 場所 | 内容 |");
+    expect(out).toContain("✗ 破壊的");
+  });
+
+  it("diff（後方互換の判定）でも同じ書き方で使える", () => {
+    const io = fakeIo(
+      { "a.yaml": TIGHTENED_FOR_EXPLAIN },
+      gitWith({ "HEAD": GOOD }),
+    );
+    // 制約を厳しくしたので壊す変更＝終了コード 1。
+    expect(runCli(["diff", "--git", "HEAD", "a.yaml"], io)).toBe(1);
+    expect(io.stdout.join("\n")).toContain("後方互換を壊します");
+  });
+
+  it("--git のときはファイルは1つだけ", () => {
+    const io = fakeIo({ "a.yaml": GOOD, "b.yaml": GOOD }, gitWith({}));
+    expect(
+      runCli(["explain", "--diff", "--git", "HEAD", "a.yaml", "b.yaml"], io),
+    ).toBe(1);
+    expect(io.stderr.join("")).toContain("1つだけ");
+  });
+
+  it("git が無い所では、そう言う（別の失敗に化けさせない）", () => {
+    const io = fakeIo({ "a.yaml": GOOD });
+    expect(runCli(["explain", "--diff", "--git", "HEAD", "a.yaml"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("--git を使えません");
+  });
+
+  it("git を呼べない所では、リビジョンの話にしない", () => {
+    const io = fakeIo({ "a.yaml": GOOD }, () => {
+      throw new Error("spawnSync git ENOENT");
+    });
+    expect(runCli(["explain", "--diff", "--git", "HEAD", "a.yaml"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("git を実行できません");
+  });
+
+  it("そのリビジョンに無いファイルは、理由まで言う", () => {
+    const io = fakeIo({ "a.yaml": GOOD }, gitWith({}));
+    expect(
+      runCli(["explain", "--diff", "--git", "HEAD~1..HEAD", "a.yaml"], io),
+    ).toBe(1);
+    expect(io.stderr.join("")).toContain("新しく足したファイル");
   });
 });
 

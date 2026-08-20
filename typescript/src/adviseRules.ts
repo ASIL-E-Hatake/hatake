@@ -33,6 +33,11 @@ export const BUILTIN_RULES: Record<string, Record<string, "number" | "strings">>
   "subtable-without-parent-key": {},
   // 帳票なのに合計が無い。
   "report-without-totals": {},
+  // 「開始 ≤ 終了」の組が居るのに、向きを縛っていない。
+  // startWords / endWords = 対になっていると見なす語。
+  "dates-without-compare": { startWords: "strings", endWords: "strings" },
+  // 合計を手で入れられるのに、明細の和と突き合わせていない。words = 合計らしい語。
+  "total-without-compare": { words: "strings" },
 };
 
 /** 「この場所には必ずこのキーを書く」＝案件ごとの決めごと1つ。 */

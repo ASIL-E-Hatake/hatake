@@ -17,7 +17,7 @@ const reference = buildReference(
   JSON.parse(readFileSync("../spec/hatake-page.schema.json", "utf8")),
 );
 
-/** 組み込みの規則8つが**全部**出る定義（規則名の表と実装が合っているかを見るため）。 */
+/** 組み込みの規則が**全部1件ずつ**出る定義（規則名の表と実装が合っているかを見るため）。 */
 const EVERYTHING = `app:
   id: sales
   title: 販売
@@ -38,12 +38,16 @@ const EVERYTHING = `app:
         sections:
           - fields:
               - { field: customer, label: 得意先 }
+              - { field: startDate, label: 開始日, type: date }
+              - { field: endDate, label: 終了日, type: date }
+              - { field: total, label: 合計金額, type: number }
               - field: lines
                 label: 明細
                 type: subTable
                 source: { repository: orderLineRepository }
                 columns:
                   - { field: item, label: 品名 }
+                  - { field: amount, label: 金額, type: number }
       actions:
         - { id: remove, type: delete, label: 削除 }
     - type: report
