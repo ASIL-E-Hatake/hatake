@@ -18,7 +18,7 @@ jobs:
       - name: Analyze & test
         run: |
           set -e
-          for pkg in hatake_core hatake_yaml hatake_dsl hatake_encoding; do
+          for pkg in hatake_core hatake_yaml hatake_dsl hatake_encoding hatake_print; do
             echo "::group::$pkg"
             (cd "flutter/packages/$pkg" && dart pub get && dart analyze && { if [ -d test ]; then dart test; fi; })
             echo "::endgroup::"
@@ -340,6 +340,13 @@ jobs:
           python flutter/packages/hatake_encoding/tool/generate_tables.py
           git diff --exit-code -- flutter/packages/hatake_encoding/lib/src/tables \
             spec/conformance/charset.json
+
+      - name: The sample report PDF is a PDF (read by another library)
+        run: |
+          pip install --quiet pypdf
+          # hatake_print は PDF を自分で書いている。自前のテストは「自分と自分が
+          # 合っている」ことしか言えないので、他人の実装で読み返す。
+          python spec/tools/check_report_pdf.py
 
       - name: Check the DTO emitter's JSON Schema output
         run: python spec/tools/check_dto_schema.py

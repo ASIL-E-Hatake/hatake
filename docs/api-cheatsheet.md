@@ -310,6 +310,20 @@ actions:
 
 With `orientation`: `portrait` | `landscape`.
 
+**Printing (PDF / printer)**: the definition does not change. The opt-in
+`hatake_print` package puts a report on paper (pure Dart, no UI — a nightly batch
+can print too).
+
+```dart
+final bytes = reportPdf(page, rows, roles: {'staff'});  // PDF bytes
+await Printing.layoutPdf(onLayout: (_) => bytes);       // printer via `printing`
+```
+
+Formats, column widths (`column.width` in points), hidden columns (`roles`) and
+the sheet count are the **same as the on-screen report**. Margins, footers and
+page numbers live in `PrintStyle` — a print shop's concern, not the business's.
+No date is written by default, so the same report yields the same bytes.
+
 ## Conditions and computed values (on a `field`)
 
 ```yaml

@@ -181,6 +181,15 @@ page:
 
 `orientation` は `portrait` / `landscape`。
 
+**印刷（PDF / プリンタ）**: 定義は1文字も変えない。opt-in の `hatake_print` が帳票を紙に落とす（純 Dart・UI 不要なので夜間バッチでも刷れる）。
+
+```dart
+final bytes = reportPdf(page, rows, roles: {'staff'});  // PDF のバイト列
+await Printing.layoutPdf(onLayout: (_) => bytes);       // プリンタに送るなら printing
+```
+
+書式（`format`）・列幅（`column.width` はポイント）・見えない列（`roles`）・枚数は**画面の帳票と同じ**。余白・脚注・ページ番号は `PrintStyle`（紙の体裁は業務ではなく印刷所の話なので定義に入れない）。**日付は既定で入らない**＝同じ帳票なら毎回同じバイト列。
+
 **CSV 出力（`type: export`）**: その画面の列と行から組む（一覧・帳票で同じ。ロールで見えない列は出ない）。
 `config` は `filename` / `header` / `delimiter` / `newline`(crlf|lf) / `bom` / `raw`(format を通さない) / `limit` / `charset`。
 一覧の export は表示中のページではなく**検索結果全体**（`limit` まで）。

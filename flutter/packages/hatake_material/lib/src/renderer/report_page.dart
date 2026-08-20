@@ -4,7 +4,10 @@ part of '../material_renderer.dart';
 ///
 /// The sheet is drawn at the declared paper's aspect ratio, so what is on screen
 /// is what the paper would hold. Actually printing it (PDF, printer) is an
-/// opt-in adapter's job — the framework stops at the document.
+/// opt-in adapter's job — the framework stops at the document. `hatake_print`
+/// is that adapter, and it follows the same rules this preview does (column
+/// widths, formats, hidden columns, one sheet per ReportSheet), so the paper
+/// holds what the screen showed.
 class _MaterialReportPage extends StatelessWidget {
   final ReportPageDefinition definition;
   final ReportController controller;

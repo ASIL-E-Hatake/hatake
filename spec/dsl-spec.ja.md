@@ -385,7 +385,10 @@ page:
 
 **印刷そのものは Framework の外**。定義 + 行 → 中立な「帳票ドキュメント」までを
 Framework が作り、Renderer はそれを用紙の比率で描く（プレビュー）。PDF 化や
-プリンタ送出は opt-in アダプタの領分（`QuerySpec` と同じ立ち位置）。
+プリンタ送出は opt-in アダプタの領分（`QuerySpec` と同じ立ち位置）。実装は
+`hatake_print`（`reportPdf(page, rows)` で PDF のバイト列。純 Dart なので UI が
+無い所でも刷れる）。**定義は印刷のために1文字も変わらない**＝紙の体裁（余白・
+脚注・ページ番号）は業務ではなく印刷所の話なので、アダプタを呼ぶ側が渡す。
 
 ```yaml
 dsl_version: "1.0"

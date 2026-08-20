@@ -25,6 +25,8 @@ Business Definition (YAML / JSON / Dart)
 | `hatake_dsl` | Dart 型安全ビルダー → PageDefinition | core |
 | `hatake` | Renderer 契約・ランタイム・描画 API（Flutter） | core |
 | `hatake_material` | Material3 Renderer 実装 | hatake |
+| `hatake_print` | 帳票 → PDF（opt-in アダプタ）。**純 Dart**＝UI 無しでも刷れる | core |
+| `hatake_encoding` | 文字コード変換（cp932 / Shift_JIS / EUC-JP。opt-in アダプタ） | なし |
 | `hatake_example` | サンプルアプリ | all |
 
 ## ざっとイメージ
@@ -96,6 +98,7 @@ CrudPage と SearchPage が動いてる。中身はこんな感じ。
 | `hatake_dsl` Dart 型安全ビルダー | ✅ 完了（DSL↔YAML 収束テスト済み） |
 | `hatake` ランタイム + Renderer 契約 | ✅ 完了 |
 | `hatake_material` CrudPage 描画（検索/一覧/ページング/削除） | ✅ 完了（widget テスト済み） |
+| `hatake_print` 帳票 → PDF（座標まで中立な PrintLayout 経由） | ✅ 完了（見本の PDF を1バイト単位で固定・別実装で読み返す） |
 | フォーム（新規/編集/バリデーション・ダイアログ） | ✅ 完了（widget テスト済み） |
 | バリデーションエンジン（純Dart・Plugin拡張可） | ✅ 完了（ユニットテスト済み） |
 | `hatake_example` サンプルアプリ（YAML→描画） | ✅ 完了（widget テスト済み） |
