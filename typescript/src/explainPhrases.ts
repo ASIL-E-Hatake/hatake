@@ -165,6 +165,7 @@ export const ACTION_TYPES: Record<string, string> = {
   delete: "削除する",
   navigate: "別の画面へ移る",
   export: "内容をファイルに出す",
+  print: "紙に刷る",
   plugin: "アプリ側の処理を呼ぶ",
 };
 

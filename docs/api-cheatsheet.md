@@ -265,7 +265,7 @@ Note the difference: `between` / `startsWith` / `endsWith` are search-only, whil
 
 ### Action types (`action.type`)
 <!-- vocab: action.type -->
-`create` `edit` `delete` `navigate` `plugin` `export`
+`create` `edit` `delete` `navigate` `plugin` `export` `print`
 
 `table.rowActions` is an array of action **ids** (strings), not objects. `edit` and `delete` are built in.
 
@@ -318,6 +318,22 @@ can print too).
 final bytes = reportPdf(page, rows, roles: {'staff'});  // PDF bytes
 await Printing.layoutPdf(onLayout: (_) => bytes);       // printer via `printing`
 ```
+
+**Printing from the definition (`type: print`)**: put
+`- { id: printPdf, type: print, label: Print }` on a report and the button
+appears. The framework hands over the paper's *contents* — the report, the rows
+on screen, the roles, the formatters — and makes no bytes.
+
+```dart
+printSink: (req) async => save(req.filename,          // defaults to <title>.pdf
+    reportPdf(req.page, req.rows, formatters: req.formatters, roles: req.roles));
+```
+
+The framework reads `config.filename` only (adding `.pdf` when it has no
+extension); the rest of `config` passes through untouched, because paper trays
+and typefaces are the adapter's vocabulary. With no `printSink` registered the
+button says so instead of doing nothing quietly, and `print` on a page without a
+`report` is a warning (`print-without-report`).
 
 Formats, column widths (`column.width` in points), hidden columns (`roles`) and
 the sheet count are the **same as the on-screen report**. Margins, footers and

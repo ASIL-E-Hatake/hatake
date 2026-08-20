@@ -572,6 +572,56 @@ EUC-JP; the tables are generated, and
 [`conformance/charset.json`](conformance/charset.json) is what Dart and the JVM are
 checked against). The name is an open string, so a sink can add its own charsets.
 
+## print (on paper)
+
+The `print` action type. **Reports only** — a page with a `report:` — and it hands
+the paper's contents to the registered print sink. It prints the rows already on
+screen, so a report that looked like three sheets prints as three sheets.
+
+```yaml
+- { id: printPdf, type: print, label: Print, config: { filename: sales } }
+```
+
+| `config` | Type | Default | What it does |
+|---|---|---|---|
+| `filename` | string | page title | file name (`.pdf` is added when it has no extension) |
+
+**Everything in `config` other than `filename` passes through unread.** Trays,
+typefaces and duplex are a print shop's vocabulary, so the adapter reads them
+instead of the DSL growing keys for them (write `config: { font: mincho }` and the
+sink can pick it up).
+
+**The bytes are made outside the framework.** A CSV is a string the framework can
+build; a PDF is fonts, encodings and page trees — a subsystem an app that never
+prints should not carry. So `print` hands over the *contents* (the report, the
+rows, the roles, the formatters); the opt-in
+[`hatake_print`](../flutter/packages/hatake_print/) turns them into a PDF, and the
+application gets that to a printer or a file.
+
+```dart
+HatakeScope(
+  printSink: (request) async {
+    final bytes = reportPdf(
+      request.page,
+      request.rows,
+      formatters: request.formatters,  // reads the same as the screen
+      roles: request.roles,            // a hidden column stays off the paper
+    );
+    await save(request.filename, bytes);
+  },
+  ...
+)
+```
+
+With no `printSink` registered the button **says so** rather than doing nothing
+quietly, and `print` on a page without a `report` is a warning
+(`print-without-report`) so you do not discover it by pressing. To take a list away
+as a file, use [`export`](#export-csv) instead — that works on any page.
+
+To read the paper before printing it, `npx hatake paper <file>` renders the same
+coordinates as text; a [shared fixture](conformance/report_layout.json) pins them
+to what the printer produces.
+
 ## search
 
 | Key | Type | Default | Description |
@@ -1087,7 +1137,8 @@ are search-only.
 `text`, `number`, `badge`, `boolean`, `date`, `dateTime`
 
 ### Action types
-`create`, `edit`, `delete`, `navigate`, `plugin`, `export` (→ [export](#export-csv))
+`create`, `edit`, `delete`, `navigate`, `plugin`, `export` (→ [export](#export-csv)),
+`print` (→ [print](#print-on-paper))
 
 ### Dashboard item types
 (an [item](#item)'s `type`) `metric`, `table`, `chart`
@@ -1173,6 +1224,7 @@ npx hatake validate page.yaml --no-warn --json
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | linked options that do not line up (input fields and search filters alike) |
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | a mistake in a cross-field rule (`compare`) — **that rule passes silently** |
 | `page-nobody-can-open` | the `roles` on the ways in (menu items, navigate buttons) disagree — **nobody can open that screen** |
+| `print-without-report` | a `type: print` button on a page with **no `report`** — there is no paper to print, so the button appears and pressing it only reports that this page cannot print |
 | `columns-wider-than-paper` / `rows-per-page-too-many` | the report does not fit its paper (declared column widths exceed the sheet, or a sheet holds so many rows that a line has no readable height) — the printer shrinks everything instead of failing, so you get an unreadable sheet rather than an error. Paper sizes live in [`spec/papers.json`](papers.json) |
 
 These are **not errors** (some of these shapes can be made to work by a

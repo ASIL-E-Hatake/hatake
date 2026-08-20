@@ -188,6 +188,15 @@ final bytes = reportPdf(page, rows, roles: {'staff'});  // PDF のバイト列
 await Printing.layoutPdf(onLayout: (_) => bytes);       // プリンタに送るなら printing
 ```
 
+**定義から刷る（`type: print`）**: 帳票に `- { id: printPdf, type: print, label: 印刷 }` を置くと印刷ボタンが出る。Framework が渡すのは**紙の中身まで**（帳票の定義・画面に出ている行・役割・書式）で、バイト列は作らない。
+
+```dart
+printSink: (req) async => save(req.filename,          // 既定 <画面名>.pdf
+    reportPdf(req.page, req.rows, formatters: req.formatters, roles: req.roles));
+```
+
+`config.filename` だけ Framework が読み（拡張子が無ければ `.pdf`）、残りの `config` は**そのまま出力先に渡る**（用紙や字はアダプタの語彙）。`printSink` 未登録なら押したときにそう言う（黙って何も起きない、にはしない）。`report` の無い画面に置くと `validate` が警告する（`print-without-report`）。
+
 書式（`format`）・列幅（`column.width` はポイント）・見えない列（`roles`）・枚数は**画面の帳票と同じ**。余白・脚注・ページ番号は `PrintStyle`（紙の体裁は業務ではなく印刷所の話なので定義に入れない）。**日付は既定で入らない**＝同じ帳票なら毎回同じバイト列。
 
 **CSV 出力（`type: export`）**: その画面の列と行から組む（一覧・帳票で同じ。ロールで見えない列は出ない）。
@@ -347,9 +356,9 @@ actions:
 
 ## アクション（`actions: [...]` / `table.rowActions`）
 <!-- vocab: action.type -->
-`create` `edit` `delete` `navigate` `plugin` `export`
+`create` `edit` `delete` `navigate` `plugin` `export` `print`
 
-`plugin` は `plugin: <key>` で登録ハンドラにディスパッチ。`navigate` は `page` と `params`、`export` は CSV 出力（上記）。`table.rowActions` は**アクション id の文字列配列**（`edit` / `delete` は組み込みなので宣言不要）。
+`plugin` は `plugin: <key>` で登録ハンドラにディスパッチ。`navigate` は `page` と `params`、`export` は CSV 出力（上記）、`print` は帳票の印刷（下記）。`table.rowActions` は**アクション id の文字列配列**（`edit` / `delete` は組み込みなので宣言不要）。
 
 ### 確認と後処理（`confirm` / `onSuccess`）
 

@@ -24,6 +24,7 @@ part 'renderer/wizard_page.dart';
 part 'renderer/dashboard_page.dart';
 part 'renderer/dashboard_chart.dart';
 part 'renderer/export_action.dart';
+part 'renderer/print_action.dart';
 part 'renderer/report_page.dart';
 
 /// Context handed to a custom [MaterialFieldBuilder] for a form field.

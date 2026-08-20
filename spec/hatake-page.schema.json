@@ -1020,14 +1020,15 @@
         },
         "type": {
           "type": "string",
-          "description": "Action type (open string). Built-ins: create, edit, delete, navigate, plugin, export.",
+          "description": "Action type (open string). Built-ins: create, edit, delete, navigate, plugin, export, print.",
           "examples": [
             "create",
             "edit",
             "delete",
             "navigate",
             "plugin",
-            "export"
+            "export",
+            "print"
           ]
         },
         "label": {

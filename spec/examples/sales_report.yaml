@@ -49,3 +49,7 @@ page:
   actions:
     # CSV も同じ列から出る。出力先（ダウンロード/保存）は利用者が登録する。
     - { id: csv, type: export, label: CSV出力, config: { filename: 売上明細, bom: true } }
+    # 紙に刷る。Framework が渡すのは「紙の中身」まで（この定義と、いま出ている行）で、
+    # PDF のバイト列にするのは opt-in の hatake_print、プリンタやファイルに送るのは
+    # アプリの担当。刷る前に紙を読むなら npx hatake paper spec/examples/sales_report.yaml
+    - { id: printPdf, type: print, label: 印刷, config: { filename: 売上明細 } }

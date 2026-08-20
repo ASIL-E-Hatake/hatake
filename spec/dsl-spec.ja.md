@@ -530,6 +530,54 @@ page:
 [`conformance/charset.json`](conformance/charset.json) で Dart と JVM が突き合わせている）。
 名前は開いた文字列なので、独自の文字コードは出力先で自由に足せる。
 
+## print（帳票を刷る）
+
+`action` の型 `print`。**帳票（`report:` を持つ画面）専用**で、押すと紙の中身が
+出力先（`printSink`）に渡る。刷るのは「いま画面に出ている行」なので、画面で3枚に
+見えた帳票は3枚で刷られる。
+
+```yaml
+- { id: printPdf, type: print, label: 印刷, config: { filename: 売上明細 } }
+```
+
+| `config` | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `filename` | string | ページタイトル | ファイル名（拡張子が無ければ `.pdf` を付ける）。 |
+
+**`filename` 以外の `config` は読まずにそのまま出力先へ渡る。** 用紙のトレイ・書体・
+両面は印刷所の語彙なので、DSL に足すのではなくアダプタが読む（`config: { font: mincho }`
+のように書いておけば、出力先が拾える）。
+
+**バイト列を作るのは Framework の外**。CSV は Framework が文字列まで作れるが、PDF は
+フォント・符号化・ページツリーを持つ別の世界で、刷らないアプリに持たせる意味が無い。
+だから `print` が渡すのは**紙の中身**（帳票の定義・行・役割・フォーマッタ）までで、
+PDF にするのは opt-in の [`hatake_print`](../flutter/packages/hatake_print/)、
+それをプリンタやファイルに送るのはアプリ。
+
+```dart
+HatakeScope(
+  printSink: (request) async {
+    final bytes = reportPdf(
+      request.page,
+      request.rows,
+      formatters: request.formatters,  // 画面と同じ見え方
+      roles: request.roles,            // 見えない列は紙にも出ない
+    );
+    await save(request.filename, bytes);
+  },
+  ...
+)
+```
+
+`printSink` が未登録なら、押したときに**そう言う**（黙って何も起きないことにはしない）。
+`report` の無い画面に置くと `validate` が警告する（`print-without-report`）＝押すまで
+気づかない、を避ける。一覧をそのままファイルに持ち出したいだけなら
+[`export`](#exportcsv-出力)（CSV）で、そちらはどの画面でも動く。
+
+**刷る前に紙を読む**なら `npx hatake paper <file>`（紙の上の座標を文字にして返す。
+座標は刷る側と同じ計算で、[共有フィクスチャ](conformance/report_layout.json)が一致を
+縛っている）。
+
 ## search
 
 | キー | 型 | 既定 | 説明 |
@@ -997,7 +1045,8 @@ computed: { op: sum, fields: [price, tax] }
 `text`, `number`, `badge`, `boolean`, `date`, `dateTime`
 
 ### アクション型
-`create`, `edit`, `delete`, `navigate`, `plugin`, `export`（→ [export](#exportcsv-出力)）
+`create`, `edit`, `delete`, `navigate`, `plugin`, `export`（→ [export](#exportcsv-出力)）,
+`print`（→ [print](#print帳票を刷る)）
 
 ### ダッシュボード項目型
 （[item](#item) の `type`）`metric`, `table`, `chart`
@@ -1084,6 +1133,7 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | 選択肢の連動の辻褄（入力項目・検索条件の両方） |
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | 項目間の検証（`compare`）の書き間違い → **その検証が黙って通る** |
 | `page-nobody-can-open` | 入口（メニュー項目・遷移ボタン）の `roles` が食い違っている → **その画面を開ける人が誰も居ない** |
+| `print-without-report` | `type: print` のボタンを **`report` の無い画面**に置いた → 刷る紙が無いので、ボタンは出るのに押すと「このページでは刷れません」と言われる |
 | `columns-wider-than-paper` / `rows-per-page-too-many` | 帳票が**紙に入らない**（列幅の合計が紙幅を超える・1枚の行数が多すぎて1行が読めない高さになる）→ 刷る側が全体を縮めるので、例外は出ずに**読めない紙が出てくる**。用紙の実寸は [`spec/papers.json`](papers.json) |
 
 **エラーではない**（Repository の実装やプラグインの登録次第で成立する書き方もあるため）。

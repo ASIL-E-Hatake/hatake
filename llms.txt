@@ -55,6 +55,7 @@ npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読ん�
 **人にレビューさせる紙は1枚で出す。** `explain --review` は説明（できること・**できないこと**）と助言（書き足したほうがいい所）をまとめて出す。助言は好みなので、案件の決めごとがあるなら `--rules team.json` で物差しを差し替える（知らないキー・知らない規則名はエラー＝設定が黙って効かないことを作らない）。
 **項目間の検証は `compare`。** 「開始日 ≤ 終了日」「合計＝明細の和」は1つの項目では書けないので、`validators` に `{ type: compare, operator: gte, field: startDate }` と書く（`operator` は equals/notEquals/gt/gte/lt/lte、既定 gte）。明細と比べるなら `aggregate: sum, of: amount`。比べ方は**数として読めれば数、読めなければ文字**（ISO の日付は文字の大小＝日付の前後）。**判定できないときは通す**（自分が空なら required の担当）。相手の項目名を間違えると黙って通るので、`validate` が警告で言う。
 **権限は入口から辿るしかない。** ページに `roles` は書けない（書けるのはメニュー項目とボタン、列・項目・カード）ので、「この画面は誰に見えるか」はメニューとボタンの `roles` から辿って数える。`diagram` はそれを箱の中に書き、**誰でも開けて消す/持ち出せる画面**（赤枠）と**誰も開けない画面**（点線＝入口の権限が食い違っている）を色で分ける。どちらも1枚ずつ読んでも出てこない。
+**紙は定義から出せる。** 帳票に `{ id: printPdf, type: print, label: 印刷 }` を置けば印刷ボタンが出る（`type: print` は帳票専用。`report` の無い画面に置くと警告）。Framework が渡すのは**紙の中身まで**（帳票の定義・いま画面に出ている行・役割・フォーマッタ）で、PDF のバイト列にするのは opt-in の `hatake_print`、それをプリンタやファイルに送るのはアプリ（`HatakeScope(printSink:)`）。刷る前に紙を読むなら `npx hatake paper`。
 **画面の索引はどのエディションにもある。** CLI の `index` と同じものが Dart 版（`ScreenIndex.ofApp(app)` / `buildScreenIndex`）と Java 版（`ScreenIndex.build`）にもあるので、アプリの中から自分の画面を探せる。種別の見出し語は `spec/vocabulary.json` が正で、3つのエディションはそれを転記している。
 
 ## 用途別（1〜2ファイルだけ読めばいい）

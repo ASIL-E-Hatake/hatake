@@ -20,6 +20,14 @@ abstract final class ActionTypes {
   /// Options live in `ActionDefinition.config` (see `CsvOptions.fromConfig`).
   static const String export = 'export';
 
+  /// Print the page's report. The framework builds the paper's *contents* and
+  /// hands them to the print sink on `HatakeScope`; producing the bytes (PDF,
+  /// printer codes) belongs to an opt-in adapter — see `hatake_print`.
+  ///
+  /// Only a page with a `report` can print: the paper's shape comes from the
+  /// report (paper, groups, totals), and there is no paper without it.
+  static const String print = 'print';
+
   /// Navigate to another page (see `AppDefinition`). Target page id and route
   /// params are carried in `ActionDefinition.config` as `page` / `params`.
   static const String navigate = 'navigate';

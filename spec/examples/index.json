@@ -230,7 +230,7 @@
       "file": "sales_report.yaml",
       "kind": "report",
       "title": "売上明細表",
-      "task": "一覧の印刷版が欲しい。顧客ごとに小計を出して、CSV も落としたい",
+      "task": "一覧の印刷版が欲しい。顧客ごとに小計を出して、CSV も落としたい、紙にも刷りたい",
       "keys": [
         "report",
         "paper",
@@ -251,7 +251,9 @@
         "合計",
         "コントロールブレイク",
         "CSV出力",
-        "export"
+        "export",
+        "印刷",
+        "print"
       ]
     },
     {

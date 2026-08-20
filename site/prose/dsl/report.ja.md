@@ -76,14 +76,37 @@ totals:
 
 `type: export` のアクションを置けば、帳票の列と行から CSV が出る。用紙の指定は CSV には関係しないので、小計行や改ページは CSV には現れない（明細だけが出る）。
 
+## 印刷ボタンも定義に書く
+
+`type: print` のアクションを置けば、帳票に印刷ボタンが出る。**帳票専用**（`report` の無い画面に置くと `validate` が警告する。紙の形を決めているのは `report` なので、無い画面には刷るものが無い）。
+
+```yaml
+actions:
+  - { id: printPdf, type: print, label: 印刷, config: { filename: 売上明細 } }
+```
+
+刷るのは**いま画面に出ている行**。読み直さないので、画面で 3 枚に見えた帳票は 3 枚で刷られる。ファイル名は `config.filename`（拡張子が無ければ `.pdf`）で、それ以外の `config` は**読まずにそのまま出力先に渡る**（トレイや書体は印刷所の語彙なので、DSL のキーを増やさない）。
+
 ## PDF にする・プリンタに送る
 
-画面のプレビューまでが Framework の担当で、**紙に出すのは opt-in の `hatake_print`**（純 Dart）。定義は1文字も変えない。
+**バイト列を作るのは Framework の外。** CSV は文字列まで Framework が作れるが、PDF はフォント・符号化・ページツリーを持つ別の世界で、刷らないアプリに背負わせる意味が無い。だから `type: print` が渡すのは**紙の中身まで**（帳票の定義・いま出ている行・役割・見せ方）で、PDF にするのは opt-in の `hatake_print`（純 Dart）、それをプリンタやファイルに送るのはアプリ。
 
 ```dart
-final bytes = reportPdf(page, rows);              // PDF のバイト列
-await Printing.layoutPdf(onLayout: (_) => bytes); // プリンタに送るなら printing
+HatakeScope(
+  printSink: (request) async {
+    final bytes = reportPdf(
+      request.page,
+      request.rows,
+      formatters: request.formatters,  // 画面と同じ見え方で
+      roles: request.roles,            // 見えない列は紙にも出さない
+    );
+    await Printing.layoutPdf(onLayout: (_) => bytes);  // プリンタに送るなら printing
+  },
+  ...
+)
 ```
+
+出力先（`printSink`）を登録していなければ、押したときに**そう言う**。黙って何も起きないのが一番困るので。定義を1文字も変えずにバッチから刷りたいなら、`reportPdf(page, rows)` を直接呼んでもよい（UI を通らない＝夜間バッチでも同じ1行）。
 
 書式（`format`）・列幅（`column.width`）・見えない列（`roles`）・枚数は**画面の帳票と同じ**規則で組まれる。画面で 3 枚に見えた帳票は 3 枚で刷られる。
 

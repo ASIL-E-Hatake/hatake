@@ -211,6 +211,10 @@ app:
           type: export
           label: CSV出力（Shift_JIS）
           config: { filename: 売上明細_sjis, charset: cp932 }
+        # 紙に刷る。Framework が渡すのは「紙の中身」まで（帳票の定義と行）で、PDF の
+        # バイト列を作るのは opt-in の hatake_print、それをプリンタやファイルに送るのは
+        # アプリの担当。config は読まずにそのまま渡るので、字の指定はアダプタが読む。
+        - { id: printPdf, type: print, label: 印刷, config: { filename: 売上明細, font: mincho } }
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: sales_report } }
 
     - type: detail

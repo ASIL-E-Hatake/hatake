@@ -4,6 +4,7 @@ import 'package:hatake_core/hatake_core.dart';
 import '../renderer/renderer.dart';
 import '../runtime/action_registry.dart';
 import '../runtime/export_sink.dart';
+import '../runtime/print_sink.dart';
 import '../runtime/repository_registry.dart';
 import '../runtime/sub_table_controller.dart';
 
@@ -39,6 +40,15 @@ class HatakeScope extends InheritedWidget {
   /// the framework builds the text but never performs I/O.
   final ExportSink? exportSink;
 
+  /// Receives the reports `type: print` actions want on paper. Null = no sink,
+  /// and a print action says so instead of silently doing nothing.
+  ///
+  /// The framework hands over the report and its rows; making bytes out of them
+  /// is an opt-in adapter's job (`hatake_print`), and printing them is platform
+  /// I/O. Neither is something this package knows how to do — which is why an
+  /// app that never prints carries no printing code at all.
+  final PrintSink? printSink;
+
   /// Roles of the current user, used to gate fields/columns/actions declared
   /// with `roles` (see `isAllowed`). Empty = the user has no roles, so anything
   /// with a non-empty `roles` is hidden. UI-level display gating only — real
@@ -53,6 +63,7 @@ class HatakeScope extends InheritedWidget {
     ConverterRegistry? converters,
     ActionRegistry? actions,
     this.exportSink,
+    this.printSink,
     Set<String>? roles,
     required super.child,
   })  : validators = validators ?? ValidatorRegistry(),
@@ -89,6 +100,7 @@ class HatakeScope extends InheritedWidget {
         oldWidget.converters != converters ||
         oldWidget.actions != actions ||
         oldWidget.exportSink != exportSink ||
+        oldWidget.printSink != printSink ||
         oldWidget.roles != roles;
   }
 }

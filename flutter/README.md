@@ -99,6 +99,7 @@ CrudPage と SearchPage が動いてる。中身はこんな感じ。
 | `hatake` ランタイム + Renderer 契約 | ✅ 完了 |
 | `hatake_material` CrudPage 描画（検索/一覧/ページング/削除） | ✅ 完了（widget テスト済み） |
 | `hatake_print` 帳票 → PDF（座標まで中立な PrintLayout 経由） | ✅ 完了（見本の PDF を1バイト単位で固定・別実装で読み返す） |
+| 定義から刷る（`type: print` → `HatakeScope(printSink:)`） | ✅ 完了（Framework は紙の中身までを渡す＝本体は `hatake_print` を知らない） |
 | フォーム（新規/編集/バリデーション・ダイアログ） | ✅ 完了（widget テスト済み） |
 | バリデーションエンジン（純Dart・Plugin拡張可） | ✅ 完了（ユニットテスト済み） |
 | `hatake_example` サンプルアプリ（YAML→描画） | ✅ 完了（widget テスト済み） |

@@ -22,6 +22,33 @@ await File('売上明細表.pdf').writeAsBytes(bytes);
 final bytes = reportPdf(page, rows, roles: {'staff'}, formatters: formatters);
 ```
 
+## 画面の印刷ボタンから（`type: print`）
+
+定義に `- { id: printPdf, type: print, label: 印刷 }` を置くと帳票に印刷ボタンが出る。押されると Framework は**紙の中身**（帳票の定義・いま画面に出ている行・役割・フォーマッタ）を `printSink` に渡してくる。バイト列にするのはこのパッケージ、それをどこへ送るかはアプリ。
+
+```dart
+HatakeScope(
+  printSink: (request) async {
+    final bytes = reportPdf(
+      request.page,
+      request.rows,
+      formatters: request.formatters,
+      roles: request.roles,
+    );
+    await save(request.filename, bytes);  // 既定は <画面名>.pdf
+  },
+  ...
+)
+```
+
+`request.config` は**アクションの `config` がそのまま**入っている（Framework は `filename` しか読まない）。用紙や書体はここで拾う＝印刷所の語彙を DSL に持ち込まない。
+
+```dart
+final font = request.config['font'] == 'mincho' ? PdfFont.mincho : PdfFont.gothic;
+```
+
+Framework 側は**このパッケージを知らない**（`printSink` は関数1つ）。刷らないアプリに PDF を書くコードは1行も入らない。
+
 ## プリンタに送る
 
 PDF のバイト列にしてあるので、[`printing`](https://pub.dev/packages/printing) パッケージにそのまま渡せる（このパッケージは `printing` に依存しない＝入れる/入れないは利用者が決める）。

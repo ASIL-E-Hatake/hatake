@@ -165,6 +165,8 @@ export function scaffold(kind: string, options: ScaffoldOptions): string {
         "      - { field: amount, aggregate: sum }",
         "  actions:",
         "    - { id: csv, type: export, label: CSV出力, config: { bom: true } }",
+        // 紙に刷る口。バイト列を作るのはアプリ側（HatakeScope の printSink）。
+        "    - { id: printPdf, type: print, label: 印刷 }",
       ]);
     default:
       throw new Error(

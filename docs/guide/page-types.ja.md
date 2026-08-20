@@ -85,6 +85,26 @@ report:
 
 **印刷そのものは Framework の外**です。定義＋行から「帳票ドキュメント」を作るところまでが Framework で、Renderer はそれを用紙の比率でプレビューします。PDF 化やプリンタ送出は opt-in アダプタの担当（`printing` / `pdf` への依存を本体に持ち込まないため）。
 
+**印刷ボタンは定義に書けます**（`type: print`。帳票専用）。押されると Framework は紙の中身（帳票の定義・いま出ている行・役割・見せ方）を `HatakeScope(printSink:)` に渡すところまでをやり、バイト列は作りません。
+
+```yaml
+actions:
+  - { id: printPdf, type: print, label: 印刷, config: { filename: 売上明細 } }
+```
+
+```dart
+HatakeScope(
+  printSink: (request) async {
+    // opt-in の hatake_print で PDF にして、保存・プリンタ・添付に回す
+    final bytes = reportPdf(request.page, request.rows,
+        formatters: request.formatters, roles: request.roles);
+  },
+  ...
+)
+```
+
+`config.filename` 以外の `config` は**読まずにそのまま渡ります**（用紙や書体はアダプタの語彙）。`report` の無い画面に置くと `validate` が警告します。
+
 **CSV は `export` アクション**で、一覧でも帳票でも同じ書き方です。
 
 ```yaml

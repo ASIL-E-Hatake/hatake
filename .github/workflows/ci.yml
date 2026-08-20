@@ -458,6 +458,42 @@ jobs:
           fi
           grep -q '帳票（type: report）の定義がありません' /tmp/paper3.err
 
+      - name: Printing starts in the definition, not in application code
+        working-directory: typescript
+        run: |
+          set -e
+          # 同梱の帳票には印刷ボタンがある。アクションの型が通っていなければ
+          # unknown-action-type で落ちる＝「定義から刷れる」ことがここで担保される。
+          node dist/cli.js validate --warn-as-error ../spec/examples/sales_report.yaml
+          # 説明は画面の言葉で読み上げる（語彙は spec/vocabulary.json が正）。
+          node dist/cli.js explain ../spec/examples/sales_report.yaml > /tmp/print.log
+          grep -q '印刷 … 紙に刷る' /tmp/print.log
+          # 紙の無い画面に置いたら、**押す前に**言うこと（押すまで分からないのは遅い）。
+          cat > /tmp/print-nowhere.yaml <<'YAML'
+          page:
+            type: crud
+            id: order_list
+            title: 受注一覧
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - { id: printPdf, type: print, label: 印刷 }
+          YAML
+          if node dist/cli.js validate --warn-as-error /tmp/print-nowhere.yaml               2> /tmp/nowhere.log; then
+            echo "紙の無い画面の印刷ボタンを通してしまった"; exit 1
+          fi
+          grep -q 'この画面には report がありません' /tmp/nowhere.log
+          node dist/cli.js validate --json /tmp/print-nowhere.yaml > /tmp/nowhere.json
+          grep -q '"rule": "print-without-report"' /tmp/nowhere.json
+          # 警告から対照表（間違い → 正しい書き方）へ繋がること。
+          node dist/cli.js pitfalls print-without-report > /tmp/pitfall.log
+          grep -q 'type: report' /tmp/pitfall.log
+          # 紙も持ち出しの口として数えること（権限で絞っていなければ助言が出る）。
+          node dist/cli.js advise /tmp/print-nowhere.yaml > /tmp/print-advise.log
+          grep -q '紙で持ち出せます' /tmp/print-advise.log
+
       - name: A definition compared with itself is compatible
         working-directory: typescript
         run: |
