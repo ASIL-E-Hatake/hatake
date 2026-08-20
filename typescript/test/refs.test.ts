@@ -7,6 +7,7 @@ import {
   findWarnings,
   groupRefs,
   refsNeedingRegistration,
+  unusedRegistrations,
 } from "../src/index.js";
 
 /** 素の document（refs も警告も、解析後のモデルではなくこれを見る）。 */
@@ -262,5 +263,76 @@ describe("デモアプリとの辻褄", () => {
 
   it("デモの定義は、登録済み一覧と突き合わせても警告ゼロ", () => {
     expect(findWarnings(doc(definition), { registry })).toEqual([]);
+  });
+});
+
+describe("使われていない登録（逆向きの突き合わせ）", () => {
+  const source = page(
+    "          - { field: code, label: コード, format: postalCode }",
+  );
+
+  it("登録してあるのに、どの定義も使っていない名前を出す", () => {
+    const unused = unusedRegistrations(
+      {
+        repositories: ["customerRepository", "oldPriceRepository"],
+        formatters: ["postalCode", "eraDate"],
+      },
+      refsOf(source),
+    );
+    expect(unused).toEqual({
+      repositories: ["oldPriceRepository"],
+      formatters: ["eraDate"],
+    });
+  });
+
+  it("組み込みの上書き登録は、定義が使っていれば「使われている」", () => {
+    // 自分の currency を登録して、定義が currency を使っている＝消してはいけない。
+    const withCurrency = page(
+      "          - { field: amount, label: 金額, format: currency }",
+    );
+    expect(
+      unusedRegistrations({ formatters: ["currency"] }, refsOf(withCurrency)),
+    ).toEqual({});
+  });
+
+  it("一覧に書いていない種類は見ない（勝手に厳しくしない）", () => {
+    // plugins を渡していないので、プラグインの話は一切しない。
+    const unused = unusedRegistrations(
+      { repositories: ["customerRepository"] },
+      refsOf(source),
+    );
+    expect(unused).toEqual({});
+  });
+
+  it("同じ名前が2回書いてあっても1回だけ出す", () => {
+    expect(
+      unusedRegistrations(
+        { repositories: ["gone", "gone"] },
+        refsOf(source),
+      ).repositories,
+    ).toEqual(["gone"]);
+  });
+
+  it("全部使われていれば空（空の報告と「一覧が無い」は別）", () => {
+    expect(
+      unusedRegistrations(
+        { repositories: ["customerRepository"], formatters: ["postalCode"] },
+        refsOf(source),
+      ),
+    ).toEqual({});
+  });
+
+  it("デモアプリの登録は全部使われている（配っているものが汚れていない証拠）", () => {
+    const app = readFileSync(
+      "../flutter/packages/hatake_example/assets/sales_app.yaml",
+      "utf8",
+    );
+    const registry = JSON.parse(
+      readFileSync(
+        "../flutter/packages/hatake_example/assets/hatake-registry.json",
+        "utf8",
+      ),
+    ) as DefinitionRegistry;
+    expect(unusedRegistrations(registry, refsOf(app))).toEqual({});
   });
 });

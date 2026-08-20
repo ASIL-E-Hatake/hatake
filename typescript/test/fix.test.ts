@@ -5,9 +5,11 @@ import {
   findUnknownKeys,
   findWarnings,
   fixSource,
+  fixTodo,
   parsePath,
   pathText,
   renderFix,
+  renderFixTodo,
   soleClosestKey,
 } from "../src/index.js";
 
@@ -247,5 +249,82 @@ describe("道の書き方（警告と行き来する）", () => {
     ]) {
       expect(pathText(parsePath(text))).toBe(text);
     }
+  });
+});
+
+describe("直せなかったものを次の1往復で渡す", () => {
+  /** 機械が直せるもの（綴り違い）と、直せないもの（意図が要る）を両方持つ定義。 */
+  const MIXED = `page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  table:
+    columns:
+      - { field: customer, label: 顧客, witdh: 140 }
+      - { field: amount, label: 金額, type: number }
+  report:
+    groupBy: [{ field: customer, label: 顧客 }]
+    totals: [{ field: tax, aggregate: sum }]
+`;
+
+  const todo = fixTodo(fixSource(MIXED));
+
+  it("機械が直した件数を持つ（もう見なくていい所を言うため）", () => {
+    // witdh → width と、groupBy に対する report.sort は機械が直せる。
+    expect(todo.fixed).toBeGreaterThan(0);
+  });
+
+  it("残りには場所が付いている（remaining は名前だけなので付け直す）", () => {
+    const totals = todo.items.find((one) => one.rule === "total-without-column");
+    expect(totals).toBeDefined();
+    expect(totals?.where).toBe("page.report.totals[0].field");
+    expect(totals?.reason).toContain("table.columns にありません");
+  });
+
+  it("直した所は残りに入らない（触ると戻る所を渡さない）", () => {
+    expect(todo.items.map((one) => one.rule)).not.toContain("unknown-key:witdh");
+    expect(todo.items.map((one) => one.rule)).not.toContain("groupby-without-sort");
+  });
+
+  it("手掛かりを渡せる（実例カタログの直し方を添える）", () => {
+    const withHint = fixTodo(fixSource(MIXED), (rule) =>
+      rule === "total-without-column" ? "列に足すか、列にある項目で合計する。" : undefined,
+    );
+    expect(
+      withHint.items.find((one) => one.rule === "total-without-column")?.hint,
+    ).toContain("列に足すか");
+  });
+
+  it("同じ所の同じ規則は1回だけ（skipped と診断で二重に出さない）", () => {
+    const keys = todo.items.map((one) => `${one.rule}@${one.where}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("渡す文は「この件だけ・ほかは触らない」まで言う", () => {
+    const text = renderFixTodo(todo);
+    expect(text).toContain("件を直しました");
+    expect(text).toContain("ほかの所は触らないこと");
+    expect(text).toContain("hatake validate");
+    // 場所と規則名が読める形。
+    expect(text).toContain("[total-without-column]");
+  });
+
+  it("残りが無ければ、そう言う（空の指示を渡さない）", () => {
+    const clean = `page:
+  type: crud
+  id: customer_master
+  title: 顧客マスタ
+  repository: customerRepository
+  key: id
+  table:
+    columns: [{ field: code, label: コード }]
+  form:
+    sections:
+      - fields: [{ field: code, label: コード, required: true }]
+`;
+    const empty = fixTodo(fixSource(clean));
+    expect(empty.items).toEqual([]);
+    expect(renderFixTodo(empty)).toContain("残っている仕事はありません");
   });
 });

@@ -59,7 +59,7 @@ import {
   renderHarvest,
 } from "./harvest.js";
 import { minimizeSource, renderMinimize } from "./minimize.js";
-import { fixSource, renderFix } from "./fix.js";
+import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
 import { type AdviceRules, DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
 import { renderReview, reviewSource } from "./review.js";
@@ -79,9 +79,11 @@ import { appDiagram } from "./appDiagram.js";
 import { diffDefinitions, type DefinitionChange } from "./defDiff.js";
 import {
   collectRefs,
+  type DefinitionRef,
   type DefinitionRegistry,
   groupRefs,
   refsNeedingRegistration,
+  unusedRegistrations,
 } from "./refs.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import {
@@ -205,7 +207,7 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       （変わるものは落とさない）。コメントはそのまま残す。既定は最小化した定義を
       標準出力に、落としたものは標準エラーに出す（--json で両方まとめて機械可読）。
 
-  hatake fix <file> [--write] [--json] [--registry hatake-registry.json]
+  hatake fix <file> [--write] [--todo] [--json] [--registry hatake-registry.json]
       **直し方が一意に決まる問題だけ**を直す（綴り違い・入れる値が決まっている指定）。
       既定は直した定義を標準出力に出すだけで、ファイルは触らない（--write で上書き）。
       1件ずつ当てて「問題が減る・新しい問題が出ない」ことを確かめ、崩れたら何もしない。
@@ -238,10 +240,12 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       文字列しか読めない**ので、変数や関数から組み立てている登録は読めなかったもの
       として報告し、終了コード 1 にする（黙って落とすと一覧が嘘になるため）。
 
-  hatake refs <file...> [--json] [--needs-registration]
+  hatake refs <file...> [--json] [--needs-registration] [--unused]
       その定義が外に要求しているもの（Repository・プラグイン・フォーマッタ…）を
       種類ごとに並べる。--needs-registration で「組み込みに無い＝自分で登録が
       要るもの」だけ。出力はそのまま --registry に渡せる形。
+      --unused は**逆向き**＝登録してあるのに、どの定義も使っていないものを出す
+      （登録済みの一覧が要る。消し忘れた登録は「使われている」と誤解される）。
 
   hatake dto <file> [--json]
       API の形（DtoSpec）を出す。
@@ -310,6 +314,8 @@ const BOOLEAN_FLAGS = new Set([
   "caution-as-error",
   "api-only",
   "needs-registration",
+  "unused",
+  "todo",
   "help",
   "h",
   "version",
@@ -781,8 +787,22 @@ function fix(files: string[], flags: Args["flags"], io: CliIo): number {
     registry: loadRegistry(files[0], flags, io),
   });
 
+  // 残った仕事を「次の1往復で渡す形」にする。手掛かりは実例カタログから引く
+  // （引くのは CLI の仕事＝fix 自身はファイルを読まない）。
+  const todo = flags.todo === true ? fixTodo(result, failureHint(flags, io)) : undefined;
   if (flags.json === true) {
-    io.out(JSON.stringify(result, null, 2));
+    io.out(
+      JSON.stringify(todo === undefined ? result : { ...result, todo }, null, 2),
+    );
+    return result.remaining.length > 0 ? 1 : 0;
+  }
+  if (todo !== undefined) {
+    // 渡す文だけを標準出力に出す（そのまま AI への指示として使える）。
+    io.out(renderFixTodo(todo));
+    if (flags.write === true && result.applied.length > 0) {
+      io.writeFile(files[0], result.source);
+      io.err(`書きました: ${files[0]}`);
+    }
     return result.remaining.length > 0 ? 1 : 0;
   }
   if (flags.write === true) {
@@ -1107,6 +1127,7 @@ function refs(files: string[], flags: Args["flags"], io: CliIo): number {
       ? collectRefs(document as Record<string, unknown>)
       : [];
   });
+  if (flags.unused === true) return unused(files, collected, flags, io);
   const grouped =
     flags["needs-registration"] === true
       ? refsNeedingRegistration(collected)
@@ -1132,6 +1153,77 @@ function refs(files: string[], flags: Args["flags"], io: CliIo): number {
     }
   }
   return 0;
+}
+
+/**
+ * 登録してあるのに、どの定義も使っていないもの（逆向きの突き合わせ）。
+ *
+ * **終了コードは変えない。** 定義から呼ばれていない登録は、アプリのコードから直接
+ * 使っていることがある（画面の外で使う変換など）。事実は言うが、消すかどうかは人が決める。
+ *
+ * 渡した定義が**全部そろっていること**が前提なので、何件見たかを必ず書く。1枚だけ渡して
+ * 「使われていない」と読むのが、この道具で一番やりがちな読み違え。
+ */
+function unused(
+  files: string[],
+  collected: DefinitionRef[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const registry = loadRegistry(files[0], flags, io);
+  if (registry === undefined) {
+    io.err(
+      "登録済みの一覧が見つかりません（--registry で渡すか、定義の隣に " +
+        `${REGISTRY_FILE} を置いてください。hatake registry で作れます）。`,
+    );
+    return 1;
+  }
+  const grouped = unusedRegistrations(registry, collected);
+  if (flags.json === true) {
+    io.out(JSON.stringify({ files: files.length, unused: grouped }, null, 2));
+    return 0;
+  }
+  const kinds = Object.keys(grouped);
+  if (kinds.length === 0) {
+    io.out(`登録はすべて使われています（定義 ${files.length} 件と突き合わせました）。`);
+    return 0;
+  }
+  io.out(`定義 ${files.length} 件のどこからも使われていない登録:`);
+  for (const kind of kinds) {
+    io.out(`${kind}:`);
+    for (const name of grouped[kind as keyof typeof grouped] ?? []) {
+      io.out(`  ${name}`);
+    }
+  }
+  io.out("");
+  io.out(
+    "※ 渡した定義の中では使われていない、という事実だけです。" +
+      "**定義を全部渡していないと嘘になります**（app なら1枚で足ります）。" +
+      "アプリのコードから直接使っている登録もあるので、消す前に確かめてください。",
+  );
+  return 0;
+}
+
+/**
+ * 規則名 → 実例カタログの直し方（無ければ undefined）。
+ *
+ * カタログは「実際にこう書いて、こう言われて、こう直した」の記録なので、**残った仕事の
+ * 手掛かりとしてそのまま使える**。spec/ が無い所でも `fix` は動く必要があるので、
+ * 読めなければ手掛かり無しで続ける。
+ */
+function failureHint(
+  flags: Args["flags"],
+  io: CliIo,
+): (rule: string) => string | undefined {
+  const catalog = loadFailures(flags, io);
+  if (catalog === undefined) return () => undefined;
+  return (rule) => {
+    const found = catalog.failures.find((failure) =>
+      (failure.diagnosis.warnings ?? []).includes(rule),
+    );
+    if (found === undefined) return undefined;
+    return `${found.fix}（実例: hatake failures ${found.id}）`;
+  };
 }
 
 /**

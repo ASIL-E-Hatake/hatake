@@ -331,6 +331,85 @@ jobs:
           # git diff では見ない（改行の扱いが環境で違うので、ここでは byte で比べる）。
           cmp /tmp/roles-backup.yaml ../docs/diagrams/roles-app.yaml
 
+      - name: Say what nobody said (unused registrations, leftovers, paper)
+        working-directory: typescript
+        run: |
+          set -e
+          # (a) 逆向きの突き合わせ。同梱のデモは登録が全部使われていること。
+          node dist/cli.js refs ../flutter/packages/hatake_example/assets/sales_app.yaml \
+            --unused --registry ../flutter/packages/hatake_example/assets/hatake-registry.json \
+            > /tmp/unused.log
+          grep -q '登録はすべて使われています' /tmp/unused.log
+          # 消し忘れを1つ混ぜたら、それだけを出すこと。
+          node -e "
+            const fs = require('fs');
+            const p = '../flutter/packages/hatake_example/assets/hatake-registry.json';
+            const d = JSON.parse(fs.readFileSync(p, 'utf8'));
+            (d.repositories = d.repositories || []).push('oldStockRepository');
+            fs.writeFileSync('/tmp/reg.json', JSON.stringify(d));
+          "
+          node dist/cli.js refs ../flutter/packages/hatake_example/assets/sales_app.yaml \
+            --unused --registry /tmp/reg.json > /tmp/unused2.log
+          grep -q 'oldStockRepository' /tmp/unused2.log
+          # 全部渡していないと嘘になる、を必ず書く（この道具で一番やりがちな読み違え）。
+          grep -q '定義を全部渡していないと嘘になります' /tmp/unused2.log
+
+          # (b) 機械が直せなかった分を「次の1往復で渡す形」にする。
+          cat > /tmp/mixed.yaml <<'YAML'
+          app:
+            id: sales
+            title: 受注
+            pages:
+              - type: crud
+                id: order_list
+                title: 受注一覧
+                repository: orderRepository
+                key: orderNo
+                table:
+                  columns: [{ field: orderNo, label: 受注番号, witdh: 140 }]
+                form:
+                  sections:
+                    - fields: [{ field: orderNo, label: 受注番号, required: true }]
+                actions:
+                  - { id: open, type: navigate, label: 明細, page: order_datail }
+          YAML
+          node dist/cli.js fix /tmp/mixed.yaml --todo > /tmp/todo.log || true
+          # 直した分は「もう見なくていい」と言い、残りは場所つきで出す。
+          grep -q '件を直しました' /tmp/todo.log
+          grep -q 'app.pages\[0\].actions\[0\].page \[unknown-page\]' /tmp/todo.log
+          # 手掛かりは実例カタログから引く（規則名 → こう直した）。
+          grep -q '実例: hatake failures' /tmp/todo.log
+          # 触ってよい範囲を必ず書く（言わないと、直した所を戻される）。
+          grep -q 'ほかの所は触らないこと' /tmp/todo.log
+          # 直した分は残りに入っていないこと。
+          if grep -q 'witdh' /tmp/todo.log; then
+            echo "直した分を渡している"; exit 1
+          fi
+
+          # (c) 紙に入らない帳票を、刷る前に言う。
+          cat > /tmp/wide.yaml <<'YAML'
+          page:
+            type: report
+            id: sales_report
+            title: 売上明細表
+            repository: orderRepository
+            table:
+              columns:
+                - { field: orderNo, label: 受注番号, width: 200 }
+                - { field: customer, label: 顧客, width: 200 }
+                - { field: amount, label: 金額, type: number, width: 200 }
+            report:
+              rowsPerPage: 120
+          YAML
+          node dist/cli.js validate /tmp/wide.yaml --json > /tmp/paper.json
+          grep -q '"rule": "columns-wider-than-paper"' /tmp/paper.json
+          grep -q '"rule": "rows-per-page-too-many"' /tmp/paper.json
+          # 数を出していること（どれだけ減らせばいいか分からないと直せない）。
+          grep -q '595.28pt' /tmp/paper.json
+          grep -q '7.02pt' /tmp/paper.json
+          # 同梱の帳票の例は、当然どちらも言われないこと（誤検出しない）。
+          node dist/cli.js validate --warn-as-error ../spec/examples/sales_report.yaml
+
       - name: A definition compared with itself is compatible
         working-directory: typescript
         run: |

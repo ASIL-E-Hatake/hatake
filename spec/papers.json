@@ -1,0 +1,10 @@
+{
+  "$comment": "用紙の実寸（ポイント。1pt = 1/72 inch）。名前は DSL の paper.size と同じ。刷る側（hatake_print の PrintPapers）と「紙に入るか」を見る側（hatake validate の警告）が同じ数を使うための1枚。mm から計算せず、丸めた数をそのまま書いてある（計算式にすると言語ごとの丸めで答えが変わる）。各版が転記した値がこれと一致することを、各エディションの試験で確かめている。ここに無い名前は開いた文字列＝Renderer が独自の紙を知っていてよく、hatake_print は A4 として刷る。",
+  "unit": "pt",
+  "papers": {
+    "A4": { "width": 595.28, "height": 841.89, "note": "210 x 297 mm" },
+    "A3": { "width": 841.89, "height": 1190.55, "note": "297 x 420 mm" },
+    "B5": { "width": 515.91, "height": 728.5, "note": "JIS B5、182 x 257 mm" },
+    "letter": { "width": 612, "height": 792, "note": "8.5 x 11 inch" }
+  }
+}

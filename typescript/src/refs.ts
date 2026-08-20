@@ -146,6 +146,38 @@ export function refsNeedingRegistration(refs: DefinitionRef[]): GroupedRefs {
   return groupRefs(refs.filter((r) => !r.builtIn));
 }
 
+/**
+ * 登録してあるのに、どの定義も参照していない名前（逆向きの突き合わせ）。
+ *
+ * [collectRefs] は「定義 → 外」を見て、足りない登録を警告にする。こちらは逆で
+ * 「外 → 定義」。**消し忘れた登録は、次に読む人に「使われている」と誤解させる**
+ * （消した画面の Repository がまだ在ると、そこに繋がる何かがまだ在ると読ませる）。
+ * 片方向の突き合わせしか無いと、増える方向にだけ掃除が効かない。
+ *
+ * 見るのは [registry] に書いてある種類だけ（`collectRefs` と同じ考え方＝知らない
+ * カテゴリを勝手に厳しくしない）。組み込みの名前を上書き登録している場合は、その名前を
+ * 定義が使っていれば「使われている」＝出さない。
+ *
+ * **[refs] は突き合わせたい定義の全部から集めたものであること。** 1枚だけ渡すと、
+ * 他の画面が使っている登録まで「使われていない」と出る。
+ */
+export function unusedRegistrations(
+  registry: DefinitionRegistry,
+  refs: DefinitionRef[],
+): GroupedRefs {
+  const used = new Set(refs.map((ref) => `${ref.kind}/${ref.name}`));
+  const unused: GroupedRefs = {};
+  for (const kind of Object.values(RefKinds)) {
+    const registered = registry[kind];
+    if (registered === undefined) continue;
+    const names = [...new Set(registered)]
+      .filter((name) => !used.has(`${kind}/${name}`))
+      .sort();
+    if (names.length > 0) unused[kind] = names;
+  }
+  return unused;
+}
+
 function push(ctx: Ctx, kind: RefKind, name: string, path: string): void {
   // 同じ定義の中に在るページは外への要求ではない。
   if (kind === "pages" && ctx.declared.has(name)) return;

@@ -240,6 +240,93 @@ page:
 ${body}
 `;
 
+  /** 列と紙を指定できる帳票（紙に入るかを見るため）。 */
+  const paper = (columns: string, body = "    rowsPerPage: 30") => `
+page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  table:
+    columns:
+${columns}
+  report:
+${body}
+`;
+
+  describe("紙に入らない", () => {
+    it("列の幅の合計が紙幅を超えたら言う（画面の px をそのまま書いた形）", () => {
+      const source = paper(`      - { field: a, label: あ, width: 200 }
+      - { field: b, label: い, width: 200 }
+      - { field: c, label: う, width: 200 }`);
+      expect(rulesOf(source)).toContain("columns-wider-than-paper");
+      const found = warningsOf(source).find(
+        (w) => w.rule === "columns-wider-than-paper",
+      );
+      // 数を出す（「入りません」だけでは、どれだけ減らせばいいか分からない）。
+      expect(found?.message).toContain("A4 縦の紙幅 595.28pt");
+      expect(found?.message).toContain("最低 600pt");
+      expect(found?.fix).toContain("landscape");
+    });
+
+    it("幅の指定が無い列にも最低幅を数える（残りに何も渡らない形）", () => {
+      const source = paper(`      - { field: a, label: あ, width: 560 }
+      - { field: b, label: い }`);
+      expect(rulesOf(source)).toContain("columns-wider-than-paper");
+      expect(
+        warningsOf(source).find((w) => w.rule === "columns-wider-than-paper")
+          ?.message,
+      ).toContain("指定の無い 1 列に最低 40pt");
+    });
+
+    it("横向きなら入るものは言わない", () => {
+      const source = paper(
+        `      - { field: a, label: あ, width: 300 }
+      - { field: b, label: い, width: 300 }`,
+        "    paper: { size: A4, orientation: landscape }",
+      );
+      expect(rulesOf(source)).not.toContain("columns-wider-than-paper");
+    });
+
+    it("同梱の例のような幅なら言わない（誤検出しない）", () => {
+      const source = paper(`      - { field: a, label: あ, width: 140 }
+      - { field: b, label: い, width: 120 }
+      - { field: c, label: う, width: 100 }
+      - { field: d, label: え }`);
+      expect(rulesOf(source)).not.toContain("columns-wider-than-paper");
+    });
+
+    it("1枚の行数が多すぎたら、1行あたりの高さを出して言う", () => {
+      const source = paper(
+        "      - { field: a, label: あ }",
+        "    rowsPerPage: 120",
+      );
+      expect(rulesOf(source)).toContain("rows-per-page-too-many");
+      const found = warningsOf(source).find(
+        (w) => w.rule === "rows-per-page-too-many",
+      );
+      expect(found?.message).toContain("1枚 120 行だと1行あたり 7.02pt");
+      expect(found?.message).toContain("A4 縦の高さ 841.89pt ÷ 120 行");
+    });
+
+    it("A4 に 40 行は言わない（既定の使い方を否定しない）", () => {
+      const source = paper(
+        "      - { field: a, label: あ }",
+        "    rowsPerPage: 40",
+      );
+      expect(rulesOf(source)).not.toContain("rows-per-page-too-many");
+    });
+
+    it("知らない紙には何も言わない（Renderer が独自の紙を知っていてよい）", () => {
+      const source = paper(
+        `      - { field: a, label: あ, width: 2000 }`,
+        "    paper: { size: ハトロン判 }\n    rowsPerPage: 500",
+      );
+      expect(rulesOf(source)).not.toContain("columns-wider-than-paper");
+      expect(rulesOf(source)).not.toContain("rows-per-page-too-many");
+    });
+  });
+
   it("sort の無い groupBy を指摘する", () => {
     const found = warningsOf(
       report("    groupBy: [{ field: customer, label: 顧客 }]"),
