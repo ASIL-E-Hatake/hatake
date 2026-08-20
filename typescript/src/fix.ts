@@ -564,3 +564,108 @@ export function renderFix(result: FixResult): string {
   }
   return out.join("\n");
 }
+
+/** 残っている仕事1件（次の1往復で渡す形）。 */
+export interface FixTodoItem {
+  rule: string;
+  /** 場所（警告と同じ道）。 */
+  where: string;
+  /** 何が起きるか / なぜ機械が直せないか。 */
+  reason: string;
+  /** 何を考えればいいか（対照表・実例カタログから引いた手掛かり）。 */
+  hint?: string;
+}
+
+/** 機械が直したあとに残っている仕事。 */
+export interface FixTodo {
+  /** 機械が直した件数（**もう見なくていい**と言うために持つ）。 */
+  fixed: number;
+  items: FixTodoItem[];
+}
+
+/**
+ * 直せなかったものを「次の1往復で渡す形」にする。
+ *
+ * `fix` の結果は3つに散っている: 直した（applied）・直さなかった（skipped）・直したあとも
+ * 残っている（remaining。**名前だけで場所が無い**）。この形のまま AI に渡すと、直った分まで
+ * 文脈に積み、場所の無い指摘を探し回ることになる。
+ *
+ * ここでやるのは3つ。
+ *   ・**直った分を落とす**（もう見なくていい所を渡さない）
+ *   ・残りに**場所を付け直す**（直したあとの定義でもう一度診断する）
+ *   ・**なぜ機械が直せないか**を1件ずつ言う（意図が要るのか、直し方が複数あるのか）
+ *
+ * [hint] を渡すと、規則名から手掛かり（実例カタログの直し方など）を添える。引くのは
+ * 呼ぶ側の仕事＝この層はファイルを読まない（素の関数のまま置く）。
+ */
+export function fixTodo(
+  result: FixResult,
+  hint?: (rule: string) => string | undefined,
+): FixTodo {
+  const document = parseYamlText(result.source);
+  const items: FixTodoItem[] = [];
+  const seen = new Set<string>();
+  const add = (rule: string, where: string, reason: string): void => {
+    const key = `${rule}@${where}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const found = hint?.(rule);
+    items.push({ rule, where, reason, ...(found === undefined ? {} : { hint: found }) });
+  };
+
+  // 直さなかったもの（理由が付いている＝これが一番強い手掛かり）。
+  for (const one of result.skipped) add(one.rule, one.where, one.reason);
+
+  // 直したあとの定義に残っている診断。場所はここで付け直す（remaining は名前だけ）。
+  if (isDict(document)) {
+    for (const warning of findWarnings(document)) {
+      add(warning.rule, warning.path, `${warning.message} → ${warning.fix}`);
+    }
+    for (const unknown of findUnknownKeys(document)) {
+      add(
+        `unknown-key:${unknown.key}`,
+        unknown.path,
+        `知らないキー "${unknown.key}" は黙って捨てられます` +
+          (unknown.suggestion === undefined
+            ? "（書ける場所を間違えているか、この版に無いキーです）"
+            : `（"${unknown.suggestion}" の間違いかもしれませんが、機械では決められませんでした）`),
+      );
+    }
+  }
+  return { fixed: result.applied.length, items };
+}
+
+/**
+ * そのまま次の指示にできる文。
+ *
+ * 「この3件だけ直して、ほかは触らないこと」まで書く。**触ってよい範囲を言わない指示は、
+ * 直した所を戻される**（機械が直した綴りを、AI が「元に戻す」ことが実際にある）。
+ */
+export function renderFixTodo(todo: FixTodo): string {
+  const out: string[] = [];
+  out.push(
+    todo.fixed === 0
+      ? "機械が直せたものはありません。"
+      : `機械が ${todo.fixed} 件を直しました（そこはもう見なくていい）。`,
+  );
+  if (todo.items.length === 0) {
+    out.push("残っている仕事はありません。");
+    return out.join("\n");
+  }
+  out.push(
+    `残りは ${todo.items.length} 件です。どれも**意図が要る**ので、機械には決められません。`,
+  );
+  todo.items.forEach((item, i) => {
+    out.push("");
+    out.push(`${i + 1}. ${item.where} [${item.rule}]`);
+    out.push(`   何が起きるか: ${item.reason}`);
+    if (item.hint !== undefined) out.push(`   手掛かり: ${item.hint}`);
+  });
+  out.push("");
+  out.push(
+    `この ${todo.items.length} 件だけを直してください。**ほかの所は触らないこと**` +
+      "（機械が直した分はこの一覧に入っていません。触ると戻ります）。" +
+      "直したら hatake validate と hatake explain に通して、意図どおりか読み返してください。",
+  );
+  return out.join("\n");
+}

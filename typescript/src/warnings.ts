@@ -23,6 +23,7 @@ import {
   type DefinitionRegistry,
   type RefKind,
 } from "./refs.js";
+import { paperName, paperSize } from "./papers.js";
 import { closestKey } from "./strictKeys.js";
 import { COMPARE_OPERATORS } from "./validators.js";
 
@@ -805,6 +806,8 @@ function checkReport(page: Dict, path: string, found: DefinitionWarning[]): void
   }
 
   const table = isDict(page.table) ? page.table : undefined;
+  checkPaperFits(report, list(table?.columns).filter(isDict), path, found);
+
   const columns = new Set(
     list(table?.columns)
       .filter(isDict)
@@ -824,4 +827,81 @@ function checkReport(page: Dict, path: string, found: DefinitionWarning[]): void
       "その項目を table.columns に足すか、列にある項目で合計してください。",
     );
   });
+}
+
+/**
+ * 幅の指定が無い列にも、最低これだけは要る（40pt ＝ 全角2文字ぶん）。
+ *
+ * 刷る側（`hatake_print`）が指定の無い列に渡す最低幅と同じ数。これが要るのは、
+ * 「幅の指定がある列だけなら紙に収まる」定義でも、**残りの列に何も残らない**ことが
+ * あるため。
+ */
+const MIN_FLEX_WIDTH = 40;
+
+/** これより低い行は、文字を入れても読めない（9pt ＝ 5〜6pt の文字が入る高さ）。 */
+const MIN_ROW_HEIGHT = 9;
+
+/** 数を紙の話に出す形（小数2桁まで・無駄な 0 は落とす）。 */
+const pt = (value: number): string => value.toFixed(2).replace(/\.?0+$/, "");
+
+/**
+ * 紙に入らない帳票。
+ *
+ * `column.width` は紙の上ではポイント（1/72 inch）として使われ、`rowsPerPage` 行が
+ * 1枚に載る。**どちらも定義に書いてある数なので、刷る前に入るかどうかが分かる。**
+ *
+ * 刷る側は溢れないように**縮めて収める**（紙は伸びないので、そうする以外にない）。
+ * つまり刷っても例外は出ず、**読めない紙が出てくる**だけ。だから機械が先に言う。
+ *
+ * 見積もりは**紙そのもの**と比べる（余白を引かない）。余白や見出しの高さは刷る側の
+ * 設定で変えられるので、そこを当てにすると「設定を変えれば入るのに言われる」嘘の警告に
+ * なる。ここで言うのは「紙より広い」「紙の高さで割ったら読めない」＝**設定では直らない
+ * 事実**だけ。用紙の実寸は [`spec/papers.json`](../../spec/papers.json) が正。
+ */
+function checkPaperFits(
+  report: Dict,
+  columns: Dict[],
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  const declaredPaper = isDict(report.paper) ? report.paper : undefined;
+  const paper = paperSize(declaredPaper);
+  // 知らない用紙名は黙る（開いた文字列＝Renderer が独自の紙を知っていてよい）。
+  if (paper === undefined) return;
+  const name = paperName(declaredPaper);
+
+  if (columns.length > 0) {
+    const declared = columns.filter((c) => typeof c.width === "number");
+    const fixed = declared.reduce((sum, c) => sum + (c.width as number), 0);
+    const flex = columns.length - declared.length;
+    const needed = fixed + MIN_FLEX_WIDTH * flex;
+    if (needed > paper.width) {
+      warn(
+        found,
+        "columns-wider-than-paper",
+        `${path}.table.columns`,
+        `${name}の紙幅 ${pt(paper.width)}pt に対して、列は最低 ${pt(needed)}pt 要ります` +
+          `（幅の指定がある ${declared.length} 列で ${pt(fixed)}pt` +
+          (flex > 0 ? ` ＋ 指定の無い ${flex} 列に最低 ${MIN_FLEX_WIDTH}pt ずつ` : "") +
+          `）。刷ると全体が縮められて、どの列も読めなくなります。`,
+        "列の width を減らす・列を減らす・paper.orientation を landscape にする、" +
+          "のどれかです（width は紙の上ではポイント＝1/72 inch。画面の px を" +
+          "そのまま書くと広すぎます）。",
+      );
+    }
+  }
+
+  const rows = typeof report.rowsPerPage === "number" ? report.rowsPerPage : undefined;
+  if (rows !== undefined && rows > 0 && paper.height / rows < MIN_ROW_HEIGHT) {
+    warn(
+      found,
+      "rows-per-page-too-many",
+      `${path}.report.rowsPerPage`,
+      `1枚 ${rows} 行だと1行あたり ${pt(paper.height / rows)}pt しか取れません` +
+        `（${name}の高さ ${pt(paper.height)}pt ÷ ${rows} 行。表題と余白を除くと更に狭くなります）。` +
+        `文字がつぶれて、刷っても読めません。`,
+      "rowsPerPage を減らしてください（A4 縦なら 30〜40 行が目安）。" +
+        "どうしても載せたいなら、大きい紙か横向きにします。",
+    );
+  }
 }

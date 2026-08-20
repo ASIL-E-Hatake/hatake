@@ -1082,6 +1082,7 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | 選択肢の連動の辻褄（入力項目・検索条件の両方） |
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | 項目間の検証（`compare`）の書き間違い → **その検証が黙って通る** |
 | `page-nobody-can-open` | 入口（メニュー項目・遷移ボタン）の `roles` が食い違っている → **その画面を開ける人が誰も居ない** |
+| `columns-wider-than-paper` / `rows-per-page-too-many` | 帳票が**紙に入らない**（列幅の合計が紙幅を超える・1枚の行数が多すぎて1行が読めない高さになる）→ 刷る側が全体を縮めるので、例外は出ずに**読めない紙が出てくる**。用紙の実寸は [`spec/papers.json`](papers.json) |
 
 **エラーではない**（Repository の実装やプラグインの登録次第で成立する書き方もあるため）。
 遷移先の検査は `app:` の定義だけ（単票の定義は他のページを知らないので判定しない）。

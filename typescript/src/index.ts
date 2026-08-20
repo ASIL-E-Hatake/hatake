@@ -23,6 +23,7 @@ export * from "./options.js";
 export * from "./access.js";
 export * from "./aggregate.js";
 export * from "./csv.js";
+export * from "./papers.js";
 export * from "./report.js";
 export * from "./query.js";
 export * from "./dto.js";

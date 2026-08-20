@@ -1492,3 +1492,119 @@ describe("hatake --help", () => {
     expect(io.stderr.join("")).toContain("知らないコマンド");
   });
 });
+
+describe("hatake refs --unused（登録の棚卸し）", () => {
+  const APP = `
+app:
+  id: sales
+  title: 受注
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      table:
+        columns: [{ field: amount, label: 金額, format: currency }]
+`;
+
+  it("登録してあるのに使われていないものを出す", () => {
+    const io = fakeIo({
+      "app.yaml": APP,
+      "reg.json": JSON.stringify({
+        repositories: ["orderRepository", "oldStockRepository"],
+        plugins: ["csvExport"],
+      }),
+    });
+    expect(runCli(["refs", "app.yaml", "--unused", "--registry", "reg.json"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("oldStockRepository");
+    expect(out).toContain("csvExport");
+    expect(out).not.toContain("orderRepository\n");
+    // 全部渡していないと嘘になる、を必ず書く（この道具で一番やりがちな読み違え）。
+    expect(out).toContain("定義を全部渡していないと嘘になります");
+  });
+
+  it("全部使われていれば、そう言う", () => {
+    const io = fakeIo({
+      "app.yaml": APP,
+      "reg.json": JSON.stringify({ repositories: ["orderRepository"] }),
+    });
+    expect(runCli(["refs", "app.yaml", "--unused", "--registry", "reg.json"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("登録はすべて使われています");
+  });
+
+  it("登録済みの一覧が無ければ、作り方まで言って落ちる", () => {
+    const io = fakeIo({ "app.yaml": APP });
+    expect(runCli(["refs", "app.yaml", "--unused"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("hatake registry");
+  });
+
+  it("定義の隣の一覧を黙って拾う", () => {
+    const io = fakeIo({
+      "defs/app.yaml": APP,
+      "defs/hatake-registry.json": JSON.stringify({ repositories: ["gone"] }),
+    });
+    expect(runCli(["refs", "defs/app.yaml", "--unused"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("gone");
+  });
+
+  it("--json は機械が読める形（何件の定義と突き合わせたかも返す）", () => {
+    const io = fakeIo({
+      "app.yaml": APP,
+      "reg.json": JSON.stringify({ repositories: ["orderRepository", "gone"] }),
+    });
+    runCli(["refs", "app.yaml", "--unused", "--registry", "reg.json", "--json"], io);
+    expect(JSON.parse(io.stdout.join("\n"))).toEqual({
+      files: 1,
+      unused: { repositories: ["gone"] },
+    });
+  });
+});
+
+describe("hatake fix --todo（残りを次の1往復に渡す）", () => {
+  const MIXED = `page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  table:
+    columns:
+      - { field: customer, label: 顧客, witdh: 140 }
+      - { field: amount, label: 金額, type: number }
+  report:
+    groupBy: [{ field: customer, label: 顧客 }]
+    totals: [{ field: tax, aggregate: sum }]
+`;
+
+  it("そのまま次の指示にできる文を出す", () => {
+    const io = fakeIo({ "page.yaml": MIXED });
+    // 残っている問題があるので終了コードは 1（fix の既定と同じ）。
+    expect(runCli(["fix", "page.yaml", "--todo"], io)).toBe(1);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("件を直しました");
+    expect(out).toContain("[total-without-column]");
+    expect(out).toContain("ほかの所は触らないこと");
+    // 定義そのものは出さない（指示だけを渡す）。
+    expect(out).not.toContain("type: report");
+  });
+
+  it("--json には todo が入る（直した分は入っていない）", () => {
+    const io = fakeIo({ "page.yaml": MIXED });
+    runCli(["fix", "page.yaml", "--todo", "--json"], io);
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.todo.fixed).toBeGreaterThan(0);
+    expect(result.todo.items.map((i: { rule: string }) => i.rule)).toContain(
+      "total-without-column",
+    );
+    expect(result.todo.items.map((i: { rule: string }) => i.rule)).not.toContain(
+      "unknown-key:witdh",
+    );
+  });
+
+  it("--write と組めば、直した分は書いて、残りだけを渡す", () => {
+    const io = fakeIo({ "page.yaml": MIXED });
+    runCli(["fix", "page.yaml", "--todo", "--write"], io);
+    expect(io.written["page.yaml"]).toContain("width: 140");
+    expect(io.stdout.join("\n")).toContain("ほかの所は触らないこと");
+  });
+});

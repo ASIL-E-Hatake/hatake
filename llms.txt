@@ -39,6 +39,8 @@ npx hatake diagram app.yaml --out app.svg  # 画面とメニューと遷移の�
 npx hatake diagram app.yaml --role admin   # その役割で通れる道だけ（権限は入口から辿って数える）
 npx hatake minimize page.yaml      # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake diff <前> <後>          # 既にある定義を直したとき：契約・画面・権限・アプリ構成への影響
+npx hatake fix page.yaml --todo    # 機械が直せなかった分だけを「次の1往復で渡す形」にする
+npx hatake refs app.yaml --unused  # 逆向き：登録してあるのに、どの定義も使っていないもの
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか（Repository / プラグイン名）
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読んで「登録済み」の一覧を作る
 ```

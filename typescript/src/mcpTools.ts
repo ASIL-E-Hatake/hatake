@@ -15,13 +15,14 @@ import { explainSource } from "./explainSource.js";
 import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
 import { briefSource, renderBrief } from "./explainBrief.js";
 import { minimizeSource } from "./minimize.js";
-import { fixSource } from "./fix.js";
+import { fixSource, fixTodo } from "./fix.js";
 import {
   collectRefs,
   type DefinitionRegistry,
   groupRefs,
   refsNeedingRegistration,
 } from "./refs.js";
+import { type FailureCatalog } from "./failures.js";
 import { findWarnings } from "./warnings.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import { toJsonSchema } from "./jsonSchema.js";
@@ -46,7 +47,7 @@ import {
   snippet,
 } from "./pitfalls.js";
 import { scaffold, scaffoldKinds } from "./scaffold.js";
-import { CATALOG_PATH, PITFALLS_FILE, SCHEMA_FILE } from "./specDir.js";
+import { CATALOG_PATH, FAILURES_FILE, PITFALLS_FILE, SCHEMA_FILE } from "./specDir.js";
 import { toJavaRecords, toTypeScript } from "./types.js";
 
 /** 道具1つ。`run` は文字列を返し、入力がおかしければ例外を投げる。 */
@@ -442,6 +443,8 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "直すのは綴り違い（キー名・Repository / プラグイン / 型 / ページ id / アクション id）と、" +
         "入れる値が決まっている指定（小計のある帳票に report.sort を足す）。" +
         "**直さなかったものは skipped に理由つきで入る**＝そこは意図が要るので、自分で考えて直す。" +
+        "**todo に「残っている仕事」がまとまっている**（場所つき・なぜ機械が直せないか・手掛かり）。" +
+        "直った分は todo に入っていないので、**そこはもう触らないこと**（触ると戻る）。" +
         "registry を渡すと、アプリ側の登録名との食い違い（略して書いた名前を含む）も直す。" +
         "1件ずつ当てて「問題が減る・新しい問題が出ない」ことを確かめているので、通したあとに" +
         "壊れていることはない。remaining が空でなければ、まだ人（AI）の仕事が残っている。",
@@ -466,7 +469,18 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           typeof args.registry === "object" && args.registry !== null
             ? (args.registry as DefinitionRegistry)
             : undefined;
-        return pretty(fixSource(required(args, "source"), { registry }));
+        const result = fixSource(required(args, "source"), { registry });
+        // 実例カタログから手掛かりを引く（規則名 → こう直した）。
+        const failures = readJson(FAILURES_FILE) as FailureCatalog;
+        const hint = (rule: string): string | undefined => {
+          const found = failures.failures.find((failure) =>
+            (failure.diagnosis.warnings ?? []).includes(rule),
+          );
+          return found === undefined
+            ? undefined
+            : `${found.fix}（実際に同じ書き方で転んだ例がある: ${found.id}）`;
+        };
+        return pretty({ ...result, todo: fixTodo(result, hint) });
       },
     },
     {

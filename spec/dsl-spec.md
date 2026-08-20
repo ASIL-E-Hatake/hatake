@@ -1170,6 +1170,7 @@ npx hatake validate page.yaml --no-warn --json
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | linked options that do not line up (input fields and search filters alike) |
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | a mistake in a cross-field rule (`compare`) — **that rule passes silently** |
 | `page-nobody-can-open` | the `roles` on the ways in (menu items, navigate buttons) disagree — **nobody can open that screen** |
+| `columns-wider-than-paper` / `rows-per-page-too-many` | the report does not fit its paper (declared column widths exceed the sheet, or a sheet holds so many rows that a line has no readable height) — the printer shrinks everything instead of failing, so you get an unreadable sheet rather than an error. Paper sizes live in [`spec/papers.json`](papers.json) |
 
 These are **not errors** (some of these shapes can be made to work by a
 repository or a registered plugin). Navigation targets are only checked for `app:`

@@ -43,6 +43,7 @@ npx hatake types page.yaml --lang java --package io.example.api --out gen/
 npx hatake reference rowsPerPage             # このキー、どこに書くの？型は？既定値は？
 npx hatake examples 帳票                      # 近い例を探す
 npx hatake refs page.yaml --needs-registration # アプリ側に何を登録すればいいか
+npx hatake refs app.yaml --unused              # 逆向き：登録したのに誰も使っていないもの
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「登録済み」の一覧を作る
 npx hatake explain page.yaml                 # この定義、結局どういう画面？
 npx hatake explain page.yaml --brief         # 1行で（README や PR 本文に貼る用）
@@ -51,6 +52,7 @@ npx hatake explain page.yaml --review        # レビュー用の1枚（説明�
 npx hatake harvest definitions/              # 繰り返し転んでいる所を実例カタログの候補に
 npx hatake minimize page.yaml                # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake fix page.yaml                     # 直し方が一意な問題だけ直す（--write で上書き）
+npx hatake fix page.yaml --todo              # 直せなかった分を「次の1往復で渡す形」にする
 npx hatake advise page.yaml                  # 書き足したほうがいい所（助言。警告ではない）
 npx hatake advise page.yaml --rules team.json # 案件ごとの決めごとで見る
 npx hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
@@ -112,6 +114,23 @@ OK   page.yaml (report)
           → report.sort に印刷したい並びを書いてください（並べ替えは Repository の責務）。
 ```
 
+帳票は**紙に入るか**も見る。`column.width` は紙の上ではポイント（1/72 inch）なので、画面の
+px をそのまま持ってくると入らない。刷る側は溢れないように**縮めて収める**＝例外は出ず、
+**読めない紙が出てくる**だけなので、機械が刷る前に言う。
+
+```
+     警告 page.table.columns: A4 縦の紙幅 595.28pt に対して、列は最低 600pt 要ります（幅の指定がある 3 列で 600pt）。
+          → 列の width を減らす・列を減らす・paper.orientation を landscape にする、のどれかです。
+     警告 page.report.rowsPerPage: 1枚 120 行だと1行あたり 7.02pt しか取れません（A4 縦の高さ 841.89pt ÷ 120 行）。
+          → rowsPerPage を減らしてください（A4 縦なら 30〜40 行が目安）。
+```
+
+見積もりは**紙そのもの**と比べる（余白を引かない）。余白や見出しの高さは刷る側の設定で
+変えられるので、そこを当てにすると「設定を変えれば入るのに言われる」嘘の警告になる。
+用紙の実寸は [`spec/papers.json`](../spec/papers.json) が正で、**刷る側（`hatake_print`）と
+警告が同じ数を見ている**ことを各版の試験で確かめている。知らない用紙名には何も言わない
+（`paper.size` は開いた文字列＝Renderer が独自の紙を知っていてよい）。
+
 生成系（`dto` / `schema` / `openapi` / `types` / `diff`）は**常に strict で読む**。書き間違いのある定義から API の形を作ると、間違いが API に焼き付くので。
 
 定義を直したら影響範囲を見る:
@@ -172,6 +191,27 @@ plugins:
 **言語のパーサは持たない。** 見るのは「登録している所に、その場で書いてある文字列」だけで、
 変数や関数から組み立てている登録は読めない。読めないものは**黙って落とさずに報告し、終了
 コード 1** にする。
+
+#### 逆向き：登録したのに誰も使っていない（`refs --unused`）
+
+突き合わせは片方向だけだと、**増える方向にしか効かない**。消した画面の Repository がいつまでも
+登録されていると、次に読む人は「まだどこかで使っている」と読む。
+
+```bash
+$ npx hatake refs app.yaml --unused --registry hatake-registry.json
+定義 1 件のどこからも使われていない登録:
+repositories:
+  oldStockRepository
+formatters:
+  eraDate
+
+※ 渡した定義の中では使われていない、という事実だけです。**定義を全部渡していないと嘘になります**
+（app なら1枚で足ります）。アプリのコードから直接使っている登録もあるので、消す前に確かめてください。
+```
+
+**終了コードは変えない。** 定義から呼ばれていない登録は、アプリのコードから直接使っている
+ことがある（画面の外で使う変換など）。事実は言うが、消すかどうかは人が決める。組み込みの
+上書き登録（自分の `currency`）は、定義がその名前を使っていれば「使われている」。
 
 ```
 読めなかった登録が 1 件あります。一覧は**不完全**なので、その分は手で足してください:
@@ -448,6 +488,33 @@ $ npx hatake fix page.yaml
   のが順番。`--write` のときだけ上書きする
 * 直したあとは、変更を[画面の言葉](#何を変えたのかを読み返すexplain---diff)でも言う
   （前後どちらも strict で読めるときだけ）
+
+#### 残りを次の1往復で渡す（`fix --todo`）
+
+`fix` の結果は3つに散っている: 直した・直さなかった（理由つき）・直したあとも残っている
+（**名前だけで場所が無い**）。この形のまま AI に渡すと、直った分まで文脈に積み、場所の無い
+指摘を探し回ることになる。`--todo` はそこを1枚にする。
+
+```
+$ npx hatake fix page.yaml --todo
+機械が 1 件を直しました（そこはもう見なくていい）。
+残りは 1 件です。どれも**意図が要る**ので、機械には決められません。
+
+1. app.pages[0].actions[0].page [unknown-page]
+   何が起きるか: "order_datail" に近いものが1つに決まりません（在るのは order_list）。
+   手掛かり: pages にある id をそのまま書く（推測しない）。（実例: hatake failures navigate-to-a-page-that-does-not-exist）
+
+この 1 件だけを直してください。**ほかの所は触らないこと**（機械が直した分はこの一覧に
+入っていません。触ると戻ります）。直したら hatake validate と hatake explain に通して、
+意図どおりか読み返してください。
+```
+
+やっているのは3つ。**直った分を落とす**（もう見なくていい所を渡さない）・残りに**場所を
+付け直す**（直したあとの定義でもう一度診断する）・**手掛かりを添える**（[実例カタログ](#実際に転んだ実例failures)から
+規則名で引いた「こう直した」）。`--write` と組めば、直した分はファイルに書いて、渡すのは残りだけ。
+
+「ほかは触らないこと」まで書くのは、**触ってよい範囲を言わない指示は、直した所を戻される**から
+（機械が直した綴りを AI が「元に戻す」ことが実際にある）。MCP の `hatake_fix` も同じ `todo` を返す。
 * **直さなかったものは理由つきで必ず出す。** 同じ項目の重複（どちらを残すか）・`field` の無い
   集計（どの項目か）・条件で使えない演算子（何をしたかったか）は意図が要るので触らない
 * 残った問題があれば**終了コード 1**（CI で「まだ人の手が要る」と分かる）
