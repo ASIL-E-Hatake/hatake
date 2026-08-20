@@ -91,6 +91,7 @@ void main() {
       const declared = {
         RegistryKinds.repositories,
         RegistryKinds.plugins,
+        RegistryKinds.sinks,
         RegistryKinds.validators,
         RegistryKinds.formatters,
         RegistryKinds.converters,
@@ -104,6 +105,20 @@ void main() {
   });
 
   group('registrySnapshot', () {
+    test('登録した出力先を名前で申告する（静的な走査と同じ語彙）', () {
+      // `hatake validate --registry` はこの一覧と定義を突き合わせるので、
+      // 「印刷ボタンはあるのに printSink が無い」を機械が言える。
+      final scope = HatakeScope(
+        repositories: const RepositoryRegistry({}),
+        renderer: const MaterialRenderer(),
+        exportSink: (_) {},
+        child: const SizedBox.shrink(),
+      );
+      expect(registrySnapshot(scope), {
+        'sinks': ['exportSink'],
+      });
+    });
+
     test('何も足していないアプリは、何も言わない', () {
       // 「その種類は空」ではなく「言うことが無い」。空を主張すると、突き合わせ側が
       // 「独自のものは無い」と読んで嘘の警告を出す。

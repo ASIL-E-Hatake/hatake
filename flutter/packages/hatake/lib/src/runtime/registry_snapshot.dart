@@ -9,6 +9,10 @@ import '../widgets/hatake_scope.dart';
 abstract final class RegistryKinds {
   static const repositories = 'repositories';
   static const plugins = 'plugins';
+
+  /// 出力先（`exportSink` / `printSink`）。名前と値の対応表ではなく**在るか無いか**
+  /// なので、申告に出るのは登録した口の名前そのもの。
+  static const sinks = 'sinks';
   static const validators = 'validators';
   static const formatters = 'formatters';
   static const converters = 'converters';
@@ -52,6 +56,11 @@ Map<String, List<String>> registrySnapshot(HatakeScope scope) {
     for (final entry in <String, List<String>>{
       RegistryKinds.repositories: scope.repositories.customKeys,
       RegistryKinds.plugins: scope.actions.customKeys,
+      // 出す口は「渡したか」だけが問題（中身は関数なので名前が無い）。
+      RegistryKinds.sinks: [
+        if (scope.exportSink != null) 'exportSink',
+        if (scope.printSink != null) 'printSink',
+      ],
       RegistryKinds.validators: scope.validators.customKeys,
       RegistryKinds.converters: scope.converters.customKeys,
       // Renderer が独自に持っているもの（項目型・カードの型・フォーマッタ）。

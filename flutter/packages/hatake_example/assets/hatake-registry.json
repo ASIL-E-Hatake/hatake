@@ -9,5 +9,9 @@
   "plugins": [
     "openPlayground",
     "showDefinition"
+  ],
+  "sinks": [
+    "exportSink",
+    "printSink"
   ]
 }

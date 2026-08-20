@@ -42,7 +42,7 @@ npx hatake diff <前> <後>          # 既にある定義を直したとき：�
 npx hatake fix page.yaml --todo    # 機械が直せなかった分だけを「次の1往復で渡す形」にする
 npx hatake refs app.yaml --unused  # 逆向き：登録してあるのに、どの定義も使っていないもの
 npx hatake paper report.yaml       # 帳票を「刷ったらどう見えるか」に開く（文字で・行が無くても見本を作る）
-npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか（Repository / プラグイン名）
+npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか（Repository / プラグイン名 / 出す口）
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読んで「登録済み」の一覧を作る
 ```
 `validate` は**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション／存在しないページへの遷移／`sort` の無い `groupBy`／条件で使えない演算子／`field` の無い集計など）。エラーではないが**画面を見ても気づけない**類なので、警告が出たら直す。`--warn-as-error` で CI を落とせる。
@@ -55,6 +55,7 @@ npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読ん�
 **人にレビューさせる紙は1枚で出す。** `explain --review` は説明（できること・**できないこと**）と助言（書き足したほうがいい所）をまとめて出す。助言は好みなので、案件の決めごとがあるなら `--rules team.json` で物差しを差し替える（知らないキー・知らない規則名はエラー＝設定が黙って効かないことを作らない）。
 **項目間の検証は `compare`。** 「開始日 ≤ 終了日」「合計＝明細の和」は1つの項目では書けないので、`validators` に `{ type: compare, operator: gte, field: startDate }` と書く（`operator` は equals/notEquals/gt/gte/lt/lte、既定 gte）。明細と比べるなら `aggregate: sum, of: amount`。比べ方は**数として読めれば数、読めなければ文字**（ISO の日付は文字の大小＝日付の前後）。**判定できないときは通す**（自分が空なら required の担当）。相手の項目名を間違えると黙って通るので、`validate` が警告で言う。
 **権限は入口から辿るしかない。** ページに `roles` は書けない（書けるのはメニュー項目とボタン、列・項目・カード）ので、「この画面は誰に見えるか」はメニューとボタンの `roles` から辿って数える。`diagram` はそれを箱の中に書き、**誰でも開けて消す/持ち出せる画面**（赤枠）と**誰も開けない画面**（点線＝入口の権限が食い違っている）を色で分ける。どちらも1枚ずつ読んでも出てこない。
+**データの口と URL は用意してある。** REST に繋ぐなら opt-in の `hatake_http`（`npx hatake openapi` が宣言する形と1対1。通信は持たないので送る関数だけ渡す。失敗は型で返る＝401/403・400 の項目別エラー・宣言と違う形）。`app:` を `HatakeApp` で描くと **Web では URL が画面に付く**（`/画面id?params`。リンク・リロード・戻るが効く。params は文字で戻る）。**アプリ側に何を登録すればいいか**は `npx hatake refs --needs-registration`（Repository・プラグイン・出す口）で引けて、`validate --registry` に渡すと繋いでいない口まで言う。
 **紙は定義から出せる。** 帳票に `{ id: printPdf, type: print, label: 印刷 }` を置けば印刷ボタンが出る（`type: print` は帳票専用。`report` の無い画面に置くと警告）。Framework が渡すのは**紙の中身まで**（帳票の定義・いま画面に出ている行・役割・フォーマッタ）で、PDF のバイト列にするのは opt-in の `hatake_print`、それをプリンタやファイルに送るのはアプリ（`HatakeScope(printSink:)`）。刷る前に紙を読むなら `npx hatake paper`。
 **画面の索引はどのエディションにもある。** CLI の `index` と同じものが Dart 版（`ScreenIndex.ofApp(app)` / `buildScreenIndex`）と Java 版（`ScreenIndex.build`）にもあるので、アプリの中から自分の画面を探せる。種別の見出し語は `spec/vocabulary.json` が正で、3つのエディションはそれを転記している。
 

@@ -1163,6 +1163,7 @@ npx hatake validate page.yaml --registry reg.json # 突き合わせる
 |---|---|
 | `unknown-repository` | 画面は出るがデータが来ない |
 | `unknown-plugin` | ボタンは出るが押しても何も起きない |
+| `unregistered-sink` | 出す口（CSV は `exportSink`、印刷は `printSink`）が無い → ボタンは出るが押すと「未登録です」 |
 | `unknown-validator` / `unknown-converter` | その検証・正規化が**黙って行われない** |
 | `unknown-formatter` | 整形されず素の値が出る |
 | `unknown-computed-op` / `unknown-aggregate` | 計算・集計されず値が空になる |

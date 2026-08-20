@@ -3,6 +3,7 @@
   "kinds": [
     "repositories",
     "plugins",
+    "sinks",
     "pages",
     "fieldTypes",
     "columnTypes",
@@ -18,6 +19,7 @@
   "runtimeKinds": [
     "repositories",
     "plugins",
+    "sinks",
     "validators",
     "formatters",
     "converters",

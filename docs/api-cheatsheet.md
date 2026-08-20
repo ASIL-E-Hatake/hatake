@@ -76,7 +76,11 @@ DefinitionParser.parsePageYaml(source, true);     // Java
 | `dashboard` | grid of cards (`items`; each is a small read query + how to show it) | no |
 | `report` | the printable counterpart of a list (`report` adds paper, groups, totals) | no |
 
-A page addresses one repository. Several pages are bundled into an application by using `app:` instead of `page:` at the root:
+A page addresses one repository. Several pages are bundled into an application by using `app:` instead of `page:` at the root.
+On the web the URL follows the current screen (`/<pageId>?<params>`, on by default), so a screen can be linked, reloaded and
+reached with the browser's back button; pass `HatakeApp(syncUrl: false)` when an outer router owns the address bar. URL params
+come back as **strings** (a URL has no types, and `0012` is a customer code, not 12), and a page id this app does not have is
+left alone rather than opening a blank screen.
 
 ```yaml
 app:
@@ -428,5 +432,10 @@ deriveDto(page);                                                     // → JSON
 ```
 
 Japanese business rules ship as utilities in all three: consumption tax (`computeTax`, `computeInvoice` per-rate rounding), Japanese eras (`eraOf`), fiscal year and quarter (`fiscalYear`), age and tenure (`ageAt`, `tenure`), business days with injected holidays (`nextBusinessDay`).
+
+Talking to a REST API is an opt-in adapter: [`hatake_http`](../flutter/packages/hatake_http/) implements `Repository` against
+exactly the API `hatake openapi` declares (`{items, totalCount}` for a list, `<collection>/{key}` for one record, 404 → null).
+It carries no transport dependency — you hand it one `HttpSend` function — and types its failures (401/403, a 400 with
+per-field validation errors, anything else, and *a shape that is not the declared one*, which it refuses to read as "0 rows").
 
 The frontend (Flutter) renders definitions; backends (Java / TypeScript) use the *same* definitions for server-side validation, query building and API shape generation. That is the point: one definition, so the front and the back cannot disagree.

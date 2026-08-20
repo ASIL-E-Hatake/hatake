@@ -1,0 +1,46 @@
+{
+  "$comment": "RepositoryQuery を REST の問い合わせ文字列にする形。定義から出す OpenAPI（hatake openapi）が宣言している名前と、REST クライアント（flutter/packages/hatake_http）が実際に送る名前が一致することを縛るためのフィクスチャ。片方だけ直すと、画面は出るのにデータが来ない（サーバは知らない名前を無視するだけなので、エラーにもならない）。",
+  "contract": ["page", "pageSize", "sortField", "sortAscending"],
+  "cases": [
+    {
+      "name": "何も指定しないとき（ページと件数は必ず送る）",
+      "query": {},
+      "expect": "page=0&pageSize=50"
+    },
+    {
+      "name": "ページと件数",
+      "query": { "page": 2, "pageSize": 25 },
+      "expect": "page=2&pageSize=25"
+    },
+    {
+      "name": "並び（向きは並べる項目があるときだけ意味を持つ）",
+      "query": { "sortField": "customerCode", "sortAscending": false },
+      "expect": "page=0&pageSize=50&sortField=customerCode&sortAscending=false"
+    },
+    {
+      "name": "絞り込みは項目名そのまま",
+      "query": { "filters": { "status": "未出荷" } },
+      "expect": "status=%E6%9C%AA%E5%87%BA%E8%8D%B7&page=0&pageSize=50"
+    },
+    {
+      "name": "空文字と null は送らない（絞っていないのと同じにする）",
+      "query": { "filters": { "status": "", "kind": null, "code": "C-1" } },
+      "expect": "code=C-1&page=0&pageSize=50"
+    },
+    {
+      "name": "範囲（between）は同じ名前を2回",
+      "query": { "filters": { "orderDate": ["2026-04-01", "2026-04-30"] } },
+      "expect": "orderDate=2026-04-01&orderDate=2026-04-30&page=0&pageSize=50"
+    },
+    {
+      "name": "複数選択（in）も同じ書き方",
+      "query": { "filters": { "status": ["未出荷", "出荷済"] } },
+      "expect": "status=%E6%9C%AA%E5%87%BA%E8%8D%B7&status=%E5%87%BA%E8%8D%B7%E6%B8%88&page=0&pageSize=50"
+    },
+    {
+      "name": "数と真偽は文字にして送る（URL に型は無い）",
+      "query": { "filters": { "amount": 1200, "active": true } },
+      "expect": "amount=1200&active=true&page=0&pageSize=50"
+    }
+  ]
+}

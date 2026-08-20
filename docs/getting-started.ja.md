@@ -82,6 +82,11 @@ python spec/tools/validate_schema.py assets/customer.yaml
 
 フレームワークが知っているのは**この5メソッドだけ**（HTTP も DB も知らない）。中身は Dio でも Firebase でも何でもいい。
 
+> REST API に繋ぐなら、手で書く前に opt-in の
+> [`hatake_http`](../flutter/packages/hatake_http/) を見る。`npx hatake openapi` が定義から
+> 宣言する API と**同じ形**で話す `Repository` が入っているので、`collections` の対応表と
+> 「送る関数」1つで済む（通信の依存は持たないので web でも動く）。下は自分で書く場合。
+
 ```dart
 import 'package:hatake_material/hatake_material.dart';
 

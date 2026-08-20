@@ -49,6 +49,8 @@ actions:
 
 画面が2つ以上になったら、ドキュメントのルートを `page:` から **`app:`** に変えて `pages` に並べ、`menu` で導線を作ります。Dart 側は `HatakePageView` → **`HatakeApp`** に変わるだけ。
 
+Web では URL が画面に付いてきます（`/<画面id>?<params>`）。リンクで画面を渡せて、リロードでも同じ画面が出て、ブラウザの戻るが効きます。外側に自前のルータを持つアプリは `HatakeApp(syncUrl: false)` で切ってください。
+
 → 手順は [レシピ: 一覧→詳細](../cookbook/search-list-detail.ja.md)
 
 ## `wizard` と `dashboard`

@@ -65,6 +65,18 @@ const REGISTRATIONS: { kind: RefKind; name: string; named?: boolean }[] = [
   { kind: "dashboardItemTypes", name: "dashboardItemBuilders", named: true },
 ];
 
+/**
+ * 「書いてあれば在る」だけの登録。
+ *
+ * 出力先（sink）は名前と値の対応表ではなく**関数を1つ渡す**書き方なので、
+ * `HatakeScope(exportSink: (request) async { … })` のように名前付き引数が
+ * 在るかどうかだけが問題になる。中身は読まない（読む必要が無い）。
+ */
+const PRESENCE_REGISTRATIONS: { kind: RefKind; name: string }[] = [
+  { kind: "sinks", name: "exportSink" },
+  { kind: "sinks", name: "printSink" },
+];
+
 /** 走査できるソースの拡張子。 */
 export const SCANNABLE_EXTENSIONS = [".dart", ".ts", ".tsx", ".java", ".kt"];
 
@@ -104,6 +116,16 @@ export function scanRegistrations(files: SourceFile[]): RegistryScan {
           file: file.path,
           line,
           names: read.names,
+        });
+      }
+    }
+    for (const registration of PRESENCE_REGISTRATIONS) {
+      for (const at of findCalls(source, registration.name, true)) {
+        sites.push({
+          kind: registration.kind,
+          file: file.path,
+          line: lineOf(source, at.start),
+          names: [registration.name],
         });
       }
     }

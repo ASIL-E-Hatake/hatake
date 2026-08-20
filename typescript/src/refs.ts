@@ -30,6 +30,8 @@ import { builtinFormatters } from "./formatter.js";
 export const RefKinds = {
   repositories: "repositories",
   plugins: "plugins",
+  /** 出力先（`exportSink` / `printSink`）＝アプリ側で登録する「口」。 */
+  sinks: "sinks",
   pages: "pages",
   fieldTypes: "fieldTypes",
   columnTypes: "columnTypes",
@@ -73,6 +75,8 @@ export type DefinitionRegistry = Partial<Record<RefKind, string[]>>;
 export const builtInNames: Record<RefKind, string[]> = {
   repositories: [],
   plugins: [],
+  // 出力先に組み込みは無い。Framework は文書までを作り、I/O はしない。
+  sinks: [],
   pages: [],
   fieldTypes: Object.values(FieldTypes),
   columnTypes: Object.values(ColumnTypes),
@@ -277,6 +281,14 @@ function collectPage(page: Dict, path: string, ctx: Ctx): void {
 function collectAction(action: Dict, path: string, ctx: Ctx): void {
   const type = str(action.type);
   if (type !== undefined) push(ctx, "actionTypes", type, `${path}.type`);
+  // 出す口。Framework は文書（CSV の文字列・紙の中身）までしか作らないので、
+  // アプリ側に出力先が無ければ**ボタンは出るのに何も起きない**。定義から分かる
+  // 要求なので、Repository やプラグインと同じ列に並べる。
+  if (type === ActionTypes.export) {
+    push(ctx, "sinks", "exportSink", `${path}.type`);
+  } else if (type === ActionTypes.print) {
+    push(ctx, "sinks", "printSink", `${path}.type`);
+  }
   const plugin = str(action.plugin);
   if (plugin !== undefined) push(ctx, "plugins", plugin, `${path}.plugin`);
   const page = str(action.page);

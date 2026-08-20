@@ -817,6 +817,54 @@ describe("同梱の資料との辻褄", () => {
   });
 });
 
+describe("出す口が繋がっていない", () => {
+  const report = `
+page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  table:
+    columns: [{ field: amount, label: 金額, type: number }]
+  report:
+    rowsPerPage: 30
+  actions:
+    - { id: csv, type: export, label: CSV出力 }
+    - { id: printPdf, type: print, label: 印刷 }
+`;
+
+  it("出力先が未登録なら、押す前に言う", () => {
+    const found = findWarnings(parseYaml(report) as Record<string, unknown>, {
+      registry: { repositories: ["orderRepository"], sinks: ["exportSink"] },
+    });
+    const sink = found.find((w) => w.rule === "unregistered-sink");
+    // CSV の口は在る。無いのは印刷の口だけ。
+    expect(found.filter((w) => w.rule === "unregistered-sink")).toHaveLength(1);
+    expect(sink?.message).toContain("printSink");
+    expect(sink?.path).toBe("page.actions[1].type");
+    expect(sink?.fix).toContain("HatakeScope");
+  });
+
+  it("両方登録してあれば黙る", () => {
+    expect(
+      findWarnings(parseYaml(report) as Record<string, unknown>, {
+        registry: {
+          repositories: ["orderRepository"],
+          sinks: ["exportSink", "printSink"],
+        },
+      }),
+    ).toEqual([]);
+  });
+
+  it("一覧を渡していない種類は見ない（知らないものを厳しくしない）", () => {
+    expect(
+      findWarnings(parseYaml(report) as Record<string, unknown>, {
+        registry: { repositories: ["orderRepository"] },
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe("紙の無い画面の印刷ボタン", () => {
   it("report が無い画面の type: print を指摘する", () => {
     const found = warningsOf(`
