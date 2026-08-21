@@ -15,7 +15,8 @@ import {
   type PageDefinition,
 } from "./definition.js";
 import { isAppSource, noSuchPage, parseAppSource } from "./explainSource.js";
-import { PAGE_KINDS } from "./explainPhrases.js";
+import { type Lang, PAGE_KINDS, pick } from "./explainPhrases.js";
+import { voice } from "./explainVoice.js";
 import { parsePageYaml } from "./parse.js";
 
 /**
@@ -26,8 +27,14 @@ import { parsePageYaml } from "./parse.js";
  * 同じ語を転記しているので、ズレたら現場と実装で画面の呼び方が変わる）。
  */
 export const SHORT_KINDS: Record<string, string> = Object.fromEntries(
-  Object.entries(PAGE_KINDS).map(([kind, words]) => [kind, words.short]),
+  Object.entries(PAGE_KINDS).map(([kind, words]) => [kind, pick(words.short, "ja")]),
 );
+
+/** その言語の見出し語（`--lang en` のときだけ日本語と違う）。 */
+const shortKind = (kind: string, lang: Lang): string => {
+  const found = PAGE_KINDS[kind];
+  return found === undefined ? kind : pick(found.short, lang);
+};
 
 export interface PageBrief {
   id: string;
@@ -46,6 +53,8 @@ export interface PageBrief {
 export interface AppBrief {
   headline: string;
   pages: PageBrief[];
+  /** 何語で書いてあるか（[renderBrief] が並べ方を選ぶのに使う）。 */
+  lang: Lang;
 }
 
 /** 条件が1つでも付いている項目は「出し分け」がある（読む前に知りたい合図）。 */
@@ -55,7 +64,8 @@ const CONTROLLED = (field: FieldDefinition): boolean =>
   field.readOnlyWhen !== undefined ||
   field.requiredWhen !== undefined;
 
-export function briefPage(page: PageDefinition): PageBrief {
+export function briefPage(page: PageDefinition, lang: Lang = "ja"): PageBrief {
+  const v = voice(lang);
   const counts: Record<string, number> = {};
   const parts: string[] = [];
   const count = (key: string, value: number): number => {
@@ -65,21 +75,18 @@ export function briefPage(page: PageDefinition): PageBrief {
 
   if ("search" in page && page.search !== undefined) {
     const filters = count("filters", page.search.filters.length);
-    if (filters > 0) parts.push(`条件 ${filters}`);
+    if (filters > 0) parts.push(v.briefFilters(filters));
   }
   if ("table" in page) {
     const columns = count("columns", page.table.columns.length);
-    if (columns > 0) parts.push(`列 ${columns}`);
+    if (columns > 0) parts.push(v.briefColumns(columns));
   }
   if ("form" in page) {
     const fields = formFields(page.form);
     const sections = count("sections", page.form.sections.length);
     const required = count("required", fields.filter((f) => f.required).length);
     count("fields", fields.length);
-    parts.push(
-      `${sections > 1 ? `${sections} 枠に` : ""}項目 ${fields.length}` +
-        (required > 0 ? `（必須 ${required}）` : ""),
-    );
+    parts.push(v.briefFields(fields.length, sections, required));
     count("controlled", fields.filter(CONTROLLED).length);
   }
   if ("steps" in page) {
@@ -87,23 +94,23 @@ export function briefPage(page: PageDefinition): PageBrief {
     const fields = page.steps.flatMap((step) => step.fields);
     count("fields", fields.length);
     count("controlled", fields.filter(CONTROLLED).length);
-    parts.push(`ステップ ${steps}（項目 ${fields.length}）`);
+    parts.push(v.briefSteps(steps, fields.length));
   }
   if ("items" in page) {
     const cards = count("cards", page.items.length);
-    parts.push(`カード ${cards}`);
+    parts.push(v.briefCards(cards));
   }
   const actions = count("actions", page.actions.length);
-  if (actions > 0) parts.push(`ボタン ${actions}`);
+  if (actions > 0) parts.push(v.briefActions(actions));
   if (counts.controlled !== undefined) {
-    parts.push(`条件で出し分け ${counts.controlled} 項目`);
+    parts.push(v.briefControlled(counts.controlled));
   }
-  if (hasRoles(page)) parts.push("権限で出し分けあり");
+  if (hasRoles(page)) parts.push(v.briefHasRoles);
   if ("repository" in page && page.repository !== undefined) {
-    parts.push(`${page.repository} から`);
+    parts.push(v.briefFrom(page.repository));
   }
 
-  const what = SHORT_KINDS[page.kind] ?? page.kind;
+  const what = shortKind(page.kind, lang);
   return {
     id: page.id,
     title: page.title,
@@ -111,7 +118,7 @@ export function briefPage(page: PageDefinition): PageBrief {
     what,
     parts,
     counts,
-    line: `${page.title}（${page.id}）… ${what}${parts.length === 0 ? "" : `。${parts.join("、")}`}`,
+    line: v.briefLine(page.title, page.id, what, parts),
   };
 }
 
@@ -130,21 +137,24 @@ function hasRoles(page: PageDefinition): boolean {
 export const briefApp = (
   app: AppDefinition,
   pages: PageDefinition[],
+  lang: Lang = "ja",
 ): AppBrief => ({
-  headline: `${app.title}（${app.id}）— 画面 ${pages.length} 枚`,
-  pages: pages.map(briefPage),
+  headline: voice(lang).briefHeadline(app.title, app.id, pages.length),
+  pages: pages.map((page) => briefPage(page, lang)),
+  lang,
 });
 
 /** 定義の文字列から。[options.page] を渡すと app の中のその1枚だけ。 */
 export function briefSource(
   source: string,
-  options: { page?: string } = {},
+  options: { page?: string; lang?: Lang } = {},
 ): PageBrief | AppBrief {
+  const lang = options.lang ?? "ja";
   if (!isAppSource(source)) {
-    return briefPage(parsePageYaml(source, { strict: true }));
+    return briefPage(parsePageYaml(source, { strict: true }), lang);
   }
   const { app, pages } = parseAppSource(source);
-  if (options.page === undefined) return briefApp(app, pages);
+  if (options.page === undefined) return briefApp(app, pages, lang);
   const found = pages.find((page) => page.id === options.page);
   if (found === undefined) {
     throw noSuchPage(
@@ -152,7 +162,7 @@ export function briefSource(
       pages.map((page) => page.id),
     );
   }
-  return briefPage(found);
+  return briefPage(found, lang);
 }
 
 /** 人が読む形。app は id と画面名を揃えて並べる（そのまま表として貼れる）。 */
@@ -161,8 +171,9 @@ export function renderBrief(brief: PageBrief | AppBrief): string {
   const out = [brief.headline, ""];
   const idWidth = Math.max(...brief.pages.map((page) => width(page.id)), 0);
   const titleWidth = Math.max(...brief.pages.map((page) => width(page.title)), 0);
+  const tailOf = voice(brief.lang).briefTail;
   for (const page of brief.pages) {
-    const tail = page.parts.length === 0 ? "" : `。${page.parts.join("、")}`;
+    const tail = tailOf(page.parts);
     out.push(
       `  ${pad(page.id, idWidth)}  ${pad(page.title, titleWidth)}  ${page.what}${tail}`,
     );

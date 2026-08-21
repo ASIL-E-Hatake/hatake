@@ -1952,3 +1952,156 @@ describe("hatake probe / attack", () => {
     expect(io.stderr.join("")).toContain("この入口からは呼べません");
   });
 });
+
+describe("hatake wire --merge", () => {
+  const APP = `app:
+  id: sales
+  title: 販売管理
+  menu:
+    - { id: orders, label: 受注, page: order_search }
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      key: orderNo
+      table:
+        columns: [{ field: orderNo, label: 受注番号 }]
+      actions:
+        - { id: approve, type: plugin, plugin: approveOrders, label: 承認 }
+        - { id: reject, type: plugin, plugin: rejectOrders, label: 却下 }
+`;
+
+  /** 「承認」だけを繋いだ状態の配線（`却下` は後から増えた）。 */
+  const WIRING = [
+    "class SalesApp extends StatelessWidget {",
+    "  @override",
+    "  Widget build(BuildContext context) {",
+    "    return HatakeScope(",
+    "      repositories: const RepositoryRegistry({",
+    "        'orderRepository': _UnwiredRepository('orderRepository'),",
+    "      }),",
+    "      actions: ActionRegistry({",
+    "        'approveOrders': (ctx) async => api.approve(ctx.records),",
+    "      }),",
+    "      renderer: const MaterialRenderer(),",
+    "      child: HatakeApp(app: definition),",
+    "    );",
+    "  }",
+    "}",
+    "",
+  ].join("\n");
+
+  it("足りない登録だけを足して、既定は標準出力に出す", async () => {
+    const io = fakeIo({ "app.yaml": APP, "wiring.dart": WIRING });
+    expect(runCli(["wire", "app.yaml", "--merge", "wiring.dart"], io)).toBe(0);
+
+    const out = io.stdout.join("\n");
+    expect(out).toContain("'rejectOrders':");
+    // 手で書いた中身はそのまま。
+    expect(out).toContain("api.approve(ctx.records)");
+    // 何をしたかは標準エラー（出力に混ぜない）。
+    expect(io.stderr.join("\n")).toContain("足した actions: rejectOrders");
+    // ファイルは触らない（--write を付けていない）。
+    expect(io.written).toEqual({});
+  });
+
+  it("--write で元のファイルを上書きする", () => {
+    const io = fakeIo({ "app.yaml": APP, "wiring.dart": WIRING });
+    expect(
+      runCli(["wire", "app.yaml", "--merge", "wiring.dart", "--write"], io),
+    ).toBe(0);
+
+    expect(io.written["wiring.dart"]).toContain("'rejectOrders':");
+    expect(io.stdout.join("")).toContain("書きました: wiring.dart");
+  });
+
+  it("足すものが無ければ書かない（日付だけが変わるのを避ける）", () => {
+    const merged = fakeIo({ "app.yaml": APP, "wiring.dart": WIRING });
+    runCli(["wire", "app.yaml", "--merge", "wiring.dart", "--write"], merged);
+    const io = fakeIo({
+      "app.yaml": APP,
+      "wiring.dart": merged.written["wiring.dart"],
+    });
+    expect(
+      runCli(["wire", "app.yaml", "--merge", "wiring.dart", "--write"], io),
+    ).toBe(0);
+
+    expect(io.written).toEqual({});
+    expect(io.stdout.join("")).toContain("変わりません: wiring.dart");
+  });
+
+  it("--json で機械可読（足した・残った・触らなかった）", () => {
+    const io = fakeIo({ "app.yaml": APP, "wiring.dart": WIRING });
+    runCli(["wire", "app.yaml", "--merge", "wiring.dart", "--json"], io);
+
+    const result = JSON.parse(io.stdout.join("\n"));
+    expect(result.added.actions).toEqual(["rejectOrders"]);
+    expect(result.code).toContain("'rejectOrders':");
+  });
+
+  it("配線ではないものを渡されたら、何もせず理由を言う", () => {
+    const io = fakeIo({ "app.yaml": APP, "x.dart": "void main() {}\n" });
+    expect(runCli(["wire", "app.yaml", "--merge", "x.dart"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("足す場所が決められません");
+    expect(io.written).toEqual({});
+  });
+});
+
+describe("explain --diff --if-changed", () => {
+  const BEFORE = `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+`;
+  // 並べ替えただけ（見え方は変わらない）。
+  const REORDERED = `page:
+  id: order_search
+  type: search
+  repository: orderRepository
+  key: orderNo
+  title: 受注照会
+  table:
+    columns: [{ label: 受注番号, field: orderNo }]
+`;
+  const CHANGED = `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+      - { field: amount, label: 金額, type: number }
+`;
+
+  it("変わっていなければ何も出さない（PR に貼らないため）", () => {
+    const io = fakeIo({ "a.yaml": BEFORE, "b.yaml": REORDERED });
+    expect(
+      runCli(["explain", "--diff", "a.yaml", "b.yaml", "--if-changed"], io),
+    ).toBe(0);
+    expect(io.stdout).toEqual([]);
+  });
+
+  it("変わっていれば普通に出す", () => {
+    const io = fakeIo({ "a.yaml": BEFORE, "b.yaml": CHANGED });
+    expect(
+      runCli(
+        ["explain", "--diff", "a.yaml", "b.yaml", "--if-changed", "--markdown"],
+        io,
+      ),
+    ).toBe(0);
+    expect(io.stdout.join("\n")).toContain("金額");
+  });
+
+  it("旗を付けなければ「変わりません」と言う（既定は黙らない）", () => {
+    const io = fakeIo({ "a.yaml": BEFORE, "b.yaml": REORDERED });
+    expect(runCli(["explain", "--diff", "a.yaml", "b.yaml"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("変わりません");
+  });
+});

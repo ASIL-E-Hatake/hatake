@@ -65,6 +65,7 @@ import {
 } from "./harvest.js";
 import { minimizeSource, renderMinimize } from "./minimize.js";
 import { wireApp } from "./wire.js";
+import { mergeWiring, renderWireMerge } from "./wireMerge.js";
 import { bearer, fetchSend, type HttpSend, readHeaders } from "./httpProbe.js";
 import {
   type RestTargets,
@@ -75,6 +76,7 @@ import { hasProbeError, probe, probeRequests, renderProbe } from "./probe.js";
 import { attack, attackRequests, hasHole, renderAttack } from "./attack.js";
 import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
+import type { Lang } from "./explainPhrases.js";
 import { type AdviceRules, DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
 import { renderReview, reviewSource } from "./review.js";
 import {
@@ -187,13 +189,15 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       辻褄（Repository / プラグイン / 独自の型の名前）も見る。省略しても
       定義の隣の hatake-registry.json があれば拾う。
 
-  hatake explain <file> [--page <id>] [--brief] [--json] [--markdown]
+  hatake explain <file> [--page <id>] [--brief] [--json] [--markdown] [--lang ja|en]
       定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人が、AI に
       書かせた定義をレビューするための出力。app: を渡すと画面の一覧とメニュー、
       --page でその1枚を詳しく。**app なら「この画面を開けるのは誰か」も出す**
       （1枚だけ読んでも出ない値で、いままで図しか知らなかった）。--brief は1行だけ
       （app なら画面一覧）。--markdown は PR 本文に貼れる形（見出し・箇条書き・表・
-      長い節は折りたたみ）。
+      長い節は折りたたみ）。--lang en で英語（語彙は spec/vocabulary.json の en）。
+      英語は説明だけ＝--diff と --review はまだ日本語なので、--lang en を渡すと落ちる
+      （半分だけ英語の文書を出すほうが困る）。
 
   hatake explain <file> --review [--page <id>] [--rules team.json] [--json] [--markdown]
       レビュー用の1枚。説明（何ができて、何ができないか）と助言（書き足したほうが
@@ -201,14 +205,15 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       叩かせない。助言は最後の節にまとめ、警告ではないと毎回書く（終了コードは
       変えない）。--page を渡すと、助言もその画面のものだけに絞る。
 
-  hatake explain --diff <old file> <new file> [--json] [--markdown]
-  hatake explain --diff --git <range> <file> [--json] [--markdown]
+  hatake explain --diff <old file> <new file> [--json] [--markdown] [--if-changed]
+  hatake explain --diff --git <range> <file> [--json] [--markdown] [--if-changed]
       変更を**画面の言葉**で言う（「枠「請求先」は、区分 が 法人 のときだけ出る
       ようになりました」）。diff は機械の言葉で言うので、人のレビューには一段
       足りない。後方互換の判定はしない（それは hatake diff）。
       --git は変更前を git から取る（HEAD~1..HEAD / main...HEAD＝枝分かれした所と
       比べる / HEAD＝いまの作業中と比べる）。--markdown と組めば、PR 本文に
-      そのまま貼れる。
+      そのまま貼れる。--if-changed は**変わっていなければ何も出さない**
+      （CI で「変化が無ければ貼らない」を書くための旗。docs/guide/pr-comment.ja.md）。
 
   hatake harvest <path...> [--min 2] [--repro] [--json] [--registry hatake-registry.json]
       定義の山を走査して、**繰り返し出ている診断**を実例カタログ
@@ -272,6 +277,12 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       UnimplementedError で落ちる＝黙って何もしない、にはしない。
       --base を渡すと Repository は hatake_http（REST）で組む＝そこは TODO に
       ならない（collection の名前は複数形を推測して埋める）。
+
+  hatake wire <file> --merge <既にある配線.dart> [--write] [--out file] [--json]
+      **足りない登録だけ**を足す（2回目以降はこちら）。手で埋めた中身は1バイトも
+      変えない＝消さない・並べ替えない・整形しない。要らなくなった登録は言うだけで
+      消さない（消すかどうかは業務の判断）。既定は標準出力、--write で上書き。
+      目印（HatakeScope と child:）が無い形なら、何もせず理由を言う。
 
   hatake probe <file> --base http://localhost:8080/api [--page <id>]
               [--token <jwt>] [--headers headers.json] [--collection k=name]
@@ -367,6 +378,7 @@ const BOOLEAN_FLAGS = new Set([
   "unused",
   "todo",
   "dry-run",
+  "if-changed",
   "help",
   "h",
   "version",
@@ -750,13 +762,15 @@ function explain(files: string[], flags: Args["flags"], io: CliIo): number {
     io.err("説明する定義ファイルを1つ指定してください。");
     return 1;
   }
+  const lang = readLang(flags, io);
+  if (lang === null) return 1;
   const source = io.readFile(files[0]);
   const wanted = str(flags, "page");
   if (flags.review === true) return review(source, wanted, flags, io);
   const document =
     flags.brief === true
-      ? briefSource(source, { page: wanted })
-      : explainSource(source, { page: wanted });
+      ? briefSource(source, { page: wanted, lang })
+      : explainSource(source, { page: wanted, lang });
 
   if (flags.json === true) {
     io.out(JSON.stringify(document, null, 2));
@@ -771,6 +785,31 @@ function explain(files: string[], flags: Args["flags"], io: CliIo): number {
   const explained = document as ReturnType<typeof explainSource>;
   io.out(markdown ? explainMarkdown(explained) : renderExplain(explained));
   return 0;
+}
+
+/**
+ * `--lang` を読む。知らない言語は**黙って日本語に落とさない**。
+ *
+ * 落とすと「英語で出したつもりの日本語」が PR に貼られる（貼った人は気づかない）。
+ * まだ英語で出せない道具（`--diff` / `--review`）で `--lang en` を渡されたときも、
+ * 半分だけ英語の文書を出すより**出さない**ほうがよい。
+ */
+function readLang(flags: Args["flags"], io: CliIo): Lang | null {
+  const given = str(flags, "lang");
+  if (given === undefined) return "ja";
+  if (given !== "ja" && given !== "en") {
+    io.err(`--lang は ja か en です（"${given}" は知りません）。`);
+    return null;
+  }
+  if (given === "en" && (flags.diff === true || flags.review === true)) {
+    io.err(
+      "--lang en は説明（explain / --brief / --markdown）だけです。" +
+        "変更の言い直し（--diff）と助言（--review）はまだ日本語しかありません" +
+        "（半分だけ英語の文書を出すほうが困るので、出しません）。",
+    );
+    return null;
+  }
+  return given;
 }
 
 /**
@@ -801,6 +840,9 @@ function explainChanges(
   const pair = sourcePair(files, flags, io, "explain --diff");
   if (pair === null) return 1;
   const diff = explainDiffSources(pair.before, pair.after);
+  // 変わっていないときに**何も出さない**旗。PR に貼る仕掛けはこれが無いと、
+  // 「見え方は変わりません。」という文を grep することになる（文言を直したら壊れる）。
+  if (flags["if-changed"] === true && diff.same) return 0;
   if (flags.json === true) {
     io.out(JSON.stringify(diff, null, 2));
     return 0;
@@ -950,6 +992,8 @@ function wire(files: string[], flags: Args["flags"], io: CliIo): number {
   const file = files[0];
   const document = parseYamlText(io.readFile(file)) as Record<string, unknown>;
   const source = file.split(/[\/]/).pop() ?? file;
+  const into = str(flags, "merge");
+  if (into !== undefined) return wireMerge(into, document, flags, io);
   const code = wireApp(document, {
     className: str(flags, "class"),
     assets: str(flags, "assets"),
@@ -967,6 +1011,40 @@ function wire(files: string[], flags: Args["flags"], io: CliIo): number {
     "TODO の所はアプリの担当です（何をするかは業務、どう繋ぐかは環境）。" +
       "埋めるまでは UnimplementedError で落ちます。",
   );
+  return 0;
+}
+
+/**
+ * 既にある配線に、足りない登録だけを足す（`wire --merge <file>`）。
+ *
+ * 既定は標準出力に出すだけ（`fix` と同じ作法）。`--write` で元のファイルを上書き、
+ * `--out` で別の場所へ。何をしたかは標準エラーに出す（**足したものが黙って増える**の
+ * が一番困るので、出力とは別の流れに書く）。
+ */
+function wireMerge(
+  into: string,
+  document: Record<string, unknown>,
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const result = mergeWiring(io.readFile(into), document, {
+    collections: collectionOverrides(str(flags, "collection")),
+  });
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+    return 0;
+  }
+  const out = str(flags, "out") ?? (flags.write === true ? into : undefined);
+  if (out === undefined) {
+    io.out(result.code.trimEnd());
+  } else if (result.code === io.readFile(into) && out === into) {
+    // 足すものが無いなら書かない（日付だけが変わるのを避ける）。
+    io.out(`変わりません: ${into}`);
+  } else {
+    io.writeFile(out, result.code);
+    io.out(`書きました: ${out}`);
+  }
+  io.err(renderWireMerge(result));
   return 0;
 }
 

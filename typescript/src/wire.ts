@@ -15,8 +15,9 @@
 // 生成物は `flutter analyze` に通ることを CI が確かめている（この生成器が壊れたら、
 // 生成したものが解析で落ちる）。
 
-import { collectRefs, refsNeedingRegistration } from "./refs.js";
+import { collectRefs, type RefKind, refsNeedingRegistration } from "./refs.js";
 import { mapLiteral } from "./wireMap.js";
+import { WIRE_KINDS, WIRE_SINKS } from "./wireKinds.js";
 
 type Dict = Record<string, unknown>;
 
@@ -85,16 +86,10 @@ export function wireApp(document: Dict, options: WireOptions = {}): string {
   const rest = options.baseUrl !== undefined;
 
   const repositories = needs.repositories ?? [];
-  const plugins = needs.plugins ?? [];
   const sinks = needs.sinks ?? [];
-  const validators = needs.validators ?? [];
-  const converters = needs.converters ?? [];
-  const formatters = needs.formatters ?? [];
-  const computedOps = needs.computedOps ?? [];
-  const aggregates = needs.aggregates ?? [];
-  const fieldTypes = needs.fieldTypes ?? [];
-  const cardTypes = needs.dashboardItemTypes ?? [];
   const chartKinds = needs.chartKinds ?? [];
+  /** 登録の種類 → 定義が挙げた名前（並ぶ順番も [WIRE_KINDS] が正）。 */
+  const named = (need: RefKind): string[] => needs[need] ?? [];
 
   const out: string[] = [];
   const push = (...lines: string[]): void => {
@@ -109,7 +104,8 @@ export function wireApp(document: Dict, options: WireOptions = {}): string {
     "// UnimplementedError で落ちる＝黙って何もしない、にはしていない。",
     "//",
     `// 生成元: ${options.source ?? "(標準入力)"}`,
-    "// 再生成すると手で書いた分は消える。通ったら自分のコードに取り込むこと。",
+    "// 通ったら自分のコードに取り込むこと。まるごと作り直すと手で書いた分は消えるので、",
+    "// 2回目からは `hatake wire <定義> --merge <このファイル>`（足りない登録だけを足す）。",
   );
   if (rest) {
     push(
@@ -183,77 +179,13 @@ export function wireApp(document: Dict, options: WireOptions = {}): string {
     );
   }
 
-  if (plugins.length > 0) {
-    push("        // `type: plugin` のボタンの中身＝業務。定義には書けない所。");
+  for (const kind of WIRE_KINDS.filter((k) => k.where === "scope")) {
+    const names = named(kind.need);
+    if (names.length === 0) continue;
+    for (const line of kind.comment) push(`        ${line}`);
     push(
-      `        actions: ActionRegistry(${mapLiteral(
-        plugins.map(
-          (p) =>
-            [
-              p,
-              `(ctx) async => throw UnimplementedError('${p}: 何をするか')`,
-            ] as [string, string],
-        ),
-        "        ",
-      )}),`,
-    );
-  }
-  if (validators.length > 0) {
-    push("        // 組み込みに無い検証。null を返せば OK、文字列を返せばそれがエラー。");
-    push(
-      `        validators: ValidatorRegistry(${mapLiteral(
-        validators.map(
-          (v) =>
-            [
-              v,
-              `(value, definition) => throw UnimplementedError('${v}: 検証の中身')`,
-            ] as [string, string],
-        ),
-        "        ",
-      )}),`,
-    );
-  }
-  if (converters.length > 0) {
-    push("        // 組み込みに無い正規化（保存の前に値を直す）。");
-    push(
-      `        converters: ConverterRegistry(${mapLiteral(
-        converters.map(
-          (c) =>
-            [
-              c,
-              `(value, options) => throw UnimplementedError('${c}: 正規化の中身')`,
-            ] as [string, string],
-        ),
-        "        ",
-      )}),`,
-    );
-  }
-  if (aggregates.length > 0) {
-    push("        // 組み込みに無い集約（ダッシュボードと帳票の合計欄）。");
-    push(
-      `        aggregates: AggregateRegistry(${mapLiteral(
-        aggregates.map(
-          (a) =>
-            [
-              a,
-              `(rows, field) => throw UnimplementedError('${a}: 集約の中身')`,
-            ] as [string, string],
-        ),
-        "        ",
-      )}),`,
-    );
-  }
-  if (computedOps.length > 0) {
-    push("        // 組み込みに無い計算（入力から自動で埋める項目）。");
-    push(
-      `        computeds: ComputedRegistry(${mapLiteral(
-        computedOps.map(
-          (op) =>
-            [
-              op,
-              `(computed, record) => throw UnimplementedError('${op}: 計算の中身')`,
-            ] as [string, string],
-        ),
+      `        ${kind.field}: ${kind.registry}(${mapLiteral(
+        names.map((name) => [name, kind.stub(name)] as [string, string]),
         "        ",
       )}),`,
     );
@@ -261,48 +193,20 @@ export function wireApp(document: Dict, options: WireOptions = {}): string {
 
   // renderer（フォーマッタ・独自の項目型・独自のカード）
   const rendererArgs: string[] = [];
-  if (formatters.length > 0) {
+  for (const kind of WIRE_KINDS.filter((k) => k.where === "renderer")) {
+    const names = named(kind.need);
+    if (names.length === 0) continue;
+    const body = mapLiteral(
+      names.map((name) => [name, kind.stub(name)] as [string, string]),
+      "          ",
+    );
     rendererArgs.push(
-      `          formatters: FormatterRegistry(${mapLiteral(
-        formatters.map(
-          (f) =>
-            [
-              f,
-              `(value, options) => throw UnimplementedError('${f}: 見せ方')`,
-            ] as [string, string],
-        ),
-        "          ",
-      )}),`,
+      kind.registry === undefined
+        ? `          ${kind.field}: ${body},`
+        : `          ${kind.field}: ${kind.registry}(${body}),`,
     );
   }
-  if (fieldTypes.length > 0) {
-    rendererArgs.push(
-      `          fieldBuilders: ${mapLiteral(
-        fieldTypes.map(
-          (t) =>
-            [
-              t,
-              `(ctx) => throw UnimplementedError('${t}: 入力の見た目')`,
-            ] as [string, string],
-        ),
-        "          ",
-      )},`,
-    );
-  }
-  if (cardTypes.length > 0) {
-    rendererArgs.push(
-      `          dashboardItemBuilders: ${mapLiteral(
-        cardTypes.map(
-          (t) =>
-            [
-              t,
-              `(ctx) => throw UnimplementedError('${t}: カードの中身')`,
-            ] as [string, string],
-        ),
-        "          ",
-      )},`,
-    );
-  }
+
   if (rendererArgs.length === 0) {
     push("        renderer: const MaterialRenderer(),");
   } else {
@@ -312,18 +216,10 @@ export function wireApp(document: Dict, options: WireOptions = {}): string {
   }
 
   for (const sink of sinks) {
-    if (sink === "exportSink") {
-      push("        // CSV は Framework が文字列まで作る。書くのはアプリ（web なら");
-      push("        // ダウンロード、デスクトップなら保存ダイアログ）。");
-      push("        exportSink: (request) async =>");
-      push("            throw UnimplementedError('${request.filename} を書き出す'),");
-    }
-    if (sink === "printSink") {
-      push("        // 紙の中身までが Framework。PDF にするのは opt-in の hatake_print、");
-      push("        // 送るのはアプリ。");
-      push("        printSink: (request) async =>");
-      push("            throw UnimplementedError('${request.filename} を刷る'),");
-    }
+    const spec = WIRE_SINKS[sink];
+    if (spec === undefined) continue;
+    for (const line of spec.comment) push(`        ${line}`);
+    for (const line of spec.body) push(`        ${line}`);
   }
 
   push("        // ログインした人の役割。**画面の出し分けだけ**で、遮断は API 側の仕事。");

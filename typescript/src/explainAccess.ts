@@ -18,6 +18,8 @@ import {
   describeAudience,
   nobodyCanOpen,
 } from "./appAccess.js";
+import type { Lang } from "./explainPhrases.js";
+import { voice } from "./explainVoice.js";
 
 /** 1枚ぶんの「開ける人」。 */
 export interface PageAccess {
@@ -26,11 +28,11 @@ export interface PageAccess {
   entries: AccessEntry[];
 }
 
-/** 画面1枚の節の見出し。 */
-export const ACCESS_TITLE = "この画面を開ける人";
+/** 画面1枚の節の見出し（日本語。言語を選ぶなら [voice] の `accessTitle`）。 */
+export const ACCESS_TITLE = voice("ja").accessTitle;
 
 /** app 全体の節の見出し（1枚ずつではなく一覧で見せる）。 */
-export const ACCESS_OVERVIEW_TITLE = "画面を開ける人";
+export const ACCESS_OVERVIEW_TITLE = voice("ja").accessOverviewTitle;
 
 /** [access] から1枚ぶんを取り出す。 */
 export const pageAccess = (access: AppAccess, id: string): PageAccess => ({
@@ -44,11 +46,12 @@ export const pageAccess = (access: AppAccess, id: string): PageAccess => ({
  * **どこから来られるか**まで言う。「admin だけ」と言われても、直す場所は入口なので、
  * 入口が分からないと読んだ人は動けない。
  */
-function describeEntry(entry: AccessEntry): string {
-  const from = entry.from === "menu" ? "メニュー" : `${entry.from} から`;
+function describeEntry(entry: AccessEntry, lang: Lang): string {
+  const v = voice(lang);
+  const from = entry.from === "menu" ? v.fromMenu : v.fromPage(entry.from);
   const who =
-    entry.roles.length === 0 ? "誰でも通れる" : `${entry.roles.join(" / ")} だけが通れる`;
-  return `入口「${entry.label}」（${from}） … ${who}`;
+    entry.roles.length === 0 ? v.anyonePasses : v.onlyRolesPass(entry.roles);
+  return v.entryLine(entry.label, from, who);
 }
 
 /**
@@ -56,26 +59,20 @@ function describeEntry(entry: AccessEntry): string {
  *
  * 行は「主語 … 説明」に揃える（`explain --diff` が前後で同じものを指す行を組める形）。
  */
-export function accessLines(access: PageAccess): string[] {
+export function accessLines(access: PageAccess, lang: Lang = "ja"): string[] {
+  const v = voice(lang);
   const { audience, entries } = access;
   if (entries.length === 0) {
     // 入口が無いのに開ける＝メニューの無い app の最初の画面（図と同じ読み方）。
-    if (audience.everyone) {
-      return [
-        "開けるのは … 誰でも（メニューが無いアプリなので、最初に開く画面として開く）",
-      ];
-    }
-    return [
-      "入口 … 書かれていない（メニューにも他の画面からの遷移にも出てこない" +
-        "＝アプリのコードから開く画面）",
-    ];
+    if (audience.everyone) return [v.openToAnyoneNoMenu];
+    return [v.noEntryWritten];
   }
   const lines = [
     nobodyCanOpen(audience)
-      ? "開けるのは … 誰も開けない（入口はあるが、権限が食い違っている）"
-      : `開けるのは … ${describeAudience(audience)}`,
+      ? v.nobodyOpens
+      : v.opensTo(describeAudience(audience, lang)),
   ];
-  for (const entry of entries) lines.push(describeEntry(entry));
+  for (const entry of entries) lines.push(describeEntry(entry, lang));
   return lines;
 }
 
@@ -88,15 +85,17 @@ export function accessLines(access: PageAccess): string[] {
 export function accessOverviewLines(
   access: AppAccess,
   pages: { id: string; title: string }[],
+  lang: Lang = "ja",
 ): string[] {
+  const v = voice(lang);
   return pages.map((page) => {
     const one = pageAccess(access, page.id);
     const who =
       one.entries.length === 0 && !one.audience.everyone
-        ? "入口が書かれていない（アプリのコードから開く）"
+        ? v.overviewNoEntry
         : nobodyCanOpen(one.audience)
-          ? "誰も開けない（入口の権限が食い違っている）"
-          : describeAudience(one.audience);
-    return `${page.title}（${page.id}） … ${who}`;
+          ? v.overviewNobody
+          : describeAudience(one.audience, lang);
+    return v.subject(v.titleWithId(page.title, page.id), who);
   });
 }

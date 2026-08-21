@@ -1279,7 +1279,8 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | 項目間の検証（`compare`）の書き間違い → **その検証が黙って通る** |
 | `page-nobody-can-open` | 入口（メニュー項目・遷移ボタン）の `roles` が食い違っている → **その画面を開ける人が誰も居ない** |
 | `prompt-unsupported-type` | 実行前に聞く（`prompt`）のに、聞いた値を受け取れない型（`plugin` 以外）→ **聞くだけ聞いて捨てる** |
-| `placeholder-not-filled` | `onSuccess` / `onError` の文言に**埋まらない差し込み**を書いた（件数は `scope: selection` だけ、`{error}` は失敗だけ）→ 押すまで気づけず、文字のまま出る |
+| `create-action-unusable` | `type: create` を `crud` / `master` 以外の画面に置いた → ボタンは出るが**押しても何も起きない**（`create` が開くのは一覧からの新規入力。`form` / `wizard` には保存ボタンが最初から出ている） |
+| `placeholder-not-filled` | `onSuccess` / `onError` の文言に**埋まらない差し込み**を書いた（件数は `scope: selection` だけ、`{error}` は失敗だけ、**それ以外の名前＝`{orderNo}` のような項目名は埋める口が無い**）→ 押すまで気づけず、文字のまま出る |
 | `selection-without-table` | `scope: selection` のボタンを**表の無い画面**に置いた → 選ぶ手段が無いので、押せないボタンが出たままになる |
 | `selection-unsupported-type` | `scope: selection` を `plugin` 以外の型に書いた → 押しても実行されない（一括の中身は業務＝アプリ側の処理） |
 | `print-without-report` | `type: print` のボタンを **`report` の無い画面**に置いた → 刷る紙が無いので、ボタンは出るのに押すと「このページでは刷れません」と言われる |

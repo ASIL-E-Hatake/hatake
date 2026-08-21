@@ -323,9 +323,7 @@
         "            type: date",
         "            required: true",
         "            validators:",
-        "              - { type: compare, operator: gte, field: startDay }",
-        "  actions:",
-        "    - { id: save, type: create, label: 登録 }"
+        "              - { type: compare, operator: gte, field: startDay }"
       ],
       "diagnosis": { "warnings": ["compare-unknown-field"] },
       "fix": "相手の項目名を、同じフォームに実際にある名前に直す（validate が近い名前を出す）。",
@@ -344,9 +342,7 @@
         "            type: date",
         "            required: true",
         "            validators:",
-        "              - { type: compare, operator: gte, field: startDate }",
-        "  actions:",
-        "    - { id: save, type: create, label: 登録 }"
+        "              - { type: compare, operator: gte, field: startDate }"
       ]
     },
     {
@@ -377,9 +373,7 @@
         "            type: number",
         "            required: true",
         "            validators:",
-        "              - { type: compare, operator: equals, field: lines, aggregate: sum }",
-        "  actions:",
-        "    - { id: save, type: create, label: 登録 }"
+        "              - { type: compare, operator: equals, field: lines, aggregate: sum }"
       ],
       "diagnosis": { "warnings": ["compare-aggregate-without-of"] },
       "fix": "of に、明細のどの項目を足すかを書く（`of: amount`）。",
@@ -407,9 +401,7 @@
         "            type: number",
         "            required: true",
         "            validators:",
-        "              - { type: compare, operator: equals, field: lines, aggregate: sum, of: amount }",
-        "  actions:",
-        "    - { id: save, type: create, label: 登録 }"
+        "              - { type: compare, operator: equals, field: lines, aggregate: sum, of: amount }"
       ]
     },
     {
@@ -431,9 +423,7 @@
         "            type: date",
         "            required: true",
         "            validators:",
-        "              - { type: compare, operator: lte, field: startDate }",
-        "  actions:",
-        "    - { id: save, type: create, label: 登録 }"
+        "              - { type: compare, operator: lte, field: startDate }"
       ],
       "diagnosis": { "warnings": [] },
       "review": "`hatake explain` で読み返すと「終了日 … 日付、必須、開始日 以下」と出る。日本語で読めば向きが逆だと一目で分かる。機械はどちらが正しい向きかを知らない（lte も正しい書き方なので）ので、ここは人が読んで気づく所。",
@@ -453,9 +443,7 @@
         "            type: date",
         "            required: true",
         "            validators:",
-        "              - { type: compare, operator: gte, field: startDate }",
-        "  actions:",
-        "    - { id: save, type: create, label: 登録 }"
+        "              - { type: compare, operator: gte, field: startDate }"
       ]
     }
   ]

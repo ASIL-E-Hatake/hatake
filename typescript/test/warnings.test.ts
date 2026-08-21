@@ -931,6 +931,97 @@ ${body}
       onError: { message: '承認できません（{error}）' }`)),
     ).toEqual([]);
   });
+
+  // 項目名を書くのは「差し込みは開いている」と思ったとき。開いていないので、
+  // そのまま文字で出る（押すまで気づけない）。
+  it("知らない差し込み（項目名）は埋まらない", () => {
+    const found = warningsOf(action(`    - id: save
+      type: plugin
+      plugin: saveOrder
+      label: 登録
+      onSuccess: { message: '受注 {orderNo} を登録しました' }`));
+    const w = found.find((x) => x.rule === "placeholder-not-filled");
+    expect(w?.path).toBe("page.actions[0].onSuccess.message");
+    expect(w?.message).toContain("{orderNo}");
+    expect(w?.message).toContain("{count} / {failed} / {total} / {error}");
+    expect(w?.fix).toContain("文言に差し込めません");
+  });
+
+  it("知らない差し込みは同じものを2回言わない", () => {
+    const found = warningsOf(action(`    - id: save
+      type: plugin
+      plugin: saveOrder
+      label: 登録
+      onSuccess: { message: '{orderNo} と {orderNo} と {customer}' }`));
+    const w = found.filter((x) => x.rule === "placeholder-not-filled");
+    expect(w).toHaveLength(1);
+    expect(w[0].message).toContain("{orderNo} / {customer}");
+  });
+
+  it("form の画面に置いた新規登録のボタンは押しても何も起きない", () => {
+    const found = warningsOf(`page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections: [{ fields: [{ field: orderNo, label: 受注番号 }] }]
+  actions:
+    - { id: create, type: create, label: 新規登録 }
+`);
+    const w = found.find((x) => x.rule === "create-action-unusable");
+    expect(w?.path).toBe("page.actions[0].type");
+    expect(w?.message).toContain("押しても何も起きません");
+    expect(w?.fix).toContain("保存ボタンが最初から出ています");
+  });
+
+  it("crud / master の新規登録は言わない（そこが本来の置き場所）", () => {
+    for (const kind of ["crud", "master"]) {
+      const found = warningsOf(`page:
+  type: ${kind}
+  id: customer_master
+  title: 顧客マスタ
+  repository: customerRepository
+  key: id
+  table:
+    columns: [{ field: id, label: ID }]
+  form:
+    sections: [{ fields: [{ field: id, label: ID }] }]
+  actions:
+    - { id: create, type: create, label: 新規登録 }
+`);
+      expect(found.map((x) => x.rule), kind).not.toContain(
+        "create-action-unusable",
+      );
+    }
+  });
+
+  it("一覧だけの画面でも言う（開く先の枠が無い）", () => {
+    const found = warningsOf(`page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - { id: create, type: create, label: 新規登録 }
+`);
+    const w = found.find((x) => x.rule === "create-action-unusable");
+    expect(w?.fix).toContain("navigate");
+  });
+
+  it("差し込みが無ければ言わない", () => {
+    expect(
+      rulesOf(action(`    - id: save
+      type: plugin
+      plugin: saveOrder
+      label: 登録
+      onSuccess: { message: '登録しました' }`)),
+    ).toEqual([]);
+  });
 });
 
 describe("選んだ行に対して実行するボタン", () => {

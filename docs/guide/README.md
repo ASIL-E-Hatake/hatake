@@ -8,6 +8,7 @@
 | [仕組みと責務分担](concepts.ja.md) | 自分のコードをどこに書くか。Framework が持たないもの。正規化→検証→永続化の流れ |
 | [ページ種別の選び方](page-types.ja.md) | crud / master / search / detail / form のどれを使うか |
 | [入力検証](validation.ja.md) | 検証の順番・空値の扱い・独自ルール・**メッセージ差し替え（i18n）** |
-| [バックエンド連携](backend.ja.md) | 同じ定義でサーバ検証・クエリ組み立て・JPA 変換 |
+| [バックエンド連携](backend.ja.md) | 同じ定義でサーバ検証・クエリ組み立て・JPA 変換。**宣言どおり返っているかを叩いて確かめる**（probe / attack） |
+| [変更した画面を PR に貼る](pr-comment.ja.md) | 定義を直した PR に「画面がどう変わるか」を自動でコメントする Actions（そのまま置ける） |
 
 拡張（独自フィールド型 / Renderer 差し替え）の手順は [Plugin ガイド](../../flutter/docs/plugins.ja.md)。

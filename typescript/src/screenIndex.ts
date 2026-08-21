@@ -11,7 +11,7 @@
 // そのまま読むほうが速い。
 
 import { type PageBrief, briefPage } from "./explainBrief.js";
-import { PAGE_KINDS } from "./explainPhrases.js";
+import { PAGE_KINDS, pick } from "./explainPhrases.js";
 import { isAppSource, parseAppSource } from "./explainSource.js";
 import { type PageDefinition } from "./definition.js";
 import { formFields } from "./definition.js";
@@ -116,7 +116,8 @@ function wordsOf(page: PageDefinition): string[] {
     page.id,
     page.title,
     page.kind,
-    PAGE_KINDS[page.kind]?.what ?? "",
+    // 索引は日本語のまま（探す人の言葉）。英語の索引が要るなら別の口を作る話。
+    PAGE_KINDS[page.kind] === undefined ? "" : pick(PAGE_KINDS[page.kind].what, "ja"),
   ];
   if ("repository" in page && page.repository !== undefined) {
     words.push(page.repository);

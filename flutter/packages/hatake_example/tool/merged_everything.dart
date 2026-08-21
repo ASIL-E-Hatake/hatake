@@ -51,8 +51,22 @@ class SalesAdminApp extends StatelessWidget {
               throw UnimplementedError('rejectOrders: 何をするか'),
           'showDefinition': (ctx) async =>
               throw UnimplementedError('showDefinition: 何をするか'),
+          'approveOrder': (ctx) async =>
+              throw UnimplementedError('approveOrder: 何をするか'),
         }),
-        renderer: const MaterialRenderer(),
+        renderer: MaterialRenderer(
+          formatters: FormatterRegistry({
+            'jpyCompact': (value, options) =>
+                throw UnimplementedError('jpyCompact: 見せ方'),
+          }),
+          fieldBuilders: {
+            'colorPicker': (ctx) =>
+                throw UnimplementedError('colorPicker: 入力の見た目'),
+          },
+          dashboardItemBuilders: {
+            'heatmap': (ctx) => throw UnimplementedError('heatmap: カードの中身'),
+          },
+        ),
         // CSV は Framework が文字列まで作る。書くのはアプリ（web なら
         // ダウンロード、デスクトップなら保存ダイアログ）。
         exportSink: (request) async =>
@@ -64,6 +78,25 @@ class SalesAdminApp extends StatelessWidget {
         // ログインした人の役割。**画面の出し分けだけ**で、遮断は API 側の仕事。
         // 空のままだと `roles` を書いた列・項目・ボタンは出てこない。
         roles: const {}, // TODO: ログインから取る
+        // 組み込みに無い検証。null を返せば OK、文字列を返せばそれがエラー。
+        validators: ValidatorRegistry({
+          'orderNoFormat': (value, definition) =>
+              throw UnimplementedError('orderNoFormat: 検証の中身'),
+        }),
+        // 組み込みに無い正規化（保存の前に値を直す）。
+        converters: ConverterRegistry({
+          'toUpperSnake': (value, options) =>
+              throw UnimplementedError('toUpperSnake: 正規化の中身'),
+        }),
+        // 組み込みに無い集約（ダッシュボードと帳票の合計欄）。
+        aggregates: AggregateRegistry({
+          'median': (rows, field) => throw UnimplementedError('median: 集約の中身'),
+        }),
+        // 組み込みに無い計算（入力から自動で埋める項目）。
+        computeds: ComputedRegistry({
+          'discount': (computed, record) =>
+              throw UnimplementedError('discount: 計算の中身'),
+        }),
         child: HatakeApp(app: definition),
       ),
     );

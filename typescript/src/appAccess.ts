@@ -18,6 +18,9 @@
 // メニューも素のまま読む＝この1枚で完結するので、図（[appDiagram]）と警告（[findWarnings]）が
 // 同じ答えを出す。
 
+import type { Lang } from "./explainPhrases.js";
+import { voice } from "./explainVoice.js";
+
 type Dict = Record<string, unknown>;
 
 const isDict = (v: unknown): v is Dict =>
@@ -267,9 +270,15 @@ export const canOpen = (audience: Audience, role: string): boolean =>
 export const nobodyCanOpen = (audience: Audience): boolean =>
   !audience.everyone && audience.roles.length === 0;
 
-/** 人が読む言い方（図の箱に入れる短い形）。 */
-export function describeAudience(audience: Audience): string {
-  if (audience.everyone) return "誰でも開ける";
-  if (audience.roles.length === 0) return "誰も開けない";
-  return `${audience.roles.join(" / ")} だけ`;
+/**
+ * 人が読む言い方（図の箱に入れる短い形）。
+ *
+ * 図は日本語のまま（SVG の中の文字は差し替えの口が無い）。説明（`explain --lang en`）は
+ * 言語を渡す。
+ */
+export function describeAudience(audience: Audience, lang: Lang = "ja"): string {
+  const v = voice(lang);
+  if (audience.everyone) return v.audienceAnyone;
+  if (audience.roles.length === 0) return v.audienceNobody;
+  return v.audienceOnly(audience.roles);
 }
