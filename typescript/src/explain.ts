@@ -97,6 +97,16 @@ const emptyVocabulary = (): Vocabulary => ({
 function learn(vocabulary: Vocabulary, items: (FieldDefinition | FilterDefinition | ColumnDefinition)[]): void {
   for (const item of items) {
     vocabulary.labels.set(item.field, item.label);
+    // 明細の行の項目も覚える（行を畳む計算が `of` で指すのは行の項目名なので、
+    // 覚えていないと「明細 の amount の合計」と生の名前で出てしまう）。
+    // 親の項目名と同じ名前なら**上書きしない**（親のほうが説明の主語になる）。
+    if ("rowFields" in item) {
+      for (const row of item.rowFields) {
+        if (!vocabulary.labels.has(row.field)) {
+          vocabulary.labels.set(row.field, row.label);
+        }
+      }
+    }
     const options = "options" in item ? item.options : [];
     if (options.length > 0) {
       vocabulary.options.set(
@@ -427,7 +437,7 @@ function describeField(
     );
   }
   if (field.computed !== undefined) {
-    notes.push(v.computedField);
+    notes.push(describeComputed(field.computed, vocabulary, lang));
   }
   if (field.format !== undefined) {
     notes.push(
@@ -453,6 +463,28 @@ function describeField(
   return notes.length === 0
     ? field.label
     : v.subject(field.label, notes.join(v.noteSeparator));
+}
+
+/**
+ * 計算項目の言い方。
+ *
+ * **何から計算するのか**が読めないと、レビューでは「自動で計算する」以上のことが
+ * 分からない。明細の行を畳む形（`field` + `of`）だけは、畳む相手を名前で言う。
+ */
+function describeComputed(
+  computed: Record<string, unknown>,
+  vocabulary: Vocabulary,
+  lang: Lang,
+): string {
+  const v = voice(lang);
+  const target = typeof computed.field === "string" ? computed.field : undefined;
+  const op = typeof computed.op === "string" ? computed.op : "";
+  if (target === undefined || AGGREGATES[op] === undefined) return v.computedField;
+  const table = vocabulary.labels.get(target) ?? target;
+  if (op === "count") return v.foldsRowCount(table);
+  const of = typeof computed.of === "string" ? computed.of : undefined;
+  if (of === undefined) return v.computedField;
+  return v.foldsRows(table, vocabulary.labels.get(of) ?? of, pick(AGGREGATES[op], lang));
 }
 
 const describeValidator = (

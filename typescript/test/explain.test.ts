@@ -4,6 +4,7 @@ import { parse as parseYaml } from "yaml";
 import {
   explainApp,
   explainPage,
+  explainSource,
   parseAppYaml,
   parsePageYaml,
   renderExplain,
@@ -402,5 +403,46 @@ describe("同梱の例", () => {
       // 説明にキー名の羅列を出していない（読み手は DSL を知らない）。
       expect(renderExplain(document), file).not.toContain("visibleWhen");
     }
+  });
+});
+
+describe("明細の行を畳む計算の読み返し", () => {
+  const YAML = `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            fields:
+              - { field: productName, label: 品名 }
+              - { field: amount, label: 金額, type: number }
+      - title: 金額
+        fields:
+          - { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amount } }
+          - { field: rows, label: 行数, computed: { op: count, field: lines } }
+          - { field: total, label: 合計, computed: { op: sum, fields: [subtotal] } }
+`;
+
+  it("何を畳むのかを名前で言う（行のラベルも使う）", () => {
+    const text = renderExplain(explainSource(YAML));
+
+    // 「自動で計算する」では、レビューする人に何も伝わらない。
+    expect(text).toContain("小計 … 明細 の 金額 の合計（手では入れない）");
+    expect(text).toContain("行数 … 明細 の件数（手では入れない）");
+    // 同じレコードの項目を畳む形は今までどおりの言い方。
+    expect(text).toContain("合計 … 他の項目から自動で計算する（手では入れない）");
+  });
+
+  it("英語でも同じことを言う", () => {
+    const text = renderExplain(explainSource(YAML, { lang: "en" }));
+
+    expect(text).toContain("小計 … the total of 金額 in 明細 (not typed in)");
+    expect(text).toContain("行数 … the number of rows in 明細 (not typed in)");
   });
 });

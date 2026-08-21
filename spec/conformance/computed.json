@@ -4,5 +4,21 @@
   { "computed": { "op": "sum", "fields": ["price", "tax"] }, "record": { "price": 1000, "tax": 80 }, "expected": 1080 },
   { "computed": { "op": "sum", "fields": ["a", "b", "missing"] }, "record": { "a": 10, "b": 5 }, "expected": 15 },
   { "computed": { "op": "subtract", "fields": ["total", "paid"] }, "record": { "total": 1000, "paid": 300 }, "expected": 700 },
-  { "computed": { "op": "product", "fields": ["qty", "unit"] }, "record": { "qty": 3, "unit": 150 }, "expected": 450 }
+  { "computed": { "op": "product", "fields": ["qty", "unit"] }, "record": { "qty": 3, "unit": 150 }, "expected": 450 },
+
+  { "$comment": "ここから: 明細（subTable）の行を畳む（field + of）。集約の語彙と実装はダッシュボードのカード・compare の検証と同じもの＝同じ数が出る。", "computed": { "op": "sum", "field": "lines", "of": "amount" }, "record": { "lines": [{ "amount": 1200, "qty": 2 }, { "amount": 800, "qty": 1 }, { "amount": 500, "qty": 3 }] }, "expected": 2500 },
+  { "$comment": "count に of は要らない（何を数えるかは行そのもの）。", "computed": { "op": "count", "field": "lines" }, "record": { "lines": [{ "amount": 1200, "qty": 2 }, { "amount": 800, "qty": 1 }, { "amount": 500, "qty": 3 }] }, "expected": 3 },
+  { "computed": { "op": "avg", "field": "lines", "of": "qty" }, "record": { "lines": [{ "amount": 1200, "qty": 2 }, { "amount": 800, "qty": 1 }, { "amount": 500, "qty": 3 }] }, "expected": 2 },
+  { "computed": { "op": "min", "field": "lines", "of": "amount" }, "record": { "lines": [{ "amount": 1200, "qty": 2 }, { "amount": 800, "qty": 1 }, { "amount": 500, "qty": 3 }] }, "expected": 500 },
+  { "computed": { "op": "max", "field": "lines", "of": "amount" }, "record": { "lines": [{ "amount": 1200, "qty": 2 }, { "amount": 800, "qty": 1 }, { "amount": 500, "qty": 3 }] }, "expected": 1200 },
+  { "$comment": "数として読めない行は飛ばす（文字で来た数は読む）。合計は読めた値だけの和。", "computed": { "op": "sum", "field": "lines", "of": "amount" }, "record": { "lines": [{ "amount": "1200" }, { "amount": "" }, { "amount": "abc" }, { "amount": 300 }] }, "expected": 1500 },
+  { "$comment": "行が1件も無いとき。count は 0、sum も 0（足すものが無い）。", "computed": { "op": "count", "field": "lines" }, "record": {}, "expected": 0 },
+  { "computed": { "op": "sum", "field": "lines", "of": "amount" }, "record": { "lines": [] }, "expected": 0 },
+  { "$comment": "avg は行が無ければ null（0 を返すと「平均 0 円」に見える）。", "computed": { "op": "avg", "field": "lines", "of": "amount" }, "record": { "lines": [] }, "expected": null },
+  { "$comment": "of が無ければ畳めない（何を足すか決まらない）。validate が先に言う。", "computed": { "op": "sum", "field": "lines" }, "record": { "lines": [{ "amount": 1200, "qty": 2 }, { "amount": 800, "qty": 1 }, { "amount": 500, "qty": 3 }] }, "expected": null },
+  { "$comment": "product は行を畳めない（同じレコードの項目を畳む op）。fields が無いので「何も掛けていない」1 が出る。validate が先に言う。", "computed": { "op": "product", "field": "lines", "of": "amount" }, "record": { "lines": [{ "amount": 1200, "qty": 2 }, { "amount": 800, "qty": 1 }, { "amount": 500, "qty": 3 }] }, "expected": 1 },
+  { "$comment": "concat も同じ（行を並べる機能ではない）。", "computed": { "op": "concat", "field": "lines", "of": "amount" }, "record": { "lines": [{ "amount": 1200, "qty": 2 }, { "amount": 800, "qty": 1 }, { "amount": 500, "qty": 3 }] }, "expected": "" },
+  { "$comment": "行を畳むだけの op に field が無ければ null（同じレコードの項目には意味が無い）。", "computed": { "op": "count", "fields": ["a", "b"] }, "record": { "a": 1, "b": 2 }, "expected": null },
+  { "$comment": "field と fields の両方を書いたら field が勝つ（validate が警告する形）。", "computed": { "op": "sum", "field": "lines", "of": "amount", "fields": ["a", "b"] }, "record": { "a": 1, "b": 2, "lines": [{ "amount": 1200, "qty": 2 }, { "amount": 800, "qty": 1 }, { "amount": 500, "qty": 3 }] }, "expected": 2500 },
+  { "$comment": "行が配列でない（型が違う）ときは、行が無いのと同じに読む。", "computed": { "op": "sum", "field": "lines", "of": "amount" }, "record": { "lines": "1200" }, "expected": 0 }
 ]

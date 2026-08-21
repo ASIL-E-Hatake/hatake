@@ -105,6 +105,16 @@ public final class Aggregates {
         return values;
     }
 
+    /**
+     * 組込みの集約だけを引く（計算項目 {@link Computed} が明細の行を畳むのに使う）。
+     * 同じ集約を2つ持たないための口で、登録した独自の集約は含まない。
+     */
+    static AggregateFn builtin(String op) {
+        return BUILTINS.get(op);
+    }
+
+    private static final Map<String, AggregateFn> BUILTINS = builtins();
+
     private static Map<String, AggregateFn> builtins() {
         Map<String, AggregateFn> m = new HashMap<>();
         m.put("count", (rows, field) -> (double) rows.size());

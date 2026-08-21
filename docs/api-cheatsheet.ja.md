@@ -324,9 +324,22 @@ sections:
 
 計算の `op`:
 <!-- vocab: field.computed.op -->
-`concat` `sum` `subtract` `product`
+`concat` `sum` `subtract` `product` `count` `avg` `min` `max`
 
-`ComputedRegistry` で追加可。
+* **同じレコードの項目**を畳むのは `fields: [a, b]`（`concat` / `sum` / `subtract` / `product`）
+* **明細（subTable）の行**を畳むのは `field: <明細の項目名>` ＋ `of: <行の項目名>`
+  （`count` / `sum` / `avg` / `min` / `max`。集約の語彙はダッシュボードのカードと同じ）
+
+```yaml
+- { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amount } }
+- { field: rows, label: 行数, computed: { op: count, field: lines } }
+- { field: total, label: 合計, computed: { op: sum, fields: [subtotal, tax] } }
+```
+
+* `of` は `count` 以外で必須（無いと空欄になる）。行が1件も無いとき `sum`/`count` は 0、`avg`/`min`/`max` は空
+* 畳めるのは**親と一緒に保存する明細**だけ。`source` を持つ明細はページ送りなので行が揃っていない（`validate` が言う）
+* 計算は**書いた順に1回**なので、`小計 → 消費税 → 合計` の順に並べる（後ろの項目は前の結果を使える）
+* `ComputedRegistry` で追加可。
 
 ## 選択肢の連動（親の値で子の選択肢を絞る）
 

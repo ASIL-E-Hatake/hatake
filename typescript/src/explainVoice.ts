@@ -162,6 +162,17 @@ const WORDS = {
     "他の項目から自動で計算する（手では入れない）",
     "computed from other fields (not typed in)",
   ),
+  /** 明細の行を畳む計算（`computed: { op: sum, field: lines, of: amount }`）。 */
+  foldsRows: pair(
+    (table: string, of: string, aggregate: string) =>
+      `${table} の ${of} の${aggregate}（手では入れない）`,
+    (table: string, of: string, aggregate: string) =>
+      `${aggregate} of ${of} in ${table} (not typed in)`,
+  ),
+  foldsRowCount: pair(
+    (table: string) => `${table} の件数（手では入れない）`,
+    (table: string) => `the number of rows in ${table} (not typed in)`,
+  ),
   subRowIs: pair(
     (items: string[]) => `1行は ${items.join("・")}`,
     (items: string[]) => `each row holds ${items.join(", ")}`,

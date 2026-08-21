@@ -964,18 +964,49 @@ sections:
 ### computed
 
 値をレコードから導出する計算項目。`op` で計算方法を選ぶ（組込み以外はプラグインで追加可）。
+モードは2つあり、**どちらのモードかは `fields` と `field` のどちらを書いたかで決まる**。
 
 ```yaml
+# ① 同じレコードの項目を畳む
 computed: { op: concat, fields: [lastName, firstName], separator: " " }
-computed: { op: sum, fields: [price, tax] }
+computed: { op: sum, fields: [subtotal, tax] }
+
+# ② 明細（subTable）の行を畳む（縦計）
+computed: { op: sum, field: lines, of: amount }
+computed: { op: count, field: lines }
 ```
 
-| 組込 `op` | 説明 |
-|---|---|
-| `concat` | `fields` を `separator`（既定 空）で連結。 |
-| `sum` | `fields` の数値和（欠損は 0）。 |
-| `subtract` | `fields[0]` − 残りの合計。 |
-| `product` | `fields` の数値積（欠損は 1）。 |
+| キー | 型 | 意味 |
+|---|---|---|
+| `op` | string（必須） | 計算方法。開いた文字列（`ComputedRegistry` で追加可）。 |
+| `fields` | string[] | ①同じレコードの項目名。 |
+| `separator` | string | `concat` の区切り（既定 空）。 |
+| `field` | string | ②畳む明細（`type: subTable`）の項目名。 |
+| `of` | string | ②行のどの項目を畳むか。`count` 以外で必須。`compare` の `of` と同じ意味。 |
+
+| 組込 `op` | モード | 説明 |
+|---|---|---|
+| `concat` | ① | `fields` を `separator`（既定 空）で連結。 |
+| `sum` | ①② | ①`fields` の数値和（欠損は 0）／②行の `of` の合計。 |
+| `subtract` | ① | `fields[0]` − 残りの合計。 |
+| `product` | ① | `fields` の数値積（欠損は 1）。 |
+| `count` | ② | 行数（`of` は要らない）。 |
+| `avg` | ② | 行の `of` の平均。 |
+| `min` / `max` | ② | 行の `of` の最小 / 最大。 |
+
+②の語彙と実装は**ダッシュボードの `aggregate` と同じもの**（同じ集約を2つ持たない）。
+数値の解釈も同じで、数として読めない行は飛ばす（`"1500"` は数値、真偽値は数値ではない）。
+
+②の決まりごと:
+
+- 行が1件も無いとき `sum` と `count` は 0、`avg` / `min` / `max` は **null**
+  （「平均 0 円」と出ると読み違えるので、値が定まらないときは空にする）
+- 畳めるのは**親のレコードと一緒に保存する明細**だけ。`source` を書いた明細は
+  ページ送りで別に取るので、行がそこに揃っていない（`validate` が
+  `computed-of-paged-subtable` で言う）
+- `field` と `fields` の両方を書いたら **`field` が勝つ**（`validate` が言う）
+- 計算は**宣言順に1回**なので、`小計 → 消費税 → 合計` の順に並べる（後ろの項目は前の
+  結果を使える）
 
 ### validator
 
@@ -1279,6 +1310,11 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | 項目間の検証（`compare`）の書き間違い → **その検証が黙って通る** |
 | `page-nobody-can-open` | 入口（メニュー項目・遷移ボタン）の `roles` が食い違っている → **その画面を開ける人が誰も居ない** |
 | `prompt-unsupported-type` | 実行前に聞く（`prompt`）のに、聞いた値を受け取れない型（`plugin` 以外）→ **聞くだけ聞いて捨てる** |
+| `computed-of-unknown-field` | 行を畳む計算（`computed.field` / `of`）が、無い項目・明細でない項目・行に無い項目を指している → 畳む値が取れず、その項目は空欄か 0 になる |
+| `computed-of-paged-subtable` | `source` つき明細（ページ送り）を畳もうとしている → 行がそこに揃っていないので 0 になる |
+| `computed-rows-unsupported-op` | 行を畳めない `op` に `field` を書いた／行を畳む `op`（`count`/`avg`/`min`/`max`）に `field` が無い → 計算されない |
+| `computed-aggregate-without-of` | 行を畳む計算に `of` が無い（`count` 以外） → 何を畳むか決まらないので空欄になる |
+| `computed-field-and-fields` | `field` と `fields` の両方を書いた → `field` が勝ち、`fields` は効かない |
 | `create-action-unusable` | `type: create` を `crud` / `master` 以外の画面に置いた → ボタンは出るが**押しても何も起きない**（`create` が開くのは一覧からの新規入力。`form` / `wizard` には保存ボタンが最初から出ている） |
 | `placeholder-not-filled` | `onSuccess` / `onError` の文言に**埋まらない差し込み**を書いた（件数は `scope: selection` だけ、`{error}` は失敗だけ、**それ以外の名前＝`{orderNo}` のような項目名は埋める口が無い**）→ 押すまで気づけず、文字のまま出る |
 | `selection-without-table` | `scope: selection` のボタンを**表の無い画面**に置いた → 選ぶ手段が無いので、押せないボタンが出たままになる |

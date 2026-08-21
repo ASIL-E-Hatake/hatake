@@ -844,25 +844,45 @@
         },
         "computed": {
           "type": "object",
-          "description": "Derive the field value from the record. Built-in ops: concat, sum, subtract, product. Extensible via ComputedRegistry.",
+          "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max, the same aggregate vocabulary as dashboards and `compare`). Extensible via ComputedRegistry.",
           "required": [
             "op"
           ],
           "properties": {
             "op": {
               "type": "string",
+              "description": "Same-record ops: concat, sum, subtract, product (with `fields`). Row-folding ops: count, sum, avg, min, max (with `field`). Open string — register your own on ComputedRegistry.",
               "examples": [
                 "concat",
                 "sum",
                 "subtract",
-                "product"
+                "product",
+                "count",
+                "avg",
+                "min",
+                "max"
               ]
             },
             "fields": {
               "type": "array",
+              "description": "Fields of the same record to fold (same-record mode).",
               "items": {
                 "type": "string"
               }
+            },
+            "field": {
+              "type": "string",
+              "description": "A `subTable` field of this form whose rows are folded (row-folding mode). The rows must be saved with the parent record: a subTable with `source` is paged, so its rows are not here to fold.",
+              "examples": [
+                "lines"
+              ]
+            },
+            "of": {
+              "type": "string",
+              "description": "Which value of each row to fold. Required except for `count`. Same meaning as `of` on the `compare` validator.",
+              "examples": [
+                "amount"
+              ]
             },
             "separator": {
               "type": "string"

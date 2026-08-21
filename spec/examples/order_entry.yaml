@@ -41,7 +41,15 @@ page:
 
       - title: 合計
         fields:
+          # 縦計（明細の行を畳む）。`field` が明細の項目、`of` が行の項目。
+          # 集約の語彙はダッシュボードのカードと同じ（count / sum / avg / min / max）。
+          - { field: subtotal, label: 小計, format: currency, config: { symbol: "¥" },
+              computed: { op: sum, field: lines, of: amount } }
+          - { field: lineCount, label: 明細行数,
+              computed: { op: count, field: lines } }
+          # 同じレコードの項目を畳むのは `fields`。計算は**書いた順に1回**なので、
+          # 小計より後ろに置く（前の結果を使える）。
           - { field: total, label: 合計金額, format: currency, config: { symbol: "¥" },
-              computed: { op: sum, fields: [subtotal, tax] } }
+              computed: { op: sum, fields: [subtotal] } }
   actions:
     - { id: save, type: plugin, plugin: saveOrder, label: 保存 }

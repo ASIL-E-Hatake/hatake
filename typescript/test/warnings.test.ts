@@ -1172,3 +1172,151 @@ page:
     ).toEqual([]);
   });
 });
+
+describe("明細の行を畳む計算（computed に field / of）", () => {
+  /** 明細つきのフォーム1枚。[totals] がそのまま「金額」の枠になる。 */
+  const form = (totals: string, source = "") => `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+${source}            fields:
+              - { field: productName, label: 品名 }
+              - { field: quantity, label: 数量, type: number }
+              - { field: amount, label: 金額, type: number }
+      - title: 金額
+        fields:
+${totals}
+`;
+
+  it("正しく書けば何も言わない", () => {
+    expect(
+      rulesOf(
+        form(`          - { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amount } }
+          - { field: rows, label: 行数, computed: { op: count, field: lines } }`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("of が無ければ畳めない（count 以外）", () => {
+    const found = warningsOf(
+      form(`          - { field: subtotal, label: 小計, computed: { op: sum, field: lines } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-aggregate-without-of");
+    expect(w?.path).toBe("page.form.sections[1].fields[0].computed.of");
+    expect(w?.message).toContain("「小計」は空欄になります");
+    expect(w?.fix).toContain("count");
+  });
+
+  it("行を畳めない op なら言う", () => {
+    const found = warningsOf(
+      form(`          - { field: subtotal, label: 小計, computed: { op: product, field: lines, of: amount } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-rows-unsupported-op");
+    expect(w?.message).toContain("product では明細の行をまとめられません");
+    expect(w?.message).toContain("count / sum / avg / min / max");
+  });
+
+  it("行を畳む op に相手が無ければ言う（逆向き）", () => {
+    const found = warningsOf(
+      form(`          - { field: rows, label: 行数, computed: { op: avg, fields: [a, b] } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-rows-unsupported-op");
+    expect(w?.message).toContain("avg は**明細の行をまとめる**計算");
+    expect(w?.fix).toContain("field: <明細の項目名>");
+  });
+
+  it("field と fields の両方は、片方が効かない", () => {
+    const found = warningsOf(
+      form(`          - { field: subtotal, label: 小計,
+              computed: { op: sum, field: lines, of: amount, fields: [a, b] } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-field-and-fields");
+    expect(w?.message).toContain("`field` が勝つ");
+  });
+
+  it("相手の綴り違いは近い名前を出す", () => {
+    const found = warningsOf(
+      form(`          - { field: subtotal, label: 小計, computed: { op: sum, field: line, of: amount } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-of-unknown-field");
+    expect(w?.path).toBe("page.form.sections[1].fields[0].computed.field");
+    expect(w?.fix).toContain("lines");
+  });
+
+  it("相手が明細でなければ言う", () => {
+    const found = warningsOf(`page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - { field: memo, label: 備考, type: textarea }
+          - { field: subtotal, label: 小計, computed: { op: sum, field: memo, of: amount } }
+`);
+    const w = found.find((x) => x.rule === "computed-of-unknown-field");
+    expect(w?.message).toContain("明細ではありません");
+    expect(w?.fix).toContain("subTable");
+  });
+
+  it("行に無い項目を畳もうとしたら言う", () => {
+    const found = warningsOf(
+      form(`          - { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amout } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-of-unknown-field");
+    expect(w?.path).toBe("page.form.sections[1].fields[0].computed.of");
+    expect(w?.fix).toContain("amount");
+  });
+
+  it("ページ送りの明細は畳めない（行が揃っていない）", () => {
+    const found = warningsOf(
+      form(
+        `          - { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amount } }`,
+        "            source: { repository: orderLineRepository, parentKey: orderNo, key: lineNo }\n",
+      ),
+    );
+    const w = found.find((x) => x.rule === "computed-of-paged-subtable");
+    expect(w?.message).toContain("ページ送りで");
+    expect(w?.fix).toContain("サーバ側で計算");
+  });
+
+  // `field` は独自の op のパラメータ名としても普通に使う（「どの項目から計算するか」）。
+  // 知らない op の中身に口を出すと、正しい定義に嘘の警告を出すことになる。
+  it("独自の op の field には口を出さない", () => {
+    expect(
+      rulesOf(`page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - { field: subtotal, label: 小計, type: number }
+          - { field: tax, label: 消費税, computed: { op: consumptionTax, field: subtotal } }
+          - { field: rate, label: 率, computed: { op: discount, field: subtotal, of: nothing } }
+`),
+    ).toEqual([]);
+  });
+
+  it("同じレコードの項目を畳む形は今までどおり（何も言わない）", () => {
+    expect(
+      rulesOf(
+        form(`          - { field: total, label: 合計, computed: { op: sum, fields: [subtotal, tax] } }
+          - { field: subtotal, label: 小計, type: number }
+          - { field: tax, label: 消費税, type: number }`),
+      ),
+    ).toEqual([]);
+  });
+});

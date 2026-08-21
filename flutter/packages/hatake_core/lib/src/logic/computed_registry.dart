@@ -1,11 +1,21 @@
 // 計算項目（`computed`）を、レコードから導出する。
 //
-// `computed` は構造化マップ:
-// `{ op, fields: [..], separator? }`。`op` は組込み（`concat` / `sum` /
-// `subtract` / `product`）またはプラグインで登録したキー。
+// モードは2つ。
+//
+//   `{ op: product, fields: [qty, price] }`     同じレコードの項目を畳む
+//   `{ op: sum, field: lines, of: amount }`     **明細（subTable）の行**を畳む
+//
+// 行を畳む側は、集約の語彙（`count` / `sum` / `avg` / `min` / `max`）と実装を
+// [builtinAggregates] からそのまま借りる＝**同じ集約を2つ持たない**（ダッシュボードの
+// カードと `compare` の検証と、同じ数が出る）。
+//
+// `field` を使う側の前提は、行が**親のレコードと一緒に来ている**こと。`source` を持つ
+// subTable はページ送りで別に持つので、ここには行が無い（`hatake validate` が言う）。
 //
 // 他レジストリと同じく「開いた文字列キー + 差し替え可能」。Dart / TS / Java
 // の3版で同じ結果になるよう実装をそろえること（conformance のため）。
+
+import 'aggregate.dart';
 
 /// 1つの計算項目の実装。[computed] の設定と [record] から値を導出する。
 typedef ComputedFn = Object? Function(
@@ -26,6 +36,29 @@ List<String> _fields(Map<String, Object?> c) => [
       for (final f in (c['fields'] as List? ?? const [])) f.toString(),
     ];
 
+/// 行を畳むモードか（`field` に subTable の項目名が書いてある）。
+bool _foldsRows(Map<String, Object?> c) {
+  final field = c['field'];
+  return field is String && field.isNotEmpty;
+}
+
+/// `field` が指す明細の行を、[op] の集約で畳む。
+///
+/// 畳めないとき（行が無い・集約が知らない名前）は **null**。0 を返さないのは、
+/// 「行が無い」と「合計が 0」を画面で見分けられなくなるため。
+num? _fold(String op, Map<String, Object?> c, Map<String, Object?> record) {
+  final aggregate = builtinAggregates[op];
+  if (aggregate == null) return null;
+  final raw = record[c['field'].toString()];
+  final rows = <Map<String, Object?>>[
+    if (raw is List)
+      for (final row in raw)
+        if (row is Map) {for (final e in row.entries) '${e.key}': e.value},
+  ];
+  final of = c['of'];
+  return aggregate(rows, of is String ? of : null);
+}
+
 /// 組込み計算オペレーション。名前は各言語版で共通。
 final Map<String, ComputedFn> builtinComputeds = {
   // 連結: fields を separator（既定 ''）でつなぐ。
@@ -33,8 +66,11 @@ final Map<String, ComputedFn> builtinComputeds = {
     final sep = c['separator']?.toString() ?? '';
     return _fields(c).map((f) => _str(r[f])).join(sep);
   },
-  // 合計: fields の数値和（非数値/欠損は 0）。
+  // 合計。`field` があれば**明細の行**を畳み、無ければ fields の数値和
+  // （非数値/欠損は 0）。sum だけが両方のモードを持つのは、「小計＝明細の金額」も
+  // 「合計＝小計＋税」も足し算で、op の名前を分けると読む人が迷うため。
   'sum': (c, r) {
+    if (_foldsRows(c)) return _fold('sum', c, r);
     num total = 0;
     for (final f in _fields(c)) {
       total += _toNum(r[f]) ?? 0;
@@ -59,6 +95,12 @@ final Map<String, ComputedFn> builtinComputeds = {
     }
     return total;
   },
+  // 行を畳むだけの op（同じレコードの項目に対しては意味が無いので、`field` が
+  // 無ければ null）。名前と結果は集約の語彙そのまま。
+  'count': (c, r) => _foldsRows(c) ? _fold('count', c, r) : null,
+  'avg': (c, r) => _foldsRows(c) ? _fold('avg', c, r) : null,
+  'min': (c, r) => _foldsRows(c) ? _fold('min', c, r) : null,
+  'max': (c, r) => _foldsRows(c) ? _fold('max', c, r) : null,
 };
 
 /// 計算オペレーションを名前で解決する。[register] で拡張可能。

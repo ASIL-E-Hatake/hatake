@@ -1047,10 +1047,30 @@ computed: { op: sum, fields: [price, tax] }
 
 | Built-in `op` | Meaning |
 |---|---|
-| `concat` | Joins `fields` with `separator` (default empty). |
-| `sum` | Numeric sum of `fields` (missing counts as 0). |
-| `subtract` | `fields[0]` minus the sum of the rest. |
-| `product` | Numeric product of `fields` (missing counts as 1). |
+| `concat` | ① Joins `fields` with `separator` (default empty). |
+| `sum` | ①② Numeric sum of `fields` (missing counts as 0), or the total of `of` over the rows. |
+| `subtract` | ① `fields[0]` minus the sum of the rest. |
+| `product` | ① Numeric product of `fields` (missing counts as 1). |
+| `count` | ② Number of rows (`of` not needed). |
+| `avg` | ② Average of `of` over the rows. |
+| `min` / `max` | ② Smallest / largest `of` over the rows. |
+
+Two modes, chosen by which key is written: `fields` folds values of the **same record**
+(①), while `field` + `of` folds the **rows of a subTable** (②, the vertical total).
+
+```yaml
+computed: { op: sum, fields: [subtotal, tax] }      # ①
+computed: { op: sum, field: lines, of: amount }     # ②
+computed: { op: count, field: lines }               # ②
+```
+
+Mode ② borrows both the vocabulary and the implementation of the dashboard `aggregate`
+(this framework has one aggregate, not two). With no rows, `sum` and `count` are 0 while
+`avg` / `min` / `max` are **null** (an average of 0 would read as "0 yen on average").
+Only rows saved with the parent record can be folded: a subTable with `source` is paged,
+so its rows are not all here (`validate` says so). If both `field` and `fields` are
+written, `field` wins. Computed fields are derived once, in declaration order — put the
+subtotal before the tax that uses it.
 
 ### validator
 
@@ -1352,6 +1372,11 @@ npx hatake validate page.yaml --no-warn --json
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | a mistake in a cross-field rule (`compare`) — **that rule passes silently** |
 | `page-nobody-can-open` | the `roles` on the ways in (menu items, navigate buttons) disagree — **nobody can open that screen** |
 | `prompt-unsupported-type` | a `prompt` on a type that cannot receive the values (anything but `plugin`) — the input is **collected and thrown away** |
+| `computed-of-unknown-field` | a row-folding `computed` (`field` / `of`) points at a missing field, a field that is not a subTable, or a value the rows do not have — nothing to fold, so the field shows empty or 0 |
+| `computed-of-paged-subtable` | folding a `source`-backed (paged) subTable — the rows are not all here, so the result is 0 |
+| `computed-rows-unsupported-op` | an `op` that cannot fold rows was given a `field`, or a row-folding op (`count`/`avg`/`min`/`max`) has no `field` — nothing is computed |
+| `computed-aggregate-without-of` | a row-folding `computed` without `of` (except `count`) — nothing says what to fold, so the field shows empty |
+| `computed-field-and-fields` | both `field` and `fields` are written — `field` wins and `fields` does nothing |
 | `create-action-unusable` | `type: create` on a page other than `crud` / `master` — the button appears but **nothing happens when pressed** (`create` opens the new-record form of a list; `form` / `wizard` already have a save button) |
 | `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure, and **any other name — a field like `{orderNo}` — has nothing to fill it**) — it stays as literal text and you find out by pressing the button |
 | `selection-without-table` | a `scope: selection` button on a page with **no table** — there is no way to choose rows, so the button stays unpressable |

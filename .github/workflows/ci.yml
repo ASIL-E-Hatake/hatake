@@ -715,6 +715,78 @@ jobs:
           fi
           grep -q '聞くことが1つも書かれていません' /tmp/empty.err
 
+      - name: The vertical total comes from the definition (computed with of)
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          # デモの受注入力に小計（明細の縦計）が入っていて、警告ゼロで通ること。
+          node dist/cli.js validate --warn-as-error "$DEMO"
+          # 説明が**何を畳むのか**を名前で言うこと（「自動で計算する」では読めない）。
+          node dist/cli.js explain "$DEMO" --page order_entry > /tmp/fold.log
+          grep -q '小計 … 明細 の 金額 の合計（手では入れない）' /tmp/fold.log
+          grep -q '明細行数 … 明細 の件数（手では入れない）' /tmp/fold.log
+          # 集約の名前は、登録が要るものとして数えない（組み込みなので）。
+          node dist/cli.js refs "$DEMO" --needs-registration > /tmp/fold.refs
+          if grep -q 'computedOps' /tmp/fold.refs; then
+            echo "組み込みの集約が「登録が要る」に混ざっている"; exit 1
+          fi
+          # 書き間違いは押す前に言う（5つの規則）。
+          cat > /tmp/fold-bad.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - field: lines
+                      label: 明細
+                      type: subTable
+                      fields:
+                        - { field: amount, label: 金額, type: number }
+                - title: 金額
+                  fields:
+                    - { field: a, label: 小計A, computed: { op: sum, field: lines } }
+                    - { field: b, label: 小計B, computed: { op: product, field: lines, of: amount } }
+                    - { field: c, label: 小計C, computed: { op: sum, field: line, of: amount } }
+                    - { field: d, label: 小計D, computed: { op: sum, field: lines, of: amout } }
+                    - { field: e, label: 小計E, computed: { op: avg, fields: [a, b] } }
+                    - { field: f, label: 小計F, computed: { op: sum, field: lines, of: amount, fields: [a] } }
+          YAML
+          if node dist/cli.js validate --warn-as-error /tmp/fold-bad.yaml               2> /tmp/fold-bad.err; then
+            echo "書き間違いを通してしまった"; exit 1
+          fi
+          node dist/cli.js validate --json /tmp/fold-bad.yaml > /tmp/fold-bad.json
+          for rule in computed-aggregate-without-of computed-rows-unsupported-op               computed-of-unknown-field computed-field-and-fields; do
+            grep -q "\"rule\": \"$rule\"" /tmp/fold-bad.json || {
+              echo "$rule が出ていない"; exit 1; }
+          done
+          # ページ送りの明細は畳めない（行がそこに揃っていない）。
+          node dist/cli.js validate --json             ../flutter/packages/hatake_example/assets/sales_app.yaml > /tmp/fold-ok.json
+          cat > /tmp/fold-paged.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - field: lines
+                      label: 明細
+                      type: subTable
+                      source: { repository: orderLineRepository, parentKey: orderNo, key: lineNo }
+                      fields:
+                        - { field: amount, label: 金額, type: number }
+                    - { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amount } }
+          YAML
+          node dist/cli.js validate --json /tmp/fold-paged.yaml > /tmp/fold-paged.json
+          grep -q '"rule": "computed-of-paged-subtable"' /tmp/fold-paged.json
+
       - name: The tutorial's definition and its output are real
         working-directory: typescript
         run: |
@@ -725,8 +797,8 @@ jobs:
           import io, re
           text = io.open("../docs/tutorial.ja.md", encoding="utf-8").read()
           blocks = re.findall(r"```yaml\n(.*?)```", text, re.S)
-          # 通しで作る定義（sumLines を持つ1枚）。
-          found = [b for b in blocks if "sumLines" in b]
+          # 通しで作る定義（明細の縦計を持つ1枚）。
+          found = [b for b in blocks if "consumptionTax" in b]
           assert len(found) == 1, "定義の塊が1つに決まらない: %d" % len(found)
           io.open("/dev/stdout", "w", encoding="utf-8").write(found[0])
           PY
@@ -744,11 +816,15 @@ jobs:
           # 外に要求しているもの（手引きが「ここに出てくる」と書いている2つ）。
           node dist/cli.js refs /tmp/tutorial.yaml --needs-registration > /tmp/tutorial.refs
           grep -q 'consumptionTax' /tmp/tutorial.refs
-          grep -q 'sumLines' /tmp/tutorial.refs
+          # 組み込みの計算（sum / product / count）は「登録が要る」に出てこない。
+          # 名前まるごとで見る（`consumptionTax` に sum が入っているので部分一致は誤検出）。
+          if grep -qE '^  (sum|product|count) ' /tmp/tutorial.refs; then
+            echo "組み込みの計算が「登録が要る」に混ざっている"; exit 1
+          fi
           # 手引きが載せている配線の下書きも、実際にその形で出ること。
           node dist/cli.js wire /tmp/tutorial.yaml --base /api > /tmp/tutorial.dart 2>/dev/null
           grep -q "'customerRepository': 'customers'," /tmp/tutorial.dart
-          grep -q "'sumLines': (computed, record) =>" /tmp/tutorial.dart
+          grep -q "'consumptionTax': (computed, record) =>" /tmp/tutorial.dart
 
       - name: The PR-comment snippet in the guide actually runs
         working-directory: typescript
