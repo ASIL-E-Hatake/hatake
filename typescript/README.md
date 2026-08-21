@@ -44,6 +44,7 @@ npx hatake reference rowsPerPage             # このキー、どこに書くの
 npx hatake examples 帳票                      # 近い例を探す
 npx hatake refs page.yaml --needs-registration # アプリ側に何を登録すればいいか
 npx hatake wire app.yaml --base /api           # その配線（Flutter）の下書きを出す
+npx hatake wire app.yaml --merge lib/wiring.dart --write  # 2回目以降：足りない登録だけを足す
 npx hatake refs app.yaml --unused              # 逆向き：登録したのに誰も使っていないもの
 npx hatake paper report.yaml                   # 帳票を「刷ったらどう見えるか」に開く（文字で）
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「登録済み」の一覧を作る
@@ -51,6 +52,7 @@ npx hatake explain page.yaml                 # この定義、結局どういう
 npx hatake explain page.yaml --brief         # 1行で（README や PR 本文に貼る用）
 npx hatake explain --diff old.yaml page.yaml # 何を変えたのか、画面の言葉で
 npx hatake explain page.yaml --review        # レビュー用の1枚（説明＋助言）
+npx hatake explain page.yaml --lang en       # 英語で（ラベルは業務の言葉なので訳さない）
 npx hatake harvest definitions/              # 繰り返し転んでいる所を実例カタログの候補に
 npx hatake minimize page.yaml                # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake fix page.yaml                     # 直し方が一意な問題だけ直す（--write で上書き）
@@ -71,6 +73,7 @@ npx hatake attack app.yaml --role staff --base http://localhost:8080/api  # 見�
 | `dto <file>` | API の形（`DtoSpec`）を JSON で |
 | `diff <old> <new>` | 定義を変えた影響範囲。API の形（壊すか）＋画面・権限・アプリ構成の変化（確かめてほしいか）。`app:` どうしも比べられる。`--api-only` で契約だけ、`--caution-as-error` で「要確認」でも終了コード 1。**壊す変更があれば終了コード 1** |
 | `wire <file>` | その定義を**アプリに繋ぐコード**（Flutter の `HatakeScope`）の下書きを Dart で出す。要る登録を全部並べ、**中身は TODO**（`UnimplementedError`）で空ける。`--base /api` で Repository は `hatake_http`（REST）、`--out` でファイル、`--class` / `--assets` で名前と読み場所 |
+| `wire <file> --merge <配線.dart>` | **足りない登録だけ**を足す（2回目以降はこちら）。手で埋めた中身は1バイトも変えない＝消さない・並べ替えない・整形しない。要らなくなった登録は**言うだけで消さない**（消すかどうかは業務の判断）。既定は標準出力、`--write` で上書き、足すものが無ければ書かない。目印（`HatakeScope` と `child:`）が無い形なら何もせず理由を言う |
 | `probe <file> --base <url>` | 定義が要求している口を**実際に叩いて**、返りを宣言（`openapi` と同じもと）と突き合わせる。足りない項目・型違い（**文字で来た金額**は桁区切りも合計も静かに効かない）・`{items, totalCount}` でない・`pageSize` が効かない・**行に鍵が無い**・一覧に在る行が1件取得で 404。**読むだけ**（`POST`/`PUT`/`DELETE` は叩かない）。`--dry-run` で叩かずに「何を叩くか」だけ。**食い違いがあれば終了コード 1** |
 | `attack <app> --role <role> --base <url>` | その役割で**画面から見えない**はずの口を叩いて、API が実際に拒否するか見る。開ける画面が拒否されたらそれも食い違い（画面は出てもデータが来ない）。開ける画面まで全部拒否なら「資格が通っていない疑い」と言う。押せないボタン（書き込む口）は**叩かず一覧で渡す**。**穴があれば終了コード 1** |
 | `refs <file...>` | その定義が**外に要求しているもの**（Repository・プラグイン・出す口（`exportSink` / `printSink`）・独自のフォーマッタ…）を種類ごとに。`--needs-registration` で「組み込みに無い＝自分で登録が要るもの」だけ。出力はそのまま `--registry` に渡せる形 |

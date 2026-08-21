@@ -10,12 +10,16 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
 - アプリに組み込むとき: `npx hatake refs <file> --needs-registration`（Repository・プラグイン・
   **出す口**（`exportSink` / `printSink`）＝何を登録すればいいか）／その一覧を
   `validate --registry <file>` に渡すと**名前の食い違い**と**繋いでいない口**も見る／
-  `npx hatake wire <file> --base /api` で**その配線の下書き**（Flutter）が出る（中身は TODO）
+  `npx hatake wire <file> --base /api` で**その配線の下書き**（Flutter）が出る（中身は TODO）／
+  画面を増やしたあとは `npx hatake wire <file> --merge <配線.dart> --write`＝**足りない登録だけ**を足す
+  （手で埋めた中身は消えない。要らなくなった登録は言うだけで消さない）
 - 繋いだあと（サーバが動いているとき）: `npx hatake probe <file> --base http://localhost:8080/api`
   で**定義とサーバの食い違い**を実際に叩いて見る（足りない項目・型違い・`{items, totalCount}` で
   ない・`pageSize` が効かない・行に鍵が無い）。権限は `npx hatake attack <app> --role staff --base …`
   ＝**画面から見えない口**を叩いて、API が実際に拒否するか見る。どちらも**読むだけ**（`POST` /
   `PUT` / `DELETE` は叩かない）で、`--dry-run` なら叩かずに「何を叩くか」だけ出る
+- 英語で読み返す: `npx hatake explain <file> --lang en`（節の見出しと言い回しだけ英語。
+  **定義に書いたラベルは訳さない**＝業務の言葉なので、訳すと現場と違うものを指す）
 - 定義を直したとき: `npx hatake diff <前> <後>`（`✗ 破壊的`＝呼び出し側が壊れる／`△ 要確認`＝壊れないが
   確かめてほしい＝列・ボタン・選択肢が消えた・権限が変わった・ページが消えた）
 
@@ -412,7 +416,7 @@ actions:
 * **`delete` は宣言が無くても必ず確認する**（取り消せないので）。`confirm` を書くと文言が置き換わる
 * `onSuccess` は**失敗したら動かない**（ハンドラ未登録・出力先未登録・Repository が拒否＝全部失敗）
 * `onError` が無ければ**失敗の理由がそのまま出る**（`RepositoryHttpException: … 500 …`）。業務の言葉で言うならここに書く。**`page` は無い**＝失敗した画面から離れると、何が起きたか読めなくなり直す行も見えなくなる
-* 差し込みは**埋まるときだけ**埋まる（`{error}` は失敗時、`{count}` / `{failed}` / `{total}` は `scope: selection` のときだけ）。埋まらない差し込みは文字のまま出るので、`validate` が `placeholder-not-filled` で先に言う
+* 差し込みは**埋まるときだけ**埋まる（`{error}` は失敗時、`{count}` / `{failed}` / `{total}` は `scope: selection` のときだけ）。**書けるのはこの4つだけ**＝`{orderNo}` のような項目名は埋まらない（レコードの値は文言に渡っていない）。埋まらない差し込みは文字のまま出るので、`validate` が `placeholder-not-filled` で先に言う
 * 一括の結果はハンドラが `ctx.report(ActionOutcome(succeeded: …, failed: …))` で返す。**一部でも失敗したら `onSuccess` は動かない**（1件残っているのに画面を移さない）
 * **実行の前に聞く**なら `prompt`（「却下の理由を書いてから却下」）。項目は**普通の `field`**（型・`required`・`validators`・`computed`・`normalize` がフォームと同じに効く）で、ハンドラは `ctx.input` で受け取る。**確認ダイアログは増えない**（`prompt` の OK が確認そのもの＝`confirm` の文言とボタン名を引き取る）。受け取れるのは `type: plugin` だけ
 

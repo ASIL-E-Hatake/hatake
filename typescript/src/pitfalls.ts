@@ -30,7 +30,10 @@ export interface PitfallCatalog {
   pitfalls: Pitfall[];
 }
 
-export type Lang = "ja" | "en";
+// 言語は説明の語彙と同じ型（[explainPhrases]）。**同じ意味の型を2つ持たない**
+// （`--lang` の値は道具どうしで同じでなければならない）。
+export type { Lang } from "./explainPhrases.js";
+import type { Lang } from "./explainPhrases.js";
 
 /** 行の配列を YAML に戻す。 */
 export const snippet = (lines: string[]): string => lines.join("\n");

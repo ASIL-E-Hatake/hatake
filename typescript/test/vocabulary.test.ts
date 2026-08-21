@@ -46,7 +46,9 @@ const SOURCES: Record<PhraseCategory, () => string[]> = {
 const categories = Object.keys(explainPhrases) as PhraseCategory[];
 
 describe("語彙は spec が正", () => {
-  it("TypeScript 版の表は spec/vocabulary.json の日本語と完全に一致する", () => {
+  // 日本語だけでなく**英語も**見る。`explain --lang en` が出るようになったので、
+  // 英語がズレると英語の説明が嘘になる（日本語しか見ていなければ気づけない）。
+  it("TypeScript 版の表は spec/vocabulary.json と両言語で完全に一致する", () => {
     for (const category of categories) {
       const spec = vocabulary[category];
       expect(spec, category).toBeDefined();
@@ -57,12 +59,36 @@ describe("語彙は spec が正", () => {
         const where = `${category}.${name}`;
         if (category === "pageKinds") {
           expect(mine[name], where).toEqual({
-            what: entry.what.ja,
-            short: entry.short.ja,
-            cannot: entry.cannot.ja,
+            what: { ja: entry.what.ja, en: entry.what.en },
+            short: { ja: entry.short.ja, en: entry.short.en },
+            // `cannot` は言語ごとの配列を1件ずつ組にして持つ（数が違えば組めない）。
+            cannot: entry.cannot.ja.map((ja: string, i: number) => ({
+              ja,
+              en: entry.cannot.en[i],
+            })),
           });
+          expect(entry.cannot.en.length, `${where}.cannot`).toBe(
+            entry.cannot.ja.length,
+          );
         } else {
-          expect(mine[name], where).toBe(entry.ja);
+          expect(mine[name], where).toEqual({ ja: entry.ja, en: entry.en });
+        }
+      }
+    }
+  });
+
+  it("英語が空の語が無い（訳し忘れは説明の穴になる）", () => {
+    for (const category of categories) {
+      for (const [name, value] of Object.entries(vocabulary[category])) {
+        const entry = value as Record<string, any>;
+        const where = `${category}.${name}`;
+        const texts =
+          category === "pageKinds"
+            ? [entry.what.en, entry.short.en, ...entry.cannot.en]
+            : [entry.en];
+        for (const text of texts) {
+          expect(typeof text, where).toBe("string");
+          expect(text.trim(), where).not.toBe("");
         }
       }
     }

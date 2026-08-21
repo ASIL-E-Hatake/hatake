@@ -1352,7 +1352,8 @@ npx hatake validate page.yaml --no-warn --json
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | a mistake in a cross-field rule (`compare`) — **that rule passes silently** |
 | `page-nobody-can-open` | the `roles` on the ways in (menu items, navigate buttons) disagree — **nobody can open that screen** |
 | `prompt-unsupported-type` | a `prompt` on a type that cannot receive the values (anything but `plugin`) — the input is **collected and thrown away** |
-| `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure) — it stays as literal text and you find out by pressing the button |
+| `create-action-unusable` | `type: create` on a page other than `crud` / `master` — the button appears but **nothing happens when pressed** (`create` opens the new-record form of a list; `form` / `wizard` already have a save button) |
+| `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure, and **any other name — a field like `{orderNo}` — has nothing to fill it**) — it stays as literal text and you find out by pressing the button |
 | `selection-without-table` | a `scope: selection` button on a page with **no table** — there is no way to choose rows, so the button stays unpressable |
 | `selection-unsupported-type` | `scope: selection` on a type other than `plugin` — pressing it does nothing (what a bulk operation *does* is business logic, so it belongs to the application) |
 | `print-without-report` | a `type: print` button on a page with **no `report`** — there is no paper to print, so the button appears and pressing it only reports that this page cannot print |

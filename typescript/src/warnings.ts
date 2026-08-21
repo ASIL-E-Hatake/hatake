@@ -377,6 +377,7 @@ function checkPage(
   checkSelection(page, actions, path, found);
   checkPlaceholders(actions, `${path}.actions`, found);
   checkPrompt(actions, `${path}.actions`, found);
+  checkCreateAction(page, actions, `${path}.actions`, found);
   checkTable(page, actionIds, path, found);
   checkSearch(page, path, found);
   checkForm(page, path, found);
@@ -493,8 +494,55 @@ function checkPrompt(
   });
 }
 
+/** `type: create` が効く画面（一覧＋フォームを両方持つ種別）。 */
+const CREATE_PAGE_KINDS = ["crud", "master"];
+
+/**
+ * 押しても何も起きない `type: create`。
+ *
+ * `create` がやることは**一覧から新規入力の枠を開く**ことなので、一覧とフォームを
+ * 両方持つ画面（`crud` / `master`）にしか置けない。`form` の画面には保存ボタンが
+ * 最初から出ているので、置く必要も無い。
+ *
+ * 定義としては通り、ボタンも出る。**押すと「このページでは使えません」と言われる**
+ * ＝押すまで気づけない。1画面ぶんの情報で判定できるので、機械が先に言える。
+ */
+function checkCreateAction(
+  page: Dict,
+  actions: Dict[],
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  const kind = str(page.type) ?? "";
+  if (CREATE_PAGE_KINDS.includes(kind)) return;
+  actions.forEach((action, i) => {
+    if (str(action.type) !== ActionTypes.create) return;
+    const label = str(action.label) ?? str(action.id) ?? "ボタン";
+    warn(
+      found,
+      "create-action-unusable",
+      `${path}[${i}].type`,
+      `「${label}」は押しても何も起きません（\`type: create\` が開くのは` +
+        `**一覧からの新規入力**なので、置けるのは ${CREATE_PAGE_KINDS.join(" / ")} です）。`,
+      kind === "form" || kind === "wizard"
+        ? "この画面には保存ボタンが最初から出ています（新規登録のボタンは要りません）。" +
+          "保存のときに独自の処理が要るなら `type: plugin` で書いてください。"
+        : "新規入力は一覧のある画面（`crud` / `master`）に置くか、" +
+          "`type: navigate` で入力画面へ移ってください。",
+    );
+  });
+}
+
 /** 件数の差し込み（一括のときだけ埋まる）。 */
 const COUNT_PLACEHOLDERS = ["{count}", "{failed}", "{total}"];
+
+/**
+ * 文言に書ける差し込みの**全部**。ここに無いものは埋まらない。
+ *
+ * 閉じた集合なので機械が言える。開いていると思われがちなのが問題で、`{orderNo}` の
+ * ように**項目名を書くと、そのまま文字として出る**（レコードの値は渡っていない）。
+ */
+const KNOWN_PLACEHOLDERS = [...COUNT_PLACEHOLDERS, "{error}"];
 
 /**
  * 埋まらない差し込みを書いた文言。
@@ -533,6 +581,21 @@ function checkPlaceholders(
             `そのまま文字として出ます。`,
           "件数を言うなら `scope: selection` のボタンに書いてください。" +
             "1件の操作なら差し込みを外します。",
+        );
+      }
+      // 知らない差し込み（`{orderNo}` のような項目名）。埋める口が無いので文字で出る。
+      const unknown = [...message.matchAll(/\{[^{}]*\}/g)]
+        .map((one) => one[0])
+        .filter((one) => !KNOWN_PLACEHOLDERS.includes(one));
+      if (unknown.length > 0) {
+        warn(
+          found,
+          "placeholder-not-filled",
+          `${path}[${i}].${node}.message`,
+          `「${label}」の文言にある ${[...new Set(unknown)].join(" / ")} は埋まりません` +
+            `（書けるのは ${KNOWN_PLACEHOLDERS.join(" / ")} だけ）。そのまま文字として出ます。`,
+          "レコードの値（受注番号など）は文言に差し込めません。" +
+            "値を見せたい操作は `type: plugin` で書いて、アプリ側から出してください。",
         );
       }
       if (node === "onSuccess" && message.includes("{error}")) {

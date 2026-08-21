@@ -5,7 +5,8 @@
 // UnimplementedError で落ちる＝黙って何もしない、にはしていない。
 //
 // 生成元: wire_everything.yaml
-// 再生成すると手で書いた分は消える。通ったら自分のコードに取り込むこと。
+// 通ったら自分のコードに取り込むこと。まるごと作り直すと手で書いた分は消えるので、
+// 2回目からは `hatake wire <定義> --merge <このファイル>`（足りない登録だけを足す）。
 //
 // Repository は hatake_http（`hatake openapi` が宣言する API と1対1）で組んで
 // ある。collection の名前は**複数形を推測して**埋めてあるので、API に合わせて

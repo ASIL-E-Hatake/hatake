@@ -17,6 +17,8 @@ import { type DefinitionChange, type DefinitionDiff } from "./defDiff.js";
 import { type ExplainDocument, type ExplainSection } from "./explain.js";
 import { type AppBrief, type PageBrief } from "./explainBrief.js";
 import { type ExplainChange, type ExplainDiff, EXPLAIN_DIFF_NOTE } from "./explainDiff.js";
+import type { Lang } from "./explainPhrases.js";
+import { voice } from "./explainVoice.js";
 import { type ReviewDocument } from "./review.js";
 
 /** これより行数の多い節は折りたたむ。 */
@@ -43,7 +45,12 @@ const bullets = (lines: string[]): string[] =>
   lines.map((line) => `- ${escapeMarkdown(line)}`);
 
 /** 節1つ。長ければ折りたたむ（見出しは残るので、目次としては読める）。 */
-function section(title: string, lines: string[], depth = 3): string[] {
+function section(
+  title: string,
+  lines: string[],
+  depth = 3,
+  lang: Lang = "ja",
+): string[] {
   if (lines.length === 0) return [];
   const heading = "#".repeat(depth);
   if (lines.length <= FOLD_AT) {
@@ -51,7 +58,9 @@ function section(title: string, lines: string[], depth = 3): string[] {
   }
   return [
     "<details>",
-    `<summary><b>${escapeMarkdown(title)}</b>（${lines.length} 件）</summary>`,
+    `<summary><b>${escapeMarkdown(title)}</b>${voice(lang).countOfLines(
+      lines.length,
+    )}</summary>`,
     // 空行が無いと、中の箇条書きが Markdown として読まれない。
     "",
     ...bullets(lines),
@@ -63,12 +72,16 @@ function section(title: string, lines: string[], depth = 3): string[] {
 
 const note = (text: string): string[] => [`> ${escapeMarkdown(text)}`];
 
-const sections = (list: ExplainSection[]): string[] =>
-  list.flatMap((one) => section(one.title, one.lines));
+const sections = (list: ExplainSection[], lang: Lang = "ja"): string[] =>
+  list.flatMap((one) => section(one.title, one.lines, 3, lang));
 
-/** 説明（`explain`）。 */
+/** 説明（`explain`）。文書の言語をそのまま使う（飾りだけが言語に依る）。 */
 export function explainMarkdown(document: ExplainDocument): string {
-  return [`## ${escapeMarkdown(document.headline)}`, "", ...sections(document.sections)]
+  return [
+    `## ${escapeMarkdown(document.headline)}`,
+    "",
+    ...sections(document.sections, document.lang),
+  ]
     .join("\n")
     .trimEnd();
 }

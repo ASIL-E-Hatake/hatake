@@ -12,6 +12,7 @@ import { appAccess, type AppAccess } from "./appAccess.js";
 import { parseAppYaml } from "./appParse.js";
 import { type AppDefinition, type PageDefinition } from "./definition.js";
 import { type ExplainDocument, explainApp, explainPage } from "./explain.js";
+import type { Lang } from "./explainPhrases.js";
 import { pageAccess } from "./explainAccess.js";
 import { parsePageJson, parsePageYaml } from "./parse.js";
 
@@ -92,16 +93,19 @@ export const noSuchPage = (wanted: string, ids: string[]): Error =>
  */
 export function explainSource(
   source: string,
-  options: { page?: string } = {},
+  options: { page?: string; lang?: Lang } = {},
 ): ExplainDocument {
+  const lang = options.lang ?? "ja";
   if (!isAppSource(source)) {
     return explainPage(
       parsePageYaml(source, { strict: true }),
       (rawDocument(source).page ?? {}) as Dict,
+      undefined,
+      lang,
     );
   }
   const { app, raw, access } = parseAppSource(source);
-  if (options.page === undefined) return explainApp(app, access);
+  if (options.page === undefined) return explainApp(app, access, lang);
   const one = raw.get(options.page);
   if (one === undefined) {
     throw noSuchPage(
@@ -109,5 +113,10 @@ export function explainSource(
       app.pages.map((page) => page.id),
     );
   }
-  return explainPage(parseOnePage(one), one, pageAccess(access, options.page));
+  return explainPage(
+    parseOnePage(one),
+    one,
+    pageAccess(access, options.page),
+    lang,
+  );
 }

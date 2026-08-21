@@ -3,6 +3,7 @@
 > **中身**: 動かす → 自分のアプリに入れる → 最小コードで1画面出すまで。
 > **読むとき**: 最初に触るとき。定義の書き方は [チートシート](api-cheatsheet.ja.md)、詳細は [DSL 仕様](../spec/dsl-spec.ja.md)。
 > **前提**: Flutter stable（Material3）。バックエンド版は [java](../java/README.md) / [typescript](../typescript/README.md) を見て。
+> **はじめてなら**: [チュートリアル](tutorial.ja.md)（0から受注入力画面まで通しで1本）のほうが早い。ここは「入れる手順」に寄せた文書。
 
 ## 1. まず動かす（クローンして example）
 

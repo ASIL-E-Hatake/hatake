@@ -14,6 +14,7 @@ import { renderExplain } from "./explain.js";
 import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
 import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
 import { briefSource, renderBrief } from "./explainBrief.js";
+import type { Lang } from "./explainPhrases.js";
 import { minimizeSource } from "./minimize.js";
 import { wireApp } from "./wire.js";
 import { buildReport } from "./report.js";
@@ -109,6 +110,16 @@ function required(args: Record<string, unknown>, key: string): string {
 }
 
 const pretty = (value: unknown): string => JSON.stringify(value, null, 2);
+
+/** `lang` 引数（既定は日本語）。知らない言語は黙って日本語にしない。 */
+function readLang(args: Record<string, unknown>): Lang {
+  const given = str(args, "lang");
+  if (given === undefined) return "ja";
+  if (given !== "ja" && given !== "en") {
+    throw new Error(`lang は ja か en です（"${given}" は知りません）。`);
+  }
+  return given;
+}
 
 export function hatakeTools(options: McpToolOptions): McpTool[] {
   const { specDir, readFile } = options;
@@ -406,7 +417,9 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "1枚だけ読んでも出ないので、権限の確認はここで読む）。" +
         "**既にある定義を直したときは before に直す前を渡す**＝変更を画面の言葉で言い直す" +
         "（人に「何を変えたか」を伝えるのはこの出力。hatake_diff は壊れるかどうかの判定で、両方要る）。" +
-        "brief を true にすると1行だけ（画面一覧・要約・PR 本文に貼る用）。",
+        "brief を true にすると1行だけ（画面一覧・要約・PR 本文に貼る用）。" +
+        "lang に en を渡すと英語（節の見出しと言い回しだけ。**定義に書いてあるラベルは訳さない**" +
+        "＝業務の言葉なので、訳すと現場と違うものを指す）。before との差と助言は日本語だけ。",
       inputSchema: {
         type: "object",
         properties: {
@@ -427,19 +440,31 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             type: "boolean",
             description: "1行の要約だけを返す（既定 false）。",
           },
+          lang: {
+            type: "string",
+            enum: ["ja", "en"],
+            description: "説明の言語（既定 ja）。before を渡すときは ja だけ。",
+          },
         },
         required: ["source"],
       },
       run(args) {
         const source = required(args, "source");
         const before = str(args, "before");
+        const lang = readLang(args);
         if (before !== undefined) {
+          if (lang === "en") {
+            throw new Error(
+              "変更の言い直し（before）はまだ日本語だけです" +
+                "（半分だけ英語の文書を返すほうが困るので、返しません）。",
+            );
+          }
           return renderExplainDiff(explainDiffSources(before, source));
         }
         const page = str(args, "page");
         return args.brief === true
-          ? renderBrief(briefSource(source, { page }))
-          : renderExplain(explainSource(source, { page }));
+          ? renderBrief(briefSource(source, { page, lang }))
+          : renderExplain(explainSource(source, { page, lang }));
       },
     },
     {

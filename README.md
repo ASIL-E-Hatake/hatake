@@ -46,6 +46,7 @@ Business Definition (YAML / JSON / 各言語DSL)
 
 | | |
 |---|---|
+| [チュートリアル](docs/tutorial.ja.md) | **最初の30分**。0から明細つきの受注入力画面まで通しで1本 |
 | [導入](docs/getting-started.ja.md) | インストール〜最小コードで1画面出すまで |
 | [レシピ集](docs/cookbook/) | [マスタメンテ](docs/cookbook/master-maintenance.ja.md) / [一覧→詳細](docs/cookbook/search-list-detail.ja.md) / [消費税・インボイス](docs/cookbook/invoice-tax.ja.md) |
 | [ガイド](docs/guide/) | [仕組みと責務分担](docs/guide/concepts.ja.md) / [ページ種別の選び方](docs/guide/page-types.ja.md) / [入力検証](docs/guide/validation.ja.md) / [バックエンド連携](docs/guide/backend.ja.md) |

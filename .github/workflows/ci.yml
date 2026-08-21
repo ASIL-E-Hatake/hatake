@@ -645,6 +645,23 @@ jobs:
           grep -q '登録する口がまだ無いもの' "$TOOL/wired_everything.dart"
           # 「黙って何もしない」実装を置かない（埋め忘れは実行時に落ちる）。
           grep -q 'UnimplementedError' "$TOOL/wired_sales_app.dart"
+          # --merge も生成物。**手で埋めた中身を消さない**ことがこの道具の条件なので、
+          # 出来上がりをコミットして flutter analyze に通す（通らない Dart を書き出す
+          # 道具は、無いほうがまだ良い）。
+          node dist/cli.js wire "$TOOL/wire_everything.yaml"             --merge "$TOOL/wired_sales_app.dart" --out /tmp/merged_everything.dart
+          diff -u --strip-trailing-cr "$TOOL/merged_everything.dart"             /tmp/merged_everything.dart
+          # 足すだけ＝元の配線の行は1行も消えていない（renderer を開く1行だけが例外）。
+          while IFS= read -r line; do
+            case "$line" in
+              *"renderer: const MaterialRenderer(),"*) continue ;;
+              "") continue ;;
+            esac
+            grep -qxF "$line" "$TOOL/merged_everything.dart" || {
+              echo "merge が行を消した: $line"; exit 1; }
+          done < "$TOOL/wired_sales_app.dart"
+          # 2回やっても増えない（同じものを2つ書かない）。
+          node dist/cli.js wire "$TOOL/wire_everything.yaml"             --merge "$TOOL/merged_everything.dart" --out /tmp/twice.dart
+          diff -u --strip-trailing-cr "$TOOL/merged_everything.dart" /tmp/twice.dart
 
       - name: Asking before the action runs (prompt)
         working-directory: typescript
@@ -697,6 +714,143 @@ jobs:
             echo "空の prompt を読めてしまった"; exit 1
           fi
           grep -q '聞くことが1つも書かれていません' /tmp/empty.err
+
+      - name: The tutorial's definition and its output are real
+        working-directory: typescript
+        run: |
+          set -e
+          # チュートリアル（docs/tutorial.ja.md）に載せた定義を**そのまま**取り出して通す。
+          # 手引きの定義が腐ると、最初の30分で必ず転ぶ（一番まずい所）。
+          python3 - <<'PY' > /tmp/tutorial.yaml
+          import io, re
+          text = io.open("../docs/tutorial.ja.md", encoding="utf-8").read()
+          blocks = re.findall(r"```yaml\n(.*?)```", text, re.S)
+          # 通しで作る定義（sumLines を持つ1枚）。
+          found = [b for b in blocks if "sumLines" in b]
+          assert len(found) == 1, "定義の塊が1つに決まらない: %d" % len(found)
+          io.open("/dev/stdout", "w", encoding="utf-8").write(found[0])
+          PY
+          # 警告ゼロで通ること（チュートリアルの完成形なので、警告が出ていたら嘘）。
+          node dist/cli.js validate --warn-as-error /tmp/tutorial.yaml
+          # 載せた説明の文が、実際にその通り出ること（言い方を直したら手引きも直す）。
+          node dist/cli.js explain /tmp/tutorial.yaml > /tmp/tutorial.log
+          grep -q '請求先 … 区分 が 法人 のときだけ必須' /tmp/tutorial.log
+          grep -q '得意先 … 選択、必須、選択肢は customerRepository から引く' /tmp/tutorial.log
+          grep -q '1行は 品名・数量・単価・金額' /tmp/tutorial.log
+          # ボタンを書いていないので「できる操作」の節は出ない（手引きがそう書いている）。
+          if grep -q '## できる操作' /tmp/tutorial.log; then
+            echo "手引きの説明と実際の出力が食い違っている"; exit 1
+          fi
+          # 外に要求しているもの（手引きが「ここに出てくる」と書いている2つ）。
+          node dist/cli.js refs /tmp/tutorial.yaml --needs-registration > /tmp/tutorial.refs
+          grep -q 'consumptionTax' /tmp/tutorial.refs
+          grep -q 'sumLines' /tmp/tutorial.refs
+          # 手引きが載せている配線の下書きも、実際にその形で出ること。
+          node dist/cli.js wire /tmp/tutorial.yaml --base /api > /tmp/tutorial.dart 2>/dev/null
+          grep -q "'customerRepository': 'customers'," /tmp/tutorial.dart
+          grep -q "'sumLines': (computed, record) =>" /tmp/tutorial.dart
+
+      - name: The PR-comment snippet in the guide actually runs
+        working-directory: typescript
+        run: |
+          set -e
+          # 手引き（docs/guide/pr-comment.ja.md）に載せた Actions の断片を**そのまま**走らせる。
+          # 文書に載せたコマンドは、動かさないと必ず腐る（貼った人の所で初めて落ちる）。
+          pip install --quiet pyyaml
+          python3 - <<'PY' > /tmp/snippet.sh
+          import io, yaml, re
+          text = io.open("../docs/guide/pr-comment.ja.md", encoding="utf-8").read()
+          block = re.search(r"```yaml\n(.*?)```", text, re.S).group(1)
+          steps = yaml.safe_load(block)["jobs"]["explain"]["steps"]
+          run = next(s["run"] for s in steps if s.get("id") == "explain")
+          io.open("/dev/stdout", "w", encoding="utf-8").write(run)
+          PY
+          # 定義を1枚持つ git の履歴を作る（本物の枝分かれと本物の変更）。
+          rm -rf /tmp/pr && mkdir -p /tmp/pr/definitions && cd /tmp/pr
+          git init -q . && git config user.email ci@example.com && git config user.name CI
+          cat > definitions/order.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+          YAML
+          git add -A && git commit -qm before
+          BASE=$(git rev-parse HEAD)
+          # 画面の見え方が変わる修正（列を1本足す）。
+          cat > definitions/order.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns:
+                - { field: orderNo, label: 受注番号 }
+                - { field: amount, label: 金額, type: number }
+          YAML
+          git add -A && git commit -qm after
+          export PATH="$GITHUB_WORKSPACE/typescript/node_modules/.bin:$PATH"
+          alias npx=true
+          # 断片の中の `npx hatake` を、いまビルドした CLI に向ける。
+          sed "s#npx hatake#node $GITHUB_WORKSPACE/typescript/dist/cli.js#g" /tmp/snippet.sh > run.sh
+          BASE="$BASE" DEFS=definitions GITHUB_OUTPUT=/tmp/out.txt bash run.sh
+          grep -q 'changed=true' /tmp/out.txt
+          grep -q 'definitions/order.yaml' body.md
+          grep -q '金額' body.md
+          # 見え方が変わらない修正（キーの並べ替え）では**貼らない**。
+          BASE=$(git rev-parse HEAD)
+          cat > definitions/order.yaml <<'YAML'
+          page:
+            id: order_search
+            type: search
+            repository: orderRepository
+            title: 受注照会
+            key: orderNo
+            table:
+              columns:
+                - { label: 受注番号, field: orderNo }
+                - { type: number, field: amount, label: 金額 }
+          YAML
+          git add -A && git commit -qm reorder
+          BASE="$BASE" DEFS=definitions GITHUB_OUTPUT=/tmp/out2.txt bash run.sh
+          grep -q 'changed=false' /tmp/out2.txt
+          [ ! -s body.md ]
+
+      - name: Reading the definition back in English (explain --lang en)
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          node dist/cli.js explain "$DEMO" --lang en > /tmp/en.log
+          # 節の見出しと言い回しは英語。
+          grep -q '^## Screens' /tmp/en.log
+          grep -q '^## Who can open which screen' /tmp/en.log
+          grep -q 'an app of' /tmp/en.log
+          # **定義に書いてあるラベルは訳さない**（業務の言葉なので、訳すと別のものを指す）。
+          grep -q '受注照会' /tmp/en.log
+          # 日本語は1文字も変わらない（既定は ja）。
+          node dist/cli.js explain "$DEMO" > /tmp/ja.log
+          grep -q '^## 画面' /tmp/ja.log
+          grep -q '枚の画面をメニューで束ねたアプリ' /tmp/ja.log
+          # 1枚ぶんも英語で出る（項目の注記まで）。
+          node dist/cli.js explain "$DEMO" --page order_entry --lang en > /tmp/en1.log
+          grep -q '^## What can be done' /tmp/en1.log
+          grep -q 'required' /tmp/en1.log
+          # 知らない言語は黙って日本語にしない。
+          if node dist/cli.js explain "$DEMO" --lang fr > /tmp/fr.log 2>&1; then
+            echo "知らない言語を通してしまった"; exit 1
+          fi
+          grep -q 'ja か en' /tmp/fr.log
+          # まだ英語にできない道具では、半分だけ英語にせず落ちる。
+          if node dist/cli.js explain "$DEMO" --review --lang en > /tmp/rev.log 2>&1; then
+            echo "英語にできない道具で通してしまった"; exit 1
+          fi
+          grep -q '説明' /tmp/rev.log
 
       - name: Hitting the API the definition declares (probe / attack)
         working-directory: typescript
