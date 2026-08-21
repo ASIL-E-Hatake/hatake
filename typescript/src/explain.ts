@@ -446,8 +446,15 @@ function describeAction(
       : pageSize === undefined
         ? "。選んだ行に対して実行する"
         : `。選んだ行に対して実行する（一度に最大 ${pageSize} 件）`;
+  const asks =
+    action.prompt !== undefined
+      ? `。押すと ${action.prompt.fields.map((f) => f.label).join(" / ")} を聞く`
+      : "";
   const confirm =
-    action.confirm !== undefined
+    action.prompt !== undefined
+      // 聞くダイアログの OK が確認そのもの（2枚は出さない）。
+      ? ""
+      : action.confirm !== undefined
       ? "。押すと確認を出す"
       : action.type === ActionTypes.delete
         ? "。押すと確認を出す（削除は既定で確認する）"
@@ -464,7 +471,7 @@ function describeAction(
       : "";
   const roles =
     action.roles.length > 0 ? `。${action.roles.join(" / ")} だけに出る` : "";
-  return `${action.label} … ${what}${to}${on}${confirm}${after}${onError}${roles}`;
+  return `${action.label} … ${what}${to}${on}${asks}${confirm}${after}${onError}${roles}`;
 }
 
 function describeDashboard(

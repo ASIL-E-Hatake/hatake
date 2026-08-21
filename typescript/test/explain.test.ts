@@ -208,7 +208,16 @@ describe("見えるもの・できること", () => {
     - { id: detail, type: navigate, label: 詳細, page: customer_detail }
     - { id: printPdf, type: print, label: 印刷 }
     - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
-        scope: selection, onError: { message: 承認できませんでした } }`,
+        scope: selection, onError: { message: 承認できませんでした } }
+    - id: reject
+      type: plugin
+      plugin: rejectOrders
+      label: 却下
+      confirm: { message: 戻せません }
+      prompt:
+        fields:
+          - { field: reason, label: 理由, required: true }
+          - { field: rejectedOn, label: 却下日, type: date }`,
       }),
       "できる操作",
     );
@@ -217,6 +226,10 @@ describe("見えるもの・できること", () => {
     );
     expect(text[1]).toBe("詳細 … 別の画面へ移る（customer_detail へ）");
     expect(text[2]).toBe("印刷 … 紙に刷る");
+    // 聞くダイアログが在るなら「確認を出す」とは言わない（ダイアログは1枚）。
+    expect(text[4]).toBe(
+      "却下 … アプリ側の処理を呼ぶ（rejectOrders）。押すと 理由 / 却下日 を聞く",
+    );
     // 一括は「一度に何件動くか」まで言う（危険度がそこで変わる）。
     expect(text[3]).toBe(
       "一括承認 … アプリ側の処理を呼ぶ（approveOrders）。" +

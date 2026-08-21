@@ -1135,6 +1135,7 @@ Decisions:
 | `confirm` | [confirm](#confirm) | | Ask before running it. |
 | `onSuccess` | [onSuccess](#onsuccess) | | What to do once it succeeded. |
 | `onError` | [onError](#onerror) | | What the user is told when it failed. |
+| `prompt` | [prompt](#prompt) | | Asked before it runs (a small form). |
 | `config` | map | | Extra settings. |
 | `roles` | string[] | | Roles allowed to run it (see [access control](#access-control-roles)). Empty = everyone. |
 
@@ -1163,6 +1164,43 @@ Runs **only when the action succeeded**. That it does not run on failure is the 
 | `params` | map | Route params for `page` (`$row.id` / `$record.id` are interpolated). |
 
 Failure covers an unregistered plugin handler, a missing export sink, or a repository that refuses. `create` / `edit` only open a form, so `onSuccess` does not apply — whether the save worked is not known at that point.
+
+### prompt
+
+**Asked before the action runs.** "Write the reason, then reject" is an everyday
+business requirement; without this it needs a hand-written dialog in the
+application — exactly the thing this framework exists to remove.
+
+| Key | Type | Description |
+|---|---|---|
+| `fields` | [field](#field)[] (required, at least one) | What to ask. **Ordinary fields**: types, `required`, `validators`, `computed` and `normalize` behave as in a form. |
+| `title` | string | Heading (defaults to the action's label). |
+| `okLabel` | string | Confirming button (falls back to `confirm.okLabel`, then the label). |
+| `cancelLabel` | string | Cancelling button (falls back to `confirm.cancelLabel`). |
+
+```yaml
+- id: rejectSelected
+  type: plugin
+  plugin: rejectOrders
+  label: Reject
+  scope: selection
+  confirm: { message: Rejecting cannot be undone., danger: true }
+  prompt:
+    title: Reason for rejection
+    okLabel: Reject
+    fields:
+      - { field: reason, label: Reason, type: textarea, required: true }
+      - { field: rejectedOn, label: Rejected on, type: date }
+```
+
+| Decision | Why |
+|---|---|
+| It **replaces** the confirmation dialog | If there is something to ask, that OK *is* the confirmation. Two dialogs in a row only teach people to click without reading; the `confirm` wording, labels and `danger` styling are carried by this one |
+| The fields are **ordinary `field`s** | The input vocabulary is not duplicated: `required`, `validators`, `computed` and `normalize` are the same ones the forms use |
+| **Nothing runs until it validates** | Validation happens inside the dialog and it stays open until it passes (closing it would take away the place to fix the value) |
+| Values pass through the **same normalization as a save** | Full-width digits do not reach the business logic |
+| Only `type: plugin` can receive it | The values arrive as `ActionContext.input`; other types have nowhere to put them, so `validate` reports it |
+| A bulk action **asks once** | One reason for the selected rows is the shape the business wants; being asked per row would make it unusable |
 
 ### onError
 
@@ -1313,6 +1351,7 @@ npx hatake validate page.yaml --no-warn --json
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | linked options that do not line up (input fields and search filters alike) |
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | a mistake in a cross-field rule (`compare`) — **that rule passes silently** |
 | `page-nobody-can-open` | the `roles` on the ways in (menu items, navigate buttons) disagree — **nobody can open that screen** |
+| `prompt-unsupported-type` | a `prompt` on a type that cannot receive the values (anything but `plugin`) — the input is **collected and thrown away** |
 | `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure) — it stays as literal text and you find out by pressing the button |
 | `selection-without-table` | a `scope: selection` button on a page with **no table** — there is no way to choose rows, so the button stays unpressable |
 | `selection-unsupported-type` | `scope: selection` on a type other than `plugin` — pressing it does nothing (what a bulk operation *does* is business logic, so it belongs to the application) |

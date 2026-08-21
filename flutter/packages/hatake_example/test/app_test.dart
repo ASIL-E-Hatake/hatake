@@ -95,6 +95,10 @@ void main() {
     final bulk = search.actions.firstWhere((a) => a.id == 'approveSelected');
     expect(bulk.scope, ActionScopes.selection);
     expect(bulk.type, ActionTypes.plugin);
+    // 却下は「理由を聞いてから」。聞くことは定義に書いてある。
+    final reject = search.actions.firstWhere((a) => a.id == 'rejectSelected');
+    expect(reject.prompt?.fields.map((f) => f.field), ['reason', 'rejectedOn']);
+    expect(reject.prompt?.fields.first.required, isTrue);
     expect(csv.config['bom'], isTrue);
     expect(app.menu.any((m) => m.page == 'sales_report'), isTrue);
   });

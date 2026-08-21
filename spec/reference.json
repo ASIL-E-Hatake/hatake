@@ -203,6 +203,15 @@
           ]
         },
         {
+          "key": "prompt",
+          "type": "object",
+          "required": false,
+          "description": "Asked before the action runs: a small form whose values reach the handler as `input`. It replaces the confirmation dialog rather than adding a second one — the same OK button confirms.",
+          "nodes": [
+            "actionPrompt"
+          ]
+        },
+        {
           "key": "config",
           "type": "object",
           "required": false,
@@ -260,6 +269,52 @@
           "type": "string",
           "required": true,
           "description": "Shown instead of the raw failure (a snackbar / toast)."
+        }
+      ]
+    },
+    "actionPrompt": {
+      "description": "Asked before the action runs: a small form whose values reach the handler as `input`. It replaces the confirmation dialog rather than adding a second one — the same OK button confirms.",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "action"
+      ],
+      "keys": [
+        {
+          "key": "title",
+          "type": "string",
+          "required": false,
+          "description": "Dialog heading. Defaults to the action's label."
+        },
+        {
+          "key": "okLabel",
+          "type": "string",
+          "required": false,
+          "description": "Confirming button. Falls back to `confirm.okLabel`, then the label."
+        },
+        {
+          "key": "cancelLabel",
+          "type": "string",
+          "required": false,
+          "description": "Cancelling button. Falls back to `confirm.cancelLabel`."
+        },
+        {
+          "key": "fields",
+          "type": "array",
+          "required": true,
+          "description": "What to ask. Ordinary fields: types, required, validators, computed and normalize behave as in a form.",
+          "nodes": [
+            "field"
+          ]
         }
       ]
     },
@@ -525,9 +580,12 @@
       "closed": false,
       "pageKinds": [
         "crud",
+        "dashboard",
         "detail",
         "form",
         "master",
+        "report",
+        "search",
         "wizard"
       ],
       "parents": [
@@ -1160,12 +1218,16 @@
       "closed": true,
       "pageKinds": [
         "crud",
+        "dashboard",
         "detail",
         "form",
         "master",
+        "report",
+        "search",
         "wizard"
       ],
       "parents": [
+        "actionPrompt",
         "field",
         "section",
         "wizardStep"
@@ -1378,9 +1440,12 @@
       "closed": false,
       "pageKinds": [
         "crud",
+        "dashboard",
         "detail",
         "form",
         "master",
+        "report",
+        "search",
         "wizard"
       ],
       "parents": [
@@ -2293,9 +2358,12 @@
       "closed": true,
       "pageKinds": [
         "crud",
+        "dashboard",
         "detail",
         "form",
         "master",
+        "report",
+        "search",
         "wizard"
       ],
       "parents": [
@@ -2456,9 +2524,12 @@
       "closed": false,
       "pageKinds": [
         "crud",
+        "dashboard",
         "detail",
         "form",
         "master",
+        "report",
+        "search",
         "wizard"
       ],
       "parents": [
@@ -2635,6 +2706,7 @@
       "theme"
     ],
     "cancelLabel": [
+      "actionPrompt",
       "confirm"
     ],
     "chart": [
@@ -2693,6 +2765,7 @@
       "reportTotal"
     ],
     "fields": [
+      "actionPrompt",
       "field",
       "field.computed",
       "section",
@@ -2802,6 +2875,7 @@
       "condition"
     ],
     "okLabel": [
+      "actionPrompt",
       "confirm"
     ],
     "onError": [
@@ -2867,6 +2941,9 @@
     ],
     "primaryColor": [
       "theme"
+    ],
+    "prompt": [
+      "action"
     ],
     "radius": [
       "theme"
@@ -2960,6 +3037,7 @@
       "app"
     ],
     "title": [
+      "actionPrompt",
       "app",
       "confirm",
       "crudPage",

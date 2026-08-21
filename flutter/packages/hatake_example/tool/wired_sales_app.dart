@@ -46,6 +46,8 @@ class SalesAdminApp extends StatelessWidget {
               throw UnimplementedError('approveOrders: 何をするか'),
           'openPlayground': (ctx) async =>
               throw UnimplementedError('openPlayground: 何をするか'),
+          'rejectOrders': (ctx) async =>
+              throw UnimplementedError('rejectOrders: 何をするか'),
           'showDefinition': (ctx) async =>
               throw UnimplementedError('showDefinition: 何をするか'),
         }),

@@ -316,6 +316,7 @@ ActionDefinition action(
   String scope = ActionScopes.page,
   String? plugin,
   ActionErrorDefinition? onError,
+  ActionPromptDefinition? prompt,
   Map<String, Object?> config = const {},
   List<String> roles = const [],
 }) {
@@ -326,6 +327,7 @@ ActionDefinition action(
     scope: scope,
     plugin: plugin,
     onError: onError,
+    prompt: prompt,
     config: config,
     roles: roles,
   );

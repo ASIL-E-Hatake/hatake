@@ -275,7 +275,7 @@ Note the difference: `between` / `startsWith` / `endsWith` are search-only, whil
 
 `table.rowActions` is an array of action **ids** (strings), not objects. `edit` and `delete` are built in.
 
-### Confirming and reacting (`confirm` / `onSuccess` / `onError`)
+### Confirming and reacting (`confirm` / `prompt` / `onSuccess` / `onError`)
 
 "Ask before deleting" and "go back to the list once saved" are declared, not coded.
 
@@ -303,6 +303,7 @@ actions:
 * Without `onError` the raw reason is shown (`RepositoryHttpException: … 500 …`). `onError` has **no `page`**: leaving the screen that failed hides what happened and takes the row to fix out of sight.
 * Placeholders fill only when known — `{error}` on failure, `{count}` / `{failed}` / `{total}` only for `scope: selection`. An unfillable one stays as text, and `validate` reports `placeholder-not-filled` before you press anything.
 * A bulk handler reports counts with `ctx.report(ActionOutcome(succeeded: …, failed: …))`. **A partial result does not run `onSuccess`** — one row left behind keeps the screen where it is.
+* To **ask before running**, declare `prompt` ("write the reason, then reject"). Its `fields` are ordinary fields (types, `required`, `validators`, `computed`, `normalize` all apply) and the handler reads `ctx.input`. It **replaces** the confirmation dialog instead of adding one, and only `type: plugin` can receive the values.
 * `create` / `edit` only open a form, so `onSuccess` does not apply to them — whether the save worked is not known at that point.
 
 ### Aggregates (`value.aggregate`, `chart.aggregate`, report `totals`)

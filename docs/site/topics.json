@@ -98,7 +98,8 @@
         "danger",
         "message",
         "onSuccess",
-        "onError"
+        "onError",
+        "prompt"
       ],
       "demo": "customer_master"
     },

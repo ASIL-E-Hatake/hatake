@@ -376,6 +376,7 @@ function checkPage(
   checkPrint(page, actions, path, found);
   checkSelection(page, actions, path, found);
   checkPlaceholders(actions, `${path}.actions`, found);
+  checkPrompt(actions, `${path}.actions`, found);
   checkTable(page, actionIds, path, found);
   checkSearch(page, path, found);
   checkForm(page, path, found);
@@ -459,6 +460,36 @@ function checkSelection(
         "bulk-delete",
       );
     }
+  });
+}
+
+/**
+ * 実行前に聞く（`prompt`）けれど、聞いたものを受け取る先が無いアクション。
+ *
+ * 入力を受け取れるのは `type: plugin`（`ActionContext.input`）だけ。ほかの型は
+ * 聞いた値の行き先が無いので、**聞くだけ聞いて捨てる**ことになる。定義としては
+ * 通るので、押して初めて気づく。
+ */
+function checkPrompt(
+  actions: Dict[],
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  actions.forEach((action, i) => {
+    if (!isDict(action.prompt)) return;
+    const type = str(action.type) ?? "";
+    if (type === ActionTypes.plugin) return;
+    const label = str(action.label) ?? str(action.id) ?? "ボタン";
+    warn(
+      found,
+      "prompt-unsupported-type",
+      `${path}[${i}].prompt`,
+      `「${label}」は実行前に入力を聞きますが、\`${type}\` は聞いた値を` +
+        `受け取れません。入力は捨てられます。`,
+      "入力を使うなら `type: plugin`（＋`plugin:`）にしてください" +
+        "（ハンドラが `ActionContext.input` で受け取ります）。" +
+        "聞く必要が無いなら `confirm` です。",
+    );
   });
 }
 

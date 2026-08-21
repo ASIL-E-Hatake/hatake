@@ -185,6 +185,21 @@ export interface ConfirmDefinition {
 
 /** What happens once the action succeeded. Never runs when it failed. */
 /**
+ * Asked before the action runs: a small form whose values reach the handler.
+ *
+ * The fields are ordinary [FieldDefinition]s, so types, `required`, `validators`,
+ * `computed` and `normalize` behave as they do in a form — the input vocabulary
+ * is not duplicated. Its OK **replaces** the confirmation dialog rather than
+ * adding a second one.
+ */
+export interface ActionPromptDefinition {
+  title?: string;
+  okLabel?: string;
+  cancelLabel?: string;
+  fields: FieldDefinition[];
+}
+
+/**
  * What the user is told when the action failed.
  *
  * A failure never moves the screen (unlike `onSuccess`): leaving the screen that
@@ -221,6 +236,8 @@ export interface ActionDefinition {
   onSuccess?: ActionSuccessDefinition;
   /** What the user is told when it failed. */
   onError?: ActionErrorDefinition;
+  /** Asked before it runs; the values reach the handler. */
+  prompt?: ActionPromptDefinition;
   config: Record<string, unknown>;
   /** Roles allowed to use this action (see isAllowed). Empty = everyone. */
   roles: string[];

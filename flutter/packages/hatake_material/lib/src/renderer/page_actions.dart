@@ -53,11 +53,20 @@ Future<bool> _runPageAction(
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
 }) async {
-  if (!await _confirmAction(context, action.confirm)) return false;
+  // 聞くことがあるなら、その OK が確認そのもの（ダイアログを2枚出さない）。
+  var input = const <String, Object?>{};
+  if (action.prompt != null) {
+    final answer = await _askActionPrompt(context, action);
+    if (answer == null) return false; // キャンセル＝何も起きない
+    input = answer;
+  } else if (!await _confirmAction(context, action.confirm)) {
+    return false;
+  }
   if (!context.mounted) return false;
   final outcome = await _dispatchAction(context, action, controller,
       record: record,
       records: records,
+      input: input,
       onExport: onExport,
       onPrint: onPrint,
       onCreate: onCreate);
@@ -85,6 +94,7 @@ Future<ActionOutcome?> _dispatchAction(
   ChangeNotifier controller, {
   DataRecord? record,
   List<DataRecord> records = const [],
+  DataRecord input = const {},
   _PageDataRunner? onExport,
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
@@ -93,6 +103,7 @@ Future<ActionOutcome?> _dispatchAction(
     return await _dispatch(context, action, controller,
         record: record,
         records: records,
+        input: input,
         onExport: onExport,
         onPrint: onPrint,
         onCreate: onCreate);
@@ -109,6 +120,7 @@ Future<ActionOutcome?> _dispatch(
   ChangeNotifier controller, {
   DataRecord? record,
   List<DataRecord> records = const [],
+  DataRecord input = const {},
   _PageDataRunner? onExport,
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
@@ -156,6 +168,7 @@ Future<ActionOutcome?> _dispatch(
       action: action,
       record: record,
       records: records,
+      input: input,
       report: (outcome) => reported = outcome,
     ));
     // 何も言わずに戻った＝うまくいった。一括なら渡した行数を件数として扱う

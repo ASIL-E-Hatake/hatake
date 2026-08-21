@@ -53,6 +53,13 @@ class ActionContext {
   /// button into N requests.
   final List<DataRecord> records;
 
+  /// What the user typed into the action's `prompt`, keyed by field name.
+  ///
+  /// Empty when the action has no prompt. The values went through the same
+  /// validation as a form (`required` / `validators` / `computed`), so a handler
+  /// does not re-check what the definition already said.
+  final DataRecord input;
+
   /// Tells the framework how it went, so the message the user sees comes from
   /// the definition (`onSuccess.message` / `onError.message`) instead of from
   /// the handler.
@@ -76,6 +83,7 @@ class ActionContext {
     required this.action,
     this.record,
     this.records = const [],
+    this.input = const {},
     this.report = _ignoreOutcome,
   });
 }

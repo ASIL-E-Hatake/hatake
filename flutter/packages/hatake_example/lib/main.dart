@@ -111,6 +111,9 @@ class HatakeExampleApp extends StatelessWidget {
           // 選んだ行に対して実行する（定義側は scope: selection）。Framework は
           // 選ばれた行を渡すところまでで、まとめて何をするかは業務。
           'approveOrders': BulkDialog.show,
+          // 却下は「理由を聞いてから」。聞くのは定義（prompt）の担当で、
+          // ここに届くのは検証と正規化を通った値だけ。
+          'rejectOrders': BulkDialog.show,
           'showDefinition': (ctx) async {
             final pageId = ctx.action.config['page']?.toString() ?? '';
             final yaml = extractPageYaml(source, pageId);
