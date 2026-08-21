@@ -32,6 +32,18 @@ class HatakeScope extends InheritedWidget {
   /// Converters used to normalize field input before validation/persistence.
   final ConverterRegistry converters;
 
+  /// Aggregations available to dashboards and reports (`count` / `sum` / … plus
+  /// whatever the app registered).
+  ///
+  /// Without this the definition could name an aggregate no one can register —
+  /// `validate` even says "register it in AggregateRegistry", which was not
+  /// possible from an app until this existed.
+  final AggregateRegistry aggregates;
+
+  /// Computed-value operations available to form fields (`multiply` / `sum` / …
+  /// plus the app's own). Same reason as [aggregates].
+  final ComputedRegistry computeds;
+
   /// Handlers for `type: plugin` actions.
   final ActionRegistry actions;
 
@@ -61,6 +73,8 @@ class HatakeScope extends InheritedWidget {
     required this.renderer,
     ValidatorRegistry? validators,
     ConverterRegistry? converters,
+    AggregateRegistry? aggregates,
+    ComputedRegistry? computeds,
     ActionRegistry? actions,
     this.exportSink,
     this.printSink,
@@ -68,6 +82,8 @@ class HatakeScope extends InheritedWidget {
     required super.child,
   })  : validators = validators ?? ValidatorRegistry(),
         converters = converters ?? ConverterRegistry(),
+        aggregates = aggregates ?? AggregateRegistry(),
+        computeds = computeds ?? ComputedRegistry(),
         actions = actions ?? ActionRegistry(),
         roles = roles ?? const {};
 
@@ -98,6 +114,8 @@ class HatakeScope extends InheritedWidget {
         oldWidget.renderer != renderer ||
         oldWidget.validators != validators ||
         oldWidget.converters != converters ||
+        oldWidget.aggregates != aggregates ||
+        oldWidget.computeds != computeds ||
         oldWidget.actions != actions ||
         oldWidget.exportSink != exportSink ||
         oldWidget.printSink != printSink ||

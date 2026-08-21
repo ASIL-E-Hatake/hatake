@@ -619,6 +619,33 @@ jobs:
           # 2件出る（件数の差し込みと {error} は別の理由で埋まらない）。
           test "$(grep -c 'placeholder-not-filled' /tmp/ph.json)" -eq 2
 
+      - name: The wiring draft still compiles (generated, then diffed)
+        working-directory: typescript
+        run: |
+          set -e
+          TOOL=../flutter/packages/hatake_example/tool
+          # 配線の下書きは生成物。コミットしてあるものと一致すること＝生成器を
+          # 直したら生成物も更新する（**通ることは flutter のジョブが見る**：
+          # tool/ は hatake_example の中なので flutter analyze の対象）。
+          node dist/cli.js wire ../flutter/packages/hatake_example/assets/sales_app.yaml \
+            --out /tmp/wired_sales_app.dart
+          diff -u --strip-trailing-cr "$TOOL/wired_sales_app.dart" \
+            /tmp/wired_sales_app.dart
+          node dist/cli.js wire "$TOOL/wire_everything.yaml" --base /api \
+            --assets tool/wire_everything.yaml --out /tmp/wired_everything.dart
+          diff -u --strip-trailing-cr "$TOOL/wired_everything.dart" \
+            /tmp/wired_everything.dart
+          # 定義が要求している登録が、下書きに全部出ていること。
+          for name in orderRepository approveOrder orderNoFormat toUpperSnake \
+              median discount jpyCompact colorPicker heatmap exportSink printSink; do
+            grep -q "$name" "$TOOL/wired_everything.dart" || {
+              echo "配線の下書きに $name が出ていない"; exit 1; }
+          done
+          # 登録する口が無いもの（グラフの種類）は、コードにせず末尾で言う。
+          grep -q '登録する口がまだ無いもの' "$TOOL/wired_everything.dart"
+          # 「黙って何もしない」実装を置かない（埋め忘れは実行時に落ちる）。
+          grep -q 'UnimplementedError' "$TOOL/wired_sales_app.dart"
+
       - name: A definition compared with itself is compatible
         working-directory: typescript
         run: |

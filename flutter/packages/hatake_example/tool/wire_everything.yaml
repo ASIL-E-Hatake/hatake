@@ -1,0 +1,64 @@
+# `hatake wire` が「登録が要るもの」を全種類出せることを確かめるための定義。
+#
+# 組み込みに無い名前をわざと使っている（検証・正規化・見せ方・計算・集約・項目の型・
+# カードの型・グラフの種類）。生成物 wired_everything.dart は flutter analyze に
+# 通るので、生成器が壊れたら解析で落ちる。
+dsl_version: "1.0"
+app:
+  id: everything
+  title: 全部入り
+  menu:
+    - { id: orders, label: 受注, page: order_entry }
+    - { id: board, label: 分析, page: sales_board }
+  pages:
+    - type: form
+      id: order_entry
+      title: 受注入力
+      repository: orderRepository
+      key: orderNo
+      form:
+        sections:
+          - fields:
+              - field: orderNo
+                label: 受注番号
+                required: true
+                normalize: [toUpperSnake]
+                validators: [{ type: orderNoFormat }]
+              - { field: color, label: 色, type: colorPicker }
+              - field: amount
+                label: 金額
+                type: number
+              - field: payable
+                label: 請求額
+                type: number
+                format: jpyCompact
+                computed: { op: discount, field: amount }
+      actions:
+        - { id: approve, type: plugin, plugin: approveOrder, label: 承認 }
+        - { id: csv, type: export, label: CSV出力 }
+    - type: dashboard
+      id: sales_board
+      title: 売上ダッシュボード
+      repository: orderRepository
+      items:
+        - id: middle
+          type: metric
+          title: 中央値
+          value: { aggregate: median, field: amount }
+        - id: heat
+          type: heatmap
+          title: 曜日別
+        - id: trend
+          type: chart
+          title: 推移
+          chart: { kind: radar, aggregate: sum, valueField: amount, labelField: orderDate }
+    - type: report
+      id: sales_report
+      title: 売上明細表
+      repository: orderRepository
+      table:
+        columns: [{ field: amount, label: 金額, type: number }]
+      report:
+        rowsPerPage: 30
+      actions:
+        - { id: printPdf, type: print, label: 印刷 }

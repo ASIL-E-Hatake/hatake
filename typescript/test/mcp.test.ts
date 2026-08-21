@@ -94,6 +94,7 @@ describe("MCP プロトコル", () => {
       "hatake_print_preview",
       "hatake_minimize",
       "hatake_refs",
+      "hatake_wire",
       "hatake_api_shape",
     ]);
     for (const tool of list) {
@@ -642,6 +643,45 @@ describe("hatake_print_preview", () => {
     const { isError } = call("hatake_print_preview", {
       source: "page: { type: crud, id: x, title: X, repository: xRepository }",
     });
+    expect(isError).toBe(true);
+  });
+});
+
+describe("hatake_wire", () => {
+  const APP = `app:
+  id: sales
+  title: 販売管理
+  menu:
+    - { id: orders, label: 受注, page: order_search }
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      key: orderNo
+      table:
+        columns: [{ field: orderNo, label: 受注番号 }]
+      actions:
+        - { id: approve, type: plugin, plugin: approveOrders, label: 承認 }
+`;
+
+  it("配線の下書きを Dart で返す", () => {
+    const { text, isError } = call("hatake_wire", { source: APP });
+    expect(isError).toBeFalsy();
+    expect(text).toContain("class SalesApp extends StatelessWidget");
+    expect(text).toContain("'orderRepository'");
+    expect(text).toContain("'approveOrders'");
+    expect(text).toContain("UnimplementedError");
+  });
+
+  it("baseUrl を渡すと REST で組む", () => {
+    const { text } = call("hatake_wire", { source: APP, baseUrl: "/api" });
+    expect(text).toContain("restRepositories(");
+    expect(text).toContain("baseUrl: '/api'");
+  });
+
+  it("定義が読めなければ失敗として返す", () => {
+    const { isError } = call("hatake_wire", { source: "- 1\n- 2\n" });
     expect(isError).toBe(true);
   });
 });

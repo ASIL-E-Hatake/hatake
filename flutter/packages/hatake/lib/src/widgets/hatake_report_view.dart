@@ -30,6 +30,7 @@ class _HatakeReportViewState extends State<HatakeReportView> {
     final controller = ReportController(
       definition: widget.definition,
       repository: scope.repositories.resolve(widget.definition.repository),
+      aggregates: scope.aggregates,
     );
     controller.load();
     return controller;

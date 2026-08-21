@@ -43,6 +43,7 @@ npx hatake types page.yaml --lang java --package io.example.api --out gen/
 npx hatake reference rowsPerPage             # このキー、どこに書くの？型は？既定値は？
 npx hatake examples 帳票                      # 近い例を探す
 npx hatake refs page.yaml --needs-registration # アプリ側に何を登録すればいいか
+npx hatake wire app.yaml --base /api           # その配線（Flutter）の下書きを出す
 npx hatake refs app.yaml --unused              # 逆向き：登録したのに誰も使っていないもの
 npx hatake paper report.yaml                   # 帳票を「刷ったらどう見えるか」に開く（文字で）
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「登録済み」の一覧を作る
@@ -67,6 +68,7 @@ npx hatake diagram app.yaml --role admin     # その役割で通れる道だけ
 | `new <kind> --id --title` | ページ定義の雛形（8種別すべて。`--repository` 省略時は id から推測、`--out` でファイルへ） |
 | `dto <file>` | API の形（`DtoSpec`）を JSON で |
 | `diff <old> <new>` | 定義を変えた影響範囲。API の形（壊すか）＋画面・権限・アプリ構成の変化（確かめてほしいか）。`app:` どうしも比べられる。`--api-only` で契約だけ、`--caution-as-error` で「要確認」でも終了コード 1。**壊す変更があれば終了コード 1** |
+| `wire <file>` | その定義を**アプリに繋ぐコード**（Flutter の `HatakeScope`）の下書きを Dart で出す。要る登録を全部並べ、**中身は TODO**（`UnimplementedError`）で空ける。`--base /api` で Repository は `hatake_http`（REST）、`--out` でファイル、`--class` / `--assets` で名前と読み場所 |
 | `refs <file...>` | その定義が**外に要求しているもの**（Repository・プラグイン・出す口（`exportSink` / `printSink`）・独自のフォーマッタ…）を種類ごとに。`--needs-registration` で「組み込みに無い＝自分で登録が要るもの」だけ。出力はそのまま `--registry` に渡せる形 |
 | `registry <path...>` | 逆向き。**アプリの実装を読んで**「登録済みのもの」の一覧を作る（`--out` でファイルへ）。path はファイルでもディレクトリでも。読めない登録があれば終了コード 1 |
 | `schema <file>` | JSON Schema 2020-12 |

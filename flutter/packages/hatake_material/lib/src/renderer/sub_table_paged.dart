@@ -11,6 +11,7 @@ class _PagedSubTableField extends StatefulWidget {
   final Object? parentKey;
   final FormatterRegistry formatters;
   final ValidatorRegistry validators;
+  final ComputedRegistry? computeds;
   final Map<String, MaterialFieldBuilder> fieldBuilders;
   final Set<String> roles;
   final bool readOnly;
@@ -21,6 +22,7 @@ class _PagedSubTableField extends StatefulWidget {
     required this.parentKey,
     required this.formatters,
     required this.validators,
+    this.computeds,
     required this.fieldBuilders,
     required this.roles,
     required this.readOnly,
@@ -69,6 +71,7 @@ class _PagedSubTableFieldState extends State<_PagedSubTableField> {
         fieldBuilders: widget.fieldBuilders,
         roles: widget.roles,
         validators: widget.validators,
+        computeds: widget.computeds,
         // Persisting is the controller's job; the dialog only collects a row.
       ),
     );

@@ -1710,3 +1710,65 @@ app:
     expect(chosen.stdout.join("\n")).toContain("在庫表");
   });
 });
+
+describe("hatake wire（アプリ側の配線の下書き）", () => {
+  const APP = `app:
+  id: sales
+  title: 販売管理
+  menu:
+    - { id: orders, label: 受注, page: order_search }
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      key: orderNo
+      table:
+        columns: [{ field: orderNo, label: 受注番号 }]
+      actions:
+        - { id: csv, type: export, label: CSV出力 }
+`;
+
+  it("標準出力に Dart を出す", () => {
+    const io = fakeIo({ "app.yaml": APP });
+    expect(runCli(["wire", "app.yaml"], io)).toBe(0);
+    const code = io.stdout.join("\n");
+    expect(code).toContain("class SalesApp extends StatelessWidget");
+    expect(code).toContain("'orderRepository'");
+    expect(code).toContain("exportSink:");
+    // 何がアプリの担当かは、黙らずに言う。
+    expect(io.stderr.join("\n")).toContain("TODO の所はアプリの担当です");
+  });
+
+  it("--out でファイルに書く", () => {
+    const io = fakeIo({ "app.yaml": APP });
+    expect(runCli(["wire", "app.yaml", "--out", "lib/wiring.dart"], io)).toBe(0);
+    expect(io.written["lib/wiring.dart"]).toContain("class SalesApp");
+    expect(io.stdout.join("\n")).toContain("書きました: lib/wiring.dart");
+  });
+
+  it("--base で REST の Repository を組む", () => {
+    const io = fakeIo({ "app.yaml": APP });
+    runCli(["wire", "app.yaml", "--base", "/api/v2"], io);
+    const code = io.stdout.join("\n");
+    expect(code).toContain("baseUrl: '/api/v2'");
+    expect(code).toContain("'orderRepository': 'orders'");
+  });
+
+  it("--class と --assets を渡せる", () => {
+    const io = fakeIo({ "app.yaml": APP });
+    runCli(
+      ["wire", "app.yaml", "--class", "Shell", "--assets", "assets/x.yaml"],
+      io,
+    );
+    const code = io.stdout.join("\n");
+    expect(code).toContain("class Shell extends StatelessWidget");
+    expect(code).toContain("rootBundle.loadString('assets/x.yaml')");
+  });
+
+  it("ファイルを2つ渡したら、そう言う", () => {
+    const io = fakeIo({ "a.yaml": APP, "b.yaml": APP });
+    expect(runCli(["wire", "a.yaml", "b.yaml"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("1つ指定してください");
+  });
+});

@@ -1347,6 +1347,25 @@ npx hatake validate page.yaml --registry reg.json # compare the two
 pass** (pass nothing and the check is exactly as before). Built-in names are added
 automatically, so the list only needs what you registered yourself.
 
+The place where those registrations are written can be **drafted**:
+
+```bash
+npx hatake wire app.yaml --base /api --out lib/wiring.dart
+```
+
+It emits a Dart `HatakeScope` listing every registration the definition demands
+(repositories, plugins, sinks, and any custom validator / converter / formatter /
+computed op / aggregate / field type / card type). **The bodies stay TODO** — what
+they do is business, how they connect is environment — and until they are filled
+they throw `UnimplementedError`, so no "silently does nothing" stub is left
+behind. With `--base` the repositories come from
+[`hatake_http`](../flutter/packages/hatake_http/) instead, so that part is not a
+TODO (collection names are **guessed** as plurals).
+
+The output is emitted so that it **compiles**. Two drafts are committed under
+`flutter/packages/hatake_example/tool/` and run through `flutter analyze`, so a
+broken generator fails analysis.
+
 | Rule | What happens |
 |---|---|
 | `unknown-repository` | the screen renders, no data arrives |
