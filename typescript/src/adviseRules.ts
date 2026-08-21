@@ -26,7 +26,10 @@ export const BUILTIN_RULES: Record<string, Record<string, "number" | "strings">>
   // 入力できるのに必須が1つも無い。
   "no-required-field": {},
   // 消せる・持ち出せるのに roles が無い。types = 危ないと見なすアクション種別。
+  // 「選んだ行にまとめて実行する」ボタン（scope: selection）は型に関わらず危ない側。
   "open-dangerous-action": { types: "strings" },
+  // まとめて実行するのに、押す前の確認が無い。
+  "bulk-without-confirm": {},
   // 金額らしい名前なのに見せ方が無い。words = 金額らしいと見なす語。
   "money-without-format": { words: "strings" },
   // 明細を別テーブルに持つのに親を指すキーが無い。

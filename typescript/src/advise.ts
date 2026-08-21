@@ -16,6 +16,7 @@
 // 何を言うかは**外から変えられる**（[AdviceRules]）。好みなので、案件ごとの決めごとを
 // 渡せないと「合わないから使わない」になる。渡せるのは「切る・目盛りを変える・足す」の3つ。
 
+import { ActionScopes } from "./definition.js";
 import { checkCompare } from "./adviseCompare.js";
 import { checkRequired } from "./adviseRequire.js";
 import { type AdviceRules, DEFAULT_RULES, enabled, knob } from "./adviseRules.js";
@@ -203,23 +204,47 @@ function checkBuiltins(
   ]);
   for (const [index, action] of actions.entries()) {
     const type = str(action.type) ?? "";
+    const bulk = str(action.scope) === ActionScopes.selection;
     if (!enabled(rules, "open-dangerous-action")) break;
-    if (!dangerous.includes(type)) continue;
+    // 一括は型に関わらず危ない側（1回の操作が件数ぶん動く）。
+    if (!dangerous.includes(type) && !bulk) continue;
     if (list(action.roles).length > 0) continue;
     found.push({
       rule: "open-dangerous-action",
       where: `${path}.actions[${index}].roles`,
       says:
         `「${str(action.label) ?? action.id}」は誰でも押せます` +
-        (type === "delete"
-          ? "（消したものは戻りません）。"
-          : type === "export"
-            ? "（データを持ち出せます）。"
-            : type === "print"
-              ? "（紙で持ち出せます）。"
-              : "。"),
+        (bulk
+          ? "（選んだ行にまとめて実行できます）。"
+          : type === "delete"
+            ? "（消したものは戻りません）。"
+            : type === "export"
+              ? "（データを持ち出せます）。"
+              : type === "print"
+                ? "（紙で持ち出せます）。"
+                : "。"),
       add: "`roles` で見える人を決める（権限はアプリ側の判定と合わせて二重にかける）。",
       key: "roles",
+      node: "action",
+    });
+  }
+
+  // まとめて実行するのに、押す前の確認が無い。
+  //
+  // 1件ずつなら「押し間違えた」で済むが、一括は**1回の操作が件数ぶん動く**。
+  // `confirm` は1行で足せるうえ、押し間違いを最後に止められる唯一の関門。
+  for (const [index, action] of actions.entries()) {
+    if (!enabled(rules, "bulk-without-confirm")) break;
+    if (str(action.scope) !== ActionScopes.selection) continue;
+    if (isDict(action.confirm)) continue;
+    found.push({
+      rule: "bulk-without-confirm",
+      where: `${path}.actions[${index}].confirm`,
+      says:
+        `「${str(action.label) ?? action.id}」は選んだ行にまとめて実行しますが、` +
+        `確認を出しません。押し間違いが件数ぶん効きます。`,
+      add: "`confirm: { message: … }`（何件に何をするのかを書く）。",
+      key: "confirm",
       node: "action",
     });
   }

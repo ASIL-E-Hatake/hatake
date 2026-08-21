@@ -103,6 +103,28 @@ describe("書き足したほうがいい所", () => {
     ).toContain("紙で持ち出せます");
   });
 
+  it("まとめて実行するのに確認が無い", () => {
+    const source = crud({
+      actions: "    - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認, scope: selection, roles: [admin] }",
+    });
+    expect(rules(source)).toContain("bulk-without-confirm");
+    expect(
+      advise(source).find((a) => a.rule === "bulk-without-confirm")?.says,
+    ).toContain("件数ぶん");
+    // roles を書いてあるので「誰でも押せます」は出ない。
+    expect(rules(source)).not.toContain("open-dangerous-action");
+  });
+
+  it("一括は型に関わらず危ない側（roles が無ければ言う）", () => {
+    const source = crud({
+      actions: "    - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認, scope: selection, confirm: { message: やります } }",
+    });
+    expect(
+      advise(source).find((a) => a.rule === "open-dangerous-action")?.says,
+    ).toContain("まとめて実行できます");
+    expect(rules(source)).not.toContain("bulk-without-confirm");
+  });
+
   it("roles を書いてあれば言わない", () => {
     const source = crud({
       actions: "    - { id: remove, type: delete, label: 削除, roles: [admin] }",

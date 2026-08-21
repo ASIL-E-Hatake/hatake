@@ -610,6 +610,30 @@ actions:
 Flutter では登録したハンドラが `ActionContext.records` で受け取る。**呼び出しは1回**なので、
 API も1回で済ませられる（件数ぶんの往復にしない）。
 
+### 結果を件数で返す
+
+一括は**一部だけ失敗する**のが普通の姿（5件のうち1件は既に出荷済み）。ハンドラが
+`ActionContext.report` で件数を返すと、何と言うかは定義（`onSuccess` / `onError` の
+`message`）が決める＝ハンドラごとに文言を持たない。
+
+```dart
+'approveOrders': (ctx) async {
+  final rejected = await api.approve(ctx.records);   // 呼ぶのは1回
+  ctx.report(ActionOutcome(
+    succeeded: ctx.records.length - rejected.length,
+    failed: rejected.length,
+  ));
+},
+```
+
+| 報告 | どう扱うか |
+|---|---|
+| 何も報告しない（例外も投げない） | 成功。一括なら**渡した行数**が `{count}` に入る（ハンドラの手間ゼロ） |
+| `failed: 0` | 成功。`onSuccess` が動く |
+| 一部失敗 | **`onSuccess` は動かない**。`onError`（無ければ「3 件を実行しました（1 件失敗）」） |
+| 全部失敗 | 同上（「2 件すべて失敗しました」） |
+| 例外を投げた | 失敗。`onError`（無ければ理由をそのまま） |
+
 ```dart
 'approveOrders': (ctx) async {
   await api.approve([for (final r in ctx.records) r['orderNo']]);
@@ -1029,6 +1053,7 @@ computed: { op: sum, fields: [price, tax] }
 | `plugin` | string | | Plugin キー（`type: plugin` のとき）。 |
 | `confirm` | [confirm](#confirm) | | 実行前に確認する。 |
 | `onSuccess` | [onSuccess](#onsuccess) | | 成功したあとの後処理。 |
+| `onError` | [onError](#onerror) | | 失敗したときに出す文言。 |
 | `config` | map | | 追加設定。 |
 | `roles` | string[] | | 実行を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
 
@@ -1057,6 +1082,42 @@ computed: { op: sum, fields: [price, tax] }
 | `params` | map | `page` に渡すルート値（`$row.id` / `$record.id` を埋め込み）。 |
 
 「失敗」はハンドラ未登録・出力先未登録・Repository が拒否など。`create` / `edit` は**フォームを開くだけ**なので `onSuccess` は動かない（保存できたかはその時点で分からない）。
+
+### onError
+
+**失敗したときに出す文言。** 書かなければ、失敗の理由がそのまま出る
+（`RepositoryHttpException: … 500 …`）。それは事実だが業務の言葉ではないし、同じ失敗が
+画面ごとに違う意味を持つ（「在庫が足りません」/「締め済みなので直せません」）。
+
+| キー | 型 | 説明 |
+|---|---|---|
+| `message` | string（必須） | 生の理由の代わりに出す文言。 |
+
+**`onError` は画面を移せない**（`page` が無い）。`onSuccess` は移せるのに、こちらに無いのは
+意図的で、失敗した画面から離れると何が起きたか読めなくなり、直すべき行も視界から消える。
+
+差し込み（埋まるときだけ埋まる。埋まらなければ**文字のまま出る**＝`validate` が
+`placeholder-not-filled` で先に言う）:
+
+| 差し込み | 何が入るか |
+|---|---|
+| `{error}` | 失敗の理由（詳しい原因を出したいときに入れる） |
+| `{count}` | 成功した件数（`scope: selection` のときだけ） |
+| `{failed}` | 失敗した件数（同上） |
+| `{total}` | 対象の件数（同上） |
+
+```yaml
+- id: approveSelected
+  type: plugin
+  plugin: approveOrders
+  label: 一括承認
+  scope: selection
+  onSuccess: { message: '{count} 件を承認しました' }
+  onError: { message: '{count} 件を承認しました（{failed} 件は出荷済みなので承認できません）' }
+```
+
+**一部だけ失敗したときも `onError`。** `onSuccess` は動かない＝1件でも残っているなら画面を
+移さない。件数はハンドラが報告する（下記）。
 
 ## option
 
@@ -1176,6 +1237,7 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | 選択肢の連動の辻褄（入力項目・検索条件の両方） |
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | 項目間の検証（`compare`）の書き間違い → **その検証が黙って通る** |
 | `page-nobody-can-open` | 入口（メニュー項目・遷移ボタン）の `roles` が食い違っている → **その画面を開ける人が誰も居ない** |
+| `placeholder-not-filled` | `onSuccess` / `onError` の文言に**埋まらない差し込み**を書いた（件数は `scope: selection` だけ、`{error}` は失敗だけ）→ 押すまで気づけず、文字のまま出る |
 | `selection-without-table` | `scope: selection` のボタンを**表の無い画面**に置いた → 選ぶ手段が無いので、押せないボタンが出たままになる |
 | `selection-unsupported-type` | `scope: selection` を `plugin` 以外の型に書いた → 押しても実行されない（一括の中身は業務＝アプリ側の処理） |
 | `print-without-report` | `type: print` のボタンを **`report` の無い画面**に置いた → 刷る紙が無いので、ボタンは出るのに押すと「このページでは刷れません」と言われる |
@@ -1316,7 +1378,8 @@ npx hatake advise page.yaml
 ```
 
 並べ替えできる列が無い・絞り込みが無い・キーが一覧に出ていない・必須が1つも無い・消せる/持ち出せる
-のに権限が無い・金額らしいのに桁区切りが無い・明細に親のキーが無い・帳票に合計が無い、を挙げる。
+/まとめて実行できるのに権限が無い・**まとめて実行するのに確認が無い**・金額らしいのに桁区切りが
+無い・明細に親のキーが無い・帳票に合計が無い、を挙げる。
 
 **これは警告ではなく助言**（書いていないから不便かもしれない、という好みの話）なので、終了コードを
 変えない。警告は「書いたのに効かない」＝事実で、CI で落としてよい。混ぜると警告の信頼が落ちる。

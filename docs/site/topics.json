@@ -97,7 +97,8 @@
         "cancelLabel",
         "danger",
         "message",
-        "onSuccess"
+        "onSuccess",
+        "onError"
       ],
       "demo": "customer_master"
     },

@@ -651,6 +651,30 @@ actions:
 In Flutter the registered handler reads `ActionContext.records`. It is called
 **once**, so the API can be called once too.
 
+### Reporting the result as counts
+
+A bulk run **partly failing** is the normal case (one of the five was already
+shipped). The handler reports counts through `ActionContext.report`, and *what to
+say* stays in the definition (`onSuccess` / `onError`) instead of in every handler.
+
+```dart
+'approveOrders': (ctx) async {
+  final rejected = await api.approve(ctx.records);   // one call
+  ctx.report(ActionOutcome(
+    succeeded: ctx.records.length - rejected.length,
+    failed: rejected.length,
+  ));
+},
+```
+
+| Reported | How it is treated |
+|---|---|
+| nothing (and no throw) | success; for a bulk run the **rows handed over** fill `{count}` |
+| `failed: 0` | success; `onSuccess` runs |
+| some failed | **`onSuccess` does not run**; `onError` (default: "3 件を実行しました（1 件失敗）") |
+| all failed | same (default: "2 件すべて失敗しました") |
+| threw | failure; `onError` (default: the reason as reported) |
+
 A `scope: selection` action on a page with no table, or on a type other than
 `plugin`, is reported by `validate`.
 
@@ -1110,6 +1134,7 @@ Decisions:
 | `plugin` | string | | Plugin key (when `type: plugin`). |
 | `confirm` | [confirm](#confirm) | | Ask before running it. |
 | `onSuccess` | [onSuccess](#onsuccess) | | What to do once it succeeded. |
+| `onError` | [onError](#onerror) | | What the user is told when it failed. |
 | `config` | map | | Extra settings. |
 | `roles` | string[] | | Roles allowed to run it (see [access control](#access-control-roles)). Empty = everyone. |
 
@@ -1138,6 +1163,37 @@ Runs **only when the action succeeded**. That it does not run on failure is the 
 | `params` | map | Route params for `page` (`$row.id` / `$record.id` are interpolated). |
 
 Failure covers an unregistered plugin handler, a missing export sink, or a repository that refuses. `create` / `edit` only open a form, so `onSuccess` does not apply — whether the save worked is not known at that point.
+
+### onError
+
+**What the user is told when it failed.** Without it the reason is shown as reported (`RepositoryHttpException: … 500 …`) — true, but not the language of the business, and the same failure means different things per screen.
+
+| Key | Type | Description |
+|---|---|---|
+| `message` | string (required) | Shown instead of the raw reason. |
+
+**`onError` cannot move the screen** (there is no `page`). `onSuccess` can; this deliberately cannot, because leaving the screen that failed hides what happened and takes the row that needs fixing out of sight.
+
+Placeholders are filled only when known; an unfilled one **stays as text**, and `validate` says so first (`placeholder-not-filled`):
+
+| Placeholder | What goes in |
+|---|---|
+| `{error}` | the reason as reported |
+| `{count}` | rows that succeeded (`scope: selection` only) |
+| `{failed}` | rows that failed (same) |
+| `{total}` | rows in the run (same) |
+
+```yaml
+- id: approveSelected
+  type: plugin
+  plugin: approveOrders
+  label: Approve selected
+  scope: selection
+  onSuccess: { message: 'Approved {count}' }
+  onError: { message: 'Approved {count}; {failed} were already shipped' }
+```
+
+**A partial result is a failure for this purpose**: `onSuccess` does not run while even one row is left behind. The counts come from the handler (see below).
 
 ## option
 
@@ -1257,6 +1313,7 @@ npx hatake validate page.yaml --no-warn --json
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | linked options that do not line up (input fields and search filters alike) |
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | a mistake in a cross-field rule (`compare`) — **that rule passes silently** |
 | `page-nobody-can-open` | the `roles` on the ways in (menu items, navigate buttons) disagree — **nobody can open that screen** |
+| `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure) — it stays as literal text and you find out by pressing the button |
 | `selection-without-table` | a `scope: selection` button on a page with **no table** — there is no way to choose rows, so the button stays unpressable |
 | `selection-unsupported-type` | `scope: selection` on a type other than `plugin` — pressing it does nothing (what a bulk operation *does* is business logic, so it belongs to the application) |
 | `print-without-report` | a `type: print` button on a page with **no `report`** — there is no paper to print, so the button appears and pressing it only reports that this page cannot print |
@@ -1415,8 +1472,9 @@ npx hatake advise page.yaml
 ```
 
 Reports a list with no sortable column, a list with no filters, a key that is not in the list, a
-form with nothing required, a delete/export button with no roles, a money-looking column with no
-formatting, a child table with no parent key, and a report with no totals.
+form with nothing required, a delete/export/bulk button with no roles, **a bulk action with no
+confirmation**, a money-looking column with no formatting, a child table with no parent key, and a
+report with no totals.
 
 This is **advice, not a warning**, so it never changes the exit code: a warning states a fact
 ("you wrote it and it does not work"), advice states a preference ("not writing this may hurt").

@@ -210,7 +210,13 @@ export function explainPage(
     sections.push({
       title: "できる操作",
       lines: page.actions.map((action) =>
-        describeAction(action, targets.get(action.id)),
+        describeAction(
+          action,
+          targets.get(action.id),
+          // 一括は「一度に何件動くか」で危険度が変わる。件数の上限は表のページ送りで
+          // 決まっているのに、定義を読んでも出てこないので、ここで言う。
+          "table" in page ? page.table.pagination.pageSize : undefined,
+        ),
       ),
     });
   }
@@ -423,7 +429,11 @@ function navigateTargets(raw: Record<string, unknown>): Map<string, string> {
   return found;
 }
 
-function describeAction(action: ActionDefinition, target?: string): string {
+function describeAction(
+  action: ActionDefinition,
+  target?: string,
+  pageSize?: number,
+): string {
   const what = ACTION_TYPES[action.type] ?? `${action.type}`;
   const to =
     action.type === ActionTypes.navigate && target !== undefined
@@ -431,8 +441,11 @@ function describeAction(action: ActionDefinition, target?: string): string {
       : action.type === ActionTypes.plugin && action.plugin !== undefined
         ? `（${action.plugin}）`
         : "";
-  const on =
-    action.scope === ActionScopes.selection ? "。選んだ行に対して実行する" : "";
+  const on = action.scope !== ActionScopes.selection
+      ? ""
+      : pageSize === undefined
+        ? "。選んだ行に対して実行する"
+        : `。選んだ行に対して実行する（一度に最大 ${pageSize} 件）`;
   const confirm =
     action.confirm !== undefined
       ? "。押すと確認を出す"
@@ -445,9 +458,13 @@ function describeAction(action: ActionDefinition, target?: string): string {
       : action.onSuccess?.message !== undefined
         ? `。終わったら「${action.onSuccess.message}」と出す`
         : "";
+  const onError =
+    action.onError !== undefined
+      ? `。失敗したら「${action.onError.message}」と出す`
+      : "";
   const roles =
     action.roles.length > 0 ? `。${action.roles.join(" / ")} だけに出る` : "";
-  return `${action.label} … ${what}${to}${on}${confirm}${after}${roles}`;
+  return `${action.label} … ${what}${to}${on}${confirm}${after}${onError}${roles}`;
 }
 
 function describeDashboard(

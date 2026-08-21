@@ -86,10 +86,11 @@ const Map<String, Set<String>> strictKeyTable = {
   'subTableSource': {'repository', 'parentKey', 'key', 'pageSize'},
   'action': {
     'id', 'type', 'label', 'scope', 'plugin', 'page', 'params', 'confirm',
-    'onSuccess', 'config', 'roles',
+    'onSuccess', 'onError', 'config', 'roles',
   },
   'confirm': {'title', 'message', 'okLabel', 'cancelLabel', 'danger'},
   'actionSuccess': {'message', 'page', 'params'},
+  'actionError': {'message'},
   'option': {'value', 'label', 'when'},
   'layout': {'columns'},
 };
@@ -100,7 +101,11 @@ const Map<String, Map<String, String>> _children = {
   '': {'app': 'app', 'page': 'page'},
   'app': {'theme': 'theme', 'menu': 'menuItem[]', 'pages': 'page[]'},
   'menuItem': {'items': 'menuItem[]'},
-  'action': {'confirm': 'confirm', 'onSuccess': 'actionSuccess'},
+  'action': {
+    'confirm': 'confirm',
+    'onSuccess': 'actionSuccess',
+    'onError': 'actionError',
+  },
   'crudPage': {
     'search': 'search', 'table': 'table', 'form': 'form', 'actions': 'action[]',
   },

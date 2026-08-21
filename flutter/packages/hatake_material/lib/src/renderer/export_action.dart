@@ -33,7 +33,9 @@ Future<bool> _runExportAction(
   final limit = action.config['limit'];
 
   final options = CsvOptions.fromConfig(action.config);
-  try {
+  // 失敗はそのまま外へ投げる。何と言うかは呼び出し側（`_dispatchAction`）が決める
+  // ＝定義の `onError` で差し替えられる場所を1つにする。
+  {
     final data = await rows(limit is num ? limit.toInt() : 10000);
     await sink(ExportRequest(
       filename: _exportFilename(action, fallbackName),
@@ -51,9 +53,6 @@ Future<bool> _runExportAction(
       actionId: action.id,
     ));
     return true;
-  } catch (error) {
-    messenger.showSnackBar(SnackBar(content: Text('出力に失敗しました: $error')));
-    return false;
   }
 }
 

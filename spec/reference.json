@@ -194,6 +194,15 @@
           ]
         },
         {
+          "key": "onError",
+          "type": "object",
+          "required": false,
+          "description": "What the user is told when the action failed. Placeholders: {error} the reason as reported, {failed} / {count} / {total} the row counts of a `scope: selection` action.",
+          "nodes": [
+            "actionError"
+          ]
+        },
+        {
           "key": "config",
           "type": "object",
           "required": false,
@@ -228,6 +237,31 @@
         "action"
       ],
       "keys": []
+    },
+    "actionError": {
+      "description": "What the user is told when the action failed. Placeholders: {error} the reason as reported, {failed} / {count} / {total} the row counts of a `scope: selection` action.",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "action"
+      ],
+      "keys": [
+        {
+          "key": "message",
+          "type": "string",
+          "required": true,
+          "description": "Shown instead of the raw failure (a snackbar / toast)."
+        }
+      ]
     },
     "actionSuccess": {
       "description": "What happens once the action succeeded. Nothing here runs when it fails.",
@@ -2753,6 +2787,7 @@
       "app"
     ],
     "message": [
+      "actionError",
       "actionSuccess",
       "confirm",
       "validator"
@@ -2768,6 +2803,9 @@
     ],
     "okLabel": [
       "confirm"
+    ],
+    "onError": [
+      "action"
     ],
     "onSuccess": [
       "action"

@@ -315,6 +315,7 @@ ActionDefinition action(
   required String label,
   String scope = ActionScopes.page,
   String? plugin,
+  ActionErrorDefinition? onError,
   Map<String, Object?> config = const {},
   List<String> roles = const [],
 }) {
@@ -324,6 +325,7 @@ ActionDefinition action(
     label: label,
     scope: scope,
     plugin: plugin,
+    onError: onError,
     config: config,
     roles: roles,
   );

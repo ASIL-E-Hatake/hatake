@@ -55,11 +55,14 @@ void _afterActionSuccess(
   BuildContext context,
   ActionSuccessDefinition? onSuccess, {
   DataRecord? record,
+  ActionOutcome? outcome,
 }) {
   if (onSuccess == null) return;
   final message = onSuccess.message;
   if (message != null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_fillActionMessage(message, outcome: outcome))),
+    );
   }
   final page = onSuccess.page;
   if (page == null) return;
@@ -80,4 +83,70 @@ ActionDefinition? _declaredAction(List<ActionDefinition> actions, String id) {
     if (action.id == id) return action;
   }
   return null;
+}
+
+/// Tells the user the action failed, in the definition's words when it has any.
+///
+/// The raw reason (`RepositoryHttpException: … 500 …`) is true but useless to the
+/// person holding the mouse, and the same failure means different things per
+/// screen（「在庫が足りません」/「締め済みなので直せません」）. `onError.message`
+/// is where that wording belongs.
+///
+/// **A failure never moves the screen** (unlike `onSuccess`): leaving the screen
+/// that failed hides what happened, and the row to fix is still on it.
+void _showActionFailure(
+  BuildContext context,
+  ActionDefinition action, {
+  Object? error,
+  ActionOutcome? outcome,
+}) {
+  final declared = action.onError?.message;
+  final message = declared != null
+      ? _fillActionMessage(declared, error: error, outcome: outcome)
+      : _defaultFailureMessage(action, error: error, outcome: outcome);
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+}
+
+/// What to say when the definition says nothing.
+///
+/// Keeps the wording of the thing that failed (出力 / 印刷) rather than one
+/// generic sentence: the user is looking at a button, not at an action id.
+String _defaultFailureMessage(
+  ActionDefinition action, {
+  Object? error,
+  ActionOutcome? outcome,
+}) {
+  if (outcome != null && outcome.failed > 0) {
+    return outcome.isPartial
+        ? '${outcome.succeeded} 件を実行しました（${outcome.failed} 件失敗）'
+        : '${outcome.failed} 件すべて失敗しました';
+  }
+  return switch (action.type) {
+    ActionTypes.export => '出力に失敗しました: $error',
+    ActionTypes.print => '印刷に失敗しました: $error',
+    _ => 'アクション "${action.id}" が失敗しました: $error',
+  };
+}
+
+/// Fills the placeholders a message may carry.
+///
+/// The count placeholders are filled **only when counts are known** (a
+/// `scope: selection` action that ran). Elsewhere the template is left as it is:
+/// showing `0 件を承認しました` would be a lie, and leaving `{count}` visible
+/// says plainly that the placeholder did not apply. `hatake validate` says the
+/// same thing before it ever runs.
+String _fillActionMessage(
+  String template, {
+  Object? error,
+  ActionOutcome? outcome,
+}) {
+  var text = template;
+  if (error != null) text = text.replaceAll('{error}', '$error');
+  if (outcome != null && outcome.total > 0) {
+    text = text
+        .replaceAll('{count}', '${outcome.succeeded}')
+        .replaceAll('{failed}', '${outcome.failed}')
+        .replaceAll('{total}', '${outcome.total}');
+  }
+  return text;
 }

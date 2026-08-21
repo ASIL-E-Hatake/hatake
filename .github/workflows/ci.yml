@@ -518,11 +518,13 @@ jobs:
         working-directory: typescript
         run: |
           set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
           # デモの一覧には「選んだ行にまとめて実行する」ボタンがある（警告ゼロで通る）。
-          node dist/cli.js validate --warn-as-error             ../flutter/packages/hatake_example/assets/sales_app.yaml
-          # 説明は「選んだ行に対して実行する」と読み上げる（何件動くかは人が判断する）。
-          node dist/cli.js explain ../flutter/packages/hatake_example/assets/sales_app.yaml             --page order_search > /tmp/bulk.log
-          grep -q '選んだ行に対して実行する' /tmp/bulk.log
+          node dist/cli.js validate --warn-as-error "$DEMO"
+          # 説明は「選んだ行に対して実行する」と読み上げ、**一度に何件動くか**まで言う
+          # （危険度がそこで変わるのに、定義を読んでも出てこない）。
+          node dist/cli.js explain "$DEMO" --page order_search > /tmp/bulk.log
+          grep -q '選んだ行に対して実行する（一度に最大' /tmp/bulk.log
           # 表の無い画面に置いたら、押せないボタンになると言うこと。
           cat > /tmp/bulk-nowhere.yaml <<'YAML'
           page:
@@ -537,11 +539,13 @@ jobs:
               - { id: approve, type: plugin, plugin: approveOrders,
                   label: 一括承認, scope: selection }
           YAML
-          if node dist/cli.js validate --warn-as-error /tmp/bulk-nowhere.yaml               2> /tmp/bulk-nowhere.err; then
+          if node dist/cli.js validate --warn-as-error /tmp/bulk-nowhere.yaml \
+              2> /tmp/bulk-nowhere.err; then
             echo "表の無い画面の一括ボタンを通してしまった"; exit 1
           fi
-          grep -q 'selection-without-table'             <(node dist/cli.js validate --json /tmp/bulk-nowhere.yaml)
-          # plugin 以外の型に書いたら、実行されないと言うこと。
+          node dist/cli.js validate --json /tmp/bulk-nowhere.yaml > /tmp/bulk1.json
+          grep -q '"rule": "selection-without-table"' /tmp/bulk1.json
+          # plugin 以外の型に書いたら、実行されないと言うこと（対照表にも繋がる）。
           cat > /tmp/bulk-export.yaml <<'YAML'
           page:
             type: search
@@ -554,7 +558,66 @@ jobs:
             actions:
               - { id: csv, type: export, label: 一括出力, scope: selection }
           YAML
-          grep -q 'selection-unsupported-type'             <(node dist/cli.js validate --json /tmp/bulk-export.yaml)
+          node dist/cli.js validate --json /tmp/bulk-export.yaml > /tmp/bulk2.json
+          grep -q '"rule": "selection-unsupported-type"' /tmp/bulk2.json
+          grep -q '"pitfall": "bulk-delete"' /tmp/bulk2.json
+          node dist/cli.js pitfalls bulk-delete > /tmp/bulk-pitfall.log
+          grep -q 'rowActions' /tmp/bulk-pitfall.log
+          # 助言は別のことを言う（確認が無い一括・権限で絞っていない一括）。
+          cat > /tmp/bulk-bare.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            search:
+              filters: [{ field: status, label: 状態 }]
+            table:
+              columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+            actions:
+              - { id: approve, type: plugin, plugin: approveOrders,
+                  label: 一括承認, scope: selection }
+          YAML
+          node dist/cli.js advise /tmp/bulk-bare.yaml > /tmp/bulk-advise.log
+          grep -q 'bulk-without-confirm' /tmp/bulk-advise.log
+          grep -q 'まとめて実行できます' /tmp/bulk-advise.log
+
+      - name: A failure speaks the definition's words
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          # デモの一括は confirm / onSuccess / onError を持ち、件数の差し込みを使う
+          # （scope: selection なので埋まる＝警告ゼロ）。
+          node dist/cli.js validate --warn-as-error "$DEMO"
+          node dist/cli.js explain "$DEMO" --page order_search > /tmp/err.log
+          grep -q '失敗したら' /tmp/err.log
+          # 埋まらない差し込みは、押す前に言う（件数は一括だけ・{error} は失敗だけ）。
+          cat > /tmp/placeholder.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - id: approve
+                type: plugin
+                plugin: approveOrders
+                label: 承認
+                onSuccess: { message: '{count} 件を承認しました（{error}）' }
+          YAML
+          if node dist/cli.js validate --warn-as-error /tmp/placeholder.yaml \
+              2> /tmp/placeholder.err; then
+            echo "埋まらない差し込みを通してしまった"; exit 1
+          fi
+          node dist/cli.js validate --json /tmp/placeholder.yaml > /tmp/ph.json
+          grep -q '"rule": "placeholder-not-filled"' /tmp/ph.json
+          # 2件出る（件数の差し込みと {error} は別の理由で埋まらない）。
+          test "$(grep -c 'placeholder-not-filled' /tmp/ph.json)" -eq 2
 
       - name: A definition compared with itself is compatible
         working-directory: typescript

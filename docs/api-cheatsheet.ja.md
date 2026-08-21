@@ -380,7 +380,7 @@ actions:
 
 `plugin` は `plugin: <key>` で登録ハンドラにディスパッチ。`navigate` は `page` と `params`、`export` は CSV 出力（上記）、`print` は帳票の印刷（下記）。`table.rowActions` は**アクション id の文字列配列**（`edit` / `delete` は組み込みなので宣言不要）。
 
-### 確認と後処理（`confirm` / `onSuccess`）
+### 確認と後処理（`confirm` / `onSuccess` / `onError`）
 
 「削除前に確認」「保存できたら一覧に戻る」を Dart で書かない。
 
@@ -399,10 +399,15 @@ actions:
       message: 顧客を削除しました
       page: customer_list         # 省略可。遷移先
       params: { id: "$row.id" }
+    onError:                      # 失敗したときに出す文言（画面は移らない）
+      message: 受注が残っているので削除できません（{error}）
 ```
 
 * **`delete` は宣言が無くても必ず確認する**（取り消せないので）。`confirm` を書くと文言が置き換わる
 * `onSuccess` は**失敗したら動かない**（ハンドラ未登録・出力先未登録・Repository が拒否＝全部失敗）
+* `onError` が無ければ**失敗の理由がそのまま出る**（`RepositoryHttpException: … 500 …`）。業務の言葉で言うならここに書く。**`page` は無い**＝失敗した画面から離れると、何が起きたか読めなくなり直す行も見えなくなる
+* 差し込みは**埋まるときだけ**埋まる（`{error}` は失敗時、`{count}` / `{failed}` / `{total}` は `scope: selection` のときだけ）。埋まらない差し込みは文字のまま出るので、`validate` が `placeholder-not-filled` で先に言う
+* 一括の結果はハンドラが `ctx.report(ActionOutcome(succeeded: …, failed: …))` で返す。**一部でも失敗したら `onSuccess` は動かない**（1件残っているのに画面を移さない）
 * `create` / `edit` はフォームを開くだけなので `onSuccess` は動かない（保存できたかはその時点で分からない）
 
 ## Dart から直接使う場合（実装は読まなくていい）

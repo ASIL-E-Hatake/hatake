@@ -715,6 +715,80 @@
       ]
     },
     {
+      "id": "error-message-written-in-code",
+      "keys": ["onError", "onSuccess"],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "失敗したときの文言を、プラグインのハンドラの中で `ScaffoldMessenger` に出す",
+        "en": "Showing the failure message from inside the plugin handler"
+      },
+      "why": {
+        "ja": "同じ失敗が画面ごとに違う意味を持つ（「在庫が足りません」/「締め済みなので直せません」）ので、文言はその画面の業務の話。ハンドラの中に書くと、画面ごとに文言が散り、定義を読んでも何と言うのか分からない。一括の「5件中1件失敗」も、件数だけ報告すれば文言は定義側で組める。",
+        "en": "The same failure means different things per screen, so the wording belongs to that screen's business. Put it in the handler and it scatters: reading the definition no longer tells you what the user is told. For a bulk run the handler only needs to report counts; the sentence is assembled from the definition."
+      },
+      "fix": {
+        "ja": "アクションに `onError: { message: … }` を書く（`{error}` で理由も出せる）。ハンドラは**投げるか、件数を `ctx.report` で返すか**だけにする。`onError` に遷移先は無い＝失敗した画面から離れない。",
+        "en": "Declare `onError: { message: … }` on the action (`{error}` interpolates the reason). The handler only throws, or reports counts through `ctx.report`. `onError` has no target page: a failure does not move the screen."
+      },
+      "good": [
+        "page:",
+        "  type: search",
+        "  id: order_search",
+        "  title: 受注照会",
+        "  repository: orderRepository",
+        "  key: orderNo",
+        "  table:",
+        "    columns: [{ field: orderNo, label: 受注番号 }]",
+        "  actions:",
+        "    - id: approveSelected",
+        "      type: plugin",
+        "      plugin: approveOrders",
+        "      label: 一括承認",
+        "      scope: selection",
+        "      confirm: { message: 選んだ受注を承認します }",
+        "      onSuccess: { message: '{count} 件を承認しました' }",
+        "      onError: { message: '{count} 件を承認しました（{failed} 件は出荷済み）' }"
+      ]
+    },
+    {
+      "id": "bulk-delete",
+      "keys": ["scope", "actions"],
+      "pageKinds": ["crud", "master", "search"],
+      "wrong": {
+        "ja": "`scope: selection` に `type: delete` を書いて「一括削除」にする",
+        "en": "Writing `type: delete` with `scope: selection` to get a bulk delete"
+      },
+      "why": {
+        "ja": "選んだ行にまとめて実行できるのは `type: plugin` だけなので、押しても実行されない。用意していないのは、取り消せない操作は**事故が件数ぶん大きくなる**から。1件ずつなら「押し間違えた」で済むが、全選択のあとの1回は戻せない。",
+        "en": "Only `type: plugin` runs over a selection, so the button does nothing. It is missing on purpose: an irreversible action scales its accidents with the row count. One row is a slip; one press after select-all cannot be undone."
+      },
+      "fix": {
+        "ja": "消すのは1件ずつ（`table.rowActions` の `delete`）。どうしてもまとめて消すなら `type: plugin` にして、消す条件と件数の上限をアプリ側で持つ（そこで確認と記録も残せる）。",
+        "en": "Delete one row at a time (`delete` in `table.rowActions`). If a batch really is needed, make it a `type: plugin` and let the application own the conditions, the row limit, the confirmation and the audit trail."
+      },
+      "good": [
+        "page:",
+        "  type: search",
+        "  id: order_search",
+        "  title: 受注照会",
+        "  repository: orderRepository",
+        "  key: orderNo",
+        "  table:",
+        "    rowActions: [delete]",
+        "    columns:",
+        "      - { field: orderNo, label: 受注番号 }",
+        "  actions:",
+        "    - { id: remove, type: delete, label: 削除, roles: [admin] }",
+        "    - id: approveSelected",
+        "      type: plugin",
+        "      plugin: approveOrders",
+        "      label: 一括承認",
+        "      scope: selection",
+        "      roles: [manager]",
+        "      confirm: { message: 選んだ受注を承認します }"
+      ]
+    },
+    {
       "id": "print-without-report",
       "keys": [
         "actions",

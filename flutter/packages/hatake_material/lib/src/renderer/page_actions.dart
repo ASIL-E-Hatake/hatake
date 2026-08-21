@@ -55,22 +55,55 @@ Future<bool> _runPageAction(
 }) async {
   if (!await _confirmAction(context, action.confirm)) return false;
   if (!context.mounted) return false;
-  if (!await _dispatchAction(context, action, controller,
+  final outcome = await _dispatchAction(context, action, controller,
       record: record,
       records: records,
       onExport: onExport,
       onPrint: onPrint,
-      onCreate: onCreate)) {
-    return false;
-  }
+      onCreate: onCreate);
+  // null = 実行できなかった／失敗した。何が起きたかは dispatch が既に言っている
+  // （言う場所を1つにしないと、失敗の文言が種類ごとに散る）。
+  if (outcome == null) return false;
   if (!context.mounted) return true;
-  _afterActionSuccess(context, action.onSuccess, record: record);
+  _afterActionSuccess(context, action.onSuccess,
+      record: record, outcome: outcome);
   return true;
 }
 
-/// The action itself. Returns whether it succeeded (so `onSuccess` does not run
-/// after a missing handler or a page that cannot export).
-Future<bool> _dispatchAction(
+/// The action itself.
+///
+/// Returns the outcome when it ran, or **null** when it did not — a missing
+/// handler, a page that cannot export, a thrown failure, or a bulk run that came
+/// back with failures. Null is what stops `onSuccess`.
+///
+/// Every failure is reported **here**: one place decides how a failure is worded
+/// (and lets the definition's `onError` replace it), instead of each runner
+/// inventing its own snackbar.
+Future<ActionOutcome?> _dispatchAction(
+  BuildContext context,
+  ActionDefinition action,
+  ChangeNotifier controller, {
+  DataRecord? record,
+  List<DataRecord> records = const [],
+  _PageDataRunner? onExport,
+  _PageDataRunner? onPrint,
+  Future<void> Function()? onCreate,
+}) async {
+  try {
+    return await _dispatch(context, action, controller,
+        record: record,
+        records: records,
+        onExport: onExport,
+        onPrint: onPrint,
+        onCreate: onCreate);
+  } catch (error) {
+    // 例外を外に投げると、押しても何も起きない（Flutter のログにだけ出る）。
+    if (context.mounted) _showActionFailure(context, action, error: error);
+    return null;
+  }
+}
+
+Future<ActionOutcome?> _dispatch(
   BuildContext context,
   ActionDefinition action,
   ChangeNotifier controller, {
@@ -88,23 +121,23 @@ Future<bool> _dispatchAction(
       SnackBar(content: Text('アクション "${action.id}" は選んだ行に対しては'
           '実行できません（scope: selection は type: plugin だけ）')),
     );
-    return false;
+    return null;
   }
   if (action.type == ActionTypes.create) {
     if (onCreate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('アクション "${action.id}" はこのページでは使えません')),
       );
-      return false;
+      return null;
     }
     await onCreate();
     // フォームを開いただけ＝まだ結果は出ていないので onSuccess は動かさない
     // （保存できたかどうかは、この時点では分からない）。
-    return false;
+    return null;
   }
   if (action.type == ActionTypes.navigate) {
     _navigateAction(context, action, record: record);
-    return true;
+    return const ActionOutcome();
   }
   if (action.type == ActionTypes.plugin) {
     final registry = HatakeScope.of(context).actions;
@@ -114,16 +147,26 @@ Future<bool> _dispatchAction(
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('アクション "${action.id}" のハンドラが未登録です')),
       );
-      return false;
+      return null;
     }
+    ActionOutcome? reported;
     await handler(ActionContext(
       buildContext: context,
       controller: controller,
       action: action,
       record: record,
       records: records,
+      report: (outcome) => reported = outcome,
     ));
-    return true;
+    // 何も言わずに戻った＝うまくいった。一括なら渡した行数を件数として扱う
+    // （`{count}` がハンドラの手間ゼロで埋まる）。
+    final outcome =
+        reported ?? ActionOutcome(succeeded: records.length);
+    if (outcome.isSuccess) return outcome;
+    // 全部だめ・一部だめ。**一部でも onSuccess は動かさない**（1件失敗したまま
+    // 画面を移すと、直すべき行が視界から消える）。
+    if (context.mounted) _showActionFailure(context, action, outcome: outcome);
+    return null;
   }
   if (action.type == ActionTypes.export) {
     // Only pages with rows can export; say so rather than nothing.
@@ -131,9 +174,9 @@ Future<bool> _dispatchAction(
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('アクション "${action.id}" はこのページでは出力できません')),
       );
-      return false;
+      return null;
     }
-    return onExport(context, action);
+    return await onExport(context, action) ? const ActionOutcome() : null;
   }
   if (action.type == ActionTypes.print) {
     // 刷れるのは帳票だけ（紙の形は report が決めるので、report が無ければ紙が無い）。
@@ -142,12 +185,12 @@ Future<bool> _dispatchAction(
         SnackBar(content: Text('アクション "${action.id}" はこのページでは刷れません'
             '（type: print は帳票の画面だけ）')),
       );
-      return false;
+      return null;
     }
-    return onPrint(context, action);
+    return await onPrint(context, action) ? const ActionOutcome() : null;
   }
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text('アクション "${action.id}" は未実装です')),
   );
-  return false;
+  return null;
 }

@@ -1,6 +1,32 @@
 import 'package:flutter/widgets.dart';
 import 'package:hatake_core/hatake_core.dart';
 
+/// How a bulk handler finished: how many rows it got through, and how many it
+/// could not.
+///
+/// A partial result is the normal case for `scope: selection` — 5 orders, one of
+/// them already shipped — and it is neither a success nor a failure. Reporting
+/// it lets the framework say **which** it was in the definition's own words,
+/// instead of every handler inventing its own snackbar.
+class ActionOutcome {
+  /// Rows the handler got through.
+  final int succeeded;
+
+  /// Rows it could not (already shipped, rejected by the server, …).
+  final int failed;
+
+  const ActionOutcome({this.succeeded = 0, this.failed = 0});
+
+  /// Nothing failed. `onSuccess` runs.
+  bool get isSuccess => failed == 0;
+
+  /// Some worked and some did not. **`onSuccess` does not run**: moving on from
+  /// a screen where 1 of 5 rows failed hides the one that needs attention.
+  bool get isPartial => failed > 0 && succeeded > 0;
+
+  int get total => succeeded + failed;
+}
+
 /// Context handed to a plugin action handler when it runs.
 class ActionContext {
   /// A build context valid at the moment the action fired (for dialogs,
@@ -27,14 +53,36 @@ class ActionContext {
   /// button into N requests.
   final List<DataRecord> records;
 
+  /// Tells the framework how it went, so the message the user sees comes from
+  /// the definition (`onSuccess.message` / `onError.message`) instead of from
+  /// the handler.
+  ///
+  /// Optional: a handler that either works or throws needs nothing here (a
+  /// thrown error is a failure, a clean return is a success). Report when the
+  /// answer is **partial** — the case a bulk action runs into constantly.
+  ///
+  /// ```dart
+  /// final rejected = await api.approve(ctx.records);
+  /// ctx.report(ActionOutcome(
+  ///   succeeded: ctx.records.length - rejected.length,
+  ///   failed: rejected.length,
+  /// ));
+  /// ```
+  final void Function(ActionOutcome outcome) report;
+
   const ActionContext({
     required this.buildContext,
     required this.controller,
     required this.action,
     this.record,
     this.records = const [],
+    this.report = _ignoreOutcome,
   });
 }
+
+/// The default for [ActionContext.report]: a handler that says nothing is taken
+/// at its word (returned = worked, threw = failed).
+void _ignoreOutcome(ActionOutcome outcome) {}
 
 /// A plugin action implementation.
 typedef ActionHandler = Future<void> Function(ActionContext context);
