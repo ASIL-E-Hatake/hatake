@@ -375,9 +375,21 @@ No date is written by default, so the same report yields the same bytes.
 
 Computed `op`:
 <!-- vocab: field.computed.op -->
-`concat` `sum` `subtract` `product`
+`concat` `sum` `subtract` `product` `count` `avg` `min` `max`
 
-Extensible via `ComputedRegistry`.
+Two modes: `fields: [a, b]` folds values of the **same record** (`concat` / `sum` /
+`subtract` / `product`), while `field: <subTable field>` + `of: <row field>` folds the
+**rows of a subTable** (`count` / `sum` / `avg` / `min` / `max` — the same aggregate
+vocabulary as dashboard cards).
+
+```yaml
+- { field: subtotal, label: Subtotal, computed: { op: sum, field: lines, of: amount } }
+- { field: total, label: Total, computed: { op: sum, fields: [subtotal, tax] } }
+```
+
+`of` is required except for `count`. Only rows saved with the parent can be folded — a
+subTable with `source` is paged, so its rows are not all here (`validate` says so).
+Computed fields are derived once, in declaration order. Extensible via `ComputedRegistry`.
 
 ## Linked options (the parent narrows the child)
 

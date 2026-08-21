@@ -300,6 +300,13 @@ app:
                   - { field: price, label: 単価, type: number, required: true, validators: [ { type: min, value: 0 } ] }
                   # 行内の計算項目: 金額 = 数量 × 単価
                   - { field: amount, label: 金額, computed: { op: product, fields: [qty, price] } }
+          - title: 金額
+            fields:
+              # 縦計。`field` が明細の項目、`of` が行の項目（集約の語彙はダッシュ
+              # ボードのカードと同じ）。行を1行足す・数量を直すと、その場で変わる。
+              - { field: subtotal, label: 小計, format: currency, config: { symbol: "¥" },
+                  computed: { op: sum, field: lines, of: amount } }
+              - { field: lineCount, label: 明細行数, computed: { op: count, field: lines } }
       actions:
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: order_entry } }
 

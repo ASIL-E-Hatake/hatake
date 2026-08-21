@@ -20,6 +20,7 @@ import {
   ActionScopes,
   ActionTypes,
   AggregateOps,
+  FieldTypes,
   ValidatorTypes,
 } from "./definition.js";
 import {
@@ -741,13 +742,18 @@ function checkForm(page: Dict, path: string, found: DefinitionWarning[]): void {
   });
 
   // フォーム全体の項目名。`optionsFrom` の指す先があるかを見るために先に集める
-  // （親が子より後ろに書かれていることもある）。
+  // （親が子より後ろに書かれていることもある）。**定義そのもの**も持つ: 計算項目が
+  // 指す先が「明細か」「ページ送りか」「行にその項目があるか」は、名前だけでは分からない。
   const names = new Set<string>();
+  const defs = new Map<string, Dict>();
   for (const group of groups) {
     for (const raw of group.fields) {
       if (!isDict(raw)) continue;
       const name = str(raw.field);
-      if (name !== undefined) names.add(name);
+      if (name !== undefined) {
+        names.add(name);
+        if (!defs.has(name)) defs.set(name, raw);
+      }
     }
   }
 
@@ -772,7 +778,7 @@ function checkForm(page: Dict, path: string, found: DefinitionWarning[]): void {
           seen.set(name, at);
         }
       }
-      checkFieldEntry(raw, at, found, names);
+      checkFieldEntry(raw, at, found, names, defs);
     });
   }
 }
@@ -782,9 +788,11 @@ function checkFieldEntry(
   path: string,
   found: DefinitionWarning[],
   siblings: Set<string> = new Set(),
+  siblingDefs: Map<string, Dict> = new Map(),
 ): void {
   checkOptions(field, path, found, siblings);
   checkCompare(field, path, found, siblings);
+  checkComputed(field, path, found, siblingDefs);
   list(field.validators).forEach((raw, i) => {
     if (isDict(raw)) return;
     warn(
@@ -826,11 +834,166 @@ function checkFieldEntry(
       .map((raw) => str(raw.field))
       .filter((name): name is string => name !== undefined),
   );
+  const rowDefs = new Map<string, Dict>();
+  for (const raw of list(field.fields).filter(isDict)) {
+    const name = str(raw.field);
+    if (name !== undefined && !rowDefs.has(name)) rowDefs.set(name, raw);
+  }
   list(field.fields).forEach((raw, i) => {
     if (isDict(raw)) {
-      checkFieldEntry(raw, `${path}.fields[${i}]`, found, rowFields);
+      checkFieldEntry(raw, `${path}.fields[${i}]`, found, rowFields, rowDefs);
     }
   });
+}
+
+/** 明細の行を畳める op（集約の語彙。ダッシュボードのカードと同じもの）。 */
+const ROW_FOLD_OPS: string[] = [
+  AggregateOps.count,
+  AggregateOps.sum,
+  AggregateOps.avg,
+  AggregateOps.min,
+  AggregateOps.max,
+];
+
+/** 同じレコードの項目を畳む op（`fields` を取るもの）。 */
+const SAME_RECORD_OPS = ["concat", "sum", "subtract", "product"];
+
+/**
+ * 計算項目（`computed`）の辻褄。
+ *
+ * `computed` は**開いたノード**（独自の op が自由なパラメータを取れるように）なので、
+ * strict でも中身の書き間違いは弾けない。しかも間違えたときの結果は null か 0 で、
+ * 画面には**空欄や 0 円**として出る＝転んだことに気づけない。だから機械に言わせる。
+ *
+ * ただし**組み込みの op のときだけ**。`field` は独自の op のパラメータ名としても普通に
+ * 使う（`{ op: consumptionTax, field: subtotal }`＝「どの項目から計算するか」）ので、
+ * 知らない op の中身に口を出すと、正しい定義に嘘の警告を出すことになる。
+ */
+function checkComputed(
+  field: Dict,
+  path: string,
+  found: DefinitionWarning[],
+  siblingDefs: Map<string, Dict>,
+): void {
+  const computed = isDict(field.computed) ? field.computed : undefined;
+  if (computed === undefined) return;
+  const at = `${path}.computed`;
+  const op = str(computed.op) ?? "";
+  const target = str(computed.field);
+  const of = str(computed.of);
+  const label = str(field.label) ?? str(field.field) ?? "項目";
+
+  // 独自の op（登録して足したもの）は、パラメータの意味を知らないので何も言わない。
+  if (!ROW_FOLD_OPS.includes(op) && !SAME_RECORD_OPS.includes(op)) return;
+
+  // 行を畳む op なのに、畳む相手（`field`）が無い。
+  if (target === undefined) {
+    if (ROW_FOLD_OPS.includes(op) && !SAME_RECORD_OPS.includes(op)) {
+      warn(
+        found,
+        "computed-rows-unsupported-op",
+        `${at}.op`,
+        `${op} は**明細の行をまとめる**計算なので、まとめる相手が要ります。` +
+          `このままでは「${label}」は空欄になります。`,
+        "`field: <明細の項目名>` を足してください" +
+          "（同じレコードの項目を畳むなら sum / subtract / product / concat です）。",
+      );
+    }
+    return;
+  }
+
+  if (list(computed.fields).length > 0) {
+    warn(
+      found,
+      "computed-field-and-fields",
+      `${at}.fields`,
+      "`field`（明細の行をまとめる）と `fields`（同じレコードの項目を畳む）の両方が" +
+        "書かれています。**`field` が勝つ**ので `fields` は効きません。",
+      "行をまとめるなら `fields` を消してください。同じレコードの項目を畳むなら " +
+        "`field` と `of` を消してください。",
+    );
+  }
+
+  if (!ROW_FOLD_OPS.includes(op)) {
+    warn(
+      found,
+      "computed-rows-unsupported-op",
+      `${at}.op`,
+      `${op} では明細の行をまとめられません（行をまとめられるのは ` +
+        `${ROW_FOLD_OPS.join(" / ")} だけ）。「${label}」は計算されません。`,
+      "合計なら `op: sum` です。並べて1行にしたいなら、それは行をまとめる話ではないので" +
+        "独自の op を登録してください。",
+    );
+  } else if (op !== AggregateOps.count && of === undefined) {
+    warn(
+      found,
+      "computed-aggregate-without-of",
+      `${at}.of`,
+      `${op} で畳む項目（\`of\`）がありません。「${label}」は空欄になります。`,
+      "`of: <行の項目名>` を書いてください（`count` だけは要りません）。",
+    );
+  }
+
+  const def = siblingDefs.get(target);
+  if (def === undefined) {
+    if (siblingDefs.size === 0) return;
+    const near = closestKey(target, [...siblingDefs.keys()]);
+    warn(
+      found,
+      "computed-of-unknown-field",
+      `${at}.field`,
+      `まとめる相手 "${target}" が同じフォームにありません。` +
+        `「${label}」は空欄か 0 になります。`,
+      near === null
+        ? "同じフォームの明細（`type: subTable`）の項目名を書いてください。"
+        : `${near} の間違いではないですか？`,
+    );
+    return;
+  }
+  if (str(def.type) !== FieldTypes.subTable) {
+    warn(
+      found,
+      "computed-of-unknown-field",
+      `${at}.field`,
+      `"${target}" は明細ではありません（\`type: ${str(def.type) ?? "text"}\`）。` +
+        `まとめられる行が無いので、「${label}」は空欄か 0 になります。`,
+      "まとめたいのは `type: subTable` の項目です。同じレコードの項目を足すなら " +
+        "`fields: [...]` を使ってください。",
+    );
+    return;
+  }
+  if (isDict(def.source)) {
+    warn(
+      found,
+      "computed-of-paged-subtable",
+      `${at}.field`,
+      `"${target}" は別のテーブルに持つ明細（\`source\` つき）です。行は**ページ送りで** ` +
+        `別に取るので、ここには揃っていません。「${label}」は 0 になります。`,
+      "全部を足した数が要るなら、サーバ側で計算して1つの項目として返してください" +
+        "（画面に出ている行だけを足しても、業務の合計にはなりません）。",
+    );
+    return;
+  }
+  if (of === undefined) return;
+  const rowNames = new Set(
+    [...list(def.fields), ...list(def.columns)]
+      .filter(isDict)
+      .map((raw) => str(raw.field))
+      .filter((name): name is string => name !== undefined),
+  );
+  if (rowNames.size > 0 && !rowNames.has(of)) {
+    const near = closestKey(of, [...rowNames]);
+    warn(
+      found,
+      "computed-of-unknown-field",
+      `${at}.of`,
+      `明細 "${target}" の行に "${of}" がありません。畳む値が取れないので、` +
+        `「${label}」は空欄か 0 になります。`,
+      near === null
+        ? "行の項目名（`fields` に書いた `field`）を書いてください。"
+        : `${near} の間違いではないですか？`,
+    );
+  }
 }
 
 /**

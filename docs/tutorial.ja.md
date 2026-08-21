@@ -116,9 +116,9 @@ page:
 
       - title: 金額
         fields:
-          # 明細の合計と消費税は**組み込みには無い**（後述）。名前だけ書いておく。
+          # 明細の縦計。`field` が明細の項目、`of` が行の項目。
           - { field: subtotal, label: 小計, type: number, readOnly: true, format: currency,
-              computed: { op: sumLines, of: lines, field: amount } }
+              computed: { op: sum, field: lines, of: amount } }
           - { field: tax, label: 消費税, type: number, readOnly: true, format: currency,
               computed: { op: consumptionTax, field: subtotal } }
           - { field: total, label: 合計, type: number, readOnly: true, format: currency,
@@ -132,10 +132,14 @@ page:
 
 | 計算 | 組み込み | どうするか |
 | --- | --- | --- |
-| 金額（数量×単価） | ある（`product`） | そのまま書く |
-| 合計（小計＋消費税） | ある（`sum`＝**同じレコードの項目**を足す） | そのまま書く |
-| 小計（**明細の行**を足す） | **無い** | 名前（`sumLines`）を書いて、アプリで登録する |
+| 金額（数量×単価） | ある（`product` ＋ `fields`＝**同じ行**の項目） | そのまま書く |
+| 小計（**明細の行**を足す） | ある（`sum` ＋ `field` / `of`＝**行を畳む**） | そのまま書く |
+| 合計（小計＋消費税） | ある（`sum` ＋ `fields`＝**同じレコード**の項目） | そのまま書く |
 | 消費税 | **無い**（税率は案件ごとに違う） | 名前（`consumptionTax`）を書いて、アプリで登録する |
+
+`sum` に2つのモードがあるのは、「小計＝明細の金額」も「合計＝小計＋税」も足し算だから。
+**どちらのモードかは `field`（明細を畳む）と `fields`（同じレコード）のどちらを書いたかで
+決まる**。
 
 名前を書いておけば、**何を登録すればいいかは道具が数える**（7段目）。
 
@@ -248,10 +252,10 @@ repositories:
   orderRepository   ← 登録が要る
 computedOps:
   consumptionTax   ← 登録が要る
-  sumLines   ← 登録が要る
 ```
 
-3段目で「名前だけ書いた」2つが、ここに出てくる。次に、繋ぐコードの**下書き**を出す。
+3段目で「名前だけ書いた」消費税が、ここに出てくる（`sum` や `product` は組み込みなので
+出てこない）。次に、繋ぐコードの**下書き**を出す。
 
 ```bash
 npx hatake wire order_entry.yaml --base /api --out lib/wiring.dart
@@ -272,8 +276,6 @@ npx hatake wire order_entry.yaml --base /api --out lib/wiring.dart
         computeds: ComputedRegistry({
           'consumptionTax': (computed, record) =>
               throw UnimplementedError('consumptionTax: 計算の中身'),
-          'sumLines': (computed, record) =>
-              throw UnimplementedError('sumLines: 計算の中身'),
         }),
         renderer: const MaterialRenderer(),
         roles: const {}, // TODO: ログインから取る
@@ -286,12 +288,6 @@ npx hatake wire order_entry.yaml --base /api --out lib/wiring.dart
 
 ```dart
 computeds: ComputedRegistry({
-  'sumLines': (computed, record) {
-    final rows = record['lines'];
-    if (rows is! List) return 0;
-    return rows.fold<num>(0, (sum, row) =>
-        sum + ((row as Map)['amount'] as num? ?? 0));
-  },
   'consumptionTax': (computed, record) =>
       taxOf(record['subtotal'] as num? ?? 0, rate: 0.10),
 }),

@@ -1394,7 +1394,7 @@
           "key": "computed",
           "type": "object",
           "required": false,
-          "description": "Derive the field value from the record. Built-in ops: concat, sum, subtract, product. Extensible via ComputedRegistry.",
+          "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max, the same aggregate vocabulary as dashboards and `compare`). Extensible via ComputedRegistry.",
           "nodes": [
             "field.computed"
           ]
@@ -1436,7 +1436,7 @@
       ]
     },
     "field.computed": {
-      "description": "Derive the field value from the record. Built-in ops: concat, sum, subtract, product. Extensible via ComputedRegistry.",
+      "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max, the same aggregate vocabulary as dashboards and `compare`). Extensible via ComputedRegistry.",
       "closed": false,
       "pageKinds": [
         "crud",
@@ -1456,11 +1456,16 @@
           "key": "op",
           "type": "string",
           "required": true,
+          "description": "Same-record ops: concat, sum, subtract, product (with `fields`). Row-folding ops: count, sum, avg, min, max (with `field`). Open string — register your own on ComputedRegistry.",
           "values": [
             "concat",
             "sum",
             "subtract",
-            "product"
+            "product",
+            "count",
+            "avg",
+            "min",
+            "max"
           ],
           "open": true
         },
@@ -1468,7 +1473,28 @@
           "key": "fields",
           "type": "array",
           "required": false,
+          "description": "Fields of the same record to fold (same-record mode).",
           "items": "string"
+        },
+        {
+          "key": "field",
+          "type": "string",
+          "required": false,
+          "description": "A `subTable` field of this form whose rows are folded (row-folding mode). The rows must be saved with the parent record: a subTable with `source` is paged, so its rows are not here to fold.",
+          "values": [
+            "lines"
+          ],
+          "open": true
+        },
+        {
+          "key": "of",
+          "type": "string",
+          "required": false,
+          "description": "Which value of each row to fold. Required except for `count`. Same meaning as `of` on the `compare` validator.",
+          "values": [
+            "amount"
+          ],
+          "open": true
         },
         {
           "key": "separator",
@@ -2759,6 +2785,7 @@
       "dashboardItem.sort",
       "dashboardValue",
       "field",
+      "field.computed",
       "filter",
       "report.sort",
       "reportGroup",
@@ -2873,6 +2900,9 @@
     ],
     "not": [
       "condition"
+    ],
+    "of": [
+      "field.computed"
     ],
     "okLabel": [
       "actionPrompt",

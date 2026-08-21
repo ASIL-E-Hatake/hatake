@@ -190,7 +190,8 @@
       "keys": [
         "computed",
         "op",
-        "separator"
+        "separator",
+        "of"
       ],
       "demo": "order_entry"
     },
