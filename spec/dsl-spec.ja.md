@@ -1054,6 +1054,7 @@ computed: { op: sum, fields: [price, tax] }
 | `confirm` | [confirm](#confirm) | | 実行前に確認する。 |
 | `onSuccess` | [onSuccess](#onsuccess) | | 成功したあとの後処理。 |
 | `onError` | [onError](#onerror) | | 失敗したときに出す文言。 |
+| `prompt` | [prompt](#prompt) | | 実行の前に聞くこと（小さなフォーム）。 |
 | `config` | map | | 追加設定。 |
 | `roles` | string[] | | 実行を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
 
@@ -1082,6 +1083,46 @@ computed: { op: sum, fields: [price, tax] }
 | `params` | map | `page` に渡すルート値（`$row.id` / `$record.id` を埋め込み）。 |
 
 「失敗」はハンドラ未登録・出力先未登録・Repository が拒否など。`create` / `edit` は**フォームを開くだけ**なので `onSuccess` は動かない（保存できたかはその時点で分からない）。
+
+### prompt
+
+**実行の前に聞く。** 「却下の理由を書いてから却下」は業務でそのまま来る話で、これが
+無いと**アプリに手書きのダイアログ**が要る（このフレームワークが無くしたい物がそこで
+戻ってくる）。
+
+| キー | 型 | 説明 |
+|---|---|---|
+| `fields` | [field](#field)[]（必須・1つ以上） | 聞くこと。**普通の項目**なので型・`required`・`validators`・`computed`・`normalize` がフォームと同じに効く。 |
+| `title` | string | 見出し（既定はボタンのラベル）。 |
+| `okLabel` | string | 実行するボタン（既定は `confirm.okLabel` → ラベル）。 |
+| `cancelLabel` | string | やめるボタン（既定は `confirm.cancelLabel`）。 |
+
+```yaml
+- id: rejectSelected
+  type: plugin
+  plugin: rejectOrders
+  label: 却下
+  scope: selection
+  confirm: { message: 却下すると元に戻せません。, danger: true }
+  prompt:
+    title: 却下の理由
+    okLabel: 却下する
+    fields:
+      - { field: reason, label: 理由, type: textarea, required: true }
+      - { field: rejectedOn, label: 却下日, type: date }
+```
+
+| 決めごと | なぜ |
+|---|---|
+| **確認ダイアログを置き換える**（増やさない） | 聞くことがあるなら、その OK が確認そのもの。2枚続けて出すのは「読まずに押す」練習をさせるだけ。`confirm` に書いた文言・ボタン名・`danger` はこのダイアログが引き取る |
+| 項目は**普通の `field`** | 入力の語彙を2つ持たない。`required` も `validators` も `computed` も `normalize` も、フォームと同じものが同じに効く |
+| **書いていなければ実行しない** | 検証はダイアログの中で行い、通るまで閉じない（閉じてしまうと書き直す場所が無くなる） |
+| 値は**保存と同じ正規化**を通る | 全角の数字をそのまま業務に流さない |
+| 受け取れるのは `type: plugin` **だけ** | 聞いた値の行き先はハンドラ（`ActionContext.input`）。ほかの型は受け取れないので、`validate` が警告する |
+| 一括（`scope: selection`）でも**聞くのは1回** | 選んだ行に同じ理由を付けるのが業務の形。行ごとに聞かれたら誰も使わない |
+
+Flutter ではハンドラが `ActionContext.input` で受け取る（キーは項目名）。届くのは
+**検証と正規化を通った値だけ**なので、ハンドラで再確認しなくてよい。
 
 ### onError
 
@@ -1237,6 +1278,7 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `option-when-without-optionsfrom` / `optionsfrom-unknown-field` / `optionssource-parentkey-without-optionsfrom` / `options-and-optionssource` | 選択肢の連動の辻褄（入力項目・検索条件の両方） |
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | 項目間の検証（`compare`）の書き間違い → **その検証が黙って通る** |
 | `page-nobody-can-open` | 入口（メニュー項目・遷移ボタン）の `roles` が食い違っている → **その画面を開ける人が誰も居ない** |
+| `prompt-unsupported-type` | 実行前に聞く（`prompt`）のに、聞いた値を受け取れない型（`plugin` 以外）→ **聞くだけ聞いて捨てる** |
 | `placeholder-not-filled` | `onSuccess` / `onError` の文言に**埋まらない差し込み**を書いた（件数は `scope: selection` だけ、`{error}` は失敗だけ）→ 押すまで気づけず、文字のまま出る |
 | `selection-without-table` | `scope: selection` のボタンを**表の無い画面**に置いた → 選ぶ手段が無いので、押せないボタンが出たままになる |
 | `selection-unsupported-type` | `scope: selection` を `plugin` 以外の型に書いた → 押しても実行されない（一括の中身は業務＝アプリ側の処理） |

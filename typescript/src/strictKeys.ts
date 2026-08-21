@@ -70,11 +70,12 @@ export const strictKeyTable: Record<string, string[]> = {
   subTableSource: ["repository", "parentKey", "key", "pageSize"],
   action: [
     "id", "type", "label", "scope", "plugin", "page", "params", "confirm",
-    "onSuccess", "onError", "config", "roles",
+    "onSuccess", "onError", "prompt", "config", "roles",
   ],
   confirm: ["title", "message", "okLabel", "cancelLabel", "danger"],
   actionSuccess: ["message", "page", "params"],
   actionError: ["message"],
+  actionPrompt: ["title", "okLabel", "cancelLabel", "fields"],
   option: ["value", "label", "when"],
   layout: ["columns"],
 };
@@ -88,6 +89,7 @@ const children: Record<string, Record<string, string>> = {
     confirm: "confirm",
     onSuccess: "actionSuccess",
     onError: "actionError",
+    prompt: "actionPrompt",
   },
   crudPage: { search: "search", table: "table", form: "form", actions: "action[]" },
   masterPage: { search: "search", table: "table", form: "form", actions: "action[]" },
@@ -120,6 +122,7 @@ const children: Record<string, Record<string, string>> = {
   table: { columns: "column[]", pagination: "pagination" },
   form: { sections: "section[]" },
   section: { layout: "layout", fields: "field[]" },
+  actionPrompt: { fields: "field[]" },
   field: {
     options: "option[]",
     optionsSource: "optionsSource",

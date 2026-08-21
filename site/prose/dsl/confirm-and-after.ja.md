@@ -35,6 +35,33 @@ onSuccess:
 
 これを画面側のコードで書くと、「保存後の挙動」が定義と実装に散って追えなくなる。定義に書いておけば、画面の振る舞いは定義を読むだけで全部分かる。
 
+## 実行の前に聞くなら prompt
+
+「却下の理由を書いてから却下」は業務でそのまま来る。`confirm` は「はい / いいえ」しか聞けないので、ここで止まると**アプリに手書きのダイアログ**が必要になる（このフレームワークが無くしたい物がそこで戻ってくる）。
+
+```yaml
+prompt:
+  title: 却下の理由
+  okLabel: 却下する
+  fields:
+    - { field: reason, label: 理由, type: textarea, required: true }
+    - { field: rejectedOn, label: 却下日, type: date }
+```
+
+聞くのは**普通の項目**なので、型・`required`・`validators`・`computed`・`normalize` がフォームと同じに効く。書いていなければ実行されず、ダイアログは開いたまま（閉じてしまうと書き直す場所が無くなる）。値は保存と同じ正規化を通ってからハンドラに届く。
+
+```dart
+'rejectOrders': (ctx) async {
+  await api.reject(ctx.records, reason: ctx.input['reason']);
+},
+```
+
+**確認ダイアログは増えない。** 聞くことがあるなら、その OK が確認そのもの。`confirm` に書いた文言・ボタン名・`danger` はこのダイアログが引き取る（2枚続けて出すのは、読まずに押す練習をさせるだけ）。
+
+一括（`scope: selection`）でも**聞くのは1回**で、選んだ行に同じ理由が付く。行ごとに聞かれたら誰も使わない。
+
+受け取れるのは `type: plugin` だけ。ほかの型は聞いた値の行き先が無いので、`npx hatake validate` が警告する。
+
 ## 失敗したときの文言は onError
 
 書かなければ、失敗の理由がそのまま出る（`RepositoryHttpException: … 500 …`）。事実だが業務の言葉ではないし、同じ失敗が画面ごとに違う意味を持つ（「在庫が足りません」「締め済みなので直せません」）。

@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import 'action_error_definition.dart';
+import 'action_prompt_definition.dart';
 import 'action_scopes.dart';
 import 'action_success_definition.dart';
 import 'action_types.dart';
@@ -36,6 +37,10 @@ class ActionDefinition extends Equatable {
   /// system reported it.
   final ActionErrorDefinition? onError;
 
+  /// Asked before it runs (a small form). Its values reach the handler as
+  /// `ActionContext.input`, and its OK **replaces** the confirmation dialog.
+  final ActionPromptDefinition? prompt;
+
   /// Plugin / renderer specific extra configuration.
   final Map<String, Object?> config;
 
@@ -51,11 +56,23 @@ class ActionDefinition extends Equatable {
     this.confirm,
     this.onSuccess,
     this.onError,
+    this.prompt,
     this.config = const {},
     this.roles = const [],
   });
 
   @override
-  List<Object?> get props =>
-      [id, type, label, scope, plugin, confirm, onSuccess, onError, config, roles];
+  List<Object?> get props => [
+        id,
+        type,
+        label,
+        scope,
+        plugin,
+        confirm,
+        onSuccess,
+        onError,
+        prompt,
+        config,
+        roles,
+      ];
 }

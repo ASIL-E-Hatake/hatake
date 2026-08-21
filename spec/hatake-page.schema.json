@@ -1061,6 +1061,9 @@
         "onError": {
           "$ref": "#/$defs/actionError"
         },
+        "prompt": {
+          "$ref": "#/$defs/actionPrompt"
+        },
         "config": {
           "$ref": "#/$defs/config"
         },
@@ -1097,6 +1100,36 @@
           "type": "boolean",
           "default": false,
           "description": "Style the confirming button as destructive. A `delete` action is destructive by default."
+        }
+      }
+    },
+    "actionPrompt": {
+      "type": "object",
+      "description": "Asked before the action runs: a small form whose values reach the handler as `input`. It replaces the confirmation dialog rather than adding a second one — the same OK button confirms.",
+      "required": [
+        "fields"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Dialog heading. Defaults to the action's label."
+        },
+        "okLabel": {
+          "type": "string",
+          "description": "Confirming button. Falls back to `confirm.okLabel`, then the label."
+        },
+        "cancelLabel": {
+          "type": "string",
+          "description": "Cancelling button. Falls back to `confirm.cancelLabel`."
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "description": "What to ask. Ordinary fields: types, required, validators, computed and normalize behave as in a form.",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
         }
       }
     },

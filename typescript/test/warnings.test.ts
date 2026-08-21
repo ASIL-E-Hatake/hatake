@@ -817,6 +817,58 @@ describe("同梱の資料との辻褄", () => {
   });
 });
 
+describe("実行前に聞くボタン", () => {
+  const action = (body: string) => `
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  search:
+    filters: [{ field: status, label: 状態 }]
+  table:
+    columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+  actions:
+${body}
+`;
+
+  it("聞いた値を受け取れない型なら、そう言う", () => {
+    const found = warningsOf(action(`    - id: csv
+      type: export
+      label: CSV出力
+      prompt:
+        fields: [{ field: memo, label: メモ }]`));
+    const w = found.find((x) => x.rule === "prompt-unsupported-type");
+    expect(w?.path).toBe("page.actions[0].prompt");
+    expect(w?.message).toContain("入力は捨てられます");
+    expect(w?.fix).toContain("ActionContext.input");
+  });
+
+  it("plugin なら黙る", () => {
+    expect(
+      rulesOf(action(`    - id: reject
+      type: plugin
+      plugin: rejectOrders
+      label: 却下
+      roles: [manager]
+      prompt:
+        fields: [{ field: reason, label: 理由, required: true }]`)),
+    ).toEqual([]);
+  });
+
+  it("聞くことが1つも無い prompt は読めない（confirm の領分）", () => {
+    expect(() =>
+      warningsOf(action(`    - id: reject
+      type: plugin
+      plugin: rejectOrders
+      label: 却下
+      prompt:
+        fields: []`)),
+    ).not.toThrow(); // 素の document を見る警告は落ちない
+  });
+});
+
 describe("埋まらない差し込み", () => {
   const action = (body: string) => `
 page:

@@ -5,6 +5,7 @@ import {
   kDslVersion,
   type ActionDefinition,
   type ActionErrorDefinition,
+  type ActionPromptDefinition,
   type ActionSuccessDefinition,
   type ConfirmDefinition,
   type OptionsSource,
@@ -545,6 +546,7 @@ function parseAction(m: Dict): ActionDefinition {
     confirm: parseConfirm(optDict(m, "confirm")),
     onSuccess: parseActionSuccess(optDict(m, "onSuccess")),
     onError: parseActionError(optDict(m, "onError")),
+    prompt: parseActionPrompt(optDict(m, "prompt")),
     config: optDict(m, "config") ?? {},
     roles: optList(m, "roles").map(String),
   };
@@ -559,6 +561,25 @@ function parseConfirm(m: Dict | undefined): ConfirmDefinition | undefined {
     okLabel: optString(m, "okLabel"),
     cancelLabel: optString(m, "cancelLabel"),
     danger: m["danger"] === true,
+  };
+}
+
+function parseActionPrompt(
+  m: Dict | undefined,
+): ActionPromptDefinition | undefined {
+  if (m === undefined) return undefined;
+  const fields = optList(m, "fields");
+  if (fields.length === 0) {
+    throw new Error(
+      "prompt.fields: 聞くことが1つも書かれていません" +
+        "（聞くことが無いなら confirm を使ってください）",
+    );
+  }
+  return {
+    title: optString(m, "title"),
+    okLabel: optString(m, "okLabel"),
+    cancelLabel: optString(m, "cancelLabel"),
+    fields: fields.map((f, i) => parseField(asDict(f, `prompt.fields[${i}]`))),
   };
 }
 

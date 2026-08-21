@@ -183,6 +183,21 @@ app:
           confirm: { message: 選んだ受注を承認します }
           onSuccess: { message: '{count} 件を承認しました' }
           onError: { message: '{count} 件を承認しました（{failed} 件は出荷済みなので承認できません）' }
+        # 実行の前に聞く。聞いた値はハンドラが ActionContext.input で受け取る。
+        # prompt の OK が確認そのもの（ダイアログを2枚出さない）。
+        - id: rejectSelected
+          type: plugin
+          plugin: rejectOrders
+          label: 却下
+          scope: selection
+          confirm: { message: 却下すると元に戻せません。, danger: true }
+          prompt:
+            title: 却下の理由
+            okLabel: 却下する
+            fields:
+              - { field: reason, label: 理由, type: textarea, required: true }
+              - { field: rejectedOn, label: 却下日, type: date }
+          onSuccess: { message: '{count} 件を却下しました' }
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: order_search } }
 
     # 帳票: 一覧の印刷版。明細の列は table から取り、report が「紙の構造」を足す。

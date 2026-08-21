@@ -474,6 +474,7 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
     confirm: _parseConfirm(m.optMap('confirm')),
     onSuccess: _parseActionSuccess(m.optMap('onSuccess')),
     onError: _parseActionError(m.optMap('onError')),
+    prompt: _parseActionPrompt(m.optMap('prompt')),
     // Lift top-level `page` / `params` (navigate actions) into config so the
     // ActionDefinition model stays unchanged.
     config: {
@@ -502,6 +503,26 @@ ActionSuccessDefinition? _parseActionSuccess(Map<String, Object?>? m) {
     message: m.optString('message'),
     page: m.optString('page'),
     params: m.optMap('params') ?? const {},
+  );
+}
+
+ActionPromptDefinition? _parseActionPrompt(Map<String, Object?>? m) {
+  if (m == null) return null;
+  final fields = m.optList('fields');
+  if (fields.isEmpty) {
+    throw DefinitionParseException(
+      'prompt.fields: 聞くことが1つも書かれていません'
+      '（聞くことが無いなら confirm を使ってください）',
+    );
+  }
+  return ActionPromptDefinition(
+    title: m.optString('title'),
+    okLabel: m.optString('okLabel'),
+    cancelLabel: m.optString('cancelLabel'),
+    fields: [
+      for (var i = 0; i < fields.length; i++)
+        _parseField(_asMap(fields[i], 'prompt.fields[$i]')),
+    ],
   );
 }
 

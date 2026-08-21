@@ -131,14 +131,20 @@ describe("DSL リファレンス", () => {
       "report",
       "search",
     ]);
-    // 入力項目は一覧だけのページには無い。
+    // 入力項目は**どのページ種別にも在り得る**。フォームの中だけではなく、
+    // アクションの `prompt`（実行前に聞くダイアログ）にも書けるので、一覧だけの
+    // 画面でも「却下の理由」を聞ける。
     expect(node("field").pageKinds).toEqual([
       "crud",
+      "dashboard",
       "detail",
       "form",
       "master",
+      "report",
+      "search",
       "wizard",
     ]);
+    expect(node("field").parents).toContain("actionPrompt");
     // app / menu はページ種別に属さない。
     expect(node("menuItem").pageKinds).toEqual([]);
   });

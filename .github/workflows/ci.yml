@@ -646,6 +646,58 @@ jobs:
           # 「黙って何もしない」実装を置かない（埋め忘れは実行時に落ちる）。
           grep -q 'UnimplementedError' "$TOOL/wired_sales_app.dart"
 
+      - name: Asking before the action runs (prompt)
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          # デモの却下は「理由を書いてから」。警告ゼロで通ること。
+          node dist/cli.js validate --warn-as-error "$DEMO"
+          # 説明は**何を聞くか**を読み上げ、聞くなら「確認を出す」とは言わない
+          # （ダイアログは1枚なので、2枚出ると読めてしまうと嘘になる）。
+          node dist/cli.js explain "$DEMO" --page order_search > /tmp/prompt.log
+          grep -q '押すと 理由 / 却下日 を聞く' /tmp/prompt.log
+          # 聞いた値を受け取れない型なら、押す前に言う。
+          cat > /tmp/prompt-nowhere.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - id: csv
+                type: export
+                label: CSV出力
+                prompt:
+                  fields: [{ field: memo, label: メモ }]
+          YAML
+          if node dist/cli.js validate --warn-as-error /tmp/prompt-nowhere.yaml \
+              2> /tmp/prompt-nowhere.err; then
+            echo "受け取れない prompt を通してしまった"; exit 1
+          fi
+          node dist/cli.js validate --json /tmp/prompt-nowhere.yaml > /tmp/prompt.json
+          grep -q '"rule": "prompt-unsupported-type"' /tmp/prompt.json
+          # 聞くことが1つも無い prompt は読めない（confirm の領分）。
+          cat > /tmp/prompt-empty.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - { id: x, type: plugin, plugin: p, label: X, prompt: { fields: [] } }
+          YAML
+          if node dist/cli.js explain /tmp/prompt-empty.yaml 2> /tmp/empty.err; then
+            echo "空の prompt を読めてしまった"; exit 1
+          fi
+          grep -q '聞くことが1つも書かれていません' /tmp/empty.err
+
       - name: A definition compared with itself is compatible
         working-directory: typescript
         run: |

@@ -86,11 +86,12 @@ const Map<String, Set<String>> strictKeyTable = {
   'subTableSource': {'repository', 'parentKey', 'key', 'pageSize'},
   'action': {
     'id', 'type', 'label', 'scope', 'plugin', 'page', 'params', 'confirm',
-    'onSuccess', 'onError', 'config', 'roles',
+    'onSuccess', 'onError', 'prompt', 'config', 'roles',
   },
   'confirm': {'title', 'message', 'okLabel', 'cancelLabel', 'danger'},
   'actionSuccess': {'message', 'page', 'params'},
   'actionError': {'message'},
+  'actionPrompt': {'title', 'okLabel', 'cancelLabel', 'fields'},
   'option': {'value', 'label', 'when'},
   'layout': {'columns'},
 };
@@ -105,6 +106,7 @@ const Map<String, Map<String, String>> _children = {
     'confirm': 'confirm',
     'onSuccess': 'actionSuccess',
     'onError': 'actionError',
+    'prompt': 'actionPrompt',
   },
   'crudPage': {
     'search': 'search', 'table': 'table', 'form': 'form', 'actions': 'action[]',
@@ -146,6 +148,7 @@ const Map<String, Map<String, String>> _children = {
   'table': {'columns': 'column[]', 'pagination': 'pagination'},
   'form': {'sections': 'section[]'},
   'section': {'layout': 'layout', 'fields': 'field[]'},
+  'actionPrompt': {'fields': 'field[]'},
   'field': {
     'options': 'option[]',
     'optionsSource': 'optionsSource',

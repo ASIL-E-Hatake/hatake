@@ -9,12 +9,24 @@ class BulkDialog extends StatelessWidget {
   final ActionDefinition action;
   final List<DataRecord> records;
 
-  const BulkDialog({super.key, required this.action, required this.records});
+  /// 実行前に聞いた内容（`prompt`）。聞いていなければ空。
+  final DataRecord input;
+
+  const BulkDialog({
+    super.key,
+    required this.action,
+    required this.records,
+    this.input = const {},
+  });
 
   static Future<void> show(ActionContext ctx) async {
     await showDialog<void>(
       context: ctx.buildContext,
-      builder: (_) => BulkDialog(action: ctx.action, records: ctx.records),
+      builder: (_) => BulkDialog(
+        action: ctx.action,
+        records: ctx.records,
+        input: ctx.input,
+      ),
     );
     // 「出荷済みは承認できない」＝業務の判断はアプリ側。結果は件数で報告して、
     // 何と言うかは定義（onSuccess / onError）に任せる。一部だけ失敗するのが
@@ -46,6 +58,14 @@ class BulkDialog extends StatelessWidget {
                   ?.copyWith(color: theme.colorScheme.outline),
             ),
             const SizedBox(height: 12),
+            if (input.isNotEmpty) ...[
+              Text(
+                '聞いた内容: ${input.entries.map((e) => '${e.key}=${e.value}').join(' / ')}',
+                key: const Key('demo.bulk.input'),
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+            ],
             for (final record in records)
               Text(
                 '${record['orderNo']}  ${record['customer']}  ${record['status']}',

@@ -9,6 +9,7 @@
   "plugins": [
     "approveOrders",
     "openPlayground",
+    "rejectOrders",
     "showDefinition"
   ],
   "sinks": [

@@ -381,7 +381,7 @@ actions:
 
 `plugin` は `plugin: <key>` で登録ハンドラにディスパッチ。`navigate` は `page` と `params`、`export` は CSV 出力（上記）、`print` は帳票の印刷（下記）。`table.rowActions` は**アクション id の文字列配列**（`edit` / `delete` は組み込みなので宣言不要）。
 
-### 確認と後処理（`confirm` / `onSuccess` / `onError`）
+### 確認と後処理（`confirm` / `prompt` / `onSuccess` / `onError`）
 
 「削除前に確認」「保存できたら一覧に戻る」を Dart で書かない。
 
@@ -409,6 +409,15 @@ actions:
 * `onError` が無ければ**失敗の理由がそのまま出る**（`RepositoryHttpException: … 500 …`）。業務の言葉で言うならここに書く。**`page` は無い**＝失敗した画面から離れると、何が起きたか読めなくなり直す行も見えなくなる
 * 差し込みは**埋まるときだけ**埋まる（`{error}` は失敗時、`{count}` / `{failed}` / `{total}` は `scope: selection` のときだけ）。埋まらない差し込みは文字のまま出るので、`validate` が `placeholder-not-filled` で先に言う
 * 一括の結果はハンドラが `ctx.report(ActionOutcome(succeeded: …, failed: …))` で返す。**一部でも失敗したら `onSuccess` は動かない**（1件残っているのに画面を移さない）
+* **実行の前に聞く**なら `prompt`（「却下の理由を書いてから却下」）。項目は**普通の `field`**（型・`required`・`validators`・`computed`・`normalize` がフォームと同じに効く）で、ハンドラは `ctx.input` で受け取る。**確認ダイアログは増えない**（`prompt` の OK が確認そのもの＝`confirm` の文言とボタン名を引き取る）。受け取れるのは `type: plugin` だけ
+
+```yaml
+    prompt:
+      title: 却下の理由
+      okLabel: 却下する
+      fields:
+        - { field: reason, label: 理由, type: textarea, required: true }
+```
 * `create` / `edit` はフォームを開くだけなので `onSuccess` は動かない（保存できたかはその時点で分からない）
 
 ## Dart から直接使う場合（実装は読まなくていい）
