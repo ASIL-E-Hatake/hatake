@@ -19,6 +19,10 @@ dependencies:
   # 印刷も opt-in アダプタ。帳票に印刷ボタン（type: print）があるので入れている。
   # 刷らないアプリは入れなくてよい＝PDF を書くコードは1行も入らない。
   hatake_print: ^0.0.1
+  # REST の Repository も opt-in アダプタ。デモ本体はインメモリだが、
+  # `hatake wire --base` が出す配線（tool/wired_everything.dart）がこれを使う
+  # ＝生成物が flutter analyze に通ることで、生成器の嘘を防いでいる。
+  hatake_http: ^0.0.1
 
 dev_dependencies:
   flutter_test:
@@ -38,6 +42,8 @@ dependency_overrides:
     path: ../hatake_encoding
   hatake_print:
     path: ../hatake_print
+  hatake_http:
+    path: ../hatake_http
 
 flutter:
   # Required to bundle the MaterialIcons font. Without it FontManifest.json is

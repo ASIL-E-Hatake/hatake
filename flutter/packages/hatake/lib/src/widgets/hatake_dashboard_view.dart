@@ -31,6 +31,7 @@ class _HatakeDashboardViewState extends State<HatakeDashboardView> {
     final controller = DashboardController(
       definition: widget.definition,
       repositories: scope.repositories,
+      aggregates: scope.aggregates,
     );
     controller.init();
     return controller;

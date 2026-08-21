@@ -43,6 +43,7 @@ npx hatake fix page.yaml --todo    # 機械が直せなかった分だけを「�
 npx hatake refs app.yaml --unused  # 逆向き：登録してあるのに、どの定義も使っていないもの
 npx hatake paper report.yaml       # 帳票を「刷ったらどう見えるか」に開く（文字で・行が無くても見本を作る）
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか（Repository / プラグイン名 / 出す口）
+npx hatake wire app.yaml --base /api  # その配線（Flutter の HatakeScope）の下書き。中身は TODO で空ける
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読んで「登録済み」の一覧を作る
 ```
 `validate` は**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション／存在しないページへの遷移／`sort` の無い `groupBy`／条件で使えない演算子／`field` の無い集計など）。エラーではないが**画面を見ても気づけない**類なので、警告が出たら直す。`--warn-as-error` で CI を落とせる。

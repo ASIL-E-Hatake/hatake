@@ -9,7 +9,8 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
   書けたら `npx hatake validate <file>`
 - アプリに組み込むとき: `npx hatake refs <file> --needs-registration`（Repository・プラグイン・
   **出す口**（`exportSink` / `printSink`）＝何を登録すればいいか）／その一覧を
-  `validate --registry <file>` に渡すと**名前の食い違い**と**繋いでいない口**も見る
+  `validate --registry <file>` に渡すと**名前の食い違い**と**繋いでいない口**も見る／
+  `npx hatake wire <file> --base /api` で**その配線の下書き**（Flutter）が出る（中身は TODO）
 - 定義を直したとき: `npx hatake diff <前> <後>`（`✗ 破壊的`＝呼び出し側が壊れる／`△ 要確認`＝壊れないが
   確かめてほしい＝列・ボタン・選択肢が消えた・権限が変わった・ページが消えた）
 

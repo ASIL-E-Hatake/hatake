@@ -161,6 +161,7 @@ class _MaterialWizardPageState extends State<_MaterialWizardPage> {
           roles: roles,
           formatters: widget.formatters,
           validators: HatakeScope.of(context).validators,
+          computeds: HatakeScope.of(context).computeds,
           subTables: HatakeScope.of(context).subTableController,
           repositories: HatakeScope.of(context).repositories,
           // 検証と同じものを使う（出どころはコントローラ1つ）。

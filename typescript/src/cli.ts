@@ -64,6 +64,7 @@ import {
   renderHarvest,
 } from "./harvest.js";
 import { minimizeSource, renderMinimize } from "./minimize.js";
+import { wireApp } from "./wire.js";
 import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
 import { type AdviceRules, DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
@@ -255,6 +256,15 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --unused は**逆向き**＝登録してあるのに、どの定義も使っていないものを出す
       （登録済みの一覧が要る。消し忘れた登録は「使われている」と誤解される）。
 
+  hatake wire <file> [--base /api] [--out file] [--class Name] [--assets path]
+      アプリ側の配線（Flutter）の下書きを出す。定義が要求している登録
+      （Repository・プラグイン・出す口・独自の検証/正規化/見せ方/計算/集約/項目の型/
+      カードの型）を全部並べた HatakeScope を組む。**中身は決められないので
+      TODO**（何をするかは業務、どう繋ぐかは環境）で、埋めるまでは
+      UnimplementedError で落ちる＝黙って何もしない、にはしない。
+      --base を渡すと Repository は hatake_http（REST）で組む＝そこは TODO に
+      ならない（collection の名前は複数形を推測して埋める）。
+
   hatake paper <file> [--page <id>] [--rows rows.json] [--role admin]
               [--columns 110] [--json]
       帳票を「刷ったらどう見えるか」に開く（文字で）。列の並び・小計の位置・
@@ -417,6 +427,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return refs(positional, flags, io);
       case "registry":
         return registry(positional, flags, io);
+      case "wire":
+        return wire(positional, flags, io);
       case "explain":
         return explain(positional, flags, io);
       case "harvest":
@@ -758,6 +770,41 @@ function harvest(paths: string[], flags: Args["flags"], io: CliIo): number {
  * 標準出力に出すのは**定義だけ**（`hatake minimize a.yaml > b.yaml` が使えるように）。
  * 落としたものは標準エラーに出す。黙って短くしないのが要点なので、報告は省けない。
  */
+/**
+ * 定義から「アプリ側の配線」の下書きを出す。
+ *
+ * 画面は定義から出るのに、**繋ぐコード**は毎回手書きだった。何を登録すればいいかは
+ * 定義に全部書いてある（`refs --needs-registration` が出せる）ので、そこは機械が書く。
+ * 中身（業務・環境）は決められないので TODO で空ける。
+ */
+function wire(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("配線を出す定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const file = files[0];
+  const document = parseYamlText(io.readFile(file)) as Record<string, unknown>;
+  const source = file.split(/[\/]/).pop() ?? file;
+  const code = wireApp(document, {
+    className: str(flags, "class"),
+    assets: str(flags, "assets"),
+    baseUrl: str(flags, "base"),
+    source,
+  });
+  const out = str(flags, "out");
+  if (out === undefined) {
+    io.out(code.trimEnd());
+  } else {
+    io.writeFile(out, code);
+    io.out(`書きました: ${out}`);
+  }
+  io.err(
+    "TODO の所はアプリの担当です（何をするかは業務、どう繋ぐかは環境）。" +
+      "埋めるまでは UnimplementedError で落ちます。",
+  );
+  return 0;
+}
+
 function minimize(files: string[], flags: Args["flags"], io: CliIo): number {
   if (files.length !== 1) {
     io.err("最小化する定義ファイルを1つ指定してください。");

@@ -15,6 +15,7 @@ import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
 import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
 import { briefSource, renderBrief } from "./explainBrief.js";
 import { minimizeSource } from "./minimize.js";
+import { wireApp } from "./wire.js";
 import { buildReport } from "./report.js";
 import { layoutReport } from "./reportLayout.js";
 import { renderPaperText } from "./paperText.js";
@@ -88,7 +89,8 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 7. バックエンドの形が要るなら hatake_api_shape
 8. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
    直した内容を人に伝えるときは hatake_explain に before を渡す（変更を画面の言葉で言い直す）
-9. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグインの一覧）
+9. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグイン / 出す口の一覧）
+   → そのまま繋ぐコードの下書きが要るなら hatake_wire（Flutter の HatakeScope を組む）
 10. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
 
 原則: Flutter の Widget や API のコードを手で書かず、定義を書く。定義に無い機能は
@@ -638,6 +640,58 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         return pretty({
           needsRegistration: refsNeedingRegistration(refs),
           all: groupRefs(refs),
+        });
+      },
+    },
+    {
+      name: "hatake_wire",
+      title: "アプリ側の配線の下書きを出す",
+      description:
+        "定義を**アプリに繋ぐコード**（Flutter の `HatakeScope`）の下書きを Dart で出す。" +
+        "定義が要求している登録（Repository・プラグイン・出す口・独自の検証 / 正規化 / " +
+        "見せ方 / 計算 / 集約 / 項目の型 / カードの型）を全部並べる。" +
+        "**中身は決められないので TODO**（何をするかは業務、どう繋ぐかは環境）で、" +
+        "埋めるまでは UnimplementedError で落ちる＝黙って何もしない実装は置かない。" +
+        "定義が書けたあと「これをどうアプリに載せるか」で詰まるのを埋めるための道具。" +
+        "baseUrl を渡すと Repository は hatake_http（REST）で組むので、そこは TODO にならない。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description: "定義の中身そのもの（page: でも app: でも可）。",
+          },
+          baseUrl: {
+            type: "string",
+            description:
+              "REST の基点（`/api`）。渡すと hatake_http で Repository を組む" +
+              "（collection の名前は複数形を推測して埋める）。",
+          },
+          className: {
+            type: "string",
+            description: "生成する Widget のクラス名（既定は定義の id から）。",
+          },
+          assets: {
+            type: "string",
+            description: "定義を読む場所（Flutter の assets のパス）。",
+          },
+        },
+        required: ["source"],
+      },
+      run(args) {
+        const document = parseYamlText(required(args, "source"));
+        // 配列や素の値は定義ではない（`page:` か `app:` が一番外に要る）。
+        if (
+          typeof document !== "object" ||
+          document === null ||
+          Array.isArray(document)
+        ) {
+          throw new Error("定義を読めませんでした（page: か app: が要ります）。");
+        }
+        return wireApp(document as Record<string, unknown>, {
+          baseUrl: str(args, "baseUrl"),
+          className: str(args, "className"),
+          assets: str(args, "assets"),
         });
       },
     },

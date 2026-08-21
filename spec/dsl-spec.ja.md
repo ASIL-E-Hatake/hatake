@@ -1266,6 +1266,23 @@ npx hatake validate page.yaml --registry reg.json # 突き合わせる
 渡さなければ何も言わない（今までと同じ検査に戻る）。組み込みの名前は自動で足されるので、
 一覧に書くのは自分で登録したものだけでよい。
 
+**その登録を書く所まで**を下書きできる。
+
+```bash
+npx hatake wire app.yaml --base /api --out lib/wiring.dart
+```
+
+定義が要求している登録（Repository・プラグイン・出す口・独自の検証 / 正規化 / 見せ方 /
+計算 / 集約 / 項目の型 / カードの型）を全部並べた `HatakeScope` を Dart で出す。
+**中身は決められないので TODO**（何をするかは業務、どう繋ぐかは環境）で、埋めるまでは
+`UnimplementedError` で落ちる＝「黙って何もしない実装」を置かない。`--base` を渡すと
+Repository は [`hatake_http`](../flutter/packages/hatake_http/)（REST）で組むので、そこは
+TODO にならない（collection の名前は複数形を**推測**して埋める）。
+
+生成物は**コンパイルが通る形**で出す。それを確かめるために、下書き2枚を
+`flutter/packages/hatake_example/tool/` にコミットして `flutter analyze` に通している
+（生成器が壊れたら、生成物が解析で落ちる）。
+
 | 規則 | 何が起きるか |
 |---|---|
 | `unknown-repository` | 画面は出るがデータが来ない |

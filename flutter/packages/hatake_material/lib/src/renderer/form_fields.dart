@@ -37,6 +37,10 @@ class _HatakeFormFields extends StatefulWidget {
   /// the `HatakeScope` subtree.
   final RepositoryRegistry? repositories;
 
+  /// Computed-value operations (`computed.op`). Passed in for the same reason as
+  /// [validators]; the app registers its own on `HatakeScope(computeds:)`.
+  final ComputedRegistry? computeds;
+
   const _HatakeFormFields({
     super.key,
     required this.form,
@@ -50,6 +54,7 @@ class _HatakeFormFields extends StatefulWidget {
     this.recordKey,
     required this.mode,
     this.repositories,
+    this.computeds,
   });
 
   @override
@@ -68,7 +73,10 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
     },
   );
 
-  final ComputedRegistry _computeds = ComputedRegistry();
+  /// 計算の op はアプリが足せる（`HatakeScope(computeds:)`）。ここで固定の
+  /// レジストリを作ってしまうと、独自の op が黙って計算されない。
+  late final ComputedRegistry _computeds =
+      widget.computeds ?? ComputedRegistry();
   late final FormatterRegistry _formatters =
       widget.formatters ?? FormatterRegistry();
   late final ValidatorRegistry _validators =
@@ -269,6 +277,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
           parentKey: widget.recordKey,
           formatters: _formatters,
           validators: _validators,
+          computeds: _computeds,
           fieldBuilders: widget.fieldBuilders,
           roles: widget.roles,
           readOnly: locked,
@@ -279,6 +288,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
           rows: _subTableRows(_values[field.field]),
           formatters: _formatters,
           validators: _validators,
+          computeds: _computeds,
           fieldBuilders: widget.fieldBuilders,
           roles: widget.roles,
           readOnly: locked,

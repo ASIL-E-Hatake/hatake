@@ -58,6 +58,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
         roles: _roles,
         formatters: _formatters,
         validators: HatakeScope.of(context).validators,
+        computeds: HatakeScope.of(context).computeds,
         subTables: HatakeScope.of(context).subTableController,
         repositories: HatakeScope.of(context).repositories,
       ),
@@ -318,6 +319,7 @@ class _FormDialog extends StatefulWidget {
   final Set<String> roles;
   final FormatterRegistry formatters;
   final ValidatorRegistry validators;
+  final ComputedRegistry computeds;
   final SubTableControllerFactory subTables;
 
   /// 選択肢を Repository から引く項目（`optionsSource`）のため。ダイアログは
@@ -331,6 +333,7 @@ class _FormDialog extends StatefulWidget {
     required this.roles,
     required this.formatters,
     required this.validators,
+    required this.computeds,
     required this.subTables,
     required this.repositories,
   });
@@ -376,6 +379,7 @@ class _FormDialogState extends State<_FormDialog> {
                 roles: widget.roles,
                 formatters: widget.formatters,
                 validators: widget.validators,
+                computeds: widget.computeds,
                 subTables: widget.subTables,
                 repositories: widget.repositories,
                 // 条件式の `{ mode: create }` / `{ mode: edit }` 用。検証と同じ

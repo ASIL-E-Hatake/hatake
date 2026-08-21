@@ -42,6 +42,9 @@ class _SubTableField extends StatelessWidget {
   /// 行の項目が `optionsSource` で選択肢を引くときのため（親から流す）。
   final RepositoryRegistry? repositories;
 
+  /// 行の `computed` の op（アプリが足したものを含む。親から流す）。
+  final ComputedRegistry? computeds;
+
   const _SubTableField({
     required this.field,
     required this.rows,
@@ -53,6 +56,7 @@ class _SubTableField extends StatelessWidget {
     required this.errorText,
     required this.onChanged,
     this.repositories,
+    this.computeds,
   });
 
   Future<void> _editRow(BuildContext context, {int? index}) async {
@@ -66,6 +70,7 @@ class _SubTableField extends StatelessWidget {
         roles: roles,
         validators: validators,
         repositories: repositories,
+        computeds: computeds,
       ),
     );
     if (edited == null) return;
@@ -220,6 +225,7 @@ class _SubTableRowDialog extends StatefulWidget {
   final Set<String> roles;
   final ValidatorRegistry validators;
   final RepositoryRegistry? repositories;
+  final ComputedRegistry? computeds;
 
   const _SubTableRowDialog({
     required this.field,
@@ -228,6 +234,7 @@ class _SubTableRowDialog extends StatefulWidget {
     required this.roles,
     required this.validators,
     this.repositories,
+    this.computeds,
   });
 
   @override
@@ -273,6 +280,7 @@ class _SubTableRowDialogState extends State<_SubTableRowDialog> {
             roles: widget.roles,
             validators: widget.validators,
             repositories: widget.repositories,
+            computeds: widget.computeds,
             mode: _mode,
           ),
         ),

@@ -70,6 +70,7 @@ class _MaterialFormPageState extends State<_MaterialFormPage> {
                       roles: HatakeScope.of(context).roles,
                       formatters: widget.formatters,
                       validators: HatakeScope.of(context).validators,
+                      computeds: HatakeScope.of(context).computeds,
                       subTables: HatakeScope.of(context).subTableController,
                       repositories: HatakeScope.of(context).repositories,
                       // 検証と同じものを使う（出どころはコントローラ1つ）。
