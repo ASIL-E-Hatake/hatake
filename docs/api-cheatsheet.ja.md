@@ -11,6 +11,11 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
   **出す口**（`exportSink` / `printSink`）＝何を登録すればいいか）／その一覧を
   `validate --registry <file>` に渡すと**名前の食い違い**と**繋いでいない口**も見る／
   `npx hatake wire <file> --base /api` で**その配線の下書き**（Flutter）が出る（中身は TODO）
+- 繋いだあと（サーバが動いているとき）: `npx hatake probe <file> --base http://localhost:8080/api`
+  で**定義とサーバの食い違い**を実際に叩いて見る（足りない項目・型違い・`{items, totalCount}` で
+  ない・`pageSize` が効かない・行に鍵が無い）。権限は `npx hatake attack <app> --role staff --base …`
+  ＝**画面から見えない口**を叩いて、API が実際に拒否するか見る。どちらも**読むだけ**（`POST` /
+  `PUT` / `DELETE` は叩かない）で、`--dry-run` なら叩かずに「何を叩くか」だけ出る
 - 定義を直したとき: `npx hatake diff <前> <後>`（`✗ 破壊的`＝呼び出し側が壊れる／`△ 要確認`＝壊れないが
   確かめてほしい＝列・ボタン・選択肢が消えた・権限が変わった・ページが消えた）
 

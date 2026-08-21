@@ -698,6 +698,107 @@ jobs:
           fi
           grep -q '聞くことが1つも書かれていません' /tmp/empty.err
 
+      - name: Hitting the API the definition declares (probe / attack)
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          # 叩く前に「何を叩くか」が出ること（--dry-run は送らないので、この段は
+          # サーバが無くても回る＝本物のデモ定義に対して毎回確かめられる）。
+          node dist/cli.js probe "$DEMO" --base http://127.0.0.1:8099/api             --dry-run > /tmp/probe-dry.log
+          grep -q 'GET http://127.0.0.1:8099/api/orders?page=0&pageSize=' /tmp/probe-dry.log
+          grep -q '送っていません' /tmp/probe-dry.log
+          # 繋がらないなら、繋がらないと言って落ちる（黙って「食い違い無し」にしない）。
+          if node dist/cli.js probe "$DEMO" --base http://127.0.0.1:9/api               > /tmp/probe-dead.log; then
+            echo "繋がらないのに通ってしまった"; exit 1
+          fi
+          grep -q '叩けませんでした' /tmp/probe-dead.log
+          # ここから先は**本物の通信**。わざと食い違ったサーバを立てる
+          # （偽の送信器を差し替えた試験では、fetch そのものは通らない）。
+          cat > /tmp/stub-api.mjs <<'JS'
+          import { writeFileSync } from "node:fs";
+          import { createServer } from "node:http";
+          const json = (res, status, body) => {
+            res.writeHead(status, { "content-type": "application/json" });
+            res.end(JSON.stringify(body));
+          };
+          createServer((req, res) => {
+            if (req.method !== "GET") {
+              // 読むだけ、を**サーバ側から**縛る。1回でも来たら試験を落とす。
+              writeFileSync("/tmp/stub-write-attempt", req.method);
+              return json(res, 405, { message: "read-only stub" });
+            }
+            const path = req.url.split("?")[0];
+            const staff = req.headers.authorization === "Bearer staff";
+            if (path === "/api/orders") {
+              // 金額を**文字で**返す（BigDecimal を文字列で出す実装。画面では
+              // 桁区切りも合計も静かに効かなくなる）。
+              return json(res, 200, {
+                items: [{ orderNo: "SO-1", amount: "1200" }],
+                totalCount: 1,
+              });
+            }
+            if (path === "/api/prices") {
+              // 資格を渡したときだけ遮断する（渡さなければ穴のまま）。
+              return staff
+                ? json(res, 403, { message: "forbidden" })
+                : json(res, 200, { items: [{ itemCode: "A-1" }], totalCount: 1 });
+            }
+            if (path === "/api/prices/A-1") return json(res, 200, { itemCode: "A-1" });
+            return json(res, 404, { message: "no route" });
+          }).listen(8099, "127.0.0.1");
+          JS
+          cat > /tmp/probe-app.yaml <<'YAML'
+          app:
+            id: probe_check
+            title: 突き合わせ
+            menu:
+              - { id: orders, label: 受注, page: order_search }
+              - { id: prices, label: 単価マスタ, page: price_master, roles: [admin] }
+            pages:
+              - type: search
+                id: order_search
+                title: 受注照会
+                repository: orderRepository
+                key: orderNo
+                table:
+                  pagination: { pageSize: 2 }
+                  columns:
+                    - { field: orderNo, label: 受注番号 }
+                    - { field: amount, label: 金額, type: number, format: currency }
+              - type: master
+                id: price_master
+                title: 単価マスタ
+                repository: priceRepository
+                key: itemCode
+                table:
+                  columns: [{ field: itemCode, label: 品目 }]
+                form:
+                  sections: [{ fields: [{ field: itemCode, label: 品目 }] }]
+          YAML
+          rm -f /tmp/stub-write-attempt
+          node /tmp/stub-api.mjs & STUB=$!
+          trap 'kill $STUB' EXIT
+          curl -sf --retry 30 --retry-delay 1 --retry-connrefused             http://127.0.0.1:8099/api/orders > /dev/null
+          # 静かに壊れる食い違い（金額が文字）を捕まえて落ちること。
+          if node dist/cli.js probe /tmp/probe-app.yaml               --base http://127.0.0.1:8099/api > /tmp/probe.log; then
+            echo "食い違いがあるのに通ってしまった"; exit 1
+          fi
+          grep -q 'number の約束ですが string で返っています' /tmp/probe.log
+          grep -q '合計' /tmp/probe.log
+          # 権限: 見えない画面の口が開いていたら落ちる。
+          if node dist/cli.js attack /tmp/probe-app.yaml --role staff               --base http://127.0.0.1:8099/api > /tmp/attack.log; then
+            echo "穴があるのに通ってしまった"; exit 1
+          fi
+          grep -q 'API が遮断していません' /tmp/attack.log
+          # 遮断されていれば通ること（同じサーバ・同じ定義で、資格だけが違う）。
+          node dist/cli.js attack /tmp/probe-app.yaml --role staff --token staff             --base http://127.0.0.1:8099/api > /tmp/attack-ok.log
+          grep -q '見えない口は拒否されました' /tmp/attack-ok.log
+          # ここまでで、書き込む方式は1回も飛んでいないこと。
+          if [ -f /tmp/stub-write-attempt ]; then
+            echo "読むだけの道具が $(cat /tmp/stub-write-attempt) を送った"; exit 1
+          fi
+
       - name: A definition compared with itself is compatible
         working-directory: typescript
         run: |
