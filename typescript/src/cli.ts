@@ -65,6 +65,14 @@ import {
 } from "./harvest.js";
 import { minimizeSource, renderMinimize } from "./minimize.js";
 import { wireApp } from "./wire.js";
+import { bearer, fetchSend, type HttpSend, readHeaders } from "./httpProbe.js";
+import {
+  type RestTargets,
+  restTargets,
+  restTargetsForPage,
+} from "./restTarget.js";
+import { hasProbeError, probe, probeRequests, renderProbe } from "./probe.js";
+import { attack, attackRequests, hasHole, renderAttack } from "./attack.js";
 import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
 import { type AdviceRules, DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
@@ -265,6 +273,23 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --base を渡すと Repository は hatake_http（REST）で組む＝そこは TODO に
       ならない（collection の名前は複数形を推測して埋める）。
 
+  hatake probe <file> --base http://localhost:8080/api [--page <id>]
+              [--token <jwt>] [--headers headers.json] [--collection k=name]
+              [--dry-run] [--json]
+      定義が要求している口を**実際に叩いて**、返ってきた形を宣言と突き合わせる
+      （足りない項目・型違い・{items, totalCount} でない・pageSize が効かない・
+      行に鍵が無い）。食い違いがあれば終了コード 1。
+      **読むだけ**（POST / PUT / DELETE は叩かない）。--dry-run は叩かずに
+      「何を叩くか」だけ出す。集合の名前は wire と同じ推測（--collection で上書き）。
+
+  hatake attack <file> --role <role> --base http://localhost:8080/api
+              [--token <jwt>] [--headers headers.json] [--collection k=name]
+              [--dry-run] [--json]
+      その役割で**画面から見えない**はずの口を叩いて、API が実際に拒否するか見る。
+      開ける画面が拒否されたら、それも食い違いとして出す（画面は出てもデータが
+      来ない）。穴が1つでもあれば終了コード 1。app: の定義が要る。
+      押せないはずのボタン（POST / PUT / DELETE）は**叩かず**に一覧で出す。
+
   hatake paper <file> [--page <id>] [--rows rows.json] [--role admin]
               [--columns 110] [--json]
       帳票を「刷ったらどう見えるか」に開く（文字で）。列の並び・小計の位置・
@@ -341,6 +366,7 @@ const BOOLEAN_FLAGS = new Set([
   "needs-registration",
   "unused",
   "todo",
+  "dry-run",
   "help",
   "h",
   "version",
@@ -429,6 +455,11 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return registry(positional, flags, io);
       case "wire":
         return wire(positional, flags, io);
+      case "probe":
+      case "attack":
+        // 通信するので入口が別（[runCliAsync]）。bin はそちらを呼ぶ。
+        io.err(`${command} は通信するコマンドなので、この入口からは呼べません。`);
+        return 1;
       case "explain":
         return explain(positional, flags, io);
       case "harvest":
@@ -465,6 +496,140 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
     io.err(message(error));
     return 1;
   }
+}
+
+/**
+ * 通信するコマンドを含む入口。bin はこれを呼ぶ。
+ *
+ * なぜ2つに分けるか: CLI の本体は同期で書いてある（`process.exit` を使わず、試験から
+ * 素直に呼べる形）。**叩いて確かめる道具だけ**が非同期なので、そこだけを外に出す。
+ * 全部を async にすると、通信しないコマンド全部まで await が要る。
+ *
+ * [send] を差し替えられるのは試験のため（偽のサーバを渡せば通信せずに回る）。
+ */
+export async function runCliAsync(
+  argv: string[],
+  io: CliIo = nodeIo,
+  send: HttpSend = fetchSend,
+): Promise<number> {
+  const { command, positional, flags } = parseArgs(argv);
+  if (command !== "probe" && command !== "attack") return runCli(argv, io);
+  try {
+    return command === "probe"
+      ? await probeCommand(positional, flags, io, send)
+      : await attackCommand(positional, flags, io, send);
+  } catch (error) {
+    io.err(message(error));
+    return 1;
+  }
+}
+
+/** `--collection a=x,b=y` を読む（当たらない推測を上書きするための口）。 */
+function collectionOverrides(value: string | undefined): Record<string, string> {
+  if (value === undefined) return {};
+  const found: Record<string, string> = {};
+  for (const pair of value.split(",")) {
+    const eq = pair.indexOf("=");
+    if (eq <= 0) {
+      throw new Error(
+        `--collection は "orderRepository=sales-orders" の形で書いてください（"${pair}"）。`,
+      );
+    }
+    found[pair.slice(0, eq).trim()] = pair.slice(eq + 1).trim();
+  }
+  return found;
+}
+
+/** 叩く道具に共通の引数（基点・資格・集合の名前）。 */
+function probeSetup(
+  files: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): { targets: RestTargets; headers: Record<string, string> } {
+  const file = files[0];
+  if (file === undefined) throw new Error("定義ファイルを1つ渡してください。");
+  const baseUrl = str(flags, "base");
+  if (baseUrl === undefined) {
+    throw new Error(
+      "--base を渡してください（例: --base http://localhost:8080/api）。" +
+        "定義は URL を知りません（知ってはいけない）ので、基点は人が渡します。",
+    );
+  }
+  const source = io.readFile(file);
+  const options = {
+    baseUrl,
+    collections: collectionOverrides(str(flags, "collection")),
+  };
+  const page = str(flags, "page");
+  const targets =
+    page === undefined
+      ? restTargets(source, options)
+      : restTargetsForPage(source, page, options);
+  const token = str(flags, "token");
+  const headersFile = str(flags, "headers");
+  return {
+    targets,
+    headers: {
+      ...(token === undefined ? {} : bearer(token)),
+      ...(headersFile === undefined ? {} : readHeaders(io.readFile(headersFile))),
+    },
+  };
+}
+
+/** 定義とサーバの食い違いを、実際に叩いて見る。 */
+async function probeCommand(
+  files: string[],
+  flags: Args["flags"],
+  io: CliIo,
+  send: HttpSend,
+): Promise<number> {
+  const { targets, headers } = probeSetup(files, flags, io);
+  if (flags["dry-run"] === true) {
+    const requests = probeRequests(targets);
+    io.out(
+      flags.json === true
+        ? JSON.stringify({ requests, skipped: targets.skipped }, null, 2)
+        : ["叩く要求（--dry-run なので送っていません）:", ...requests.map((one) => `  ${one}`)].join("\n"),
+    );
+    return 0;
+  }
+  const report = await probe(targets, send, headers);
+  io.out(
+    flags.json === true
+      ? JSON.stringify(report, null, 2)
+      : renderProbe(report),
+  );
+  return hasProbeError(report) ? 1 : 0;
+}
+
+/** 見えないはずの口を、その役割で叩いて見る。 */
+async function attackCommand(
+  files: string[],
+  flags: Args["flags"],
+  io: CliIo,
+  send: HttpSend,
+): Promise<number> {
+  const role = str(flags, "role");
+  if (role === undefined) {
+    throw new Error("--role を渡してください（誰として叩くかが要ります）。");
+  }
+  const { targets, headers } = probeSetup(files, flags, io);
+  if (flags["dry-run"] === true) {
+    const requests = attackRequests(targets, role);
+    io.out(
+      flags.json === true
+        ? JSON.stringify({ role, requests }, null, 2)
+        : [`役割 "${role}" で叩く要求（--dry-run なので送っていません）:`, ...requests.map((one) => `  ${one}`)].join("\n"),
+    );
+    return 0;
+  }
+  const report = await attack(targets, role, send, headers);
+  io.out(
+    flags.json === true
+      ? JSON.stringify(report, null, 2)
+      : renderAttack(report),
+  );
+  return hasHole(report) ? 1 : 0;
 }
 
 /** 解析して問題を報告する。1ファイルでも落ちれば終了コードは 1。 */
@@ -1786,5 +1951,6 @@ if (process.argv[1]?.endsWith("cli.js")) {
   process.stdout.on("error", (error: NodeJS.ErrnoException) => {
     if (error.code !== "EPIPE") throw error;
   });
-  process.exitCode = runCli(process.argv.slice(2));
+  // 通信するコマンド（probe / attack）があるので、入口は async 側。
+  process.exitCode = await runCliAsync(process.argv.slice(2));
 }

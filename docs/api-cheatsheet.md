@@ -11,7 +11,12 @@ npx hatake pitfalls <key>       # common mistake → correct form
 npx hatake validate page.yaml   # exit code 1 if anything is wrong
 npx hatake refs page.yaml --needs-registration   # what the application must register
 npx hatake diff old.yaml new.yaml                # what a change breaks / what to confirm
+npx hatake probe app.yaml --base http://localhost:8080/api   # does the server answer what the definition declares?
+npx hatake attack app.yaml --role staff --base http://localhost:8080/api  # does the API refuse what the screen hides?
 ```
+
+`probe` and `attack` are **read-only** (they never send `POST` / `PUT` / `DELETE`); pass
+`--dry-run` to print the requests instead of sending them.
 
 `refs` lists the names the definition expects from outside (repositories, plugins, custom
 formatters). Pass that list to `validate --registry <file>` and a mismatched name is

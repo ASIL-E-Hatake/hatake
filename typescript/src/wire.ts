@@ -56,8 +56,11 @@ function className(id: string, isApp: boolean): string {
  *
  * REST の集合は複数形が慣習なので**推測して埋める**。当たっていなくても、直す場所が
  * 1箇所にまとまっているほうが速い（空欄より速い）。推測だと見出しに書く。
+ *
+ * 叩いて確かめる道具（`hatake probe` / `attack`）も同じ推測を使う。別々に推測すると
+ * 「wire で繋いだ所と probe が見る所が違う」が起きて、道具どうしが嘘をつく。
  */
-function collectionOf(repository: string): string {
+export function collectionOf(repository: string): string {
   const stem = repository.replace(/Repository$/, "");
   const name = stem.length > 0 ? stem : repository;
   if (/[sxz]$|[cs]h$/.test(name)) return `${name}es`;

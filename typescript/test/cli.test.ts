@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseArgs, runCli, type CliIo } from "../src/cli.js";
+import { parseArgs, runCli, runCliAsync, type CliIo } from "../src/cli.js";
 import { parsePageYaml, scaffold, scaffoldKinds } from "../src/index.js";
 
 /** Collects what the CLI wrote, and serves files from memory. */
@@ -1770,5 +1770,185 @@ describe("hatake wire（アプリ側の配線の下書き）", () => {
     const io = fakeIo({ "a.yaml": APP, "b.yaml": APP });
     expect(runCli(["wire", "a.yaml", "b.yaml"], io)).toBe(1);
     expect(io.stderr.join("")).toContain("1つ指定してください");
+  });
+});
+
+describe("hatake probe / attack", () => {
+  const APP = `app:
+  id: sales
+  title: 販売管理
+  menu:
+    - { id: orders, label: 受注, page: order_search }
+    - { id: prices, label: 単価, page: price_master, roles: [admin] }
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      key: orderNo
+      table:
+        columns: [{ field: orderNo, label: 受注番号 }]
+    - type: search
+      id: price_master
+      title: 単価マスタ
+      repository: priceRepository
+      key: itemCode
+      table:
+        columns: [{ field: itemCode, label: 品目 }]
+`;
+
+  /** 叩かれた URL を覚える偽のサーバ。 */
+  const server = (status: Record<string, number> = {}) => {
+    const urls: string[] = [];
+    return {
+      urls,
+      send: async (request: { method: string; url: string }) => {
+        urls.push(request.url);
+        const key = request.url.split("?")[0];
+        return {
+          status: status[key] ?? 200,
+          body: JSON.stringify({ items: [{ orderNo: "SO-1", itemCode: "A-1" }], totalCount: 1 }),
+        };
+      },
+    };
+  };
+
+  it("--base が無ければ、なぜ要るかまで言う", async () => {
+    const io = fakeIo({ "app.yaml": APP });
+    const { send } = server();
+    expect(await runCliAsync(["probe", "app.yaml"], io, send)).toBe(1);
+    expect(io.stderr.join("")).toContain("定義は URL を知りません");
+  });
+
+  it("宣言どおり返ってくれば 0（叩いたのは GET だけ）", async () => {
+    const io = fakeIo({ "app.yaml": APP });
+    const { send, urls } = server();
+    expect(
+      await runCliAsync(["probe", "app.yaml", "--base", "http://x/api"], io, send),
+    ).toBe(0);
+    expect(urls).toEqual([
+      "http://x/api/orders?page=0&pageSize=50",
+      "http://x/api/prices?page=0&pageSize=50",
+    ]);
+  });
+
+  it("食い違いがあれば 1", async () => {
+    const io = fakeIo({ "app.yaml": APP });
+    const { send } = server({ "http://x/api/prices": 404 });
+    expect(
+      await runCliAsync(["probe", "app.yaml", "--base", "http://x/api"], io, send),
+    ).toBe(1);
+    expect(io.stdout.join("\n")).toContain("--collection");
+  });
+
+  it("--dry-run は1件も叩かない（CI に置ける）", async () => {
+    const io = fakeIo({ "app.yaml": APP });
+    const { send, urls } = server();
+    expect(
+      await runCliAsync(
+        ["probe", "app.yaml", "--base", "http://x/api", "--dry-run"],
+        io,
+        send,
+      ),
+    ).toBe(0);
+    expect(urls).toEqual([]);
+    expect(io.stdout.join("\n")).toContain("送っていません");
+  });
+
+  it("--page で app の中の1枚だけ叩く", async () => {
+    const io = fakeIo({ "app.yaml": APP });
+    const { send, urls } = server();
+    await runCliAsync(
+      ["probe", "app.yaml", "--base", "http://x/api", "--page", "price_master"],
+      io,
+      send,
+    );
+    expect(urls).toEqual(["http://x/api/prices?page=0&pageSize=50"]);
+  });
+
+  it("--token は authorization: Bearer になる", async () => {
+    const io = fakeIo({ "app.yaml": APP });
+    const seen: Record<string, string>[] = [];
+    const send = async (request: { method: string; url: string; headers: Record<string, string> }) => {
+      seen.push(request.headers);
+      return { status: 200, body: JSON.stringify({ items: [], totalCount: 0 }) };
+    };
+    await runCliAsync(
+      ["probe", "app.yaml", "--base", "http://x/api", "--token", "jwt-1"],
+      io,
+      send,
+    );
+    expect(seen[0].authorization).toBe("Bearer jwt-1");
+  });
+
+  it("--headers はファイルから読む（引数だとログに残る）", async () => {
+    const io = fakeIo({
+      "app.yaml": APP,
+      "h.json": JSON.stringify({ "x-tenant": "acme" }),
+    });
+    const seen: Record<string, string>[] = [];
+    const send = async (request: { method: string; url: string; headers: Record<string, string> }) => {
+      seen.push(request.headers);
+      return { status: 200, body: JSON.stringify({ items: [], totalCount: 0 }) };
+    };
+    await runCliAsync(
+      ["probe", "app.yaml", "--base", "http://x/api", "--headers", "h.json"],
+      io,
+      send,
+    );
+    expect(seen[0]["x-tenant"]).toBe("acme");
+  });
+
+  it("attack は --role が要る", async () => {
+    const io = fakeIo({ "app.yaml": APP });
+    const { send } = server();
+    expect(
+      await runCliAsync(["attack", "app.yaml", "--base", "http://x/api"], io, send),
+    ).toBe(1);
+    expect(io.stderr.join("")).toContain("誰として叩くか");
+  });
+
+  it("穴があれば 1（見えない画面が開いている）", async () => {
+    const io = fakeIo({ "app.yaml": APP });
+    const { send } = server();
+    expect(
+      await runCliAsync(
+        ["attack", "app.yaml", "--base", "http://x/api", "--role", "staff"],
+        io,
+        send,
+      ),
+    ).toBe(1);
+    expect(io.stdout.join("\n")).toContain("API が遮断していません");
+  });
+
+  it("見えない口が拒否されていれば 0", async () => {
+    const io = fakeIo({ "app.yaml": APP });
+    const { send } = server({ "http://x/api/prices": 403 });
+    expect(
+      await runCliAsync(
+        ["attack", "app.yaml", "--base", "http://x/api", "--role", "staff"],
+        io,
+        send,
+      ),
+    ).toBe(0);
+  });
+
+  it("--collection の書き方を間違えたら、形を言う", async () => {
+    const io = fakeIo({ "app.yaml": APP });
+    const { send } = server();
+    expect(
+      await runCliAsync(
+        ["probe", "app.yaml", "--base", "http://x/api", "--collection", "orders"],
+        io,
+        send,
+      ),
+    ).toBe(1);
+    expect(io.stderr.join("")).toContain("orderRepository=sales-orders");
+  });
+
+  it("同期の入口からは呼べない（通信するので）", () => {
+    const io = fakeIo({ "app.yaml": APP });
+    expect(runCli(["probe", "app.yaml", "--base", "http://x/api"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("この入口からは呼べません");
   });
 });

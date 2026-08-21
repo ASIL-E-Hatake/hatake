@@ -60,6 +60,8 @@ npx hatake advise page.yaml --rules team.json # 案件ごとの決めごとで�
 npx hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
 npx hatake diagram app.yaml --out app.svg    # 画面とメニューと遷移の図（権限も重なる）
 npx hatake diagram app.yaml --role admin     # その役割で通れる道だけ
+npx hatake probe app.yaml --base http://localhost:8080/api   # 宣言どおり返ってくるか、叩いて見る
+npx hatake attack app.yaml --role staff --base http://localhost:8080/api  # 見えない口が本当に閉じているか
 ```
 
 | コマンド | 何をするか |
@@ -69,6 +71,8 @@ npx hatake diagram app.yaml --role admin     # その役割で通れる道だけ
 | `dto <file>` | API の形（`DtoSpec`）を JSON で |
 | `diff <old> <new>` | 定義を変えた影響範囲。API の形（壊すか）＋画面・権限・アプリ構成の変化（確かめてほしいか）。`app:` どうしも比べられる。`--api-only` で契約だけ、`--caution-as-error` で「要確認」でも終了コード 1。**壊す変更があれば終了コード 1** |
 | `wire <file>` | その定義を**アプリに繋ぐコード**（Flutter の `HatakeScope`）の下書きを Dart で出す。要る登録を全部並べ、**中身は TODO**（`UnimplementedError`）で空ける。`--base /api` で Repository は `hatake_http`（REST）、`--out` でファイル、`--class` / `--assets` で名前と読み場所 |
+| `probe <file> --base <url>` | 定義が要求している口を**実際に叩いて**、返りを宣言（`openapi` と同じもと）と突き合わせる。足りない項目・型違い（**文字で来た金額**は桁区切りも合計も静かに効かない）・`{items, totalCount}` でない・`pageSize` が効かない・**行に鍵が無い**・一覧に在る行が1件取得で 404。**読むだけ**（`POST`/`PUT`/`DELETE` は叩かない）。`--dry-run` で叩かずに「何を叩くか」だけ。**食い違いがあれば終了コード 1** |
+| `attack <app> --role <role> --base <url>` | その役割で**画面から見えない**はずの口を叩いて、API が実際に拒否するか見る。開ける画面が拒否されたらそれも食い違い（画面は出てもデータが来ない）。開ける画面まで全部拒否なら「資格が通っていない疑い」と言う。押せないボタン（書き込む口）は**叩かず一覧で渡す**。**穴があれば終了コード 1** |
 | `refs <file...>` | その定義が**外に要求しているもの**（Repository・プラグイン・出す口（`exportSink` / `printSink`）・独自のフォーマッタ…）を種類ごとに。`--needs-registration` で「組み込みに無い＝自分で登録が要るもの」だけ。出力はそのまま `--registry` に渡せる形 |
 | `registry <path...>` | 逆向き。**アプリの実装を読んで**「登録済みのもの」の一覧を作る（`--out` でファイルへ）。path はファイルでもディレクトリでも。読めない登録があれば終了コード 1 |
 | `schema <file>` | JSON Schema 2020-12 |
@@ -814,7 +818,7 @@ npm run build
 claude mcp add hatake -- node "$PWD/dist/mcp.js"      # Claude Code の場合
 ```
 
-道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_explain` / `hatake_fix` / `hatake_minimize` / `hatake_refs` / `hatake_api_shape` の11個で、CLI と同じ関数を呼んでいる（＝同じ答えになる）。`hatake_explain` は `before` を渡せば変更の言い直し、`brief: true` なら1行（道具を増やすより、同じ道具の引数で足りる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
+道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_explain` / `hatake_fix` / `hatake_minimize` / `hatake_refs` / `hatake_api_shape` / `hatake_print_preview` / `hatake_wire` の13個で、CLI と同じ関数を呼んでいる（＝同じ答えになる）。**`probe` / `attack` は道具にしていない**（叩く相手・資格・タイミングを決めるのは人の仕事で、エージェントが自分の判断で他人のサーバに要求を飛ばせる口は作らない）。`hatake_explain` は `before` を渡せば変更の言い直し、`brief: true` なら1行（道具を増やすより、同じ道具の引数で足りる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
 
 ## 開発（Docker）
 
