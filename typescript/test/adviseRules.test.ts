@@ -50,6 +50,10 @@ const EVERYTHING = `app:
                   - { field: amount, label: 金額, type: number }
       actions:
         - { id: remove, type: delete, label: 削除 }
+        # 一括は roles を書いてあるので open-dangerous-action は出ない。
+        # 出るのは「確認が無い」の側だけ。
+        - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
+            scope: selection, roles: [admin] }
     - type: report
       id: sales_report
       title: 売上明細表

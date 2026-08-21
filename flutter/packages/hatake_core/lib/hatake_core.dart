@@ -5,6 +5,7 @@
 library;
 
 // Type constants (open, plugin-extensible).
+export 'src/definition/action_error_definition.dart';
 export 'src/definition/action_scopes.dart';
 export 'src/definition/action_types.dart';
 export 'src/definition/aggregate_ops.dart';

@@ -817,6 +817,70 @@ describe("同梱の資料との辻褄", () => {
   });
 });
 
+describe("埋まらない差し込み", () => {
+  const action = (body: string) => `
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+  search:
+    filters: [{ field: status, label: 状態 }]
+  actions:
+${body}
+`;
+
+  it("件数の差し込みは一括のときだけ埋まる", () => {
+    const found = warningsOf(action(`    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 承認
+      onSuccess: { message: '{count} 件を承認しました' }`));
+    const w = found.find((x) => x.rule === "placeholder-not-filled");
+    expect(w?.path).toBe("page.actions[0].onSuccess.message");
+    expect(w?.message).toContain("{count}");
+    expect(w?.message).toContain("scope: selection");
+  });
+
+  it("一括なら言わない", () => {
+    expect(
+      rulesOf(action(`    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+      roles: [admin]
+      confirm: { message: 承認します }
+      onSuccess: { message: '{count} 件を承認しました' }
+      onError: { message: '{failed} 件は締め済みでした' }`)),
+    ).toEqual([]);
+  });
+
+  it("成功の文言に {error} は埋まらない（失敗の理由が無い）", () => {
+    const found = warningsOf(action(`    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 承認
+      onSuccess: { message: '承認しました（{error}）' }`));
+    const w = found.find((x) => x.rule === "placeholder-not-filled");
+    expect(w?.path).toBe("page.actions[0].onSuccess.message");
+    expect(w?.fix).toContain("onError.message");
+  });
+
+  it("失敗の文言の {error} は埋まる（言わない）", () => {
+    expect(
+      rulesOf(action(`    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 承認
+      onError: { message: '承認できません（{error}）' }`)),
+    ).toEqual([]);
+  });
+});
+
 describe("選んだ行に対して実行するボタン", () => {
   it("表の無い画面に置いたら、選ぶ手段が無いと言う", () => {
     const found = warningsOf(`

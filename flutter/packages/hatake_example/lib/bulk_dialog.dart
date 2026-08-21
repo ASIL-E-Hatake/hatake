@@ -11,11 +11,20 @@ class BulkDialog extends StatelessWidget {
 
   const BulkDialog({super.key, required this.action, required this.records});
 
-  static Future<void> show(ActionContext ctx) {
-    return showDialog<void>(
+  static Future<void> show(ActionContext ctx) async {
+    await showDialog<void>(
       context: ctx.buildContext,
       builder: (_) => BulkDialog(action: ctx.action, records: ctx.records),
     );
+    // 「出荷済みは承認できない」＝業務の判断はアプリ側。結果は件数で報告して、
+    // 何と言うかは定義（onSuccess / onError）に任せる。一部だけ失敗するのが
+    // 一括の普通の姿なので、デモもそこを見せる。
+    final rejected =
+        ctx.records.where((r) => r['status'] == '出荷済').length;
+    ctx.report(ActionOutcome(
+      succeeded: ctx.records.length - rejected,
+      failed: rejected,
+    ));
   }
 
   @override

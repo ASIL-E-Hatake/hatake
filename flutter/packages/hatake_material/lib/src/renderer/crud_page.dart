@@ -245,7 +245,16 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
     }
     if (!mounted) return;
     await _controller.deleteRecord(key);
-    if (!mounted || _controller.error != null) return;
+    if (!mounted) return;
+    final failure = _controller.error;
+    if (failure != null) {
+      // 消せなかった理由は画面にも出るが、業務の言葉で言えるなら定義側が言う
+      // （「受注が残っているので削除できません」）。
+      if (declared?.onError != null) {
+        _showActionFailure(context, declared!, error: failure);
+      }
+      return;
+    }
     _afterActionSuccess(context, declared?.onSuccess, record: record);
   }
 

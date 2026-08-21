@@ -275,7 +275,7 @@ Note the difference: `between` / `startsWith` / `endsWith` are search-only, whil
 
 `table.rowActions` is an array of action **ids** (strings), not objects. `edit` and `delete` are built in.
 
-### Confirming and reacting (`confirm` / `onSuccess`)
+### Confirming and reacting (`confirm` / `onSuccess` / `onError`)
 
 "Ask before deleting" and "go back to the list once saved" are declared, not coded.
 
@@ -294,10 +294,15 @@ actions:
       message: Customer deleted
       page: customer_list         # optional: move here afterwards
       params: { id: "$row.id" }
+    onError:                      # what the user is told when it failed
+      message: Orders still reference this customer ({error})
 ```
 
 * **A `delete` asks even without `confirm`** — it cannot be undone. Declaring `confirm` replaces the wording.
 * `onSuccess` never runs on failure (unregistered handler, no export sink, a repository that refuses).
+* Without `onError` the raw reason is shown (`RepositoryHttpException: … 500 …`). `onError` has **no `page`**: leaving the screen that failed hides what happened and takes the row to fix out of sight.
+* Placeholders fill only when known — `{error}` on failure, `{count}` / `{failed}` / `{total}` only for `scope: selection`. An unfillable one stays as text, and `validate` reports `placeholder-not-filled` before you press anything.
+* A bulk handler reports counts with `ctx.report(ActionOutcome(succeeded: …, failed: …))`. **A partial result does not run `onSuccess`** — one row left behind keeps the screen where it is.
 * `create` / `edit` only open a form, so `onSuccess` does not apply to them — whether the save worked is not known at that point.
 
 ### Aggregates (`value.aggregate`, `chart.aggregate`, report `totals`)

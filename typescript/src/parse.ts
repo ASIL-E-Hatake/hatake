@@ -4,6 +4,7 @@ import {
   ActionScopes,
   kDslVersion,
   type ActionDefinition,
+  type ActionErrorDefinition,
   type ActionSuccessDefinition,
   type ConfirmDefinition,
   type OptionsSource,
@@ -543,6 +544,7 @@ function parseAction(m: Dict): ActionDefinition {
     plugin: optString(m, "plugin"),
     confirm: parseConfirm(optDict(m, "confirm")),
     onSuccess: parseActionSuccess(optDict(m, "onSuccess")),
+    onError: parseActionError(optDict(m, "onError")),
     config: optDict(m, "config") ?? {},
     roles: optList(m, "roles").map(String),
   };
@@ -558,6 +560,13 @@ function parseConfirm(m: Dict | undefined): ConfirmDefinition | undefined {
     cancelLabel: optString(m, "cancelLabel"),
     danger: m["danger"] === true,
   };
+}
+
+function parseActionError(
+  m: Dict | undefined,
+): ActionErrorDefinition | undefined {
+  if (m === undefined) return undefined;
+  return { message: reqString(m, "message", "onError.message") };
 }
 
 function parseActionSuccess(

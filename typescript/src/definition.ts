@@ -184,6 +184,21 @@ export interface ConfirmDefinition {
 }
 
 /** What happens once the action succeeded. Never runs when it failed. */
+/**
+ * What the user is told when the action failed.
+ *
+ * A failure never moves the screen (unlike `onSuccess`): leaving the screen that
+ * failed hides what happened, and the row to fix is still on it.
+ */
+export interface ActionErrorDefinition {
+  /**
+   * Shown instead of the raw failure. Placeholders, filled when known:
+   * `{error}` the reason, `{count}` / `{failed}` / `{total}` the row counts of a
+   * `scope: selection` action.
+   */
+  message: string;
+}
+
 export interface ActionSuccessDefinition {
   /** Shown briefly to the user. */
   message?: string;
@@ -204,6 +219,8 @@ export interface ActionDefinition {
   confirm?: ConfirmDefinition;
   /** What to do once it succeeded. */
   onSuccess?: ActionSuccessDefinition;
+  /** What the user is told when it failed. */
+  onError?: ActionErrorDefinition;
   config: Record<string, unknown>;
   /** Roles allowed to use this action (see isAllowed). Empty = everyone. */
   roles: string[];

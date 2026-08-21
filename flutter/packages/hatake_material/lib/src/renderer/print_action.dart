@@ -27,7 +27,8 @@ Future<bool> _runPrintAction(
     ));
     return false;
   }
-  try {
+  // 失敗はそのまま外へ投げる（言い方は `_dispatchAction` が決める）。
+  {
     await sink(PrintRequest(
       filename: _printFilename(action, page.title),
       page: page,
@@ -40,9 +41,6 @@ Future<bool> _runPrintAction(
       actionId: action.id,
     ));
     return true;
-  } catch (error) {
-    messenger.showSnackBar(SnackBar(content: Text('印刷に失敗しました: $error')));
-    return false;
   }
 }
 

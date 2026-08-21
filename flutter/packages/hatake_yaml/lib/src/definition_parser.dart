@@ -473,6 +473,7 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
     plugin: m.optString('plugin'),
     confirm: _parseConfirm(m.optMap('confirm')),
     onSuccess: _parseActionSuccess(m.optMap('onSuccess')),
+    onError: _parseActionError(m.optMap('onError')),
     // Lift top-level `page` / `params` (navigate actions) into config so the
     // ActionDefinition model stays unchanged.
     config: {
@@ -501,6 +502,13 @@ ActionSuccessDefinition? _parseActionSuccess(Map<String, Object?>? m) {
     message: m.optString('message'),
     page: m.optString('page'),
     params: m.optMap('params') ?? const {},
+  );
+}
+
+ActionErrorDefinition? _parseActionError(Map<String, Object?>? m) {
+  if (m == null) return null;
+  return ActionErrorDefinition(
+    message: m.reqString('message', at: 'onError.message'),
   );
 }
 

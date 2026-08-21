@@ -208,7 +208,7 @@ describe("見えるもの・できること", () => {
     - { id: detail, type: navigate, label: 詳細, page: customer_detail }
     - { id: printPdf, type: print, label: 印刷 }
     - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
-        scope: selection }`,
+        scope: selection, onError: { message: 承認できませんでした } }`,
       }),
       "できる操作",
     );
@@ -217,8 +217,11 @@ describe("見えるもの・できること", () => {
     );
     expect(text[1]).toBe("詳細 … 別の画面へ移る（customer_detail へ）");
     expect(text[2]).toBe("印刷 … 紙に刷る");
+    // 一括は「一度に何件動くか」まで言う（危険度がそこで変わる）。
     expect(text[3]).toBe(
-      "一括承認 … アプリ側の処理を呼ぶ（approveOrders）。選んだ行に対して実行する",
+      "一括承認 … アプリ側の処理を呼ぶ（approveOrders）。" +
+        "選んだ行に対して実行する（一度に最大 50 件）。" +
+        "失敗したら「承認できませんでした」と出す",
     );
   });
 

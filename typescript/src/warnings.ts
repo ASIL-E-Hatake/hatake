@@ -375,6 +375,7 @@ function checkPage(
   checkActions(actions, `${path}.actions`, pageIds, found);
   checkPrint(page, actions, path, found);
   checkSelection(page, actions, path, found);
+  checkPlaceholders(actions, `${path}.actions`, found);
   checkTable(page, actionIds, path, found);
   checkSearch(page, path, found);
   checkForm(page, path, found);
@@ -455,7 +456,64 @@ function checkSelection(
           `押しても実行されません。`,
         "一括の中身は業務なので `type: plugin`（＋`plugin:`）で書き、" +
           "選んだ行はハンドラが受け取ってください。",
+        "bulk-delete",
       );
+    }
+  });
+}
+
+/** 件数の差し込み（一括のときだけ埋まる）。 */
+const COUNT_PLACEHOLDERS = ["{count}", "{failed}", "{total}"];
+
+/**
+ * 埋まらない差し込みを書いた文言。
+ *
+ * `onSuccess.message` / `onError.message` には差し込みが書ける。ただし埋まる条件が
+ * あって、**条件を満たしていなければ差し込みは文字のまま出る**（`{count} 件を承認
+ * しました`）。定義は通り、画面も出るので、**実際に押すまで気づけない**。
+ *
+ * 件数（`{count}` / `{failed}` / `{total}`）が埋まるのは `scope: selection` の
+ * ボタンだけ。`{error}` が埋まるのは失敗したときだけ＝`onSuccess` には無い。
+ */
+function checkPlaceholders(
+  actions: Dict[],
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  actions.forEach((action, i) => {
+    const bulk = str(action.scope) === ActionScopes.selection;
+    const label = str(action.label) ?? str(action.id) ?? "ボタン";
+    const success = isDict(action.onSuccess) ? action.onSuccess : undefined;
+    const error = isDict(action.onError) ? action.onError : undefined;
+
+    for (const [node, message] of [
+      ["onSuccess", str(success?.message)],
+      ["onError", str(error?.message)],
+    ] as const) {
+      if (message === undefined) continue;
+      const used = COUNT_PLACEHOLDERS.filter((p) => message.includes(p));
+      if (used.length > 0 && !bulk) {
+        warn(
+          found,
+          "placeholder-not-filled",
+          `${path}[${i}].${node}.message`,
+          `「${label}」の文言にある ${used.join(" / ")} は埋まりません` +
+            `（件数が決まるのは \`scope: selection\` のボタンだけ）。` +
+            `そのまま文字として出ます。`,
+          "件数を言うなら `scope: selection` のボタンに書いてください。" +
+            "1件の操作なら差し込みを外します。",
+        );
+      }
+      if (node === "onSuccess" && message.includes("{error}")) {
+        warn(
+          found,
+          "placeholder-not-filled",
+          `${path}[${i}].onSuccess.message`,
+          `「${label}」の成功時の文言に {error} がありますが、成功に失敗の理由は` +
+            `ありません。そのまま文字として出ます。`,
+          "失敗したときの文言は `onError.message` に書いてください。",
+        );
+      }
     }
   });
 }

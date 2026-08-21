@@ -272,6 +272,47 @@ page:
       expect(page.actions[1].scope, ActionScopes.selection);
     });
 
+    test('onError を読む（失敗したときの文言は定義側に置ける）', () {
+      final page = parsePageYaml('''
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+      onSuccess: { message: '{count} 件を承認しました' }
+      onError: { message: '{failed} 件は締め済みでした' }
+''', strict: true) as SearchPageDefinition;
+      expect(page.actions.single.onError?.message, '{failed} 件は締め済みでした');
+      expect(page.actions.single.onSuccess?.message, '{count} 件を承認しました');
+    });
+
+    test('onError に message が無ければ落ちる（言うことが無い節を書けない）', () {
+      expect(
+        () => parsePageYaml('''
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - { id: approve, type: plugin, plugin: p, label: 承認, onError: {} }
+'''),
+        throwsA(isA<DefinitionParseException>()),
+      );
+    });
+
     test('読めないものは理由つきで落ちる', () {
       // 閉じていない引用符は YAML として壊れている。
       expect(() => decodeDefinitionYaml('page: "unterminated'),
