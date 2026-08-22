@@ -294,6 +294,8 @@ app:
                   - { field: qty, label: 数量, type: number, width: 90 }
                   - { field: price, label: 単価, type: number, width: 130, format: currency, config: { symbol: "¥" } }
                   - { field: amount, label: 金額, type: number, width: 130, format: currency, config: { symbol: "¥" } }
+                  # 取消印は列にも出す。出さないと、合計から外れた行を画面で見分けられない。
+                  - { field: cancelled, label: 取消, type: checkbox, width: 80 }
                 fields:
                   - { field: item, label: 品名, type: text, required: true }
                   - { field: qty, label: 数量, type: number, required: true, validators: [ { type: min, value: 1 } ] }
