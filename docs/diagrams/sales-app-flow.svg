@@ -88,5 +88,5 @@
   <text class="caption" x="24" y="638">  売上ダッシュボード → 受注照会（受注照会） / 受注照会 → 受注入力（明細編集）</text>
   <text class="caption" x="24" y="674">受注照会 → 受注入力（明細別テーブル）（明細（別テーブル））</text>
   <text class="caption" x="24" y="710">すべての画面がメニューか遷移からたどれる。</text>
-  <text class="caption" x="24" y="746">赤枠＝<tspan class="caption strong">誰でも開けて、消す・持ち出すができる画面</tspan>（2 枚）。ボタンの `roles` か、入口の `roles` を決める。</text>
+  <text class="caption" x="24" y="746">赤枠＝<tspan class="caption strong">誰でも開けて、消す・持ち出す・まとめて実行ができる画面</tspan>（2 枚）。ボタンの `roles` か、入口の `roles` を決める。</text>
 </svg>

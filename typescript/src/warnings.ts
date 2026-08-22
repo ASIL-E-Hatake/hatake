@@ -554,6 +554,10 @@ const KNOWN_PLACEHOLDERS = [...COUNT_PLACEHOLDERS, "{error}"];
  *
  * 件数（`{count}` / `{failed}` / `{total}`）が埋まるのは `scope: selection` の
  * ボタンだけ。`{error}` が埋まるのは失敗したときだけ＝`onSuccess` には無い。
+ *
+ * **押す前**（`confirm` と `prompt` の文言）は、分かっているのが「選んだ行の数」だけ
+ * なので `{count}` しか埋まらない。まだ1件も動いていないので `{failed}` / `{total}` /
+ * `{error}` は文字のまま出る。
  */
 function checkPlaceholders(
   actions: Dict[],
@@ -607,6 +611,45 @@ function checkPlaceholders(
           `「${label}」の成功時の文言に {error} がありますが、成功に失敗の理由は` +
             `ありません。そのまま文字として出ます。`,
           "失敗したときの文言は `onError.message` に書いてください。",
+        );
+      }
+    }
+
+    // 押す前の文言（確認と、聞く形の見出し）。ここで分かっているのは**件数だけ**。
+    const confirm = isDict(action.confirm) ? action.confirm : undefined;
+    const prompt = isDict(action.prompt) ? action.prompt : undefined;
+    for (const [node, message] of [
+      ["confirm.message", str(confirm?.message)],
+      ["confirm.title", str(confirm?.title)],
+      ["prompt.title", str(prompt?.title)],
+    ] as const) {
+      if (message === undefined) continue;
+      if (message.includes("{count}") && !bulk) {
+        warn(
+          found,
+          "placeholder-not-filled",
+          `${path}[${i}].${node}`,
+          `「${label}」の押す前の文言にある {count} は埋まりません` +
+            `（件数が決まるのは \`scope: selection\` のボタンだけ）。` +
+            `そのまま文字として出ます。`,
+          "件数を言うなら `scope: selection` のボタンに書いてください。" +
+            "1件の操作なら差し込みを外します。",
+        );
+      }
+      // 走る前なので、失敗の数も理由もまだ無い。
+      const early = [...message.matchAll(/\{[^{}]*\}/g)]
+        .map((one) => one[0])
+        .filter((one) => one !== "{count}");
+      if (early.length > 0) {
+        warn(
+          found,
+          "placeholder-not-filled",
+          `${path}[${i}].${node}`,
+          `「${label}」の押す前の文言にある ${[...new Set(early)].join(" / ")} は` +
+            `埋まりません（まだ実行していないので、失敗の数も理由もありません）。` +
+            `そのまま文字として出ます。`,
+          "押す前に書けるのは {count}（選んだ行の数）だけです。" +
+            "結果を言う文言は `onSuccess` / `onError` に書いてください。",
         );
       }
     }

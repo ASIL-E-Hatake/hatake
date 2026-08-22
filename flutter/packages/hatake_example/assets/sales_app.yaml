@@ -180,7 +180,9 @@ app:
           plugin: approveOrders
           label: 一括承認
           scope: selection
-          confirm: { message: 選んだ受注を承認します }
+          # 確認の文の {count} は**押す前に**埋まる（選んだ行の数）。ボタンにも件数は
+          # 出るが、最後に読むのはこの文なので、数はここにも出す。
+          confirm: { message: '{count} 件の受注を承認します' }
           onSuccess: { message: '{count} 件を承認しました' }
           onError: { message: '{count} 件を承認しました（{failed} 件は出荷済みなので承認できません）' }
         # 実行の前に聞く。聞いた値はハンドラが ActionContext.input で受け取る。
@@ -190,7 +192,7 @@ app:
           plugin: rejectOrders
           label: 却下
           scope: selection
-          confirm: { message: 却下すると元に戻せません。, danger: true }
+          confirm: { message: '{count} 件を却下します。元に戻せません。', danger: true }
           prompt:
             title: 却下の理由
             okLabel: 却下する
@@ -198,6 +200,7 @@ app:
               - { field: reason, label: 理由, type: textarea, required: true }
               - { field: rejectedOn, label: 却下日, type: date }
           onSuccess: { message: '{count} 件を却下しました' }
+          onError: { message: '{count} 件を却下しました（{failed} 件は承認済みなので却下できません）' }
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: order_search } }
 
     # 帳票: 一覧の印刷版。明細の列は table から取り、report が「紙の構造」を足す。

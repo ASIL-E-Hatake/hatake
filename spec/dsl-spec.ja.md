@@ -1200,6 +1200,18 @@ Flutter ではハンドラが `ActionContext.input` で受け取る（キーは�
 | `{failed}` | 失敗した件数（同上） |
 | `{total}` | 対象の件数（同上） |
 
+**押す前の文言**（`confirm.title` / `confirm.message` / `prompt.title`）にも `{count}` を
+書ける。そこで入るのは**選んだ行の数**（`scope: selection` のときだけ）。まだ何も動いて
+いないので `{failed}` / `{total}` / `{error}` は埋まらない（`validate` が言う）。
+
+```yaml
+  confirm: { message: '{count} 件を承認します' }   # 押す前 → 選んだ行の数
+  onSuccess: { message: '{count} 件を承認しました' } # 走ったあと → 成功した件数
+```
+
+ボタンのラベルにも件数は出る（「一括承認（3 件）」）。それでも確認の文に書くのは、
+**最後に読むのがこの文**だから（`advise` が `bulk-confirm-without-count` で言う）。
+
 ```yaml
 - id: approveSelected
   type: plugin
@@ -1346,7 +1358,7 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `computed-aggregate-without-of` | 行を畳む計算に `of` が無い（`count` 以外） → 何を畳むか決まらないので空欄になる |
 | `computed-field-and-fields` | `field` と `fields` の両方を書いた → `field` が勝ち、`fields` は効かない |
 | `create-action-unusable` | `type: create` を `crud` / `master` 以外の画面に置いた → ボタンは出るが**押しても何も起きない**（`create` が開くのは一覧からの新規入力。`form` / `wizard` には保存ボタンが最初から出ている） |
-| `placeholder-not-filled` | `onSuccess` / `onError` の文言に**埋まらない差し込み**を書いた（件数は `scope: selection` だけ、`{error}` は失敗だけ、**それ以外の名前＝`{orderNo}` のような項目名は埋める口が無い**）→ 押すまで気づけず、文字のまま出る |
+| `placeholder-not-filled` | 文言に**埋まらない差し込み**を書いた（`onSuccess` / `onError` は件数が `scope: selection` だけ・`{error}` は失敗だけ、**押す前**（`confirm` / `prompt.title`）は `{count}` だけ＝まだ失敗も理由も無い、**それ以外の名前＝`{orderNo}` のような項目名は埋める口が無い**）→ 押すまで気づけず、文字のまま出る |
 | `selection-without-table` | `scope: selection` のボタンを**表の無い画面**に置いた → 選ぶ手段が無いので、押せないボタンが出たままになる |
 | `selection-unsupported-type` | `scope: selection` を `plugin` 以外の型に書いた → 押しても実行されない（一括の中身は業務＝アプリ側の処理） |
 | `print-without-report` | `type: print` のボタンを **`report` の無い画面**に置いた → 刷る紙が無いので、ボタンは出るのに押すと「このページでは刷れません」と言われる |

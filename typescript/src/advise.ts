@@ -73,6 +73,26 @@ const MONEY_WORDS = [
 ];
 
 /**
+ * 戻せない操作らしい名前（一括の確認を赤くしておきたい所を拾うための、名前による推測）。
+ *
+ * 型が `delete` なら Renderer が既定で赤くするので、ここで拾うのは**プラグインの一括**
+ * （`type: plugin` で消す・戻せないことをする）だけ。
+ */
+const DESTRUCTIVE_WORDS = [
+  "delete",
+  "remove",
+  "purge",
+  "discard",
+  "reject",
+  "cancel",
+  "削除",
+  "取消",
+  "破棄",
+  "却下",
+  "廃止",
+];
+
+/**
  * 助言を集める。素の document を見る（既定値で埋まった姿ではなく、**書いてあるもの**を
  * 見たいので）。
  *
@@ -229,24 +249,147 @@ function checkBuiltins(
     });
   }
 
+  // ── ここから「危ない一括」──────────────────────────────────────
+  //
+  // 助言は好みの話だが、**一括だけは既定で厳しくていい**。1件ずつなら「押し間違えた」で
+  // 済むのに、一括は**1回の操作が件数ぶん動く**（しかも途中まで進んで終わる）。
+  const bulkActions = actions
+    .map((action, index) => ({ action, index }))
+    .filter(({ action }) => str(action.scope) === ActionScopes.selection);
+  const labelOf = (action: Dict): string =>
+    str(action.label) ?? str(action.id) ?? "ボタン";
+
   // まとめて実行するのに、押す前の確認が無い。
   //
-  // 1件ずつなら「押し間違えた」で済むが、一括は**1回の操作が件数ぶん動く**。
   // `confirm` は1行で足せるうえ、押し間違いを最後に止められる唯一の関門。
-  for (const [index, action] of actions.entries()) {
+  // ただし `prompt` を書いてあるなら**その OK が確認そのもの**（ダイアログは1枚しか
+  // 出ない）ので、聞いている＝止められる側として数える。
+  for (const { action, index } of bulkActions) {
     if (!enabled(rules, "bulk-without-confirm")) break;
-    if (str(action.scope) !== ActionScopes.selection) continue;
-    if (isDict(action.confirm)) continue;
+    if (isDict(action.confirm) || isDict(action.prompt)) continue;
     found.push({
       rule: "bulk-without-confirm",
       where: `${path}.actions[${index}].confirm`,
       says:
-        `「${str(action.label) ?? action.id}」は選んだ行にまとめて実行しますが、` +
+        `「${labelOf(action)}」は選んだ行にまとめて実行しますが、` +
         `確認を出しません。押し間違いが件数ぶん効きます。`,
       add: "`confirm: { message: … }`（何件に何をするのかを書く）。",
       key: "confirm",
       node: "action",
     });
+  }
+
+  // 確認は出すのに、**何件動くのか**を言っていない。
+  //
+  // ボタンには件数が出る（「一括承認（3 件）」）。しかし確認のダイアログはその上に
+  // かぶるので、**最後に読む文には数が無い**。`{count}` は一括の確認で埋まる
+  // （押す前に選んだ数は分かっている）ので、書けば数が出る。
+  for (const { action, index } of bulkActions) {
+    if (!enabled(rules, "bulk-confirm-without-count")) break;
+    const prompt = isDict(action.prompt) ? action.prompt : undefined;
+    const confirm = isDict(action.confirm) ? action.confirm : undefined;
+    // 聞く形（prompt）の見出しも「押す前に読む文」。confirm と prompt.title の
+    // どちらに書いてあってもよい（prompt に message は無い＝中身は聞く項目）。
+    const shown = [str(confirm?.message), str(confirm?.title), str(prompt?.title)]
+      .filter((text): text is string => text !== undefined);
+    if (shown.length === 0) continue; // 確認そのものが無い＝上の規則の話
+    if (shown.some((text) => text.includes("{count}"))) continue;
+    found.push({
+      rule: "bulk-confirm-without-count",
+      where: `${path}.actions[${index}].confirm`,
+      says:
+        `「${labelOf(action)}」の確認に件数がありません。ボタンには件数が出ますが、` +
+        `**最後に読む確認の文**には出ないので、3件のつもりが30件でも同じ文が出ます。`,
+      add: "確認の文に `{count}`（`{count}` 件を承認します）。一括のときだけ埋まります。",
+      key: "confirm",
+      node: "action",
+    });
+  }
+
+  // 一括なのに、失敗したときの言い方が無い。
+  //
+  // 一括は**途中まで進んで終わる**（100件のうち3件だけ失敗する）のが普通で、これは
+  // 1件ずつのボタンには無い話。Renderer の既定でも件数は出るが、業務の言葉では出ない。
+  for (const { action, index } of bulkActions) {
+    if (!enabled(rules, "bulk-without-error-message")) break;
+    if (isDict(action.onError)) continue;
+    found.push({
+      rule: "bulk-without-error-message",
+      where: `${path}.actions[${index}].onError`,
+      says:
+        `「${labelOf(action)}」は一括ですが、失敗したときの言い方がありません。` +
+        `一括は**途中まで進んで終わる**（何件かだけ失敗する）ので、` +
+        `何が起きたのかを業務の言葉で言えません。`,
+      add:
+        "`onError: { message: '{count} 件を…（{failed} 件は…）' }`" +
+        "（`{count}` / `{failed}` / `{total}` は一括で埋まります）。",
+      key: "onError",
+      node: "action",
+    });
+  }
+
+  // 消す側の一括なのに、確認の OK が普通のボタンに見える。
+  //
+  // `type: delete` は Renderer が既定で赤くする。危ないのは**プラグインの一括**で、
+  // 名前が「削除」でも見た目は普通の OK になる。名前から推測しているので `guess`。
+  const destructive: string[] = knob(
+    rules,
+    "bulk-destructive-without-danger",
+    "words",
+    DESTRUCTIVE_WORDS,
+  );
+  for (const { action, index } of bulkActions) {
+    if (!enabled(rules, "bulk-destructive-without-danger")) break;
+    if (str(action.type) === "delete") continue; // 既定で赤い
+    const name = `${str(action.id) ?? ""} ${str(action.label) ?? ""}`.toLowerCase();
+    if (!destructive.some((word) => name.includes(word.toLowerCase()))) continue;
+    const confirm = isDict(action.confirm) ? action.confirm : undefined;
+    if (confirm?.danger === true) continue;
+    found.push({
+      rule: "bulk-destructive-without-danger",
+      where: `${path}.actions[${index}].confirm`,
+      says:
+        `「${labelOf(action)}」は戻せない操作のようですが、確認の OK は普通のボタンに` +
+        `見えます（赤くなるのは \`type: delete\` と \`danger: true\` だけ）。`,
+      add: "`confirm: { message: …, danger: true }`。",
+      key: "confirm",
+      node: "action",
+      guess: true,
+    });
+  }
+
+  // 一括があるのに、1回で動く件数が決まっていない（または多い）。
+  //
+  // 一括が効くのは**選べる行**＝表に出ている行。ページ送りを切ると全件が出るので、
+  // 「全部選ぶ」が1回で全件を動かす操作になる。
+  if (bulkActions.length > 0 && enabled(rules, "bulk-on-many-rows") && table !== undefined) {
+    const pagination = isDict(table.pagination) ? table.pagination : undefined;
+    const paging = pagination?.enabled !== false;
+    const size = typeof pagination?.pageSize === "number" ? pagination.pageSize : undefined;
+    const max = knob(rules, "bulk-on-many-rows", "maxRows", 100);
+    if (!paging) {
+      found.push({
+        rule: "bulk-on-many-rows",
+        where: `${path}.table.pagination.pageSize`,
+        says:
+          `まとめて実行するボタンがあるのに、ページ送りを切ってあります` +
+          `（全件が1画面に出ます）。「全部選ぶ」が**1回で全件**を動かす操作になります。`,
+        add: "`pagination: { pageSize: 50 }`（1回で動く上限を決める）。",
+        key: "pageSize",
+        node: "pagination",
+      });
+    } else if (size !== undefined && size > max) {
+      found.push({
+        rule: "bulk-on-many-rows",
+        where: `${path}.table.pagination.pageSize`,
+        says:
+          `1ページ ${size} 件なので、まとめて実行すると**1回で ${size} 件**動きます` +
+          `（${max} 件を超えています）。`,
+        add: `\`pageSize\` を ${max} 件以下にする（絞り込みで探してから選ぶ形にする）。`,
+        key: "pageSize",
+        node: "pagination",
+      });
+    }
   }
 
   // 金額らしい列・項目に見せ方が無い（桁区切りが無いと読めない）。

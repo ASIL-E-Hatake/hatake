@@ -1256,6 +1256,19 @@ Placeholders are filled only when known; an unfilled one **stays as text**, and 
 | `{failed}` | rows that failed (same) |
 | `{total}` | rows in the run (same) |
 
+**Before it runs** — `confirm.title`, `confirm.message` and `prompt.title` — `{count}` is
+the number of rows the user picked (`scope: selection` only). Nothing has happened yet, so
+`{failed}` / `{total}` / `{error}` do not fill there (`validate` says so).
+
+```yaml
+  confirm: { message: 'Approve {count} orders?' }   # before → rows picked
+  onSuccess: { message: 'Approved {count}' }        # after  → rows that succeeded
+```
+
+The button itself already shows the count ("Approve (3)"). Writing it in the confirmation
+too matters because **that sentence is the last thing read** before it happens (`advise`
+reports `bulk-confirm-without-count`).
+
 ```yaml
 - id: approveSelected
   type: plugin
@@ -1401,7 +1414,7 @@ npx hatake validate page.yaml --no-warn --json
 | `computed-aggregate-without-of` | a row-folding `computed` without `of` (except `count`) — nothing says what to fold, so the field shows empty |
 | `computed-field-and-fields` | both `field` and `fields` are written — `field` wins and `fields` does nothing |
 | `create-action-unusable` | `type: create` on a page other than `crud` / `master` — the button appears but **nothing happens when pressed** (`create` opens the new-record form of a list; `form` / `wizard` already have a save button) |
-| `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure, and **any other name — a field like `{orderNo}` — has nothing to fill it**) — it stays as literal text and you find out by pressing the button |
+| `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure, **before it runs only `{count}` fills** — there is no failure and no reason yet — and **any other name, a field like `{orderNo}`, has nothing to fill it**) — it stays as literal text and you find out by pressing the button |
 | `selection-without-table` | a `scope: selection` button on a page with **no table** — there is no way to choose rows, so the button stays unpressable |
 | `selection-unsupported-type` | `scope: selection` on a type other than `plugin` — pressing it does nothing (what a bulk operation *does* is business logic, so it belongs to the application) |
 | `print-without-report` | a `type: print` button on a page with **no `report`** — there is no paper to print, so the button appears and pressing it only reports that this page cannot print |

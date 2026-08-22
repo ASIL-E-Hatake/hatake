@@ -266,7 +266,9 @@ describe("権限を重ねる", () => {
 
   it("色の意味は、その色を使ったときだけ書く", () => {
     const notes = notesOf(appDiagram(app, raw));
-    expect(notes).toContain("赤枠＝**誰でも開けて、消す・持ち出すができる画面**（1 枚）");
+    expect(notes).toContain(
+      "赤枠＝**誰でも開けて、消す・持ち出す・まとめて実行ができる画面**（1 枚）",
+    );
     expect(notes).toContain("点線＝**誰も開けない画面**（1 枚）");
     expect(notes).toContain("出てくる役割: admin / manager");
     // 権限を書いていないアプリでは、役割の凡例は出さない。

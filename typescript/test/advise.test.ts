@@ -404,3 +404,131 @@ ${total}
     }
   });
 });
+
+describe("危ない一括を機械が言う", () => {
+  /** 一覧1枚＋一括ボタン1つ。[action] がそのボタン、[pagination] は表のページ送り。 */
+  const bulk = (action: string, pagination = "") => `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  search:
+    filters:
+      - { field: orderNo, label: 受注番号 }
+  table:
+${pagination}    columns:
+      - { field: orderNo, label: 受注番号, sortable: true }
+  actions:
+    - ${action}
+`;
+
+  /** 一括の規則だけを見る（一覧の作りの助言は別の話）。 */
+  const bulkRules = (source: string): string[] =>
+    rules(source).filter((one) => one.startsWith("bulk-"));
+
+  const FULL =
+    `{ id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
+        scope: selection, roles: [manager],
+        confirm: { message: '{count} 件を承認します' },
+        onError: { message: '{failed} 件は承認できませんでした' } }`;
+
+  it("確認・件数・失敗の言い方が揃っていれば何も言わない", () => {
+    expect(bulkRules(bulk(FULL))).toEqual([]);
+  });
+
+  it("確認が無ければ言う（押し間違いが件数ぶん効く）", () => {
+    const source = bulk(`{ id: approve, type: plugin, plugin: p, label: 一括承認,
+        scope: selection, roles: [manager],
+        onError: { message: 'x' } }`);
+    expect(bulkRules(source)).toEqual(["bulk-without-confirm"]);
+  });
+
+  it("聞く形（prompt）なら、その OK が確認そのもの＝確認が無いとは言わない", () => {
+    // ダイアログは1枚しか出ない（prompt の OK が実行）。ここで「確認が無い」と言うのは嘘。
+    const source = bulk(`{ id: notify, type: plugin, plugin: p, label: 通知,
+        scope: selection, roles: [manager],
+        prompt: { title: '{count} 件に通知します', fields: [{ field: memo, label: 本文 }] },
+        onError: { message: 'x' } }`);
+    expect(bulkRules(source)).toEqual([]);
+  });
+
+  it("聞く形でも、戻せない操作なら OK を赤くしろと言う（prompt の OK が実行そのもの）", () => {
+    // `danger` は `confirm` に書く。prompt だけを書くと OK は普通の色のまま。
+    const source = bulk(`{ id: reject, type: plugin, plugin: p, label: 却下,
+        scope: selection, roles: [manager],
+        prompt: { title: '{count} 件を却下します', fields: [{ field: reason, label: 理由 }] },
+        onError: { message: 'x' } }`);
+    expect(bulkRules(source)).toEqual(["bulk-destructive-without-danger"]);
+  });
+
+  it("確認はあるのに件数が無ければ言う（ボタンには出るが、最後に読む文には出ない）", () => {
+    const source = bulk(`{ id: approve, type: plugin, plugin: p, label: 一括承認,
+        scope: selection, roles: [manager],
+        confirm: { message: 選んだ受注を承認します },
+        onError: { message: 'x' } }`);
+    const found = advise(source).find((one) => one.rule === "bulk-confirm-without-count");
+    expect(found?.where).toBe("page.actions[0].confirm");
+    expect(found?.add).toContain("{count}");
+  });
+
+  it("失敗したときの言い方が無ければ言う（一括は途中まで進んで終わる）", () => {
+    const source = bulk(`{ id: approve, type: plugin, plugin: p, label: 一括承認,
+        scope: selection, roles: [manager],
+        confirm: { message: '{count} 件を承認します' } }`);
+    const found = advise(source).find((one) => one.rule === "bulk-without-error-message");
+    expect(found?.where).toBe("page.actions[0].onError");
+    expect(found?.says).toContain("途中まで進んで終わる");
+  });
+
+  it("戻せない名前なのに確認の OK が赤くなければ言う（推測なので guess）", () => {
+    const source = bulk(`{ id: discardSelected, type: plugin, plugin: p, label: 破棄,
+        scope: selection, roles: [manager],
+        confirm: { message: '{count} 件を破棄します' },
+        onError: { message: 'x' } }`);
+    const found = advise(source).find(
+      (one) => one.rule === "bulk-destructive-without-danger",
+    );
+    expect(found?.guess).toBe(true);
+    expect(found?.add).toContain("danger: true");
+  });
+
+  it("danger を書いてあれば言わない", () => {
+    const source = bulk(`{ id: discardSelected, type: plugin, plugin: p, label: 破棄,
+        scope: selection, roles: [manager],
+        confirm: { message: '{count} 件を破棄します', danger: true },
+        onError: { message: 'x' } }`);
+    expect(bulkRules(source)).toEqual([]);
+  });
+
+  it("型が delete なら赤いので言わない（Renderer の既定）", () => {
+    // 一括の削除は Renderer が持たないが、型を書くこと自体は定義として通る。
+    const source = bulk(`{ id: removeSelected, type: delete, label: 削除,
+        scope: selection, roles: [manager],
+        confirm: { message: '{count} 件を消します' },
+        onError: { message: 'x' } }`);
+    expect(bulkRules(source)).toEqual([]);
+  });
+
+  it("ページ送りを切った表に一括があれば言う（1回で全件動く）", () => {
+    const source = bulk(FULL, "    pagination: { enabled: false }\n");
+    const found = advise(source).find((one) => one.rule === "bulk-on-many-rows");
+    expect(found?.where).toBe("page.table.pagination.pageSize");
+    expect(found?.says).toContain("1回で全件");
+  });
+
+  it("1ページが多すぎれば言う（既定は 100 件まで）", () => {
+    const source = bulk(FULL, "    pagination: { pageSize: 500 }\n");
+    const found = advise(source).find((one) => one.rule === "bulk-on-many-rows");
+    expect(found?.says).toContain("1回で 500 件");
+  });
+
+  it("ページ送りが常識的なら言わない", () => {
+    expect(bulkRules(bulk(FULL, "    pagination: { pageSize: 50 }\n"))).toEqual([]);
+  });
+
+  it("一括でないボタンには、一括の物差しを当てない", () => {
+    // 1件ずつのボタンに「件数を書け」「失敗の言い方を書け」と言うのは見当違い。
+    const source = bulk(`{ id: csv, type: export, label: CSV出力, roles: [manager] }`);
+    expect(bulkRules(source)).toEqual([]);
+  });
+});

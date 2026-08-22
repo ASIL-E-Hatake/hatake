@@ -379,7 +379,8 @@ function legend(
   });
   if (dangerous.length > 0) {
     lines.push(
-      `赤枠＝**誰でも開けて、消す・持ち出すができる画面**（${dangerous.length} 枚）。` +
+      `赤枠＝**誰でも開けて、消す・持ち出す・まとめて実行ができる画面**` +
+        `（${dangerous.length} 枚）。` +
         "ボタンの `roles` か、入口の `roles` を決める。",
     );
   }

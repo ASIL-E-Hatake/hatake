@@ -583,6 +583,91 @@ jobs:
           grep -q 'bulk-without-confirm' /tmp/bulk-advise.log
           grep -q 'まとめて実行できます' /tmp/bulk-advise.log
 
+          # 一括だけは既定で厳しい。危ない書き方を1枚に集めて、5つ全部言うことを見る。
+          cat > /tmp/bulk-risky.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            search:
+              filters: [{ field: status, label: 状態 }]
+            table:
+              pagination: { enabled: false }
+              columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+            actions:
+              - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
+                  scope: selection, roles: [manager] }
+              - { id: notify, type: plugin, plugin: notifyOrders, label: 通知,
+                  scope: selection, roles: [manager],
+                  confirm: { message: 選んだ受注に通知します },
+                  onError: { message: 'x' } }
+              - { id: discardSelected, type: plugin, plugin: discardOrders, label: 破棄,
+                  scope: selection, roles: [manager],
+                  confirm: { message: '{count} 件を破棄します' },
+                  onError: { message: 'x' } }
+          YAML
+          node dist/cli.js advise /tmp/bulk-risky.yaml > /tmp/bulk-risky.log
+          for rule in bulk-without-confirm bulk-confirm-without-count \
+                bulk-without-error-message bulk-destructive-without-danger \
+                bulk-on-many-rows; do
+            grep -q "$rule" /tmp/bulk-risky.log || {
+              echo "$rule が出ていない"; exit 1; }
+          done
+          # 助言なので終了コードは変えない（一括でも警告に格上げしない）。
+          node dist/cli.js advise /tmp/bulk-risky.yaml > /dev/null
+          # 聞く形（prompt）は確認そのもの＝「確認が無い」と言わない（嘘を言わない）。
+          cat > /tmp/bulk-prompt.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            search:
+              filters: [{ field: status, label: 状態 }]
+            table:
+              pagination: { pageSize: 50 }
+              columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+            actions:
+              - { id: notify, type: plugin, plugin: notifyOrders, label: 通知,
+                  scope: selection, roles: [manager],
+                  prompt: { title: '{count} 件に通知します',
+                            fields: [{ field: memo, label: 本文 }] },
+                  onError: { message: 'x' } }
+          YAML
+          node dist/cli.js advise /tmp/bulk-prompt.yaml > /tmp/bulk-prompt.log
+          if grep -q 'bulk-' /tmp/bulk-prompt.log; then
+            echo "聞く形の一括に、要らない助言を出している"; exit 1
+          fi
+          # デモは自分の助言に従っている（一括については1件も出ない）。
+          node dist/cli.js advise "$DEMO" > /tmp/bulk-demo.log
+          if grep -q 'bulk-' /tmp/bulk-demo.log; then
+            echo "デモが自分の助言に従っていない"; exit 1
+          fi
+          # 権限で絞っていない一括は、図の棚卸しでも危ない側（赤枠）に出る。
+          cat > /tmp/bulk-open.yaml <<'YAML'
+          app:
+            id: sales
+            title: 販売
+            menu:
+              - { id: orders, label: 受注, page: order_search }
+            pages:
+              - type: search
+                id: order_search
+                title: 受注照会
+                repository: orderRepository
+                key: orderNo
+                table:
+                  columns: [{ field: orderNo, label: 受注番号 }]
+                actions:
+                  - { id: approve, type: plugin, plugin: approveOrders,
+                      label: 一括承認, scope: selection }
+          YAML
+          node dist/cli.js diagram /tmp/bulk-open.yaml --json > /tmp/bulk-roles.json
+          grep -q 'まとめて実行ができる画面' /tmp/bulk-roles.json
+
       - name: A failure speaks the definition's words
         working-directory: typescript
         run: |

@@ -8,6 +8,9 @@ import 'package:hatake_material/hatake_material.dart';
 /// こと: チェックボックスは一括ボタンが在るときだけ出て、ボタンは選ぶまで押せず、
 /// 実行したら選択は解ける。行が入れ替わったら選択は消える（画面に無い行に実行
 /// できてしまうのが一番危ない）。
+///
+/// 確認の文の `{count}` も見る。**最後に読むのはボタンではなく確認の文**なので、
+/// そこに数が出ないと「3件のつもりで30件」に気づけない（`hatake advise` が言う）。
 class _Orders implements Repository {
   final List<DataRecord> rows;
   int searches = 0;
@@ -58,6 +61,16 @@ const _approve = ActionDefinition(
   plugin: 'approveOrders',
   label: '一括承認',
   scope: ActionScopes.selection,
+);
+
+/// 確認を出す一括（文言に件数の差し込みを持つ）。
+const _approveAsking = ActionDefinition(
+  id: 'approve',
+  type: ActionTypes.plugin,
+  plugin: 'approveOrders',
+  label: '一括承認',
+  scope: ActionScopes.selection,
+  confirm: ConfirmDefinition(message: '{count} 件を承認します。よろしいですか？'),
 );
 
 const _page = SearchPageDefinition(
@@ -257,5 +270,67 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('選んだ行に対しては'), findsOneWidget);
+  });
+
+  testWidgets('確認の文の {count} は、押す前に選んだ件数で埋まる', (tester) async {
+    var ran = 0;
+    await tester.pumpWidget(_harness(
+      _Orders(_rows()),
+      approve: (ctx) async => ran = ctx.records.length,
+      definition: const SearchPageDefinition(
+        id: 'order_search',
+        title: '受注照会',
+        repository: 'orderRepository',
+        keyField: 'orderNo',
+        table: _table,
+        actions: [_approveAsking],
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // 2行を選ぶ（1ページ2件なので、これが全部）。
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.tap(find.byType(Checkbox).at(2));
+    await tester.pumpAndSettle();
+    await tester.tap(_button());
+    await tester.pumpAndSettle();
+
+    // 走る前なのに数が出る（選んだ行の数は分かっている）。
+    expect(find.text('2 件を承認します。よろしいですか？'), findsOneWidget);
+    expect(ran, 0); // まだ実行していない
+
+    await tester.tap(find.byKey(const Key('hatake.confirm.ok')));
+    await tester.pumpAndSettle();
+    expect(ran, 2);
+  });
+
+  testWidgets('選び直せば、確認の文の件数も変わる', (tester) async {
+    await tester.pumpWidget(_harness(
+      _Orders(_rows()),
+      definition: const SearchPageDefinition(
+        id: 'order_search',
+        title: '受注照会',
+        repository: 'orderRepository',
+        keyField: 'orderNo',
+        table: _table,
+        actions: [_approveAsking],
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.pumpAndSettle();
+    await tester.tap(_button());
+    await tester.pumpAndSettle();
+    expect(find.text('1 件を承認します。よろしいですか？'), findsOneWidget);
+
+    // やめて、もう1行足してから押す。
+    await tester.tap(find.byKey(const Key('hatake.confirm.cancel')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox).at(2));
+    await tester.pumpAndSettle();
+    await tester.tap(_button());
+    await tester.pumpAndSettle();
+    expect(find.text('2 件を承認します。よろしいですか？'), findsOneWidget);
   });
 }

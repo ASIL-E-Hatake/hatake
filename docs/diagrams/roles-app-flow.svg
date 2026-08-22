@@ -77,7 +77,7 @@
   <text class="note" x="739.3" y="375" text-anchor="middle">price_master</text>
   <text class="body bad" x="616.7" y="400">× 誰も開けない</text>
   <text class="caption" x="24" y="438">すべての画面がメニューか遷移からたどれる。</text>
-  <text class="caption" x="24" y="474">赤枠＝<tspan class="caption strong">誰でも開けて、消す・持ち出すができる画面</tspan>（1 枚）。ボタンの `roles` か、入口の `roles` を決める。</text>
+  <text class="caption" x="24" y="474">赤枠＝<tspan class="caption strong">誰でも開けて、消す・持ち出す・まとめて実行ができる画面</tspan>（1 枚）。ボタンの `roles` か、入口の `roles` を決める。</text>
   <text class="caption" x="24" y="510">点線＝<tspan class="caption strong">誰も開けない画面</tspan>（1 枚）。入口の権限が食い違っている（画面を見ても気づけない類）。</text>
   <text class="caption" x="24" y="546">出てくる役割: admin / manager</text>
   <text class="caption" x="24" y="582">`--role &lt;役割&gt;` を付けると、その役割で通れる道だけの図になる。</text>

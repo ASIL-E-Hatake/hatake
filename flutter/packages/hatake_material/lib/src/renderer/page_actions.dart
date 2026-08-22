@@ -53,13 +53,17 @@ Future<bool> _runPageAction(
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
 }) async {
+  // 選んだ行にまとめて実行するなら、押す前に**何件動くのか**が分かっている。
+  // 確認の文の `{count}` はここで埋まる（1件ずつのボタンでは埋めない＝件数が無い）。
+  final count =
+      action.scope == ActionScopes.selection ? records.length : null;
   // 聞くことがあるなら、その OK が確認そのもの（ダイアログを2枚出さない）。
   var input = const <String, Object?>{};
   if (action.prompt != null) {
-    final answer = await _askActionPrompt(context, action);
+    final answer = await _askActionPrompt(context, action, count: count);
     if (answer == null) return false; // キャンセル＝何も起きない
     input = answer;
-  } else if (!await _confirmAction(context, action.confirm)) {
+  } else if (!await _confirmAction(context, action.confirm, count: count)) {
     return false;
   }
   if (!context.mounted) return false;

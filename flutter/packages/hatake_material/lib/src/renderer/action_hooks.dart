@@ -10,10 +10,15 @@ part of '../material_renderer.dart';
 /// [destructive] is for the built-in `delete`, which asks even when the
 /// definition says nothing — a destructive default is the safer default, and
 /// declaring `confirm` only replaces the wording.
+///
+/// [count] は「いま選んでいる行の数」。一括（`scope: selection`）のときだけ渡す。
+/// **押す前に分かっているのは件数だけ**なので、埋まるのは `{count}` だけ
+/// （`{failed}` / `{total}` / `{error}` は走ってからの話＝`hatake validate` が言う）。
 Future<bool> _confirmAction(
   BuildContext context,
   ConfirmDefinition? confirm, {
   bool destructive = false,
+  int? count,
 }) async {
   if (confirm == null && !destructive) return true;
   final danger = confirm?.danger ?? destructive;
@@ -22,8 +27,10 @@ Future<bool> _confirmAction(
     context: context,
     builder: (context) => AlertDialog(
       key: const Key('hatake.confirm'),
-      title: Text(confirm?.title ?? (danger ? '確認' : '実行の確認')),
-      content: Text(confirm?.message ?? 'この操作を実行してもよろしいですか？'),
+      title: Text(_fillCount(confirm?.title, count) ??
+          (danger ? '確認' : '実行の確認')),
+      content: Text(_fillCount(confirm?.message, count) ??
+          'この操作を実行してもよろしいですか？'),
       actions: [
         TextButton(
           key: const Key('hatake.confirm.cancel'),
@@ -126,6 +133,16 @@ String _defaultFailureMessage(
     ActionTypes.print => '印刷に失敗しました: $error',
     _ => 'アクション "${action.id}" が失敗しました: $error',
   };
+}
+
+/// Fills `{count}` before the action runs (the number of rows the user picked).
+///
+/// 走る前に分かっているのは件数だけ。ここで `{failed}` を埋めないのは、まだ1件も
+/// 失敗していないから＝0 と出すのは嘘になる（残った差し込みは文字のまま出るので、
+/// 「埋まらなかった」と読める。`hatake validate` は押す前にそう言う）。
+String? _fillCount(String? template, int? count) {
+  if (template == null || count == null) return template;
+  return template.replaceAll('{count}', '$count');
 }
 
 /// Fills the placeholders a message may carry.

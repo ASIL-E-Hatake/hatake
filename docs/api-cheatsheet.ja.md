@@ -409,6 +409,8 @@ actions:
 
 **まとめて実行する**なら `scope: selection`（既定は `page`）。表にチェックボックスが出て、選ぶまで押せない（件数がラベルに出る）。ハンドラは選んだ**行そのもの**を `ctx.records` で受け取り、**呼び出しは1回**（API も1回で済ませられる）。行が入れ替わったら選択は消え、実行できたら解ける。実行できるのは `type: plugin` だけで、**一括の削除は無い**（取り消せない操作は事故が件数ぶん大きくなる）。
 
+**一括だけは既定で厳しい**。`advise` が言うのは5つ: 確認が無い（`prompt` があればそれが確認）・確認に件数が無い・失敗の言い方が無い・戻せない名前なのに `danger` が無い・1回で動く件数が多すぎる（ページ送りを切っていると全件）。`roles` で絞っていない一括は型に関わらず「誰でも押せる危ないボタン」に数える（`advise` も `explain --roles` も同じ見方）。
+
 `plugin` は `plugin: <key>` で登録ハンドラにディスパッチ。`navigate` は `page` と `params`、`export` は CSV 出力（上記）、`print` は帳票の印刷（下記）。`table.rowActions` は**アクション id の文字列配列**（`edit` / `delete` は組み込みなので宣言不要）。
 
 ### 確認と後処理（`confirm` / `prompt` / `onSuccess` / `onError`）
@@ -438,6 +440,7 @@ actions:
 * `onSuccess` は**失敗したら動かない**（ハンドラ未登録・出力先未登録・Repository が拒否＝全部失敗）
 * `onError` が無ければ**失敗の理由がそのまま出る**（`RepositoryHttpException: … 500 …`）。業務の言葉で言うならここに書く。**`page` は無い**＝失敗した画面から離れると、何が起きたか読めなくなり直す行も見えなくなる
 * 差し込みは**埋まるときだけ**埋まる（`{error}` は失敗時、`{count}` / `{failed}` / `{total}` は `scope: selection` のときだけ）。**書けるのはこの4つだけ**＝`{orderNo}` のような項目名は埋まらない（レコードの値は文言に渡っていない）。埋まらない差し込みは文字のまま出るので、`validate` が `placeholder-not-filled` で先に言う
+* **押す前の文言**（`confirm.title` / `confirm.message` / `prompt.title`）にも `{count}` を書ける＝**選んだ行の数**が入る。走る前なので `{failed}` / `{total}` / `{error}` は埋まらない。ボタンにも件数は出るが、**最後に読むのは確認の文**なので、そこに書く（`advise` が `bulk-confirm-without-count` で言う）
 * 一括の結果はハンドラが `ctx.report(ActionOutcome(succeeded: …, failed: …))` で返す。**一部でも失敗したら `onSuccess` は動かない**（1件残っているのに画面を移さない）
 * **実行の前に聞く**なら `prompt`（「却下の理由を書いてから却下」）。項目は**普通の `field`**（型・`required`・`validators`・`computed`・`normalize` がフォームと同じに効く）で、ハンドラは `ctx.input` で受け取る。**確認ダイアログは増えない**（`prompt` の OK が確認そのもの＝`confirm` の文言とボタン名を引き取る）。受け取れるのは `type: plugin` だけ
 

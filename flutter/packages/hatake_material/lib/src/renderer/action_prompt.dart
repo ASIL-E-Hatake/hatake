@@ -11,8 +11,9 @@ part of '../material_renderer.dart';
 /// `normalize` がフォームと同じに効く＝**入力の仕組みを2つ持たない**。
 Future<DataRecord?> _askActionPrompt(
   BuildContext context,
-  ActionDefinition action,
-) {
+  ActionDefinition action, {
+  int? count,
+}) {
   final prompt = action.prompt!;
   final scope = HatakeScope.of(context);
   // 独自の項目型と見せ方は Renderer が持っている。ここで受け取り直すと、
@@ -25,6 +26,7 @@ Future<DataRecord?> _askActionPrompt(
     builder: (_) => _ActionPromptDialog(
       action: action,
       prompt: prompt,
+      count: count,
       fieldBuilders: material?.fieldBuilders ?? const {},
       roles: scope.roles,
       formatters: material?.formatters,
@@ -39,6 +41,9 @@ Future<DataRecord?> _askActionPrompt(
 class _ActionPromptDialog extends StatefulWidget {
   final ActionDefinition action;
   final ActionPromptDefinition prompt;
+
+  /// いま選んでいる行の数（一括のときだけ）。文言の `{count}` に入る。
+  final int? count;
   final Map<String, MaterialFieldBuilder> fieldBuilders;
   final Set<String> roles;
   final FormatterRegistry? formatters;
@@ -50,6 +55,7 @@ class _ActionPromptDialog extends StatefulWidget {
   const _ActionPromptDialog({
     required this.action,
     required this.prompt,
+    this.count,
     required this.fieldBuilders,
     required this.roles,
     required this.formatters,
@@ -90,12 +96,14 @@ class _ActionPromptDialogState extends State<_ActionPromptDialog> {
   @override
   Widget build(BuildContext context) {
     final confirm = widget.action.confirm;
-    final message = confirm?.message;
+    final message = _fillCount(confirm?.message, widget.count);
     final danger = confirm?.danger ?? false;
     final theme = Theme.of(context);
     return AlertDialog(
       key: Key('hatake.prompt.${widget.action.id}'),
-      title: Text(widget.prompt.title ?? confirm?.title ?? widget.action.label),
+      title: Text(_fillCount(widget.prompt.title, widget.count) ??
+          _fillCount(confirm?.title, widget.count) ??
+          widget.action.label),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(

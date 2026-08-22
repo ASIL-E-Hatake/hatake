@@ -179,7 +179,7 @@
           "key": "confirm",
           "type": "object",
           "required": false,
-          "description": "Ask before running the action. A `delete` action asks even without this; declaring it replaces the wording.",
+          "description": "Ask before running the action. A `delete` action asks even without this; declaring it replaces the wording. `title` and `message` may carry `{count}`, the number of rows picked — filled only on a `scope: selection` action, since nothing else knows a count before it runs. Nothing has happened yet, so `{failed}` / `{total}` / `{error}` do not fill here (`validate` says so).",
           "nodes": [
             "confirm"
           ]
@@ -206,7 +206,7 @@
           "key": "prompt",
           "type": "object",
           "required": false,
-          "description": "Asked before the action runs: a small form whose values reach the handler as `input`. It replaces the confirmation dialog rather than adding a second one — the same OK button confirms.",
+          "description": "Asked before the action runs: a small form whose values reach the handler as `input`. It replaces the confirmation dialog rather than adding a second one — the same OK button confirms. `title` may carry `{count}` on a `scope: selection` action. Style the OK button as destructive with `confirm: { danger: true }` (the prompt has no `danger` of its own).",
           "nodes": [
             "actionPrompt"
           ]
@@ -273,7 +273,7 @@
       ]
     },
     "actionPrompt": {
-      "description": "Asked before the action runs: a small form whose values reach the handler as `input`. It replaces the confirmation dialog rather than adding a second one — the same OK button confirms.",
+      "description": "Asked before the action runs: a small form whose values reach the handler as `input`. It replaces the confirmation dialog rather than adding a second one — the same OK button confirms. `title` may carry `{count}` on a `scope: selection` action. Style the OK button as destructive with `confirm: { danger: true }` (the prompt has no `danger` of its own).",
       "closed": true,
       "pageKinds": [
         "crud",
@@ -685,7 +685,7 @@
       "keys": []
     },
     "confirm": {
-      "description": "Ask before running the action. A `delete` action asks even without this; declaring it replaces the wording.",
+      "description": "Ask before running the action. A `delete` action asks even without this; declaring it replaces the wording. `title` and `message` may carry `{count}`, the number of rows picked — filled only on a `scope: selection` action, since nothing else knows a count before it runs. Nothing has happened yet, so `{failed}` / `{total}` / `{error}` do not fill here (`validate` says so).",
       "closed": true,
       "pageKinds": [
         "crud",
@@ -705,13 +705,13 @@
           "key": "title",
           "type": "string",
           "required": false,
-          "description": "Dialog heading. Omit for the renderer's default."
+          "description": "Dialog heading. Omit for the renderer's default. May carry `{count}`."
         },
         {
           "key": "message",
           "type": "string",
           "required": true,
-          "description": "The question itself."
+          "description": "The question itself. May carry `{count}` (the number of rows picked)."
         },
         {
           "key": "okLabel",

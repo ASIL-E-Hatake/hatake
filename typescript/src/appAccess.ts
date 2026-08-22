@@ -18,6 +18,7 @@
 // メニューも素のまま読む＝この1枚で完結するので、図（[appDiagram]）と警告（[findWarnings]）が
 // 同じ答えを出す。
 
+import { ActionScopes } from "./definition.js";
 import type { Lang } from "./explainPhrases.js";
 import { voice } from "./explainVoice.js";
 
@@ -145,12 +146,20 @@ function doorEntries(app: Dict): { page: string; entry: AccessEntry }[] {
   return found;
 }
 
-/** 危ない操作（消す・持ち出す・紙に出す）を、権限で絞らずに置いているボタンのラベル。 */
+/**
+ * 危ない操作を、権限で絞らずに置いているボタンのラベル。
+ *
+ * 危ないのは「消す・持ち出す・紙に出す」＝取り消せない操作。それに加えて
+ * **選んだ行にまとめて実行する**ボタン（`scope: selection`）は型に関わらず危ない側に
+ * 数える（1回の操作が件数ぶん動く）。`advise` の `open-dangerous-action` と同じ
+ * 見方にしておく＝道具によって「危ない」の意味が変わらないように。
+ */
 function openDangerOf(page: Dict): string[] {
   const found: string[] = [];
   for (const action of list(page.actions).filter(isDict)) {
     const type = str(action.type) ?? "";
-    if (type !== "delete" && type !== "export" && type !== "print") continue;
+    const bulk = str(action.scope) === ActionScopes.selection;
+    if (!bulk && type !== "delete" && type !== "export" && type !== "print") continue;
     if (strings(action.roles).length > 0) continue;
     found.push(str(action.label) ?? str(action.id) ?? type);
   }

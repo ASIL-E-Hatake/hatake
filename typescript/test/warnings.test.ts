@@ -1563,3 +1563,65 @@ describe("突き合わせも行を絞れる（compare に where）", () => {
     expect(w?.message).toContain("1件も残らない");
   });
 });
+
+describe("押す前の文言に書ける差し込み", () => {
+  /** 一覧1枚＋ボタン1つ。 */
+  const page = (action: string) => `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - ${action}
+`;
+
+  it("一括の確認に {count} は書ける（押す前に選んだ数は分かっている）", () => {
+    expect(
+      rulesOf(
+        page(`{ id: a, type: plugin, plugin: p, label: 一括承認, scope: selection,
+        confirm: { message: '{count} 件を承認します' } }`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("1件ずつのボタンの確認に {count} は埋まらない", () => {
+    const found = warningsOf(
+      page(`{ id: a, type: delete, label: 削除,
+        confirm: { message: '{count} 件を消します' } }`),
+    );
+    const w = found.find((x) => x.rule === "placeholder-not-filled");
+    expect(w?.path).toBe("page.actions[0].confirm.message");
+    expect(w?.message).toContain("scope: selection");
+  });
+
+  it("押す前に {failed} は無い（まだ1件も失敗していない）", () => {
+    const found = warningsOf(
+      page(`{ id: a, type: plugin, plugin: p, label: 一括承認, scope: selection,
+        confirm: { message: '{count} 件（{failed} 件は失敗します）' } }`),
+    );
+    const w = found.find((x) => x.rule === "placeholder-not-filled");
+    expect(w?.message).toContain("{failed}");
+    expect(w?.message).toContain("まだ実行していない");
+    expect(w?.fix).toContain("onSuccess");
+  });
+
+  it("聞く形の見出しも見る（そこが確認そのものなので）", () => {
+    const found = warningsOf(
+      page(`{ id: a, type: plugin, plugin: p, label: 却下, scope: selection,
+        prompt: { title: '{count} 件を却下（{error}）', fields: [{ field: r, label: 理由 }] } }`),
+    );
+    const w = found.find((x) => x.rule === "placeholder-not-filled");
+    expect(w?.path).toBe("page.actions[0].prompt.title");
+    expect(w?.message).toContain("{error}");
+  });
+
+  it("項目名は押す前でも埋まらない（レコードの値は渡っていない）", () => {
+    const found = warningsOf(
+      page(`{ id: a, type: plugin, plugin: p, label: 一括承認, scope: selection,
+        confirm: { message: '{orderNo} を承認します' } }`),
+    );
+    expect(found.map((w) => w.rule)).toContain("placeholder-not-filled");
+  });
+});

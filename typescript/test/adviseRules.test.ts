@@ -30,6 +30,8 @@ const EVERYTHING = `app:
       repository: orderRepository
       key: orderNo
       table:
+        # ページ送りを切ってあるので「一括があるのに1回で全件」が出る。
+        pagination: { enabled: false }
         columns:
           - { field: customer, label: 得意先 }
           - { field: orderDate, label: 受注日, type: date }
@@ -51,9 +53,19 @@ const EVERYTHING = `app:
       actions:
         - { id: remove, type: delete, label: 削除 }
         # 一括は roles を書いてあるので open-dangerous-action は出ない。
-        # 出るのは「確認が無い」の側だけ。
+        # ここで出るのは「確認が無い」と「失敗の言い方が無い」の2つ。
         - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
             scope: selection, roles: [admin] }
+        # 確認はあるが件数が無い（他の一括の規則は満たしている）。
+        - { id: notify, type: plugin, plugin: notifyOrders, label: 通知,
+            scope: selection, roles: [admin],
+            confirm: { message: 選んだ受注に通知します },
+            onError: { message: '{failed} 件は通知できませんでした' } }
+        # 戻せない名前なのに確認の OK が赤くない（他の一括の規則は満たしている）。
+        - { id: discardSelected, type: plugin, plugin: discardOrders, label: 破棄,
+            scope: selection, roles: [admin],
+            confirm: { message: '{count} 件を破棄します' },
+            onError: { message: '{failed} 件は破棄できませんでした' } }
     - type: report
       id: sales_report
       title: 売上明細表

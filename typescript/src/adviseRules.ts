@@ -28,8 +28,16 @@ export const BUILTIN_RULES: Record<string, Record<string, "number" | "strings">>
   // 消せる・持ち出せるのに roles が無い。types = 危ないと見なすアクション種別。
   // 「選んだ行にまとめて実行する」ボタン（scope: selection）は型に関わらず危ない側。
   "open-dangerous-action": { types: "strings" },
-  // まとめて実行するのに、押す前の確認が無い。
+  // まとめて実行するのに、押す前の確認が無い（`prompt` を書いてあれば聞いている側）。
   "bulk-without-confirm": {},
+  // 確認は出すのに、何件動くのかを言っていない（`{count}` は一括で埋まる）。
+  "bulk-confirm-without-count": {},
+  // 一括なのに、失敗したときの言い方が無い（一括は途中まで進んで終わる）。
+  "bulk-without-error-message": {},
+  // 消す側の一括なのに、確認の OK が赤くない。words = 戻せないと見なす語。
+  "bulk-destructive-without-danger": {"words": "strings"},
+  // 一括があるのに、1回で動く件数が決まっていない（または多い）。maxRows = 上限。
+  "bulk-on-many-rows": {"maxRows": "number"},
   // 金額らしい名前なのに見せ方が無い。words = 金額らしいと見なす語。
   "money-without-format": { words: "strings" },
   // 明細を別テーブルに持つのに親を指すキーが無い。
