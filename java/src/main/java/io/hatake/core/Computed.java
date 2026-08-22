@@ -14,6 +14,10 @@ import java.util.Map;
  *
  * <p>行を畳めるのは、行が親のレコードと一緒に来ているときだけ。{@code source} を持つ
  * subTable はページ送りで別に持つので、ここには行が無い（hatake validate が言う）。
+ *
+ * <p>行を畳む側は {@code where} で<b>畳む前に行を絞れる</b>（条件の言葉は visibleWhen と
+ * 同じもの＝条件の書き方を2つ持たない）。{@code join} だけは数ではなく文字を作る（行を
+ * 並べて1行にする）ので、集約からは借りずにここで実装する。
  */
 public final class Computed {
 
@@ -78,17 +82,14 @@ public final class Computed {
     }
 
     /**
-     * field が指す明細の行を、op の集約で畳む。
+     * field が指す明細の行。where があれば、<b>畳む前に</b>絞る。
      *
-     * <p>畳めないとき（行が無い・集約が知らない名前）は <b>null</b>。0 を返さないのは、
-     * 「行が無い」と「合計が 0」を画面で見分けられなくなるため。
+     * <p>条件は行1件に対して評価する（{@code { mode: create }} は行では分からないので
+     * 渡さない）。
      */
     @SuppressWarnings("unchecked")
-    private static Double fold(String op, Map<String, Object> c, Map<String, Object> record) {
-        Aggregates.AggregateFn fn = Aggregates.builtin(op);
-        if (fn == null) {
-            return null;
-        }
+    private static List<Map<String, Object>> rowsOf(
+            Map<String, Object> c, Map<String, Object> record) {
         List<Map<String, Object>> rows = new ArrayList<>();
         if (record.get(String.valueOf(c.get("field"))) instanceof List<?> list) {
             for (Object row : list) {
@@ -97,8 +98,22 @@ public final class Computed {
                 }
             }
         }
+        return Aggregates.rowsMatching(rows, c.get("where"));
+    }
+
+    /**
+     * field が指す明細の行を、op の集約で畳む。
+     *
+     * <p>畳めないとき（行が無い・集約が知らない名前）は <b>null</b>。0 を返さないのは、
+     * 「行が無い」と「合計が 0」を画面で見分けられなくなるため。
+     */
+    private static Double fold(String op, Map<String, Object> c, Map<String, Object> record) {
+        Aggregates.AggregateFn fn = Aggregates.builtin(op);
+        if (fn == null) {
+            return null;
+        }
         String of = c.get("of") instanceof String s ? s : null;
-        return fn.apply(rows, of);
+        return fn.apply(rowsOf(c, record), of);
     }
 
     @SuppressWarnings("unchecked")
@@ -165,6 +180,27 @@ public final class Computed {
         for (String op : new String[] {"count", "avg", "min", "max"}) {
             m.put(op, (c, r) -> foldsRows(c) ? fold(op, c, r) : null);
         }
+        // 行を並べて1行にする。数ではなく文字が出るので、集約とは別物＝実装もここ。
+        // 区切りの既定は ", "（concat の既定が空なのは姓と名を詰めるためで、行を
+        // 並べるときに詰めると読めない）。空の値は飛ばす。
+        m.put("join", (c, r) -> {
+            if (!foldsRows(c) || !(c.get("of") instanceof String of)) {
+                return null;
+            }
+            String sep = c.get("separator") != null ? c.get("separator").toString() : ", ";
+            StringBuilder sb = new StringBuilder();
+            for (Map<String, Object> row : rowsOf(c, r)) {
+                String value = str(row.get(of));
+                if (value.isEmpty()) {
+                    continue;
+                }
+                if (sb.length() > 0) {
+                    sb.append(sep);
+                }
+                sb.append(value);
+            }
+            return sb.toString();
+        });
         return m;
     }
 }

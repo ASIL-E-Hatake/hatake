@@ -32,21 +32,32 @@ page:
               - { field: qty, label: 数量, type: number, width: 100 }
               - { field: price, label: 単価, type: number, width: 140, format: currency, config: { symbol: "¥" } }
               - { field: amount, label: 金額, type: number, width: 140, format: currency, config: { symbol: "¥" } }
+              # 取消印は列にも出す。出さないと、合計から外れた行を画面で見分けられない。
+              - { field: cancelled, label: 取消, type: checkbox, width: 80 }
             fields:
               - { field: item, label: 品名, type: text, required: true }
               - { field: qty, label: 数量, type: number, required: true, validators: [ { type: min, value: 1 } ] }
               - { field: price, label: 単価, type: number, required: true, validators: [ { type: min, value: 0 } ] }
               # 行内の計算項目: 金額 = 数量 × 単価
               - { field: amount, label: 金額, computed: { op: product, fields: [qty, price] } }
+              - { field: cancelled, label: 取消, type: checkbox }
 
       - title: 合計
         fields:
           # 縦計（明細の行を畳む）。`field` が明細の項目、`of` が行の項目。
           # 集約の語彙はダッシュボードのカードと同じ（count / sum / avg / min / max）。
+          # `where` で**畳む前に行を絞る**（条件の書き方は visibleWhen と同じもの）。
+          # 取消した行を足さないのは、絞らないと合計が業務の合計にならないため。
           - { field: subtotal, label: 小計, format: currency, config: { symbol: "¥" },
-              computed: { op: sum, field: lines, of: amount } }
+              computed: { op: sum, field: lines, of: amount,
+                          where: { field: cancelled, operator: notEquals, value: true } } }
           - { field: lineCount, label: 明細行数,
-              computed: { op: count, field: lines } }
+              computed: { op: count, field: lines,
+                          where: { field: cancelled, operator: notEquals, value: true } } }
+          # 並べて1行にするのは `join`（数ではなく文字が出る）。区切りの既定は ", "。
+          - { field: itemNames, label: 品名, type: textarea, readOnly: true,
+              computed: { op: join, field: lines, of: item, separator: "、",
+                          where: { field: cancelled, operator: notEquals, value: true } } }
           # 同じレコードの項目を畳むのは `fields`。計算は**書いた順に1回**なので、
           # 小計より後ろに置く（前の結果を使える）。
           - { field: total, label: 合計金額, format: currency, config: { symbol: "¥" },

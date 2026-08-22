@@ -375,21 +375,32 @@ No date is written by default, so the same report yields the same bytes.
 
 Computed `op`:
 <!-- vocab: field.computed.op -->
-`concat` `sum` `subtract` `product` `count` `avg` `min` `max`
+`concat` `sum` `subtract` `product` `count` `avg` `min` `max` `join`
 
 Two modes: `fields: [a, b]` folds values of the **same record** (`concat` / `sum` /
 `subtract` / `product`), while `field: <subTable field>` + `of: <row field>` folds the
 **rows of a subTable** (`count` / `sum` / `avg` / `min` / `max` — the same aggregate
-vocabulary as dashboard cards).
+vocabulary as dashboard cards — plus `join`, which lists the rows as one string).
 
 ```yaml
 - { field: subtotal, label: Subtotal, computed: { op: sum, field: lines, of: amount } }
+- { field: itemNames, label: Items, computed: { op: join, field: lines, of: item } }
 - { field: total, label: Total, computed: { op: sum, fields: [subtotal, tax] } }
+# fold only some rows (the same condition language as visibleWhen)
+- { field: subtotal, label: Subtotal,
+    computed: { op: sum, field: lines, of: amount,
+                where: { field: cancelled, operator: notEquals, value: true } } }
 ```
 
-`of` is required except for `count`. Only rows saved with the parent can be folded — a
+`of` is required except for `count`; `separator` sets what `join` puts between values
+(default `", "`). With no rows, `sum` / `count` are 0, `avg` / `min` / `max` are empty and
+`join` is an empty string. `where` filters **rows** (evaluated against one row), so
+`{ mode: … }` is never true there. The same `where` works on the `compare` validator
+(`aggregate` + `of` + `where`) — if the subtotal skips cancelled rows, the check that
+compares against it must skip them too, or the two never agree. Only rows saved with the parent can be folded — a
 subTable with `source` is paged, so its rows are not all here (`validate` says so).
-Computed fields are derived once, in declaration order. Extensible via `ComputedRegistry`.
+Computed fields are derived once, in declaration order — writing a field before the one it
+uses leaves it empty, and `validate` says so. Extensible via `ComputedRegistry`.
 
 ## Linked options (the parent narrows the child)
 

@@ -7,6 +7,9 @@ import 'package:hatake_material/hatake_material.dart';
 /// 業務で一番よく書く計算なのに、これまでは組み込みで書けなかった（`fields` は同じ行の
 /// 項目を指すので、行をまたげない）。ここで守るのは3つ。**行を直したらその場で変わる**・
 /// **保存する値にも入る**・**行が無ければ 0**（空欄ではなく 0＝「まだ何も無い」）。
+///
+/// `where`（畳む前に行を絞る）と `join`（行を並べて1行にする）も同じ道を通る。取消印を
+/// 付けた行が**その場で合計から外れる**ことまで見る（Renderer は1行も足していない）。
 class _Repo implements Repository {
   DataRecord? saved;
 
@@ -53,8 +56,20 @@ const _lines = FieldDefinition(
         'fields': ['qty', 'price'],
       },
     ),
+    FieldDefinition(
+      field: 'cancelled',
+      label: '取消',
+      type: FieldTypes.checkbox,
+    ),
   ],
 );
+
+/// 取消印が付いていない行だけ。条件の書き方は visibleWhen と同じもの。
+const _live = {
+  'field': 'cancelled',
+  'operator': 'notEquals',
+  'value': true,
+};
 
 const _definition = FormPageDefinition(
   id: 'order_entry',
@@ -71,12 +86,28 @@ const _definition = FormPageDefinition(
           FieldDefinition(
             field: 'subtotal',
             label: '小計',
-            computed: {'op': 'sum', 'field': 'lines', 'of': 'amount'},
+            computed: {
+              'op': 'sum',
+              'field': 'lines',
+              'of': 'amount',
+              'where': _live,
+            },
           ),
           FieldDefinition(
             field: 'lineCount',
             label: '明細行数',
-            computed: {'op': 'count', 'field': 'lines'},
+            computed: {'op': 'count', 'field': 'lines', 'where': _live},
+          ),
+          FieldDefinition(
+            field: 'itemNames',
+            label: '品名',
+            computed: {
+              'op': 'join',
+              'field': 'lines',
+              'of': 'item',
+              'separator': '、',
+              'where': _live,
+            },
           ),
           FieldDefinition(
             field: 'largest',
@@ -164,6 +195,36 @@ void main() {
     expect((repo.saved?['lines'] as List).length, 2);
   });
 
+  testWidgets('並べて1行にする（join）', (tester) async {
+    await tester.pumpWidget(_harness(_Repo(), recordKey: 'SO-1'));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Text>(_shown('itemNames')).data, '鉛筆、ノート');
+  });
+
+  testWidgets('取消した行は、その場で合計と品名から外れる（where）', (tester) async {
+    final repo = _Repo();
+    await tester.pumpWidget(_harness(repo, recordKey: 'SO-1'));
+    await tester.pumpAndSettle();
+
+    // 2行目（ノート・450円）に取消印を付ける。行は消さない（何を取消したか残る）。
+    await tester.tap(find.byKey(const Key('hatake.subtable.lines.edit.1')));
+    await tester.pumpAndSettle();
+    await tester.tap(_shown('cancelled'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('hatake.subtable.lines.row.save')));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Text>(_shown('subtotal')).data, '200');
+    expect(tester.widget<Text>(_shown('lineCount')).data, '1');
+    expect(tester.widget<Text>(_shown('itemNames')).data, '鉛筆');
+    // 明細そのものは2行のまま（取消は行の状態で、行を消すことではない）。
+    await tester.tap(find.byKey(const Key('hatake.form.save')));
+    await tester.pumpAndSettle();
+    expect((repo.saved?['lines'] as List).length, 2);
+    expect(repo.saved?['subtotal'], 200);
+  });
+
   testWidgets('行が無ければ 0（空欄にしない＝「まだ無い」と読める）', (tester) async {
     await tester.pumpWidget(_harness(_Repo()));
     await tester.pumpAndSettle();
@@ -172,5 +233,7 @@ void main() {
     expect(tester.widget<Text>(_shown('lineCount')).data, '0');
     // max は行が無ければ値が定まらない＝空欄（0 だと「最大 0 円」に見える）。
     expect(tester.widget<Text>(_shown('largest')).data, '');
+    // join は文字を作る op なので、行が無ければ空文字（0 ではない）。
+    expect(tester.widget<Text>(_shown('itemNames')).data, '');
   });
 }

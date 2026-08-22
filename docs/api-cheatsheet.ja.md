@@ -324,21 +324,29 @@ sections:
 
 計算の `op`:
 <!-- vocab: field.computed.op -->
-`concat` `sum` `subtract` `product` `count` `avg` `min` `max`
+`concat` `sum` `subtract` `product` `count` `avg` `min` `max` `join`
 
 * **同じレコードの項目**を畳むのは `fields: [a, b]`（`concat` / `sum` / `subtract` / `product`）
 * **明細（subTable）の行**を畳むのは `field: <明細の項目名>` ＋ `of: <行の項目名>`
   （`count` / `sum` / `avg` / `min` / `max`。集約の語彙はダッシュボードのカードと同じ）
+* 行を**並べて1行にする**のは `join`（数ではなく文字が出る）。区切りは `separator`（既定 `", "`）
 
 ```yaml
 - { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amount } }
 - { field: rows, label: 行数, computed: { op: count, field: lines } }
+- { field: itemNames, label: 品名, computed: { op: join, field: lines, of: item, separator: "、" } }
 - { field: total, label: 合計, computed: { op: sum, fields: [subtotal, tax] } }
+# 畳む前に行を絞る（条件の書き方は visibleWhen と同じもの）
+- { field: subtotal, label: 小計,
+    computed: { op: sum, field: lines, of: amount,
+                where: { field: cancelled, operator: notEquals, value: true } } }
 ```
 
-* `of` は `count` 以外で必須（無いと空欄になる）。行が1件も無いとき `sum`/`count` は 0、`avg`/`min`/`max` は空
+* `of` は `count` 以外で必須（無いと空欄になる）。行が1件も無いとき `sum`/`count` は 0、`avg`/`min`/`max` は空、`join` は空文字
+* `where` は**行を絞る**指定（行1件に対して判定する）。`{ mode: … }` は行では常に false ＝1件も残らない
+* 同じ `where` が**項目間の検証**でも使える（`compare` の `aggregate` + `of` + `where`）。計算が取消行を外すなら、検証も同じ条件で外す（片方だけだと必ず食い違う）
 * 畳めるのは**親と一緒に保存する明細**だけ。`source` を持つ明細はページ送りなので行が揃っていない（`validate` が言う）
-* 計算は**書いた順に1回**なので、`小計 → 消費税 → 合計` の順に並べる（後ろの項目は前の結果を使える）
+* 計算は**書いた順に1回**なので、`小計 → 消費税 → 合計` の順に並べる（後ろの項目は前の結果を使える。**逆に書くと空のまま計算される**ので `validate` が言う）
 * `ComputedRegistry` で追加可。
 
 ## 選択肢の連動（親の値で子の選択肢を絞る）

@@ -173,6 +173,17 @@ const WORDS = {
     (table: string) => `${table} の件数（手では入れない）`,
     (table: string) => `the number of rows in ${table} (not typed in)`,
   ),
+  /** 行を並べて1行にする計算（`computed: { op: join, field: lines, of: item }`）。 */
+  joinsRows: pair(
+    (table: string, of: string) => `${table} の ${of} を並べたもの（手では入れない）`,
+    (table: string, of: string) =>
+      `the ${of} of every row in ${table}, listed (not typed in)`,
+  ),
+  /** 畳む前に行を絞る（`where`）。条件の言い方は visibleWhen と同じものを使う。 */
+  onlyRows: pair(
+    (condition: string) => `${condition}の行だけ`,
+    (condition: string) => `only rows where ${condition}`,
+  ),
   subRowIs: pair(
     (items: string[]) => `1行は ${items.join("・")}`,
     (items: string[]) => `each row holds ${items.join(", ")}`,
@@ -201,7 +212,13 @@ const WORDS = {
   ),
   compareAggregate: pair(
     (label: string, aggregate: string) => `${label} の${aggregate}`,
-    (label: string, aggregate: string) => `the ${aggregate} of ${label}`,
+    // 集約の英語は既に the から始まる（"the total"）ので、ここでは付けない。
+    (label: string, aggregate: string) => `${aggregate} of ${label}`,
+  ),
+  /** 畳む前に行を絞ったとき（`where`）。計算の言い方をそのまま括弧に入れる。 */
+  foldedRowsOnly: pair(
+    (shown: string, only: string) => `${shown}（${only}）`,
+    (shown: string, only: string) => `${shown} (${only})`,
   ),
   compareUnusable: pair(
     (shown: string, operator: string) =>

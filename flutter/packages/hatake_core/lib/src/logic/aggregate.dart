@@ -8,6 +8,7 @@
 // の3版で同じ結果になるよう実装をそろえること（conformance のため）。
 
 import '../definition/aggregate_ops.dart';
+import 'condition_evaluator.dart';
 
 /// 1つの集約オペレーションの実装。[rows] を [field] で畳んで数値を返す。
 /// 値が定まらないときは null（例: 空の行に対する `avg`）。
@@ -17,6 +18,27 @@ typedef AggregateFn = num? Function(
 );
 
 /// 数値解釈は `ComputedRegistry` と同じ規則（真偽値は数値ではない）。
+/// 行を条件で絞る。`where` が無ければそのまま返す。
+///
+/// 条件の言葉は `visibleWhen` と同じもの（**条件の書き方を2つ持たない**）。判定するのは
+/// **行1件**なので `{ mode: … }` は常に false（行にフォームの状態は無い）。
+///
+/// 畳む所（`computed` の行モード）と突き合わせる所（`compare` の `aggregate`）が
+/// **同じ行を同じ規則で**絞るために、実装はここに1つだけ置く。
+List<Map<String, Object?>> rowsMatching(
+  List<Map<String, Object?>> rows,
+  Object? where,
+) {
+  if (where is! Map) return rows;
+  final condition = <String, Object?>{
+    for (final e in where.entries) '${e.key}': e.value,
+  };
+  return [
+    for (final row in rows)
+      if (evaluateCondition(condition, row)) row,
+  ];
+}
+
 num? _toNum(Object? v) {
   if (v is bool) return null;
   if (v is num) return v.isFinite ? v : null;

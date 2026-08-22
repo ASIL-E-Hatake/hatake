@@ -5,6 +5,10 @@
 //   `{ op: product, fields: [qty, price] }`     同じレコードの項目を畳む
 //   `{ op: sum, field: lines, of: amount }`     **明細（subTable）の行**を畳む
 //
+// 行を畳む側は `where` で**畳む前に行を絞れる**（条件の言葉は visibleWhen と同じもの
+// ＝条件の書き方を2つ持たない。判定するのは行1件）。`join` だけは数ではなく文字を作る
+// （行を並べて1行にする）ので、集約からは借りずにここで実装する。
+//
 // 行を畳む側は、集約の語彙（`count` / `sum` / `avg` / `min` / `max`）と実装を
 // [builtinAggregates] からそのまま借りる＝**同じ集約を2つ持たない**（ダッシュボードの
 // カードと `compare` の検証と、同じ数が出る）。
@@ -42,6 +46,22 @@ bool _foldsRows(Map<String, Object?> c) {
   return field is String && field.isNotEmpty;
 }
 
+/// `field` が指す明細の行。`where` があれば、**畳む前に**絞る。
+///
+/// 条件は行1件に対して評価する（`{ mode: create }` は行では分からないので渡さない）。
+List<Map<String, Object?>> _rows(
+  Map<String, Object?> c,
+  Map<String, Object?> record,
+) {
+  final raw = record[c['field'].toString()];
+  final rows = <Map<String, Object?>>[
+    if (raw is List)
+      for (final row in raw)
+        if (row is Map) {for (final e in row.entries) '${e.key}': e.value},
+  ];
+  return rowsMatching(rows, c['where']);
+}
+
 /// `field` が指す明細の行を、[op] の集約で畳む。
 ///
 /// 畳めないとき（行が無い・集約が知らない名前）は **null**。0 を返さないのは、
@@ -49,14 +69,8 @@ bool _foldsRows(Map<String, Object?> c) {
 num? _fold(String op, Map<String, Object?> c, Map<String, Object?> record) {
   final aggregate = builtinAggregates[op];
   if (aggregate == null) return null;
-  final raw = record[c['field'].toString()];
-  final rows = <Map<String, Object?>>[
-    if (raw is List)
-      for (final row in raw)
-        if (row is Map) {for (final e in row.entries) '${e.key}': e.value},
-  ];
   final of = c['of'];
-  return aggregate(rows, of is String ? of : null);
+  return aggregate(_rows(c, record), of is String ? of : null);
 }
 
 /// 組込み計算オペレーション。名前は各言語版で共通。
@@ -101,6 +115,19 @@ final Map<String, ComputedFn> builtinComputeds = {
   'avg': (c, r) => _foldsRows(c) ? _fold('avg', c, r) : null,
   'min': (c, r) => _foldsRows(c) ? _fold('min', c, r) : null,
   'max': (c, r) => _foldsRows(c) ? _fold('max', c, r) : null,
+  // 行を**並べて1行にする**。数ではなく文字が出るので、集約（数を1つにする）とは
+  // 別物＝実装もここにある。区切りの既定は ', '（concat の既定が空なのは姓と名を
+  // 詰めるためで、行を並べるときに詰めると読めない）。空の値は飛ばす。
+  'join': (c, r) {
+    if (!_foldsRows(c)) return null;
+    final of = c['of'];
+    if (of is! String) return null;
+    final sep = c['separator']?.toString() ?? ', ';
+    return [
+      for (final row in _rows(c, r))
+        if (_str(row[of]).isNotEmpty) _str(row[of]),
+    ].join(sep);
+  },
 };
 
 /// 計算オペレーションを名前で解決する。[register] で拡張可能。

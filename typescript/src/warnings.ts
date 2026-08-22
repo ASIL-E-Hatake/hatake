@@ -791,7 +791,7 @@ function checkFieldEntry(
   siblingDefs: Map<string, Dict> = new Map(),
 ): void {
   checkOptions(field, path, found, siblings);
-  checkCompare(field, path, found, siblings);
+  checkCompare(field, path, found, siblings, siblingDefs);
   checkComputed(field, path, found, siblingDefs);
   list(field.validators).forEach((raw, i) => {
     if (isDict(raw)) return;
@@ -846,13 +846,19 @@ function checkFieldEntry(
   });
 }
 
-/** 明細の行を畳める op（集約の語彙。ダッシュボードのカードと同じもの）。 */
+/**
+ * 明細の行を畳める op。集約の語彙（ダッシュボードのカードと同じもの）＋ `join`。
+ *
+ * `join` は数ではなく文字を作る（行を並べて1行にする）ので集約ではないが、
+ * 「`field` の行を `of` で見る」書き方は同じ＝ここの検査は全部そのまま当てはまる。
+ */
 const ROW_FOLD_OPS: string[] = [
   AggregateOps.count,
   AggregateOps.sum,
   AggregateOps.avg,
   AggregateOps.min,
   AggregateOps.max,
+  "join",
 ];
 
 /** 同じレコードの項目を畳む op（`fields` を取るもの）。 */
@@ -881,7 +887,10 @@ function checkComputed(
   const op = str(computed.op) ?? "";
   const target = str(computed.field);
   const of = str(computed.of);
+  const where = isDict(computed.where) ? computed.where : undefined;
   const label = str(field.label) ?? str(field.field) ?? "項目";
+  // 「畳む」のは数にする op、`join` は「並べる」。同じ言葉で言うと読めない。
+  const folding = op === "join" ? "並べる" : "畳む";
 
   // 独自の op（登録して足したもの）は、パラメータの意味を知らないので何も言わない。
   if (!ROW_FOLD_OPS.includes(op) && !SAME_RECORD_OPS.includes(op)) return;
@@ -898,7 +907,21 @@ function checkComputed(
         "`field: <明細の項目名>` を足してください" +
           "（同じレコードの項目を畳むなら sum / subtract / product / concat です）。",
       );
+      return;
     }
+    // `where` は**行を絞る**指定。畳む行が無いここでは、書いても何も起きない。
+    if (where !== undefined) {
+      warn(
+        found,
+        "computed-where-ignored",
+        `${at}.where`,
+        "`where` は**明細の行を絞る**指定ですが、この計算は同じレコードの項目を" +
+          `畳んでいます（\`fields\`）。「${label}」は絞られずに計算されます。`,
+        "行を絞りたいなら `field: <明細の項目名>` で明細を畳む形にしてください。" +
+          "レコードの状態で計算を変えたいなら、それは計算ではなく `visibleWhen` の話です。",
+      );
+    }
+    checkComputedOrder(field, computed, at, found, siblingDefs);
     return;
   }
 
@@ -921,17 +944,22 @@ function checkComputed(
       `${at}.op`,
       `${op} では明細の行をまとめられません（行をまとめられるのは ` +
         `${ROW_FOLD_OPS.join(" / ")} だけ）。「${label}」は計算されません。`,
-      "合計なら `op: sum` です。並べて1行にしたいなら、それは行をまとめる話ではないので" +
-        "独自の op を登録してください。",
+      "合計なら `op: sum` です。並べて1行にしたいなら `op: join` です。",
     );
   } else if (op !== AggregateOps.count && of === undefined) {
     warn(
       found,
       "computed-aggregate-without-of",
       `${at}.of`,
-      `${op} で畳む項目（\`of\`）がありません。「${label}」は空欄になります。`,
+      `${op} で${folding}項目（\`of\`）がありません。「${label}」は空欄になります。`,
       "`of: <行の項目名>` を書いてください（`count` だけは要りません）。",
     );
+  }
+
+  // `where` の条件そのものの辻褄（知らない演算子は常に false＝1件も残らない）。
+  if (where !== undefined) {
+    checkCondition(where, `${at}.where`, found);
+    checkWhereMode(where, `${at}.where`, found, label, "computed");
   }
 
   const def = siblingDefs.get(target);
@@ -974,26 +1002,160 @@ function checkComputed(
     );
     return;
   }
-  if (of === undefined) return;
-  const rowNames = new Set(
-    [...list(def.fields), ...list(def.columns)]
-      .filter(isDict)
-      .map((raw) => str(raw.field))
-      .filter((name): name is string => name !== undefined),
-  );
-  if (rowNames.size > 0 && !rowNames.has(of)) {
+  const rowNames = rowFieldNames(def);
+  if (rowNames.size === 0) return;
+  if (of !== undefined && !rowNames.has(of)) {
     const near = closestKey(of, [...rowNames]);
     warn(
       found,
       "computed-of-unknown-field",
       `${at}.of`,
-      `明細 "${target}" の行に "${of}" がありません。畳む値が取れないので、` +
+      `明細 "${target}" の行に "${of}" がありません。${folding}値が取れないので、` +
         `「${label}」は空欄か 0 になります。`,
       near === null
         ? "行の項目名（`fields` に書いた `field`）を書いてください。"
         : `${near} の間違いではないですか？`,
     );
   }
+  if (where !== undefined) {
+    checkWhereFields(where, `${at}.where`, found, rowNames, label, "computed");
+  }
+}
+
+/** 明細の行に書いてある項目名（編集欄と列の両方）。 */
+function rowFieldNames(def: Dict): Set<string> {
+  return new Set(
+    [...list(def.fields), ...list(def.columns)]
+      .filter(isDict)
+      .map((raw) => str(raw.field))
+      .filter((name): name is string => name !== undefined),
+  );
+}
+
+/**
+ * `where` に `{ mode: … }` を書いてしまった。
+ *
+ * 行にはフォームの状態が無いので常に false＝**1件も残らない**。計算（`computed`）でも
+ * 突き合わせ（`compare`）でも同じことが起きるので、言うことも同じにする。
+ */
+function checkWhereMode(
+  where: Dict,
+  path: string,
+  found: DefinitionWarning[],
+  label: string,
+  owner: "computed" | "compare",
+): void {
+  if (!hasModeLeaf(where)) return;
+  warn(
+    found,
+    `${owner}-where-mode`,
+    path,
+    "`where` の `mode` は**行に対して**判定されますが、行にはフォームの状態" +
+      `（新規/編集）がありません。常に false＝**1件も残らない**ので、「${label}」は` +
+      (owner === "computed" ? "空欄か 0 になります。" : "0 と比べることになります。"),
+    "行の値で絞ってください（`field` と `operator`）。新規のときだけ効かせたいなら、" +
+      "それは行の絞り込みではなく `visibleWhen` / `requiredWhen` の話です。",
+  );
+}
+
+/** 条件のどこかに `{ mode: ... }` があるか（`all` / `any` / `not` の中も見る）。 */
+function hasModeLeaf(condition: Dict): boolean {
+  if (str(condition.mode) !== undefined) return true;
+  for (const key of ["all", "any"]) {
+    if (list(condition[key]).filter(isDict).some(hasModeLeaf)) return true;
+  }
+  return isDict(condition.not) ? hasModeLeaf(condition.not) : false;
+}
+
+/**
+ * `where` が指す行の項目名を見る。
+ *
+ * **綴り違いに見えるときだけ**言う。行には「持っているが画面に出していない値」
+ * （取消フラグなど）があるので、`fields` に無い名前を一律に責めると、正しい定義に
+ * 嘘の警告を出すことになる。
+ */
+function checkWhereFields(
+  condition: Dict,
+  path: string,
+  found: DefinitionWarning[],
+  rowNames: Set<string>,
+  label: string,
+  owner: "computed" | "compare",
+): void {
+  for (const key of ["all", "any"]) {
+    list(condition[key]).forEach((raw, i) => {
+      if (isDict(raw)) {
+        checkWhereFields(raw, `${path}.${key}[${i}]`, found, rowNames, label, owner);
+      }
+    });
+  }
+  if (isDict(condition.not)) {
+    checkWhereFields(condition.not, `${path}.not`, found, rowNames, label, owner);
+  }
+  const name = str(condition.field);
+  if (name === undefined || rowNames.has(name)) return;
+  const near = closestKey(name, [...rowNames]);
+  if (near === null) return;
+  warn(
+    found,
+    `${owner}-where-unknown-field`,
+    `${path}.field`,
+    `絞り込みが見ている "${name}" が明細の行にありません（${near} の間違いでは` +
+      `ないですか？）。条件が当たらないので、「${label}」は 1件も数えない値になります。`,
+    `${near} に直してください` +
+      "（行に持っているだけで画面に出していない値なら、そのままで合っています）。",
+  );
+}
+
+/**
+ * 計算の**順番**。計算は書いた順に1回だけなので、後ろに書いた計算項目の結果は使えない。
+ *
+ * 転んだときに出るのは空欄か 0 で、画面を見ても「順番のせい」だとは分からない
+ * （消費税だけ 0 円の伝票が出る）。だから機械に言わせる。
+ *
+ * ここも**組み込みの op のときだけ**。独自の op が `fields` に何を書くかは知らない。
+ */
+function checkComputedOrder(
+  field: Dict,
+  computed: Dict,
+  at: string,
+  found: DefinitionWarning[],
+  siblingDefs: Map<string, Dict>,
+): void {
+  const own = str(field.field);
+  if (own === undefined) return;
+  const order = [...siblingDefs.keys()];
+  const mine = order.indexOf(own);
+  if (mine < 0) return;
+  const label = str(field.label) ?? own;
+  list(computed.fields).forEach((raw, i) => {
+    const dep = str(raw);
+    if (dep === undefined) return;
+    if (dep === own) {
+      warn(
+        found,
+        "computed-self-reference",
+        `${at}.fields[${i}]`,
+        `「${label}」の計算が**自分自身**（"${own}"）を使っています。計算は書いた順に` +
+          "1回なので、いつも1つ前の値（はじめは空）を使うことになります。",
+        "使うのは別の項目です（前回の値が要るなら、それは計算ではなくレコードに" +
+          "持つ値です）。",
+      );
+      return;
+    }
+    const def = siblingDefs.get(dep);
+    if (def === undefined || !isDict(def.computed)) return;
+    if (order.indexOf(dep) <= mine) return;
+    warn(
+      found,
+      "computed-order",
+      `${at}.fields[${i}]`,
+      `「${label}」は "${dep}" を使っていますが、"${dep}" も計算項目で**後ろに` +
+        `書かれています**。計算は書いた順に1回なので、「${label}」は "${dep}" が` +
+        "空のまま計算されます。",
+      `"${dep}" を「${label}」より前に置いてください（小計 → 消費税 → 合計 の順）。`,
+    );
+  });
 }
 
 /**
@@ -1007,6 +1169,7 @@ function checkCompare(
   path: string,
   found: DefinitionWarning[],
   siblings: Set<string>,
+  siblingDefs: Map<string, Dict>,
 ): void {
   const own = str(field.field);
   list(field.validators)
@@ -1070,6 +1233,32 @@ function checkCompare(
             "この検証は**黙って通ります**。",
           "`of: <行の項目名>` を書いてください（`count` だけは要りません）。",
         );
+      }
+
+      // 畳む前に行を絞る指定。計算（`computed`）と**同じ行を同じ規則で**絞るための
+      // ものなので、検査も計算と同じものを使う（言うことが違うと読む人が混乱する）。
+      const where = isDict(rule.where) ? rule.where : undefined;
+      if (where === undefined) return;
+      const label = str(field.label) ?? own ?? "項目";
+      if (aggregate === undefined) {
+        warn(
+          found,
+          "compare-where-ignored",
+          `${at}.where`,
+          "`where` は**明細の行を絞る**指定ですが、この検証は明細を畳んでいません" +
+            `（\`aggregate\` がありません）。「${label}」は絞られていない値と比べられます。`,
+          "明細を畳んで比べるなら `aggregate: sum` と `of: <行の項目名>` を足して" +
+            "ください。1つの項目と比べるだけなら `where` を消してください。",
+        );
+        return;
+      }
+      checkCondition(where, `${at}.where`, found);
+      checkWhereMode(where, `${at}.where`, found, label, "compare");
+      const def = siblingDefs.get(target);
+      if (def === undefined || str(def.type) !== FieldTypes.subTable) return;
+      const rowNames = rowFieldNames(def);
+      if (rowNames.size > 0) {
+        checkWhereFields(where, `${at}.where`, found, rowNames, label, "compare");
       }
     });
 }

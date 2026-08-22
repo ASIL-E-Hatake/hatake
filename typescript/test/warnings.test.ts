@@ -1320,3 +1320,246 @@ ${totals}
     ).toEqual([]);
   });
 });
+
+describe("行を絞ってから畳む（where）と、並べて1行にする（join）", () => {
+  /** 明細つきのフォーム1枚。[totals] がそのまま「金額」の枠になる。 */
+  const form = (totals: string) => `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            fields:
+              - { field: item, label: 品名 }
+              - { field: amount, label: 金額, type: number }
+              - { field: cancelled, label: 取消, type: checkbox }
+      - title: 金額
+        fields:
+${totals}
+`;
+
+  it("正しく書けば何も言わない", () => {
+    expect(
+      rulesOf(
+        form(`          - { field: subtotal, label: 小計,
+              computed: { op: sum, field: lines, of: amount,
+                          where: { field: cancelled, operator: notEquals, value: true } } }
+          - { field: itemNames, label: 品名,
+              computed: { op: join, field: lines, of: item, separator: "、" } }`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("join に of が無ければ「並べる項目が無い」と言う", () => {
+    const found = warningsOf(
+      form(`          - { field: itemNames, label: 品名, computed: { op: join, field: lines } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-aggregate-without-of");
+    // 「畳む」ではなく「並べる」。join は数ではなく文字を作る。
+    expect(w?.message).toContain("join で並べる項目");
+  });
+
+  it("join は同じレコードの項目には効かない（それは concat）", () => {
+    const found = warningsOf(
+      form(`          - { field: name, label: 名前, computed: { op: join, fields: [a, b] } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-rows-unsupported-op");
+    expect(w?.message).toContain("join は**明細の行をまとめる**計算");
+  });
+
+  it("畳めない op の直し方に join を出す（並べたいのか合計したいのか）", () => {
+    const found = warningsOf(
+      form(`          - { field: x, label: X, computed: { op: product, field: lines, of: amount } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-rows-unsupported-op");
+    expect(w?.message).toContain("count / sum / avg / min / max / join");
+    expect(w?.fix).toContain("`op: join`");
+  });
+
+  it("where を同じレコードの形に書いても効かない", () => {
+    const found = warningsOf(
+      form(`          - { field: total, label: 合計,
+              computed: { op: sum, fields: [a, b],
+                          where: { field: cancelled, operator: notEquals, value: true } } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-where-ignored");
+    expect(w?.path).toBe("page.form.sections[1].fields[0].computed.where");
+    expect(w?.message).toContain("絞られずに計算されます");
+  });
+
+  it("where の綴り違いは近い名前を出す", () => {
+    const found = warningsOf(
+      form(`          - { field: subtotal, label: 小計,
+              computed: { op: sum, field: lines, of: amount,
+                          where: { field: canceled, operator: notEquals, value: true } } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-where-unknown-field");
+    expect(w?.path).toBe("page.form.sections[1].fields[0].computed.where.field");
+    expect(w?.fix).toContain("cancelled");
+  });
+
+  it("結合（not / all）の中の綴り違いも見る", () => {
+    const found = warningsOf(
+      form(`          - { field: subtotal, label: 小計,
+              computed: { op: sum, field: lines, of: amount,
+                          where: { not: { field: amout, operator: equals, value: 0 } } } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-where-unknown-field");
+    expect(w?.path).toBe("page.form.sections[1].fields[0].computed.where.not.field");
+  });
+
+  it("画面に出していない値で絞るのは黙る（行に持っているだけの値もある）", () => {
+    // 綴り違いに見えないなら何も言わない。無い名前を一律に責めると嘘になる。
+    expect(
+      rulesOf(
+        form(`          - { field: subtotal, label: 小計,
+              computed: { op: sum, field: lines, of: amount,
+                          where: { field: deletedFlag, operator: isEmpty } } }`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("where に mode は書けない（行にフォームの状態は無い）", () => {
+    const found = warningsOf(
+      form(`          - { field: subtotal, label: 小計,
+              computed: { op: sum, field: lines, of: amount, where: { mode: create } } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-where-mode");
+    expect(w?.message).toContain("1件も残らない");
+  });
+
+  it("where の知らない演算子は、条件と同じ規則が言う", () => {
+    const found = warningsOf(
+      form(`          - { field: subtotal, label: 小計,
+              computed: { op: sum, field: lines, of: amount,
+                          where: { field: amount, operator: between, value: [0, 100] } } }`),
+    );
+    const w = found.find((x) => x.rule === "condition-operator-unsupported");
+    expect(w?.path).toBe("page.form.sections[1].fields[0].computed.where.operator");
+  });
+});
+
+describe("計算の順番", () => {
+  /** 計算項目だけを並べたフォーム1枚（順番の話なので他は要らない）。 */
+  const form = (fields: string) => `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+${fields}
+`;
+
+  it("前に書いた計算の結果は使える（正しい順番）", () => {
+    expect(
+      rulesOf(
+        form(`          - { field: subtotal, label: 小計, computed: { op: sum, fields: [x, y] } }
+          - { field: tax, label: 消費税, computed: { op: product, fields: [subtotal, rate] } }
+          - { field: total, label: 合計, computed: { op: sum, fields: [subtotal, tax] } }`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("後ろに書いた計算を使っていたら言う（空のまま計算される）", () => {
+    const found = warningsOf(
+      form(`          - { field: total, label: 合計, computed: { op: sum, fields: [subtotal, tax] } }
+          - { field: subtotal, label: 小計, computed: { op: sum, fields: [x, y] } }
+          - { field: tax, label: 消費税, type: number }`),
+    );
+    expect(found.map((w) => w.rule)).toEqual(["computed-order"]);
+    // 手で入れる項目（消費税）は順番に関係ない。指摘は計算項目だけ。
+    expect(found[0].path).toBe("page.form.sections[0].fields[0].computed.fields[0]");
+    expect(found[0].message).toContain("後ろに");
+    expect(found[0].fix).toContain("小計 → 消費税 → 合計");
+  });
+
+  it("自分自身を使っていたら言う", () => {
+    const found = warningsOf(
+      form(`          - { field: total, label: 合計, computed: { op: sum, fields: [total, tax] } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-self-reference");
+    expect(w?.message).toContain("自分自身");
+  });
+
+  it("独自の op の fields には口を出さない（意味を知らないので）", () => {
+    // `{ op: consumptionTax, fields: [subtotal] }` の fields が「計算に使う項目」だとは
+    // 限らない。知らない op の中身に口を出すと、正しい定義に嘘の警告を出す。
+    expect(
+      rulesOf(
+        form(`          - { field: tax, label: 消費税, computed: { op: consumptionTax, fields: [subtotal] } }
+          - { field: subtotal, label: 小計, computed: { op: sum, fields: [x, y] } }`),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("突き合わせも行を絞れる（compare に where）", () => {
+  /** 明細と「合計」1つ。[validator] がその合計に付く検証。 */
+  const form = (validator: string) => `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            fields:
+              - { field: amount, label: 金額, type: number }
+              - { field: cancelled, label: 取消, type: checkbox }
+          - field: total
+            label: 合計
+            type: number
+            validators:
+              - ${validator}
+`;
+
+  it("計算と同じ絞り込みなら何も言わない", () => {
+    expect(
+      rulesOf(
+        form(`{ type: compare, operator: equals, field: lines, aggregate: sum, of: amount,
+                  where: { field: cancelled, operator: notEquals, value: true } }`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("畳んでいないのに where を書いたら効かない", () => {
+    const found = warningsOf(
+      form(`{ type: compare, operator: equals, field: lines,
+                  where: { field: cancelled, operator: notEquals, value: true } }`),
+    );
+    const w = found.find((x) => x.rule === "compare-where-ignored");
+    expect(w?.path).toBe("page.form.sections[0].fields[1].validators[0].where");
+    expect(w?.fix).toContain("aggregate: sum");
+  });
+
+  it("綴り違いは近い名前を出す（計算と同じ言い方）", () => {
+    const found = warningsOf(
+      form(`{ type: compare, operator: equals, field: lines, aggregate: sum, of: amount,
+                  where: { field: canceled, operator: notEquals, value: true } }`),
+    );
+    const w = found.find((x) => x.rule === "compare-where-unknown-field");
+    expect(w?.fix).toContain("cancelled");
+  });
+
+  it("mode は行では判定できない（計算と同じ言い方）", () => {
+    const found = warningsOf(
+      form(`{ type: compare, operator: equals, field: lines, aggregate: sum, of: amount,
+                  where: { mode: create } }`),
+    );
+    const w = found.find((x) => x.rule === "compare-where-mode");
+    expect(w?.message).toContain("1件も残らない");
+  });
+});

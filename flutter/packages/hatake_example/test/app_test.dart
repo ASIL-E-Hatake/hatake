@@ -111,11 +111,30 @@ void main() {
     final lines = entry.form.fields.firstWhere((f) => f.field == 'lines');
     expect(lines.type, FieldTypes.subTable);
     // Grid columns and the row editor (with a row-level computed) are declared.
-    expect(lines.columns.map((c) => c.field), ['item', 'qty', 'price', 'amount']);
+    // 取消印は列にも出す（合計から外れた行を画面で見分けられるように）。
+    expect(
+      lines.columns.map((c) => c.field),
+      ['item', 'qty', 'price', 'amount', 'cancelled'],
+    );
     expect(
       lines.rowFields.firstWhere((f) => f.field == 'amount').computed,
       {'op': 'product', 'fields': ['qty', 'price']},
     );
+    // 小計は取消した行を外して畳む（絞らない合計は業務の合計にならない）。
+    expect(entry.form.fields.firstWhere((f) => f.field == 'subtotal').computed, {
+      'op': 'sum',
+      'field': 'lines',
+      'of': 'amount',
+      'where': {'field': 'cancelled', 'operator': 'notEquals', 'value': true},
+    });
+    // 品名は行を並べて1行にする（数ではなく文字が出る）。
+    expect(entry.form.fields.firstWhere((f) => f.field == 'itemNames').computed, {
+      'op': 'join',
+      'field': 'lines',
+      'of': 'item',
+      'separator': '、',
+      'where': {'field': 'cancelled', 'operator': 'notEquals', 'value': true},
+    });
     // Reachable from the menu and from the order list.
     expect(app.menu.any((m) => m.page == 'order_entry'), isTrue);
   });

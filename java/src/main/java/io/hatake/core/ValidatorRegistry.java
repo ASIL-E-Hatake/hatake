@@ -228,6 +228,8 @@ public final class ValidatorRegistry {
      * 比べる相手の値。aggregate があれば<b>明細を畳んだ数</b>（「合計＝明細の和」）。
      *
      * <p>畳み込みはダッシュボードと同じ実装（{@link Aggregates}）を使う＝同じ集約を2つ持たない。
+     * where で<b>畳む前に行を絞れる</b>のも計算（computed）と同じ＝<b>同じ行を同じ規則で</b>
+     * 絞る（小計が取消行を外しているのに検証が外さなければ、必ず食い違う）。
      */
     @SuppressWarnings("unchecked")
     private static Object compareTo(Object raw, ValidatorDefinition def) {
@@ -244,7 +246,11 @@ public final class ValidatorRegistry {
             }
         }
         Object of = def.params().get("of");
-        return new Aggregates().aggregate(op, rows, of instanceof String s ? s : null);
+        return new Aggregates()
+                .aggregate(
+                        op,
+                        Aggregates.rowsMatching(rows, def.params().get("where")),
+                        of instanceof String s ? s : null);
     }
 
     /** 突合そのもの。数として読めれば数、読めなければ文字。 */

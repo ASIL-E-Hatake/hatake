@@ -174,8 +174,15 @@ page:
         File('../../../spec/examples/order_entry.yaml').readAsStringSync();
     final lines = _linesOf(parsePageYaml(source));
     expect(lines.type, FieldTypes.subTable);
-    expect(lines.columns.length, 4);
-    expect(lines.rowFields.length, 4);
+    // 数だけを見ると、違う形になっても通ってしまう。名前で見る。
+    expect(
+      lines.columns.map((c) => c.field),
+      ['item', 'qty', 'price', 'amount', 'cancelled'],
+    );
+    expect(
+      lines.rowFields.map((f) => f.field),
+      ['item', 'qty', 'price', 'amount', 'cancelled'],
+    );
     expect(lines.source, isNull);
   });
 
@@ -192,8 +199,8 @@ page:
         pageSize: 20,
       ),
     );
-    // Everything else is identical to the embedded example.
-    expect(lines.columns.length, 4);
-    expect(lines.rowFields.length, 4);
+    // ページ送りの例は取消印を持たない（行がここに無いので畳めない＝絞る話が無い）。
+    expect(lines.columns.map((c) => c.field), ['item', 'qty', 'price', 'amount']);
+    expect(lines.rowFields.map((f) => f.field), ['item', 'qty', 'price', 'amount']);
   });
 }

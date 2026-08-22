@@ -37,6 +37,29 @@ fields:
 
 `required` 以外の検証は、値が空なら通る。「任意だが入れるなら形式は守れ」が普通の要求なので、それに合わせてある。**任意項目に `pattern` を書いても、空欄で弾かれることはない**。
 
+## 明細の合計と突き合わせる
+
+`compare` は「他の項目と比べる」検証だが、相手が明細（`subTable`）なら `aggregate` と
+`of` を足すと**行を畳んだ数**と比べられる。「合計が明細の和と合っているか」はこれで書ける。
+
+```yaml
+- { field: total, label: 合計, type: number,
+    validators: [ { type: compare, operator: equals,
+                    field: lines, aggregate: sum, of: amount } ] }
+```
+
+畳み方はダッシュボードのカードや計算項目（`computed`）と**同じ集約**なので、同じ書き方を
+すれば同じ数が出る。行を絞ってから比べるなら `where` を足す。
+
+```yaml
+    validators: [ { type: compare, operator: equals,
+                    field: lines, aggregate: sum, of: amount,
+                    where: { field: cancelled, operator: notEquals, value: true } } ]
+```
+
+**計算と検証で絞り方を揃えること**。小計を「取消行を外した合計」で出しているのに検証が
+全部の行を足すと、取消が1件でもあれば**必ず**食い違って、直せないエラーが出続ける。
+
 ## 足りないルールは足す
 
 `validators` の `type` も開いた文字列なので、独自ルール（社内のコード体系、他項目との突き合わせなど）は名前を決めて登録すれば書けるようになる。

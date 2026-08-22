@@ -7,12 +7,16 @@
 //
 // 行を畳む側は、集約の語彙（count / sum / avg / min / max）と実装を
 // [builtinAggregates] からそのまま借りる＝**同じ集約を2つ持たない**（ダッシュボードの
-// カードと `compare` の検証と、同じ数が出る）。
+// カードと `compare` の検証と、同じ数が出る）。`join` だけは数ではなく文字を作る
+// （行を並べて1行にする）ので、集約ではなくここで実装する。
+//
+// 行を畳む側は `where` で**畳む前に行を絞れる**（条件の言葉は visibleWhen と同じもの
+// ＝条件の書き方を2つ持たない。判定するのは行1件）。
 //
 // `field` を使う側の前提: 行が**親のレコードと一緒に来ている**こと。`source` を持つ
 // subTable はページ送りで別に持つので、ここには行が無い（`hatake validate` が言う）。
 
-import { builtinAggregates } from "./aggregate.js";
+import { builtinAggregates, rowsMatching } from "./aggregate.js";
 
 export type ComputedFn = (
   computed: Record<string, unknown>,
@@ -40,6 +44,25 @@ const foldsRows = (c: Record<string, unknown>): boolean =>
   typeof c.field === "string" && c.field !== "";
 
 /**
+ * `field` が指す明細の行。`where` があれば、**畳む前に**絞る。
+ *
+ * 条件は行1件に対して評価する（`{ mode: create }` は行では分からないので渡さない）。
+ */
+function rowsOf(
+  c: Record<string, unknown>,
+  record: Record<string, unknown>,
+): Record<string, unknown>[] {
+  const raw = record[String(c.field)];
+  const rows = Array.isArray(raw)
+    ? raw.filter(
+        (row): row is Record<string, unknown> =>
+          typeof row === "object" && row !== null && !Array.isArray(row),
+      )
+    : [];
+  return rowsMatching(rows, c.where);
+}
+
+/**
  * `field` が指す明細の行を、`op` の集約で畳む。
  *
  * 畳めないとき（行が無い・集約が知らない名前）は **null**。0 を返さないのは、
@@ -52,15 +75,8 @@ function fold(
 ): number | null {
   const aggregate = builtinAggregates[op];
   if (aggregate === undefined) return null;
-  const raw = record[String(c.field)];
-  const rows = Array.isArray(raw)
-    ? raw.filter(
-        (row): row is Record<string, unknown> =>
-          typeof row === "object" && row !== null && !Array.isArray(row),
-      )
-    : [];
   const of = typeof c.of === "string" ? c.of : undefined;
-  return aggregate(rows, of);
+  return aggregate(rowsOf(c, record), of);
 }
 
 export const builtinComputeds: Record<string, ComputedFn> = {
@@ -90,6 +106,19 @@ export const builtinComputeds: Record<string, ComputedFn> = {
   avg: (c, r) => (foldsRows(c) ? fold("avg", c, r) : null),
   min: (c, r) => (foldsRows(c) ? fold("min", c, r) : null),
   max: (c, r) => (foldsRows(c) ? fold("max", c, r) : null),
+  // 行を**並べて1行にする**。数ではなく文字が出るので、集約（数を1つにする）とは
+  // 別物＝実装もここにある。区切りの既定は ", "（`concat` の既定が空なのは姓と名を
+  // 詰めるためで、行を並べるときに詰めると読めない）。空の値は飛ばす。
+  join: (c, r) => {
+    if (!foldsRows(c)) return null;
+    const of = typeof c.of === "string" ? c.of : undefined;
+    if (of === undefined) return null;
+    const sep = c.separator != null ? String(c.separator) : ", ";
+    return rowsOf(c, r)
+      .map((row) => str(row[of]))
+      .filter((s) => s !== "")
+      .join(sep);
+  },
 };
 
 /** 計算オペレーションを名前で解決する。register で拡張可能。 */
