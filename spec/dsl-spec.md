@@ -1054,23 +1054,38 @@ computed: { op: sum, fields: [price, tax] }
 | `count` | ② Number of rows (`of` not needed). |
 | `avg` | ② Average of `of` over the rows. |
 | `min` / `max` | ② Smallest / largest `of` over the rows. |
+| `join` | ② Lists `of` over the rows, separated by `separator` (default `", "`). Produces **text**, not a number. |
 
 Two modes, chosen by which key is written: `fields` folds values of the **same record**
 (①), while `field` + `of` folds the **rows of a subTable** (②, the vertical total).
+Mode ② also takes `where`, which keeps only some of the rows.
 
 ```yaml
-computed: { op: sum, fields: [subtotal, tax] }      # ①
-computed: { op: sum, field: lines, of: amount }     # ②
-computed: { op: count, field: lines }               # ②
+computed: { op: sum, fields: [subtotal, tax] }              # ①
+computed: { op: sum, field: lines, of: amount }             # ②
+computed: { op: count, field: lines }                       # ②
+computed: { op: join, field: lines, of: item }              # ② text, not a number
+computed: { op: sum, field: lines, of: amount,              # ② fold only some rows
+            where: { field: cancelled, operator: notEquals, value: true } }
 ```
 
 Mode ② borrows both the vocabulary and the implementation of the dashboard `aggregate`
-(this framework has one aggregate, not two). With no rows, `sum` and `count` are 0 while
-`avg` / `min` / `max` are **null** (an average of 0 would read as "0 yen on average").
-Only rows saved with the parent record can be folded: a subTable with `source` is paged,
-so its rows are not all here (`validate` says so). If both `field` and `fields` are
-written, `field` wins. Computed fields are derived once, in declaration order — put the
-subtotal before the tax that uses it.
+(this framework has one aggregate, not two). `join` is not an aggregate — it produces text
+— so it is implemented separately; it skips empty values so the separators do not pile up.
+With no rows, `sum` and `count` are 0 while `avg` / `min` / `max` are **null** (an average
+of 0 would read as "0 yen on average") and `join` is an empty string. Only rows saved with
+the parent record can be folded: a subTable with `source` is paged, so its rows are not
+all here (`validate` says so). If both `field` and `fields` are written, `field` wins.
+Computed fields are derived once, in declaration order — put the subtotal before the tax
+that uses it, or the tax is computed while the subtotal is still empty (`validate` says
+so).
+
+`where` is the same condition language as `visibleWhen` (a leaf `{ field, operator, value }`
+plus `all` / `any` / `not`) — this framework does not have two ways to write a condition —
+but it is evaluated against **one row**, so `{ mode: create }` is never true there and an
+unknown operator is false: both leave no rows at all (`validate` says so). With no rows
+left, the value is the same as with no rows at all. On mode ① (`fields`) there are no rows
+to filter, so `where` does nothing (`validate` says so).
 
 ### validator
 
@@ -1372,6 +1387,14 @@ npx hatake validate page.yaml --no-warn --json
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | a mistake in a cross-field rule (`compare`) — **that rule passes silently** |
 | `page-nobody-can-open` | the `roles` on the ways in (menu items, navigate buttons) disagree — **nobody can open that screen** |
 | `prompt-unsupported-type` | a `prompt` on a type that cannot receive the values (anything but `plugin`) — the input is **collected and thrown away** |
+| `compare-where-unknown-field` | a row filter on a `compare` validator names a row field that does not exist and **looks like a typo** — the condition never matches |
+| `compare-where-ignored` | `where` without `aggregate` — there are no rows to filter |
+| `compare-where-mode` | `{ mode: … }` inside a `compare` row filter — a row has no form mode, so no rows are folded |
+| `computed-where-unknown-field` | a row filter (`computed.where`) names a row field that does not exist and **looks like a typo** — the condition never matches, so no rows are folded |
+| `computed-where-ignored` | `where` on mode ① (`fields`) — there are no rows to filter |
+| `computed-where-mode` | `{ mode: … }` inside `where` — a row has no form mode, so it is always false and no rows are folded |
+| `computed-order` | a computed field uses a computed field **written after it** — computed fields are derived once, in declaration order, so it is computed while the other is still empty |
+| `computed-self-reference` | a computed field uses itself — it always folds the previous value (empty at first) |
 | `computed-of-unknown-field` | a row-folding `computed` (`field` / `of`) points at a missing field, a field that is not a subTable, or a value the rows do not have — nothing to fold, so the field shows empty or 0 |
 | `computed-of-paged-subtable` | folding a `source`-backed (paged) subTable — the rows are not all here, so the result is 0 |
 | `computed-rows-unsupported-op` | an `op` that cannot fold rows was given a `field`, or a row-folding op (`count`/`avg`/`min`/`max`) has no `field` — nothing is computed |

@@ -72,6 +72,29 @@ public final class Aggregates {
     }
 
     /** 集約が「数値」とみなす値の解釈（真偽値は数値ではない）。 */
+    /**
+     * 行を条件で絞る。where が無ければそのまま返す。
+     *
+     * <p>条件の言葉は visibleWhen と同じもの（<b>条件の書き方を2つ持たない</b>）。判定
+     * するのは<b>行1件</b>なので {@code { mode: … }} は常に false（行にフォームの状態は
+     * 無い）。畳む所（computed の行モード）と突き合わせる所（compare の aggregate）が
+     * <b>同じ行を同じ規則で</b>絞るために、実装はここに1つだけ置く。
+     */
+    @SuppressWarnings("unchecked")
+    public static List<Map<String, Object>> rowsMatching(
+            List<Map<String, Object>> rows, Object where) {
+        if (!(where instanceof Map<?, ?> condition)) {
+            return rows;
+        }
+        List<Map<String, Object>> kept = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            if (ConditionEvaluator.evaluate((Map<String, Object>) condition, row)) {
+                kept.add(row);
+            }
+        }
+        return kept;
+    }
+
     public static Double toNum(Object v) {
         if (v instanceof Boolean) {
             return null;

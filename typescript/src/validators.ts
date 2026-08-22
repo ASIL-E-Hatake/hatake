@@ -1,4 +1,4 @@
-import { builtinAggregates } from "./aggregate.js";
+import { builtinAggregates, rowsMatching } from "./aggregate.js";
 import { ValidatorTypes, type ValidatorDefinition } from "./definition.js";
 import { MessageResolver } from "./messageResolver.js";
 
@@ -153,7 +153,9 @@ function compare(
 /**
  * 比べる相手の値。`aggregate` があれば**明細を畳んだ数**（「合計＝明細の和」）。
  *
- * 畳み込みはダッシュボードと同じ実装を使う（同じ集約を2つ持たない）。
+ * 畳み込みはダッシュボードと同じ実装を使う（同じ集約を2つ持たない）。`where` で
+ * **畳む前に行を絞れる**のも計算（`computed`）と同じ＝**同じ行を同じ規則で**絞る
+ * （小計が取消行を外しているのに検証が外さなければ、必ず食い違う）。
  */
 function compareTo(raw: unknown, def: ValidatorDefinition): unknown {
   const aggregate =
@@ -168,7 +170,7 @@ function compareTo(raw: unknown, def: ValidatorDefinition): unknown {
       )
     : [];
   const of = typeof def.params.of === "string" ? def.params.of : undefined;
-  return fold(rows, of);
+  return fold(rowsMatching(rows, def.params.where), of);
 }
 
 /** 突合そのもの。数として読めれば数、読めなければ文字（ISO の日付はこれで前後が合う）。 */

@@ -715,7 +715,7 @@ jobs:
           fi
           grep -q '聞くことが1つも書かれていません' /tmp/empty.err
 
-      - name: The vertical total comes from the definition (computed with of)
+      - name: The vertical total comes from the definition (computed with of / where / join)
         working-directory: typescript
         run: |
           set -e
@@ -726,6 +726,10 @@ jobs:
           node dist/cli.js explain "$DEMO" --page order_entry > /tmp/fold.log
           grep -q '小計 … 明細 の 金額 の合計（手では入れない）' /tmp/fold.log
           grep -q '明細行数 … 明細 の件数（手では入れない）' /tmp/fold.log
+          # 絞ってから畳んだなら、**何で絞ったか**も言うこと（合計が合わない相談はこれ）。
+          grep -q '取消 が true でないときの行だけ' /tmp/fold.log
+          # 並べる計算は、畳む計算と別の言い方をすること（数ではなく文字が出る）。
+          grep -q '明細 の 品名 を並べたもの（手では入れない）' /tmp/fold.log
           # 集約の名前は、登録が要るものとして数えない（組み込みなので）。
           node dist/cli.js refs "$DEMO" --needs-registration > /tmp/fold.refs
           if grep -q 'computedOps' /tmp/fold.refs; then
@@ -786,6 +790,120 @@ jobs:
           YAML
           node dist/cli.js validate --json /tmp/fold-paged.yaml > /tmp/fold-paged.json
           grep -q '"rule": "computed-of-paged-subtable"' /tmp/fold-paged.json
+          # 絞り込みと順番の書き間違いも、押す前に言う（どれも空欄か 0 になるだけ）。
+          cat > /tmp/fold-where-bad.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - field: lines
+                      label: 明細
+                      type: subTable
+                      fields:
+                        - { field: amount, label: 金額, type: number }
+                        - { field: cancelled, label: 取消, type: checkbox }
+                - title: 金額
+                  fields:
+                    - { field: a, label: 小計A, computed: { op: sum, field: lines, of: amount, where: { field: canceled, operator: notEquals, value: true } } }
+                    - { field: b, label: 小計B, computed: { op: sum, fields: [x, y], where: { field: cancelled, operator: notEquals, value: true } } }
+                    - { field: c, label: 小計C, computed: { op: sum, field: lines, of: amount, where: { mode: create } } }
+                    - { field: d, label: 合計D, computed: { op: sum, fields: [e] } }
+                    - { field: e, label: 小計E, computed: { op: sum, field: lines, of: amount } }
+                    - { field: f, label: 合計F, computed: { op: sum, fields: [f] } }
+                    - { field: g, label: 品名G, computed: { op: join, field: lines } }
+          YAML
+          if node dist/cli.js validate --warn-as-error /tmp/fold-where-bad.yaml                 2> /tmp/fold-where-bad.err; then
+            echo "絞り込み・順番の書き間違いを通してしまった"; exit 1
+          fi
+          node dist/cli.js validate --json /tmp/fold-where-bad.yaml > /tmp/fold-where-bad.json
+          for rule in computed-where-unknown-field computed-where-ignored \
+                computed-where-mode computed-order computed-self-reference \
+                computed-aggregate-without-of; do
+            grep -q "\"rule\": \"$rule\"" /tmp/fold-where-bad.json || {
+              echo "$rule が出ていない"; exit 1; }
+          done
+          # 同じ絞り込みは項目間の検証にも要る（計算だけ絞ると必ず食い違う）。
+          cat > /tmp/fold-compare.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - field: lines
+                      label: 明細
+                      type: subTable
+                      fields:
+                        - { field: amount, label: 金額, type: number }
+                        - { field: cancelled, label: 取消, type: checkbox }
+                    - { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amount, where: { field: cancelled, operator: notEquals, value: true } } }
+                    - field: total
+                      label: 合計
+                      type: number
+                      validators:
+                        - { type: compare, operator: equals, field: lines, aggregate: sum, of: amount, where: { field: cancelled, operator: notEquals, value: true } }
+          YAML
+          node dist/cli.js validate --warn-as-error /tmp/fold-compare.yaml
+          # 検証側だけ絞り忘れ（`aggregate` が無い / 綴り違い）は言う。
+          cat > /tmp/fold-compare-bad.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - field: lines
+                      label: 明細
+                      type: subTable
+                      fields:
+                        - { field: amount, label: 金額, type: number }
+                        - { field: cancelled, label: 取消, type: checkbox }
+                    - field: total
+                      label: 合計
+                      type: number
+                      validators:
+                        - { type: compare, operator: equals, field: lines, where: { field: cancelled, operator: notEquals, value: true } }
+                    - field: other
+                      label: 別の合計
+                      type: number
+                      validators:
+                        - { type: compare, operator: equals, field: lines, aggregate: sum, of: amount, where: { field: canceled, operator: notEquals, value: true } }
+          YAML
+          node dist/cli.js validate --json /tmp/fold-compare-bad.yaml > /tmp/fold-compare-bad.json
+          for rule in compare-where-ignored compare-where-unknown-field; do
+            grep -q "\"rule\": \"$rule\"" /tmp/fold-compare-bad.json || {
+              echo "$rule が出ていない"; exit 1; }
+          done
+          # 綴り違いに見えない名前（画面に出していない値）は責めない＝嘘の警告を出さない。
+          cat > /tmp/fold-hidden.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - field: lines
+                      label: 明細
+                      type: subTable
+                      fields:
+                        - { field: amount, label: 金額, type: number }
+                    - { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amount, where: { field: deletedFlag, operator: isEmpty } } }
+          YAML
+          node dist/cli.js validate --warn-as-error /tmp/fold-hidden.yaml
 
       - name: The tutorial's definition and its output are real
         working-directory: typescript

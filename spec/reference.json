@@ -591,6 +591,7 @@
       "parents": [
         "condition",
         "field",
+        "field.computed",
         "section"
       ],
       "keys": [
@@ -1394,7 +1395,7 @@
           "key": "computed",
           "type": "object",
           "required": false,
-          "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max, the same aggregate vocabulary as dashboards and `compare`). Extensible via ComputedRegistry.",
+          "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max — the same aggregate vocabulary as dashboards and `compare` — plus `join`, which lists the rows as one string). Row-folding accepts `where` to keep only some rows. Derived once, in declaration order. Extensible via ComputedRegistry.",
           "nodes": [
             "field.computed"
           ]
@@ -1436,7 +1437,7 @@
       ]
     },
     "field.computed": {
-      "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max, the same aggregate vocabulary as dashboards and `compare`). Extensible via ComputedRegistry.",
+      "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max — the same aggregate vocabulary as dashboards and `compare` — plus `join`, which lists the rows as one string). Row-folding accepts `where` to keep only some rows. Derived once, in declaration order. Extensible via ComputedRegistry.",
       "closed": false,
       "pageKinds": [
         "crud",
@@ -1456,7 +1457,7 @@
           "key": "op",
           "type": "string",
           "required": true,
-          "description": "Same-record ops: concat, sum, subtract, product (with `fields`). Row-folding ops: count, sum, avg, min, max (with `field`). Open string — register your own on ComputedRegistry.",
+          "description": "Same-record ops: concat, sum, subtract, product (with `fields`). Row-folding ops: count, sum, avg, min, max, join (with `field`). Open string — register your own on ComputedRegistry.",
           "values": [
             "concat",
             "sum",
@@ -1465,7 +1466,8 @@
             "count",
             "avg",
             "min",
-            "max"
+            "max",
+            "join"
           ],
           "open": true
         },
@@ -1497,9 +1499,19 @@
           "open": true
         },
         {
+          "key": "where",
+          "type": "object",
+          "required": false,
+          "description": "Row-folding mode only: fold just the rows matching this condition, evaluated against one row (the same condition language as `visibleWhen`). `{ mode: ... }` is never true here — a row has no form mode.",
+          "nodes": [
+            "condition"
+          ]
+        },
+        {
           "key": "separator",
           "type": "string",
-          "required": false
+          "required": false,
+          "description": "What goes between the joined values. Default: empty for `concat` (it packs values of one record, like a name), \", \" for `join` (it lists rows, which are unreadable packed together)."
         }
       ]
     },
@@ -2546,7 +2558,7 @@
       ]
     },
     "validator": {
-      "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters: maxLength / minLength / min / max take 'value', pattern takes 'pattern', and compare takes 'operator' (equals / notEquals / gt / gte / lt / lte) plus 'field' (the field to compare with), optionally 'aggregate' + 'of' to fold a subTable into a number.",
+      "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters: maxLength / minLength / min / max take 'value', pattern takes 'pattern', and compare takes 'operator' (equals / notEquals / gt / gte / lt / lte) plus 'field' (the field to compare with), optionally 'aggregate' + 'of' to fold a subTable into a number, and 'where' to fold only some of its rows (the same row filter as `computed`).",
       "closed": false,
       "pageKinds": [
         "crud",
@@ -3119,6 +3131,9 @@
     ],
     "when": [
       "option"
+    ],
+    "where": [
+      "field.computed"
     ],
     "width": [
       "column"

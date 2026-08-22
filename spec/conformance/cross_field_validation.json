@@ -1,5 +1,5 @@
 {
-  "_comment": "項目間の検証（compare）。各エディションが `page` を解析し、case ごとに `record` をフォームで検証して、エラーを {field,message} の順不同の集合で比べる。ここで固定したいのは5つ: (1) 相手の項目の値と比べる（開始日 ≤ 終了日）、(2) 比べ方は数として読めれば数・読めなければ文字（ISO の日付は文字の大小＝日付の前後）、(3) `aggregate` を付けると明細を畳んだ数と比べる（合計＝明細の和）、(4) 自分か相手が空なら通す（required の担当）、(5) メッセージは相手の**ラベル**で出す（項目名ではなく画面の言葉）。",
+  "_comment": "項目間の検証（compare）。各エディションが `page` を解析し、case ごとに `record` をフォームで検証して、エラーを {field,message} の順不同の集合で比べる。ここで固定したいのは5つ: (1) 相手の項目の値と比べる（開始日 ≤ 終了日）、(2) 比べ方は数として読めれば数・読めなければ文字（ISO の日付は文字の大小＝日付の前後）、(3) `aggregate` を付けると明細を畳んだ数と比べる（合計＝明細の和）、(4) 自分か相手が空なら通す（required の担当）、(5) メッセージは相手の**ラベル**で出す（項目名ではなく画面の言葉）、(6) `where` を付けると**畳む前に行を絞る**（計算の `computed` と同じ行を同じ規則で絞る＝小計が取消行を外しているのに検証が外さない、という食い違いを作らない）。",
   "page": {
     "dsl_version": "1.0",
     "page": {
@@ -54,11 +54,27 @@
                 ]
               },
               {
+                "field": "liveTotal",
+                "label": "有効行の合計",
+                "type": "number",
+                "validators": [
+                  {
+                    "type": "compare",
+                    "operator": "equals",
+                    "field": "lines",
+                    "aggregate": "sum",
+                    "of": "amount",
+                    "where": { "field": "cancelled", "operator": "notEquals", "value": true }
+                  }
+                ]
+              },
+              {
                 "field": "lines",
                 "label": "明細",
                 "type": "subTable",
                 "fields": [
-                  { "field": "amount", "label": "金額", "type": "number" }
+                  { "field": "amount", "label": "金額", "type": "number" },
+                  { "field": "cancelled", "label": "取消", "type": "checkbox" }
                 ]
               }
             ]
@@ -139,6 +155,40 @@
     {
       "name": "明細が空なら和は 0（合計 0 なら通る）",
       "record": { "total": 0, "lines": [] },
+      "expected": []
+    },
+    {
+      "name": "取消した行を外して比べる（where）",
+      "record": {
+        "liveTotal": 300,
+        "lines": [{ "amount": 300 }, { "amount": 700, "cancelled": true }]
+      },
+      "expected": []
+    },
+    {
+      "name": "取消した行まで足した数だと言う（where が効いている）",
+      "record": {
+        "liveTotal": 1000,
+        "lines": [{ "amount": 300 }, { "amount": 700, "cancelled": true }]
+      },
+      "expected": [
+        { "field": "liveTotal", "message": "明細 の sumと同じ値にしてください" }
+      ]
+    },
+    {
+      "name": "取消印が無ければ全部の行を足す（絞る条件に当たる行が無い）",
+      "record": {
+        "liveTotal": 1000,
+        "lines": [{ "amount": 300 }, { "amount": 700 }]
+      },
+      "expected": []
+    },
+    {
+      "name": "全部取消なら和は 0（0 なら通る）",
+      "record": {
+        "liveTotal": 0,
+        "lines": [{ "amount": 300, "cancelled": true }]
+      },
       "expected": []
     }
   ]

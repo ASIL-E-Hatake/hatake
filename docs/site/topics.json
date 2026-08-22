@@ -191,7 +191,8 @@
         "computed",
         "op",
         "separator",
-        "of"
+        "of",
+        "where"
       ],
       "demo": "order_entry"
     },

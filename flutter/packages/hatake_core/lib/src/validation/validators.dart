@@ -161,6 +161,10 @@ String? _compare(
 
 /// The value to compare against. With `aggregate`, the child rows folded into a
 /// number (「合計＝明細の和」) — using the same fold the dashboard uses.
+///
+/// `where` narrows the rows before folding, exactly as `computed` does — the same rows
+/// filtered by the same rule (a subtotal that skips cancelled rows would never match a
+/// check that does not).
 Object? _compareTo(Object? raw, ValidatorDefinition def) {
   final aggregate = def.params['aggregate'];
   if (aggregate is! String) return raw;
@@ -170,8 +174,11 @@ Object? _compareTo(Object? raw, ValidatorDefinition def) {
         if (row is Map) row.cast<String, Object?>(),
   ];
   final of = def.params['of'];
-  return AggregateRegistry()
-      .aggregate(aggregate, rows, field: of is String ? of : null);
+  return AggregateRegistry().aggregate(
+    aggregate,
+    rowsMatching(rows, def.params['where']),
+    field: of is String ? of : null,
+  );
 }
 
 /// The comparison itself.

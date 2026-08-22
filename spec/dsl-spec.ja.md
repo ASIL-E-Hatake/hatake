@@ -974,15 +974,23 @@ computed: { op: sum, fields: [subtotal, tax] }
 # ② 明細（subTable）の行を畳む（縦計）
 computed: { op: sum, field: lines, of: amount }
 computed: { op: count, field: lines }
+
+# ②のうち「並べて1行にする」（数ではなく文字が出る）
+computed: { op: join, field: lines, of: item, separator: "、" }
+
+# ②は畳む前に行を絞れる（条件の書き方は visibleWhen と同じもの）
+computed: { op: sum, field: lines, of: amount,
+            where: { field: cancelled, operator: notEquals, value: true } }
 ```
 
 | キー | 型 | 意味 |
 |---|---|---|
 | `op` | string（必須） | 計算方法。開いた文字列（`ComputedRegistry` で追加可）。 |
 | `fields` | string[] | ①同じレコードの項目名。 |
-| `separator` | string | `concat` の区切り（既定 空）。 |
+| `separator` | string | 値の間に挟むもの。既定は `concat` が空、`join` が `", "`。 |
 | `field` | string | ②畳む明細（`type: subTable`）の項目名。 |
 | `of` | string | ②行のどの項目を畳むか。`count` 以外で必須。`compare` の `of` と同じ意味。 |
+| `where` | condition | ②畳む前に行を絞る条件。**行1件に対して**評価する。 |
 
 | 組込 `op` | モード | 説明 |
 |---|---|---|
@@ -993,20 +1001,34 @@ computed: { op: count, field: lines }
 | `count` | ② | 行数（`of` は要らない）。 |
 | `avg` | ② | 行の `of` の平均。 |
 | `min` / `max` | ② | 行の `of` の最小 / 最大。 |
+| `join` | ② | 行の `of` を `separator`（既定 `", "`）で並べる。**文字**が出る。 |
 
-②の語彙と実装は**ダッシュボードの `aggregate` と同じもの**（同じ集約を2つ持たない）。
+②の集約の語彙と実装は**ダッシュボードの `aggregate` と同じもの**（同じ集約を2つ持たない）。
 数値の解釈も同じで、数として読めない行は飛ばす（`"1500"` は数値、真偽値は数値ではない）。
+`join` は数ではなく文字を作るので集約ではない（実装も別）。空の値は飛ばす（区切りだけが
+並ばないように）。
 
 ②の決まりごと:
 
 - 行が1件も無いとき `sum` と `count` は 0、`avg` / `min` / `max` は **null**
-  （「平均 0 円」と出ると読み違えるので、値が定まらないときは空にする）
+  （「平均 0 円」と出ると読み違えるので、値が定まらないときは空にする）、`join` は空文字
 - 畳めるのは**親のレコードと一緒に保存する明細**だけ。`source` を書いた明細は
   ページ送りで別に取るので、行がそこに揃っていない（`validate` が
   `computed-of-paged-subtable` で言う）
 - `field` と `fields` の両方を書いたら **`field` が勝つ**（`validate` が言う）
 - 計算は**宣言順に1回**なので、`小計 → 消費税 → 合計` の順に並べる（後ろの項目は前の
-  結果を使える）
+  結果を使える。逆に書くと**空のまま計算される**ので `validate` が `computed-order` で言う）
+
+`where` の決まりごと:
+
+- 条件の言葉は `visibleWhen` と同じ（リーフ `{ field, operator, value }` と
+  `all` / `any` / `not`）。**条件の書き方を2つ持たない**ため
+- 判定するのは**行**。だから `{ mode: create }` は常に false ＝1件も残らない
+  （`validate` が `computed-where-mode` で言う）
+- 知らない演算子は false（条件と同じ規則）＝1件も残らない
+- 1件も残らないときの値は「行が無いとき」と同じ（`sum` は 0、`avg` は null）
+- ①（`fields`）に書いても効かない（絞る行が無い。`validate` が
+  `computed-where-ignored` で言う）
 
 ### validator
 
@@ -1310,6 +1332,14 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `compare-unknown-field` / `compare-without-field` / `compare-with-itself` / `compare-bad-operator` / `compare-aggregate-without-of` | 項目間の検証（`compare`）の書き間違い → **その検証が黙って通る** |
 | `page-nobody-can-open` | 入口（メニュー項目・遷移ボタン）の `roles` が食い違っている → **その画面を開ける人が誰も居ない** |
 | `prompt-unsupported-type` | 実行前に聞く（`prompt`）のに、聞いた値を受け取れない型（`plugin` 以外）→ **聞くだけ聞いて捨てる** |
+| `compare-where-unknown-field` | 突き合わせの行を絞る条件（`where`）が、行に無い項目を**綴り違いに見える形で**指している → 条件が当たらず 1件も残らない |
+| `compare-where-ignored` | 明細を畳んでいない（`aggregate` が無い）のに `where` を書いた → 絞る行が無いので効かない |
+| `compare-where-mode` | 突き合わせの `where` に `{ mode: … }` を書いた → 行にフォームの状態は無いので常に false ＝1件も残らない |
+| `computed-where-unknown-field` | 行を絞る条件（`computed.where`）が、行に無い項目を**綴り違いに見える形で**指している → 条件が当たらず 1件も残らない |
+| `computed-where-ignored` | ①（`fields`）に `where` を書いた → 絞る行が無いので効かない |
+| `computed-where-mode` | `where` に `{ mode: … }` を書いた → 行にフォームの状態は無いので常に false ＝1件も残らない |
+| `computed-order` | 計算項目が**後ろに書かれた**計算項目を使っている → 計算は宣言順に1回なので、空のまま計算される |
+| `computed-self-reference` | 計算項目が自分自身を使っている → いつも1つ前の値（はじめは空）を使う |
 | `computed-of-unknown-field` | 行を畳む計算（`computed.field` / `of`）が、無い項目・明細でない項目・行に無い項目を指している → 畳む値が取れず、その項目は空欄か 0 になる |
 | `computed-of-paged-subtable` | `source` つき明細（ページ送り）を畳もうとしている → 行がそこに揃っていないので 0 になる |
 | `computed-rows-unsupported-op` | 行を畳めない `op` に `field` を書いた／行を畳む `op`（`count`/`avg`/`min`/`max`）に `field` が無い → 計算されない |

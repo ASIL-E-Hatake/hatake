@@ -479,12 +479,29 @@ function describeComputed(
   const v = voice(lang);
   const target = typeof computed.field === "string" ? computed.field : undefined;
   const op = typeof computed.op === "string" ? computed.op : "";
-  if (target === undefined || AGGREGATES[op] === undefined) return v.computedField;
+  if (target === undefined) return v.computedField;
   const table = vocabulary.labels.get(target) ?? target;
-  if (op === "count") return v.foldsRowCount(table);
   const of = typeof computed.of === "string" ? computed.of : undefined;
-  if (of === undefined) return v.computedField;
-  return v.foldsRows(table, vocabulary.labels.get(of) ?? of, pick(AGGREGATES[op], lang));
+  const ofLabel = of === undefined ? undefined : (vocabulary.labels.get(of) ?? of);
+  const main = ((): string | undefined => {
+    // 並べる（文字を作る）と畳む（数を作る）は別。読む人には別の言い方で言う。
+    if (op === "join") {
+      return ofLabel === undefined ? undefined : v.joinsRows(table, ofLabel);
+    }
+    if (AGGREGATES[op] === undefined) return undefined;
+    if (op === "count") return v.foldsRowCount(table);
+    if (ofLabel === undefined) return undefined;
+    return v.foldsRows(table, ofLabel, pick(AGGREGATES[op], lang));
+  })();
+  if (main === undefined) return v.computedField;
+  // 絞ってから畳むなら、**何で絞ったか**も言う（合計が合わない相談のほとんどはこれ）。
+  const where =
+    typeof computed.where === "object" &&
+    computed.where !== null &&
+    !Array.isArray(computed.where)
+      ? describeCondition(computed.where as Record<string, unknown>, vocabulary, lang)
+      : "";
+  return where === "" ? main : [main, v.onlyRows(where)].join(v.noteSeparator);
 }
 
 const describeValidator = (
@@ -514,10 +531,23 @@ function compareTarget(
   const label = vocabulary.labels.get(target) ?? target;
   const aggregate =
     typeof rule.params.aggregate === "string" ? rule.params.aggregate : undefined;
-  const shown =
+  const folded =
     aggregate === undefined
       ? label
       : v.compareAggregate(label, wordOf(AGGREGATES, aggregate, lang) ?? aggregate);
+  // 絞ってから比べるなら、**何で絞ったか**も言う（言わないと、通った理由が読めない）。
+  const where =
+    aggregate !== undefined &&
+    typeof rule.params.where === "object" &&
+    rule.params.where !== null &&
+    !Array.isArray(rule.params.where)
+      ? describeCondition(
+          rule.params.where as Record<string, unknown>,
+          vocabulary,
+          lang,
+        )
+      : "";
+  const shown = where === "" ? folded : v.foldedRowsOnly(folded, v.onlyRows(where));
   const operator =
     typeof rule.params.operator === "string" ? rule.params.operator : "gte";
   const phrase = COMPARE_WORDS[operator];

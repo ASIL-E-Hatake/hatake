@@ -4,11 +4,31 @@
 // 行を出すのは Repository の仕事で、ここは「返ってきた行をどう見せるか」だけ。
 
 import { AggregateOps } from "./definition.js";
+import { evaluateCondition } from "./conditionEvaluator.js";
 
 export type AggregateFn = (
   rows: Record<string, unknown>[],
   field?: string,
 ) => number | null;
+
+/**
+ * 行を条件で絞る。`where` が無ければそのまま返す。
+ *
+ * 条件の言葉は `visibleWhen` と同じもの（**条件の書き方を2つ持たない**）。判定するのは
+ * **行1件**なので `{ mode: … }` は常に false（行にフォームの状態は無い）。
+ *
+ * 畳む所（`computed` の行モード）と突き合わせる所（`compare` の `aggregate`）が
+ * **同じ行を同じ規則で**絞るために、実装はここに1つだけ置く。
+ */
+export function rowsMatching(
+  rows: Record<string, unknown>[],
+  where: unknown,
+): Record<string, unknown>[] {
+  if (where == null || typeof where !== "object" || Array.isArray(where)) return rows;
+  return rows.filter((row) =>
+    evaluateCondition(where as Record<string, unknown>, row),
+  );
+}
 
 /** 数値解釈は ComputedRegistry と同じ規則（真偽値は数値ではない）。 */
 function toNum(v: unknown): number | null {

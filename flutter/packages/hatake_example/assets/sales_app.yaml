@@ -300,13 +300,24 @@ app:
                   - { field: price, label: 単価, type: number, required: true, validators: [ { type: min, value: 0 } ] }
                   # 行内の計算項目: 金額 = 数量 × 単価
                   - { field: amount, label: 金額, computed: { op: product, fields: [qty, price] } }
+                  # 取消した行は残す（消すと何を取消したか分からない）。合計からは外す。
+                  - { field: cancelled, label: 取消, type: checkbox }
           - title: 金額
             fields:
               # 縦計。`field` が明細の項目、`of` が行の項目（集約の語彙はダッシュ
               # ボードのカードと同じ）。行を1行足す・数量を直すと、その場で変わる。
+              # `where` で**畳む前に行を絞る**（取消した行は合計に入れない）。
+              # 条件の書き方は visibleWhen と同じもの＝条件の言葉を2つ持たない。
               - { field: subtotal, label: 小計, format: currency, config: { symbol: "¥" },
-                  computed: { op: sum, field: lines, of: amount } }
-              - { field: lineCount, label: 明細行数, computed: { op: count, field: lines } }
+                  computed: { op: sum, field: lines, of: amount,
+                              where: { field: cancelled, operator: notEquals, value: true } } }
+              - { field: lineCount, label: 明細行数,
+                  computed: { op: count, field: lines,
+                              where: { field: cancelled, operator: notEquals, value: true } } }
+              # 並べて1行にするのは join（数ではなく文字が出る）。伝票の「品名」欄。
+              - { field: itemNames, label: 品名, type: textarea, readOnly: true,
+                  computed: { op: join, field: lines, of: item, separator: "、",
+                              where: { field: cancelled, operator: notEquals, value: true } } }
       actions:
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: order_entry } }
 

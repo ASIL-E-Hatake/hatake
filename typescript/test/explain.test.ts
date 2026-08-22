@@ -446,3 +446,86 @@ describe("明細の行を畳む計算の読み返し", () => {
     expect(text).toContain("行数 … the number of rows in 明細 (not typed in)");
   });
 });
+
+describe("行を絞ってから畳む・並べて1行にする", () => {
+  const source = `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            fields:
+              - { field: item, label: 品名 }
+              - { field: amount, label: 金額, type: number }
+              - { field: cancelled, label: 取消, type: checkbox }
+      - title: 金額
+        fields:
+          - { field: subtotal, label: 小計,
+              computed: { op: sum, field: lines, of: amount,
+                          where: { field: cancelled, operator: notEquals, value: true } } }
+          - { field: itemNames, label: 品名,
+              computed: { op: join, field: lines, of: item, separator: "、" } }
+`;
+
+  it("何で絞ったかまで言う（合計が合わない相談のほとんどはこれ）", () => {
+    const text = renderExplain(explainSource(source));
+    expect(text).toContain(
+      "小計 … 明細 の 金額 の合計（手では入れない）、取消 が true でないときの行だけ",
+    );
+  });
+
+  it("並べる計算は「合計」と別の言い方をする（文字が出るので）", () => {
+    expect(renderExplain(explainSource(source))).toContain("品名 … 明細 の 品名 を並べたもの（手では入れない）");
+  });
+
+  it("英語も同じことを言う", () => {
+    const text = renderExplain(explainSource(source, { lang: "en" }));
+    expect(text).toContain(
+      "the total of 金額 in 明細 (not typed in), only rows where 取消 is not true",
+    );
+    expect(text).toContain("the 品名 of every row in 明細, listed (not typed in)");
+  });
+});
+
+describe("突き合わせも「何で絞ったか」を言う", () => {
+  const source = `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            fields:
+              - { field: amount, label: 金額, type: number }
+              - { field: cancelled, label: 取消, type: checkbox }
+          - field: total
+            label: 合計
+            type: number
+            validators:
+              - { type: compare, operator: equals, field: lines, aggregate: sum, of: amount,
+                  where: { field: cancelled, operator: notEquals, value: true } }
+`;
+
+  it("計算と同じ言い方で絞り込みを言う（通った理由が読めるように）", () => {
+    expect(renderExplain(explainSource(source))).toContain(
+      "合計 … 数値、明細 の合計（取消 が true でないときの行だけ） と同じ値",
+    );
+  });
+
+  it("英語も同じことを言う（集約の英語は the で始まるので重ねない）", () => {
+    expect(renderExplain(explainSource(source, { lang: "en" }))).toContain(
+      "the same value as the total of 明細 (only rows where 取消 is not true)",
+    );
+  });
+});
