@@ -89,6 +89,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 | `hatake_reference` | キーの型・既定値・書ける場所・取れる値を知りたい。仕様書を読む代わり | `name`（キー名/ノード名/ページ種別）、`pageKind`（その画面の分だけに絞る） |
 | `hatake_examples` | 定義を書き始める前に近い例を探す。`file` を渡すと YAML 全文 | `query`（日本語でよい）、`file` |
 | `hatake_validate` | 書いたら/直したら必ず通す。知らないキーを全部まとめて指摘＋綴りの提案 | `source`（中身そのもの）、`strict`（既定 true）、`registry`（アプリ側で登録済みのもの＝外との辻褄も見る） |
+| `hatake_advise` | **検証を通したあと**：書いて**いない**から不便かもしれない所を挙げる（並べ替えできない一覧・誰でも消せる画面・確認の無い一括）。好みなので直すかは業務の判断 | `source`、`page`（app のとき1枚だけ）、`rules`（案件の物差し＝`off` / `options` / `require`） |
 | `hatake_new_page` | 新しい画面の出発点。そのまま検証を通る雛形が出る | `kind`、`id`、`title`、`repository` |
 | `hatake_pitfalls` | よくある間違い → なぜ駄目か → 正しい書き方。書く前に眺める / 落ちて直せないとき | `query`、`lang`（ja/en） |
 | `hatake_diff` | **既にある定義を直したとき**：契約（api）を壊すか＋画面・権限・アプリ構成の**確かめてほしい**変化 | `before`、`after` |
@@ -105,6 +106,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 2. 新規なら hatake_new_page で雛形
 3. 迷ったキーだけ hatake_reference で引く
 4. 書けたら必ず hatake_validate → 問題が出たら hatake_fix → hatake_explain で読み返す
+   → さらに hatake_advise を1回（**書いていない所**は検証に出てこない）
 5. 直し方が分からない / 書く前に落とし穴を知りたいときは hatake_pitfalls
 6. バックエンドの形が要るなら hatake_api_shape
 7. 既にある定義を直したときは hatake_diff（壊していないか・確かめてほしい変化はないか）
@@ -118,6 +120,8 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 `before` を渡すと、変更を画面の言葉で言い直します（「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」）。`hatake_diff` が返すのは機械の言葉（`ui / column-format-changed / …`）なので、**人に報告するとき**はこちらを使う。判定（壊すか）は `hatake_diff`、言い直し（何が変わったか）は `hatake_explain`、で分けてあります。`brief: true` は1行の要約で、PR 本文や画面一覧に貼る用。
 
 `hatake_diff` は変更を **area**（api / ui / access / app）と **impact**（breaking / caution / safe）で返します。`compatible: false` は呼び出し側の修正が要る話、`quiet: false` は「壊れないが人に確かめてほしい」話（列やボタンや選択肢が消えた・権限が変わった・ページやメニューが消えた）。エージェントには**後者を黙って進めず列挙させる**ようにしてあります。
+
+`hatake_validate` と `hatake_advise` は**別の物差し**です。前者は「書いたのに効かない」＝事実なので直す。後者は「書いていないから不便かもしれない」＝**好み**なので、直すかどうかは業務の判断。AI にとって大事なのは、**書いていないことは検証に出てこない**という点です（並べ替えできない一覧も、確認の無い一括も、定義としては正しい）。案件の決めごとがあるなら `rules` を渡してください（合わない規則を止める `off`、目盛りを変える `options`、決めごとを足す `require`）。知らないキーや知らない規則名は**黙って無視せずエラー**にします。
 
 `hatake_refs` → `hatake_validate` の `registry` は繋がっています。前者が「何を登録すればいいか」を出し、それを人が確かめて後者に渡すと、名前の食い違いを機械で拾えます。
 

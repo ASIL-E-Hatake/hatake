@@ -1361,12 +1361,18 @@ jobs:
             '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
             '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
             '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hatake_validate","arguments":{"source":"page: {type: crud, id: x, title: X, repository: xRepository}"}}}' \
+            '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"hatake_advise","arguments":{"source":"page: {type: search, id: s, title: S, repository: r, table: {columns: [{field: a, label: A}]}}"}}}' \
             | node dist/mcp.js > /tmp/mcp.log
-          # 通知には返事をしない = 4 送って 3 行。stdout に他のものを書いていないことも見る。
-          test "$(wc -l < /tmp/mcp.log)" -eq 3
+          # 通知には返事をしない = 5 送って 4 行。stdout に他のものを書いていないことも見る。
+          test "$(wc -l < /tmp/mcp.log)" -eq 4
           grep -q '"protocolVersion":"2025-06-18"' /tmp/mcp.log
           grep -q 'hatake_reference' /tmp/mcp.log
           grep -q 'crud' /tmp/mcp.log
+          # 助言も道具として引ける（書いていない所は検証に出てこないので）。
+          grep -q 'hatake_advise' /tmp/mcp.log
+          grep -q 'no-search-filter' /tmp/mcp.log
+          # 助言であって警告ではない、を毎回渡す（AI が混同すると定義を壊しに行く）。
+          grep -q '警告ではありません' /tmp/mcp.log
 
       - name: Scaffolds are valid definitions
         working-directory: typescript
