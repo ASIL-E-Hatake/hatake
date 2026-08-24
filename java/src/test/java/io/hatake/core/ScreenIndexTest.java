@@ -49,7 +49,7 @@ class ScreenIndexTest {
 
     /**
      * エディションが揃っていることの一番強い確かめ: 同じ定義の山なら<b>同じ枚数</b>になる。
-     * TypeScript 版は CI で「画面 18 枚」を、Dart 版も試験で 18 枚を見ている。
+     * TypeScript 版は CI で「画面 22 枚」を、Dart 版も試験で 22 枚を見ている。
      */
     @Test
     void theShippedExamplesComeOutAs18Screens() throws IOException {
@@ -64,7 +64,7 @@ class ScreenIndexTest {
         }
         ScreenIndex index = ScreenIndex.build(sources);
         assertTrue(index.unreadable().isEmpty(), index.unreadable().toString());
-        assertEquals(18, index.screens().size());
+        assertEquals(22, index.screens().size());
         // index.json（例のカタログ）は定義ではないので飛ばされる。
         assertTrue(index.ignored() > 0);
     }

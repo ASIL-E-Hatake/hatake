@@ -15,7 +15,7 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
   （手で埋めた中身は消えない。要らなくなった登録は言うだけで消さない）
 - 繋いだあと（サーバが動いているとき）: `npx hatake probe <file> --base http://localhost:8080/api`
   で**定義とサーバの食い違い**を実際に叩いて見る（足りない項目・型違い・`{items, totalCount}` で
-  ない・`pageSize` が効かない・行に鍵が無い）。権限は `npx hatake attack <app> --role staff --base …`
+  ない・`pageSize` が効かない・行に鍵が無い）。権限は `npx hatake attack <app> --role staff --base …`（役割ぜんぶなら `--all-roles --accounts accounts.json`＝資格は役割ごとに要る）
   ＝**画面から見えない口**を叩いて、API が実際に拒否するか見る。どちらも**読むだけ**（`POST` /
   `PUT` / `DELETE` は叩かない）で、`--dry-run` なら叩かずに「何を叩くか」だけ出る
 - 英語で読み返す: `npx hatake explain <file> --lang en`（節の見出しと言い回しだけ英語。

@@ -1974,6 +1974,103 @@ describe("hatake probe / attack", () => {
     expect(io.stdout.join("\n")).toContain("API が遮断していません");
   });
 
+  it("--all-roles は役割ごとの資格が要る（1つの資格で全部を判定しない）", async () => {
+    const io = fakeIo({ "app.yaml": APP });
+    const { send } = server();
+    // --accounts が無い。
+    expect(
+      await runCliAsync(
+        ["attack", "app.yaml", "--base", "http://x/api", "--all-roles"],
+        io,
+        send,
+      ),
+    ).toBe(1);
+    expect(io.stderr.join("")).toContain("--accounts");
+
+    // --token を併用するのは断る（200 が穴なのか正しいのか区別できなくなる）。
+    const io2 = fakeIo({ "app.yaml": APP, "a.json": '{"admin":{"token":"t"}}' });
+    expect(
+      await runCliAsync(
+        [
+          "attack",
+          "app.yaml",
+          "--base",
+          "http://x/api",
+          "--all-roles",
+          "--accounts",
+          "a.json",
+          "--token",
+          "t",
+        ],
+        io2,
+        send,
+      ),
+    ).toBe(1);
+    expect(io2.stderr.join("")).toContain("役割ごとに渡します");
+  });
+
+  it("--all-roles は役割ぜんぶ＋誰でもない人を1枚の表にする", async () => {
+    const io = fakeIo({
+      "app.yaml": APP,
+      "accounts.json": JSON.stringify({
+        $comment: "役割ごとの資格",
+        accounts: { admin: { token: "admin-token" }, staff: { token: "staff-token" } },
+      }),
+    });
+    // 単価マスタは誰にでも 200（遮断を忘れた API）。
+    const { send, urls } = server();
+    expect(
+      await runCliAsync(
+        [
+          "attack",
+          "app.yaml",
+          "--base",
+          "http://x/api",
+          "--all-roles",
+          "--accounts",
+          "accounts.json",
+        ],
+        io,
+        send,
+      ),
+    ).toBe(1);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("price_master");
+    expect(out).toContain("staff=穴");
+    expect(out).toContain("admin=ok");
+    expect(out).toContain("誰でもない人=穴");
+    // 役割 2 ＋ 誰でもない人 = 3 本 × 2 画面。
+    expect(urls).toHaveLength(6);
+  });
+
+  it("--all-roles --dry-run は送らずに、何を叩くかを役割ごとに出す", async () => {
+    const io = fakeIo({
+      "app.yaml": APP,
+      "accounts.json": '{"admin":{"token":"t"}}',
+    });
+    const { send, urls } = server();
+    expect(
+      await runCliAsync(
+        [
+          "attack",
+          "app.yaml",
+          "--base",
+          "http://x/api",
+          "--all-roles",
+          "--accounts",
+          "accounts.json",
+          "--dry-run",
+        ],
+        io,
+        send,
+      ),
+    ).toBe(0);
+    expect(urls).toEqual([]);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("admin");
+    expect(out).toContain("誰でもない人（資格なし）");
+  });
+
   it("見えない口が拒否されていれば 0", async () => {
     const io = fakeIo({ "app.yaml": APP });
     const { send } = server({ "http://x/api/prices": 403 });

@@ -15,6 +15,7 @@ npx hatake explain page.yaml --lang en                       # read the definiti
 npx hatake wire app.yaml --merge lib/wiring.dart --write     # add only the missing registrations (keeps your code)
 npx hatake probe app.yaml --base http://localhost:8080/api   # does the server answer what the definition declares?
 npx hatake attack app.yaml --role staff --base http://localhost:8080/api  # does the API refuse what the screen hides?
+npx hatake attack app.yaml --all-roles --accounts accounts.json --base …   # every role + nobody, in one table (one credential per role)
 ```
 
 `probe` and `attack` are **read-only** (they never send `POST` / `PUT` / `DELETE`); pass

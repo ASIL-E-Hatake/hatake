@@ -174,7 +174,7 @@ jobs:
           # 画面の索引。同梱の例11枚から18枚の画面が出る（app の中身も1枚ずつ数える）。
           # 同じ枚数を Dart 版・Java 版の試験でも見ている（エディションで答えが変わらない）。
           node dist/cli.js index ../spec/examples --by size | tee /tmp/index.log
-          grep -q '画面 18 枚' /tmp/index.log
+          grep -q '画面 22 枚' /tmp/index.log
           node dist/cli.js index ../spec/examples --find "顧客 検索"
           # 定義から作った遷移図に、線が1本ずつ引かれていること（まとめ矢印に戻っていない）。
           grep -q 'class="flow link"' /tmp/app.svg
@@ -1460,6 +1460,39 @@ jobs:
           # 遮断されていれば通ること（同じサーバ・同じ定義で、資格だけが違う）。
           node dist/cli.js attack /tmp/probe-app.yaml --role staff --token staff             --base http://127.0.0.1:8099/api > /tmp/attack-ok.log
           grep -q '見えない口は拒否されました' /tmp/attack-ok.log
+
+          # 役割ぜんぶ＋誰でもない人を1枚に。**資格は役割ごと**に渡す
+          # （1つの資格で他の役割を判定すると、200 が穴なのか正しいのか区別できない）。
+          cat > /tmp/accounts.json <<'JSON'
+          {
+            "$comment": "役割ごとの資格。誰でもない人は資格を送らないので書かない。",
+            "accounts": {
+              "admin": { "token": "admin" },
+              "staff": { "token": "staff" }
+            }
+          }
+          JSON
+          # 送る前に、何を叩くかが役割ごとに出ること。
+          node dist/cli.js attack /tmp/probe-app.yaml --all-roles \
+            --accounts /tmp/accounts.json --base http://127.0.0.1:8099/api \
+            --dry-run > /tmp/sweep-dry.log
+          grep -q '誰でもない人（資格なし）' /tmp/sweep-dry.log
+          # このスタブは「資格を渡したときだけ遮断する」ので、**ログインしていない人に
+          # 単価マスタが見えている**＝穴として出る（役割ごとには ok に見えるやつ）。
+          if node dist/cli.js attack /tmp/probe-app.yaml --all-roles \
+               --accounts /tmp/accounts.json --base http://127.0.0.1:8099/api \
+               > /tmp/sweep.log; then
+            echo "誰でもない人に見えているのに通ってしまった"; exit 1
+          fi
+          grep -q 'staff=ok' /tmp/sweep.log
+          grep -q '誰でもない人=穴' /tmp/sweep.log
+          # 1つの資格で全部を判定するのは断る（読み替えは嘘になるので）。
+          if node dist/cli.js attack /tmp/probe-app.yaml --all-roles \
+               --accounts /tmp/accounts.json --token staff \
+               --base http://127.0.0.1:8099/api > /tmp/sweep-bad.log 2>&1; then
+            echo "1つの資格で役割ぜんぶを判定してしまった"; exit 1
+          fi
+          grep -q '役割ごとに渡します' /tmp/sweep-bad.log
           # ここまでで、書き込む方式は1回も飛んでいないこと。
           if [ -f /tmp/stub-write-attempt ]; then
             echo "読むだけの道具が $(cat /tmp/stub-write-attempt) を送った"; exit 1

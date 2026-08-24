@@ -48,25 +48,32 @@ const show = (path: (string | number)[]): string =>
     .join("")
     .replace(/^\./, "");
 
-/** その場所を人の言葉で（道の最後の配列名から決める）。 */
+/**
+ * その場所を人の言葉で（道の最後の配列名から決める）。
+ *
+ * `roles` を書ける場所はスキーマで5つ（menuItem / column / field / action /
+ * dashboardItem）。ここに無い名前が来たら、その名前をそのまま出す＝DSL が増えたときに
+ * 「知らない場所」を黙って別の言葉にしない。
+ */
 const NODE_WORDS: Record<string, string> = {
   menu: "メニュー",
-  items: "メニュー",
   actions: "ボタン",
-  rowActions: "行のボタン",
   columns: "列",
   fields: "項目",
-  filters: "絞り込み",
-  cards: "カード",
-  steps: "ステップ",
-  sections: "枠",
 };
 
-/** その節点が「何であるか」を、道から言う。 */
+/**
+ * その節点が「何であるか」を、道から言う。
+ *
+ * `items` はメニューのグループの中身と、ダッシュボードのカードの両方で使う。同じ名前で
+ * 別のものなので、道に `menu` が居るかで言い分ける。
+ */
 function nodeWord(path: (string | number)[]): string {
   for (let at = path.length - 1; at >= 0; at--) {
     const step = path[at];
-    if (typeof step === "string") return NODE_WORDS[step] ?? step;
+    if (typeof step !== "string") continue;
+    if (step === "items") return path.includes("menu") ? "メニュー" : "カード";
+    return NODE_WORDS[step] ?? step;
   }
   return "画面";
 }
@@ -92,7 +99,13 @@ export function roleSpots(document: Dict): RoleSpot[] {
       (one): one is string => typeof one === "string",
     );
     if (roles.length > 0) {
-      const label = str(value.label) ?? str(value.title) ?? str(value.id) ?? str(value.field);
+      // メニューのグループは `group` に名前が入る（`label` ではない）。
+      const label =
+        str(value.label) ??
+        str(value.group) ??
+        str(value.title) ??
+        str(value.id) ??
+        str(value.field);
       found.push({
         node: nodeWord(path),
         where: show([...path, "roles"]),
