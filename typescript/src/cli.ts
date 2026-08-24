@@ -76,6 +76,11 @@ import { hasProbeError, probe, probeRequests, renderProbe } from "./probe.js";
 import { attack, attackRequests, hasHole, renderAttack } from "./attack.js";
 import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
+import {
+  type AdvicePick,
+  applyAdvice,
+  renderAdviceApply,
+} from "./adviseApply.js";
 import type { Lang } from "./explainPhrases.js";
 import { type AdviceRules, DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
 import { renderReview, reviewSource } from "./review.js";
@@ -235,12 +240,17 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       1件ずつ当てて「問題が減る・新しい問題が出ない」ことを確かめ、崩れたら何もしない。
       直さなかったものは**理由つきで**標準エラーに出す（意図が要るものは人の仕事）。
 
-  hatake advise <file> [--rules team.json] [--json]
+  hatake advise <file> [--rules team.json] [--apply picks.json] [--write] [--json]
       **書き足したほうがいい所**を挙げる（並べ替えできる列が無い・絞り込みが無い・
       誰でも消せる・金額に桁区切りが無い…）。これは助言で警告ではないので、
       終了コードは変えない。「書いたのに効かない」は validate の担当。
       **一括（scope: selection）だけは既定で厳しい**（確認・件数・失敗の言い方・
       赤いボタン・1回で動く件数）＝1回の操作が件数ぶん動くので。
+      **--apply で、選んだ助言をその場に書き込める**（picks.json に規則名と書く値を
+      並べる）。値は渡す側が決める＝確認の文・件数・見せる相手は業務の決めごとなので、
+      機械は決めない。書く場所だけを機械が決め、当てたあと「読める・別の問題が出ない・
+      その助言が消える」ことを確かめる。既定は当てた定義を標準出力に出すだけ
+      （--write でファイルを上書き）。頼んだのに当てられなかったものがあれば 1 を返す。
       --rules で**物差しを渡せる**（合わない規則を切る・目盛りを変える・案件の
       決めごと「この場所には必ずこのキーを書く」を足す）。知らないキーや知らない
       規則名を書いた物差しは、黙って無視せずエラーにする。
@@ -1157,6 +1167,10 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
     return 1;
   }
   const rules = loadAdviceRules(flags, io);
+  const picks = str(flags, "apply");
+  if (picks !== undefined) {
+    return applyPicked(files[0], source, picks, rules, flags, io);
+  }
   const advice = findAdvice(document as Record<string, unknown>, rules);
   // 物差しが「その場所に書けないキー」を勧めていたら、助言を出す前に止める。
   // 間違いを教える助言は、無いほうがまし。
@@ -1168,6 +1182,57 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
   }
   io.out(renderAdvice(advice, { rulesFrom: str(flags, "rules"), rules }));
   return 0;
+}
+
+/**
+ * 選んだ助言を当てる（`--apply picks.json`）。
+ *
+ * 終了コードは**頼んだのに当てられなかったものがあるか**で決める（1件でもあれば 1）。
+ * 残っている助言では落とさない＝助言は好みなので、書き足していないこと自体は失敗ではない。
+ */
+function applyPicked(
+  file: string,
+  source: string,
+  path: string,
+  rules: AdviceRules,
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const given: unknown = JSON.parse(io.readFile(path));
+  const picks =
+    Array.isArray(given)
+      ? given
+      : typeof given === "object" && given !== null
+        ? (given as { picks?: unknown }).picks
+        : undefined;
+  if (!Array.isArray(picks) || picks.length === 0) {
+    io.err(
+      '当てる助言を並べてください（[{ "rule": "money-without-format" }] か ' +
+        '{ "picks": [ ... ] } の形）。全部当てる口はありません＝助言は好みなので、' +
+        "当てるかどうかは業務の判断です。",
+    );
+    return 1;
+  }
+  const result = applyAdvice(source, picks as AdvicePick[], {
+    rules,
+    registry: loadRegistry(file, flags, io),
+  });
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+    return result.skipped.length > 0 ? 1 : 0;
+  }
+  if (flags.write === true) {
+    if (result.applied.length > 0) {
+      io.writeFile(file, result.source);
+      io.out(`書きました: ${file}`);
+    } else {
+      io.out("書き換えるものはありませんでした。");
+    }
+  } else {
+    io.out(result.source.trimEnd());
+  }
+  io.err(renderAdviceApply(result));
+  return result.skipped.length > 0 ? 1 : 0;
 }
 
 /**

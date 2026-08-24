@@ -33,6 +33,7 @@ import {
 import { type FailureCatalog } from "./failures.js";
 import { findWarnings } from "./warnings.js";
 import { ADVICE_NOTE, findAdvice, unwritableAdvice } from "./advise.js";
+import { type AdvicePick, applyAdvice } from "./adviseApply.js";
 import { DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import { toJsonSchema } from "./jsonSchema.js";
@@ -89,6 +90,8 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
    そのあと hatake_explain で読み返す（**書いたものが意図どおりか**は、警告では分からない）
    さらに hatake_advise を1回（**書いていない所**は検証に出てこない＝並べ替えできない一覧・
    誰でも消せる画面・確認の無い一括。好みなので直すかは業務の判断）
+   当てると決めたものは hatake_apply_advice に渡す（**書く場所は機械のほうが正確**。
+   値＝確認の文・件数・見せる相手は業務の決めごとなので、こちらで決めて value に渡す）
 5. **帳票（type: report）を書いたら hatake_print_preview**（刷ったらどう見えるかを文字で返す。
    列の並び・小計の位置・切れた文字は、explain では分からない）
 6. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
@@ -116,9 +119,13 @@ function required(args: Record<string, unknown>, key: string): string {
 
 const pretty = (value: unknown): string => JSON.stringify(value, null, 2);
 
-/** `lang` 引数（既定は日本語）。知らない言語は黙って日本語にしない。 */
-function readLang(args: Record<string, unknown>): Lang {
-  const given = str(args, "lang");
+/**
+ * `lang` 引数（既定は日本語）。知らない言語は黙って日本語にしない。
+ *
+ * 引数の束（args）ではなく**読んだ値**を受け取る。道具が読む引数を機械が突き合わせられる
+ * ように、`args` はいつも run の中で読む（[checkToolContracts]）。
+ */
+function readLang(given: string | undefined): Lang {
   if (given === undefined) return "ja";
   if (given !== "ja" && given !== "en") {
     throw new Error(`lang は ja か en です（"${given}" は知りません）。`);
@@ -377,6 +384,95 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
       },
     },
     {
+      name: "hatake_apply_advice",
+      title: "選んだ助言を定義に当てる",
+      description:
+        "hatake_advise が挙げた助言のうち、**当てると決めたものだけ**を定義に書き込んで返す。" +
+        "助言を読んで自分で YAML を書き足すと、字下げを間違える・隣のキーを巻き込む・" +
+        "配列の何番目かを取り違える（**どこに書くかは機械のほうが正確**）。" +
+        "picks で規則名を渡し、書く値は value に渡す＝**値は業務の決めごとなので機械は決めない**" +
+        "（絞り込みに何を出すか・確認の文・1回に何件まで・誰に見せるか）。" +
+        "value を省けるのは定義から決まるものだけ（金額の見せ方・確認の OK を赤くする・" +
+        "1件を指すキーの列）。" +
+        "1件ずつ当てて「定義として読める・別の問題が出ない・**その助言が消える**」ことを" +
+        "確かめるので、通したあとに壊れていることはない。" +
+        "当てなかったものは skipped に理由つきで入る（**次に何を渡せばいいかまで書いてある**）。" +
+        "remaining はまだ書き足せる所。**助言を当てても警告は減らない**（書いていないことは" +
+        "警告に出ない）ので、当てたあとは hatake_validate と hatake_explain で読み返す。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description: "定義の中身そのもの（ファイルパスではない）。page: でも app: でも。",
+          },
+          picks: {
+            type: "array",
+            description:
+              "当てる助言。1件は { rule, value } で、rule は hatake_advise が返した規則名。" +
+              "value は書く値（省けるのは定義から決まるものだけ）。" +
+              "同じ規則が2件以上出ているときは where（助言の where をそのまま）か page で1件に絞る。",
+            items: {
+              type: "object",
+              properties: {
+                rule: { type: "string", description: "規則名。" },
+                where: { type: "string", description: "助言の where（絞り込み用）。" },
+                page: { type: "string", description: "app のときのページ id。" },
+                value: { description: "書く値（数・文字・配列・map）。" },
+              },
+              required: ["rule"],
+            },
+          },
+          rules: {
+            type: "object",
+            description:
+              "案件の物差し（hatake_advise に渡したものと同じもの）。渡した物差しで出た" +
+              "助言しか当てられないので、advise に渡したなら**ここにも同じものを渡す**。",
+          },
+        },
+        required: ["source", "picks"],
+      },
+      run(args) {
+        const source = required(args, "source");
+        const document = parseYamlText(source);
+        if (typeof document !== "object" || document === null) {
+          throw new Error("定義（map）として読めません。");
+        }
+        if (!Array.isArray(args.picks) || args.picks.length === 0) {
+          throw new Error(
+            "picks は当てる助言の配列です（例 [{ rule: \"money-without-format\" }]）。" +
+              "全部当てる口はありません＝助言は好みなので、当てるかどうかは業務の判断です。",
+          );
+        }
+        const picks = args.picks as AdvicePick[];
+        for (const [index, pick] of picks.entries()) {
+          if (typeof pick?.rule !== "string" || pick.rule === "") {
+            throw new Error(`picks[${index}].rule は規則名（文字列）です。`);
+          }
+        }
+        const rules =
+          typeof args.rules === "object" && args.rules !== null
+            ? parseAdviceRules(args.rules)
+            : DEFAULT_RULES;
+        // 物差しが「その場所に書けないキー」を勧めていたら、書く前に止める
+        // （hatake_advise と同じ判断＝間違いを教えるくらいなら何もしない）。
+        const bad = unwritableAdvice(
+          findAdvice(document as Record<string, unknown>, rules),
+          reference(),
+        );
+        if (bad.length > 0) {
+          return pretty({
+            ok: false,
+            problem:
+              "物差しが、その場所に書けないキーを勧めています（node と key を直してください）。",
+            unwritable: bad.map((one) => ({ rule: one.rule, node: one.node, key: one.key })),
+          });
+        }
+        const result = applyAdvice(source, picks, { rules });
+        return pretty({ ok: true, note: ADVICE_NOTE, ...result });
+      },
+    },
+    {
       name: "hatake_new_page",
       title: "ページ定義の雛形を出す",
       description:
@@ -468,8 +564,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         required: ["before", "after"],
       },
       run(args) {
-        const documentOf = (key: string): Record<string, unknown> => {
-          const source = required(args, key);
+        const documentOf = (source: string): Record<string, unknown> => {
           // 書き間違いを差分として見せないよう、strict に通してから素の document を使う。
           if (/^\s*app\s*:/m.test(source)) {
             parseAppYaml(source, { strict: true });
@@ -478,7 +573,12 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           }
           return parseYamlText(source) as Record<string, unknown>;
         };
-        return pretty(diffDefinitions(documentOf("before"), documentOf("after")));
+        return pretty(
+          diffDefinitions(
+            documentOf(required(args, "before")),
+            documentOf(required(args, "after")),
+          ),
+        );
       },
     },
     {
@@ -528,7 +628,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
       run(args) {
         const source = required(args, "source");
         const before = str(args, "before");
-        const lang = readLang(args);
+        const lang = readLang(str(args, "lang"));
         if (before !== undefined) {
           if (lang === "en") {
             throw new Error(
@@ -605,7 +705,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "右寄せが効いているか・列に収まらず切れた文字（末尾が … になる）・紙が何枚になるか**。" +
         "rows を渡さなければ**見本の行を作る**（定義の項目名と型から。データが無いと紙を見られない、" +
         "では確かめられないので）。作った行のときは、出力の最後にそう書く。" +
-        "座標は刷る側（opt-in の hatake_print が PDF/プリンタに出すもの）と**同じ計算**なので、" +
+        "座標は刷る側（opt-in の package:hatake_print が PDF/プリンタに出すもの）と**同じ計算**なので、" +
         "ここで見た紙と刷った紙は同じ（共有フィクスチャで縛っている）。" +
         "紙に入らない定義（列幅の合計が紙幅を超える等）は hatake_validate が警告で言う。",
       inputSchema: {
@@ -755,7 +855,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "**中身は決められないので TODO**（何をするかは業務、どう繋ぐかは環境）で、" +
         "埋めるまでは UnimplementedError で落ちる＝黙って何もしない実装は置かない。" +
         "定義が書けたあと「これをどうアプリに載せるか」で詰まるのを埋めるための道具。" +
-        "baseUrl を渡すと Repository は hatake_http（REST）で組むので、そこは TODO にならない。",
+        "baseUrl を渡すと Repository は package:hatake_http（REST）で組むので、そこは TODO にならない。",
       inputSchema: {
         type: "object",
         properties: {
@@ -766,7 +866,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           baseUrl: {
             type: "string",
             description:
-              "REST の基点（`/api`）。渡すと hatake_http で Repository を組む" +
+              "REST の基点（`/api`）。渡すと package:hatake_http で Repository を組む" +
               "（collection の名前は複数形を推測して埋める）。",
           },
           className: {

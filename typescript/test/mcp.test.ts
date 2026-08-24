@@ -87,6 +87,7 @@ describe("MCP プロトコル", () => {
       "hatake_examples",
       "hatake_validate",
       "hatake_advise",
+      "hatake_apply_advice",
       "hatake_new_page",
       "hatake_pitfalls",
       "hatake_diff",
@@ -800,5 +801,119 @@ describe("hatake_advise", () => {
 
   it("定義として読めないものは道具の失敗として返す", () => {
     expect(call("hatake_advise", { source: "これは定義ではない" }).isError).toBe(true);
+  });
+});
+
+describe("hatake_apply_advice", () => {
+  /** 一括のある一覧1枚（助言が何本も出る形）。 */
+  const bare = `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  search:
+    filters:
+      - { field: orderNo, label: 受注番号 }
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号, sortable: true }
+      - { field: amount, label: 金額 }
+  actions:
+    - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認, scope: selection }
+`;
+
+  const applied = (args: Record<string, unknown>) =>
+    JSON.parse(call("hatake_apply_advice", args).text) as {
+      ok: boolean;
+      note: string;
+      source: string;
+      applied: { rule: string; where: string; wrote: string }[];
+      skipped: { rule: string; reason: string }[];
+      remaining: { rule: string; add: string }[];
+    };
+
+  it("値が定義から決まる助言は、そのまま当たる", () => {
+    const result = applied({ source: bare, picks: [{ rule: "money-without-format" }] });
+    expect(result.ok).toBe(true);
+    expect(result.applied.map((one) => one.rule)).toEqual(["money-without-format"]);
+    expect(result.source).toContain("{ field: amount, label: 金額, format: currency }");
+    // 当てても警告の話ではない、を毎回渡す。
+    expect(result.note).toContain("警告ではありません");
+  });
+
+  it("業務の決めごとは value で渡す（渡さなければ当てずに、何を渡すか言う）", () => {
+    const asked = applied({ source: bare, picks: [{ rule: "bulk-without-confirm" }] });
+    expect(asked.applied).toEqual([]);
+    expect(asked.skipped[0].reason).toContain("value に渡してください");
+    expect(asked.source).toBe(bare);
+
+    const done = applied({
+      source: bare,
+      picks: [
+        {
+          rule: "bulk-without-confirm",
+          value: { message: "{count} 件を承認します。よろしいですか？" },
+        },
+      ],
+    });
+    expect(done.applied).toHaveLength(1);
+    expect(done.source).toContain("confirm: { message: '{count} 件を承認します。よろしいですか？' }");
+  });
+
+  it("残りは「次に何を書き足せるか」として返る", () => {
+    const result = applied({ source: bare, picks: [{ rule: "money-without-format" }] });
+    expect(result.remaining.map((one) => one.rule)).toContain("bulk-without-confirm");
+    expect(result.remaining[0].add.length).toBeGreaterThan(0);
+  });
+
+  it("定義を壊す値は書かない（当てたことにもしない）", () => {
+    const result = applied({
+      source: bare,
+      picks: [{ rule: "bulk-without-confirm", value: { mesage: "承認します" } }],
+    });
+    expect(result.applied).toEqual([]);
+    expect(result.source).toBe(bare);
+  });
+
+  it("picks を渡さなければ道具の失敗（全部当てる口は無い）", () => {
+    const bad = call("hatake_apply_advice", { source: bare });
+    expect(bad.isError).toBe(true);
+    expect(bad.text).toContain("全部当てる口はありません");
+  });
+
+  it("出ていない助言は当てない", () => {
+    const result = applied({ source: bare, picks: [{ rule: "no-search-filter" }] });
+    expect(result.applied).toEqual([]);
+    expect(result.skipped[0].reason).toContain("出ていません");
+  });
+
+  it("案件の物差しで出た助言も当てられる（advise と同じものを渡す）", () => {
+    const result = applied({
+      source: bare,
+      rules: {
+        require: [
+          { rule: "team-column-width", node: "column", key: "width", every: true },
+        ],
+      },
+      // 列ごとに1件出るので、where で1件に絞る（絞らなければ当てない）。
+      picks: [
+        { rule: "team-column-width", where: "page.table.columns[0].width", value: 120 },
+        { rule: "team-column-width", where: "page.table.columns[1].width", value: 100 },
+      ],
+    });
+    expect(result.applied).toHaveLength(2);
+    expect(result.source).toContain("width: 120");
+    expect(result.source).toContain("width: 100");
+  });
+
+  it("書けないキーを勧める物差しは、書く前に止める", () => {
+    // 間違いを教えるくらいなら何もしない（hatake_advise と同じ判断）。
+    const stopped = applied({
+      source: bare,
+      rules: { require: [{ rule: "team-typo", node: "column", key: "sortble" }] },
+      picks: [{ rule: "team-typo", value: true }],
+    });
+    expect(stopped.ok).toBe(false);
+    expect(stopped.source).toBeUndefined();
   });
 });

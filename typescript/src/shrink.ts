@@ -117,6 +117,17 @@ export function without<T>(document: T, path: Path): T | null {
   return null;
 }
 
+/** その道にある値（無ければ undefined）。 */
+export function valueAt(document: unknown, path: Path): unknown {
+  let value: unknown = document;
+  for (const step of path) {
+    if (Array.isArray(value) && typeof step === "number") value = value[step];
+    else if (isDict(value) && typeof step === "string") value = value[step];
+    else return undefined;
+  }
+  return value;
+}
+
 /**
  * [keep] が成り立つ限り消し続ける。返すのは削った定義と、削った場所。
  *

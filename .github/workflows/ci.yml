@@ -586,6 +586,36 @@ jobs:
           grep -q 'bulk-without-confirm' /tmp/bulk-advise.log
           grep -q 'まとめて実行できます' /tmp/bulk-advise.log
 
+          # 助言はそのまま当てられる。**書く値は渡す側が決め、書く場所は機械が決める**。
+          cat > /tmp/apply-picks.json <<'JSON'
+          [
+            { "rule": "bulk-without-confirm",
+              "value": { "message": "{count} 件を承認します。よろしいですか？", "danger": true } },
+            { "rule": "open-dangerous-action", "value": ["manager"] }
+          ]
+          JSON
+          node dist/cli.js advise /tmp/bulk-bare.yaml --apply /tmp/apply-picks.json \
+            > /tmp/applied.yaml 2> /tmp/applied.log
+          grep -q '2 件を当てました' /tmp/applied.log
+          grep -q "confirm: { message: '{count} 件を承認します。よろしいですか？', danger: true }" /tmp/applied.yaml
+          grep -q 'roles: \[manager\]' /tmp/applied.yaml
+          # 当てたあとも strict で通る（壊れた定義を書き出していない）。
+          node dist/cli.js validate /tmp/applied.yaml
+          # 当てた助言はもう出ない（出るなら、書いた場所が違う）。
+          node dist/cli.js advise /tmp/applied.yaml > /tmp/applied-advise.log
+          if grep -q 'bulk-without-confirm' /tmp/applied-advise.log; then
+            echo "当てたのに助言が残っている"
+            exit 1
+          fi
+          # 値を渡していない助言は当てず、何を渡せばいいかを言う（頼み事なので 1 を返す）。
+          echo '[{ "rule": "bulk-without-error-message" }]' > /tmp/apply-bare.json
+          if node dist/cli.js advise /tmp/bulk-bare.yaml --apply /tmp/apply-bare.json \
+               > /dev/null 2> /tmp/apply-bare.log; then
+            echo "値の無い助言を当ててしまった"
+            exit 1
+          fi
+          grep -q 'value に渡してください' /tmp/apply-bare.log
+
           # 一括だけは既定で厳しい。危ない書き方を1枚に集めて、5つ全部言うことを見る。
           cat > /tmp/bulk-risky.yaml <<'YAML'
           page:
@@ -1362,9 +1392,10 @@ jobs:
             '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
             '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hatake_validate","arguments":{"source":"page: {type: crud, id: x, title: X, repository: xRepository}"}}}' \
             '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"hatake_advise","arguments":{"source":"page: {type: search, id: s, title: S, repository: r, table: {columns: [{field: a, label: A}]}}"}}}' \
+            '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"hatake_apply_advice","arguments":{"source":"page: {type: search, id: s, title: S, repository: r, table: {columns: [{field: amount, label: A}]}}","picks":[{"rule":"money-without-format"}]}}}' \
             | node dist/mcp.js > /tmp/mcp.log
-          # 通知には返事をしない = 5 送って 4 行。stdout に他のものを書いていないことも見る。
-          test "$(wc -l < /tmp/mcp.log)" -eq 4
+          # 通知には返事をしない = 6 送って 5 行。stdout に他のものを書いていないことも見る。
+          test "$(wc -l < /tmp/mcp.log)" -eq 5
           grep -q '"protocolVersion":"2025-06-18"' /tmp/mcp.log
           grep -q 'hatake_reference' /tmp/mcp.log
           grep -q 'crud' /tmp/mcp.log
@@ -1373,6 +1404,9 @@ jobs:
           grep -q 'no-search-filter' /tmp/mcp.log
           # 助言であって警告ではない、を毎回渡す（AI が混同すると定義を壊しに行く）。
           grep -q '警告ではありません' /tmp/mcp.log
+          # 選んだ助言はその場に書き込める（AI が手で YAML を書き足すと転ぶ所）。
+          grep -q 'hatake_apply_advice' /tmp/mcp.log
+          grep -q 'format: currency' /tmp/mcp.log
 
       - name: Scaffolds are valid definitions
         working-directory: typescript
