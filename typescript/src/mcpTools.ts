@@ -2,7 +2,8 @@
 //
 // 狙いは「エージェントが手元に hatake の仕様を持たなくても、正しい定義を書ける」こと。
 // なので4つの動作を1往復ずつで終わらせる:
-//   例を探す → キーを引く → 雛形を出す → 検証する（＋必要なら API の形）
+//   例を探す → キーを引く → 雛形を出す → 検証する → 足りない所を挙げる
+//   （＋必要なら API の形）
 //
 // description は**AI 向けの契約**なので、ここが一番大事。「いつ使うか」を書く。
 
@@ -31,6 +32,8 @@ import {
 } from "./refs.js";
 import { type FailureCatalog } from "./failures.js";
 import { findWarnings } from "./warnings.js";
+import { ADVICE_NOTE, findAdvice, unwritableAdvice } from "./advise.js";
+import { DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import { toJsonSchema } from "./jsonSchema.js";
 import { toOpenApi } from "./openApi.js";
@@ -84,6 +87,8 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 4. 書けたら必ず hatake_validate にかける（知らないキーは黙って捨てられるので、書いた気になって効いていない事故が起きる）
    問題が出たら hatake_fix に通す（綴り違いのような**一意な直し**は自分で書き直さない。別の所を壊す）
    そのあと hatake_explain で読み返す（**書いたものが意図どおりか**は、警告では分からない）
+   さらに hatake_advise を1回（**書いていない所**は検証に出てこない＝並べ替えできない一覧・
+   誰でも消せる画面・確認の無い一括。好みなので直すかは業務の判断）
 5. **帳票（type: report）を書いたら hatake_print_preview**（刷ったらどう見えるかを文字で返す。
    列の並び・小計の位置・切れた文字は、explain では分からない）
 6. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
@@ -297,6 +302,78 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             ...(hints.length > 0 ? { hints } : {}),
           });
         }
+      },
+    },
+    {
+      name: "hatake_advise",
+      title: "書き足したほうがいい所を挙げる",
+      description:
+        "**助言**（警告ではない）。定義を読んで「書いていないから不便かもしれない所」を" +
+        "挙げる。hatake_validate が見るのは『書いたのに効かない』で、こちらは" +
+        "**書いていないこと**＝並べ替えできない一覧・絞り込みの無い一覧・誰でも消せる画面・" +
+        "金額に桁区切りが無い・帳票に合計が無い、など。" +
+        "**書いていないものは検証に出てこない**ので、validate を通したあとに1回かける。" +
+        "一括（scope: selection）だけは既定で厳しい（確認・件数・失敗の言い方・赤いボタン・" +
+        "1回で動く件数）＝1回の操作が件数ぶん動くので。" +
+        "出るのは**好み**なので、直すかどうかは業務の判断。要らない助言は rules の off で" +
+        "止められる（案件の決めごとを足すこともできる）。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description: "定義の中身そのもの（ファイルパスではない）。page: でも app: でも。",
+          },
+          page: {
+            type: "string",
+            description: "app のとき、1枚のページ id に絞る（省略すると全部）。",
+          },
+          rules: {
+            type: "object",
+            description:
+              "案件の物差し。書けるのは3つだけ＝off（合わない規則を止める）/ " +
+              "options（組み込みの規則の目盛り）/ require（この場所には必ずこのキーを書く）。" +
+              "知らないキー・知らない規則名はエラーにする（設定が黙って効かないのを防ぐため）。",
+          },
+        },
+        required: ["source"],
+      },
+      run(args) {
+        const source = required(args, "source");
+        const document = parseYamlText(source);
+        if (typeof document !== "object" || document === null) {
+          throw new Error("定義（map）として読めません。");
+        }
+        // 物差しは渡されたときだけ読む。知らないキーはここで落ちる（黙って無視しない）。
+        const rules =
+          typeof args.rules === "object" && args.rules !== null
+            ? parseAdviceRules(args.rules)
+            : DEFAULT_RULES;
+        const all = findAdvice(document as Record<string, unknown>, rules);
+        // 物差しが「その場所に書けないキー」を勧めていたら、助言を出さずに止める。
+        // 間違いを教える助言は、無いほうがまし（CLI と同じ判断）。
+        const bad = unwritableAdvice(all, reference());
+        if (bad.length > 0) {
+          return pretty({
+            ok: false,
+            problem:
+              "物差しが、その場所に書けないキーを勧めています（node と key を直してください）。",
+            unwritable: bad.map((one) => ({
+              rule: one.rule,
+              node: one.node,
+              key: one.key,
+              where: one.where,
+            })),
+          });
+        }
+        const only = str(args, "page");
+        const advice = only === undefined ? all : all.filter((one) => one.page === only);
+        return pretty({
+          ok: true,
+          note: ADVICE_NOTE,
+          count: advice.length,
+          advice,
+        });
       },
     },
     {

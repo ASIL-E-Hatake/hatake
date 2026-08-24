@@ -86,6 +86,7 @@ describe("MCP プロトコル", () => {
       "hatake_reference",
       "hatake_examples",
       "hatake_validate",
+      "hatake_advise",
       "hatake_new_page",
       "hatake_pitfalls",
       "hatake_diff",
@@ -683,5 +684,121 @@ describe("hatake_wire", () => {
   it("定義が読めなければ失敗として返す", () => {
     const { isError } = call("hatake_wire", { source: "- 1\n- 2\n" });
     expect(isError).toBe(true);
+  });
+});
+
+describe("hatake_advise", () => {
+  /** 一覧1枚。並べ替えも絞り込みも無く、確認の無い一括を1つ持つ（助言が出る形）。 */
+  const bare = `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+  actions:
+    - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認, scope: selection }
+`;
+
+  const adviceOf = (args: Record<string, unknown>) =>
+    JSON.parse(call("hatake_advise", args).text) as {
+      ok: boolean;
+      note: string;
+      count: number;
+      advice: { rule: string; key: string; node: string; page?: string }[];
+    };
+
+  it("書いていない所を、足すキーと場所つきで返す", () => {
+    const found = adviceOf({ source: bare });
+    expect(found.ok).toBe(true);
+    // 「これは助言で警告ではない」を毎回渡す（AI が警告と混同すると定義を壊しに行く）。
+    expect(found.note).toContain("警告ではありません");
+    const rules = found.advice.map((one) => one.rule);
+    expect(rules).toContain("no-search-filter");
+    expect(rules).toContain("bulk-without-confirm");
+    // 足すキーと場所が付いている＝AI がそのまま直せる。
+    for (const one of found.advice) {
+      expect(one.key.length, one.rule).toBeGreaterThan(0);
+      expect(one.node.length, one.rule).toBeGreaterThan(0);
+    }
+  });
+
+  it("物差しで止められる（合わない規則を渡せる）", () => {
+    const off = adviceOf({ source: bare, rules: { off: ["no-search-filter"] } });
+    expect(off.advice.map((one) => one.rule)).not.toContain("no-search-filter");
+  });
+
+  it("目盛りも変えられる（組み込みの規則のつまみ）", () => {
+    const source = `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  search:
+    filters: [{ field: orderNo, label: 受注番号 }]
+  table:
+    columns:
+      - { field: a, label: あ }
+      - { field: b, label: い }
+`;
+    // 既定は「3列以上で並べ替えが無ければ言う」。2列なので黙る。
+    expect(adviceOf({ source }).advice.map((one) => one.rule)).not.toContain(
+      "no-sortable-column",
+    );
+    expect(
+      adviceOf({
+        source,
+        rules: { options: { "no-sortable-column": { minColumns: 2 } } },
+      }).advice.map((one) => one.rule),
+    ).toContain("no-sortable-column");
+  });
+
+  it("知らない物差しは黙って無視せずエラーにする", () => {
+    const bad = call("hatake_advise", { source: bare, rules: { offf: [] } });
+    expect(bad.isError).toBe(true);
+    expect(bad.text).toContain("知らないキー");
+  });
+
+  it("書けないキーを勧める物差しは、助言を出す前に止める", () => {
+    // 間違いを教える助言は、無いほうがまし（CLI と同じ判断）。
+    const stopped = adviceOf({
+      source: bare,
+      rules: {
+        require: [{ rule: "team-typo", node: "column", key: "sortble" }],
+      },
+    });
+    expect(stopped.ok).toBe(false);
+  });
+
+  it("app のときはページで絞れる", () => {
+    const app = `app:
+  id: sales
+  title: 販売
+  menu:
+    - { id: orders, label: 受注, page: order_search }
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      table:
+        columns: [{ field: orderNo, label: 受注番号 }]
+    - type: search
+      id: product_search
+      title: 商品照会
+      repository: productRepository
+      table:
+        columns: [{ field: code, label: コード }]
+`;
+    const all = adviceOf({ source: app });
+    expect(new Set(all.advice.map((one) => one.page)).size).toBe(2);
+    const one = adviceOf({ source: app, page: "product_search" });
+    expect(one.advice.every((x) => x.page === "product_search")).toBe(true);
+    expect(one.count).toBeLessThan(all.count);
+  });
+
+  it("定義として読めないものは道具の失敗として返す", () => {
+    expect(call("hatake_advise", { source: "これは定義ではない" }).isError).toBe(true);
   });
 });
