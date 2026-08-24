@@ -20,10 +20,9 @@
 // 書き換えは元の文字列の切り貼り（yamlSpans.ts）。コメントも書き方も改行コードも残る。
 
 import { parseDocument, parse as parseYamlText } from "yaml";
-import { parseAppMap } from "./appParse.js";
-import { parsePageMap } from "./parse.js";
+import { diagnoses, improves, readable } from "./diagnose.js";
 import { builtInNames, collectRefs, type DefinitionRegistry } from "./refs.js";
-import { type Path, parsePath } from "./shrink.js";
+import { type Path, parsePath, valueAt } from "./shrink.js";
 import {
   closestKey,
   findUnknownKeys,
@@ -76,25 +75,6 @@ export interface FixResult {
   skipped: Skipped[];
   /** 直したあとに残っている診断の名前（ゼロになるのが普通ではない）。 */
   remaining: string[];
-}
-
-/** その定義で出ている診断（名前の並び。同じ名前が何度も出る）。 */
-function diagnoses(document: Dict, registry?: DefinitionRegistry): string[] {
-  return [
-    ...findWarnings(document, { registry }).map((warning) => warning.rule),
-    ...findUnknownKeys(document).map((unknown) => `unknown-key:${unknown.key}`),
-  ];
-}
-
-/** 構造として読めるか（読めなくなる直し方をしない門）。 */
-function readable(document: Dict): boolean {
-  try {
-    if (isDict(document.app)) parseAppMap(document);
-    else parsePageMap(document);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /** 直しの案1つ。文字列に当てる前に、まず定義の上で試す。 */
@@ -324,17 +304,6 @@ function siblingFields(raw: Dict, at: Path): string[] {
     .filter((field): field is string => field !== undefined);
 }
 
-/** その場所の値を取る。 */
-function valueAt(document: unknown, path: Path): unknown {
-  let value: unknown = document;
-  for (const step of path) {
-    if (Array.isArray(value) && typeof step === "number") value = value[step];
-    else if (isDict(value) && typeof step === "string") value = value[step];
-    else return undefined;
-  }
-  return value;
-}
-
 /** 案を定義の上で当てた複製。当てられなければ null。 */
 function tryOn(raw: Dict, proposal: Proposal): Dict | null {
   const copy = structuredClone(raw);
@@ -364,23 +333,6 @@ function tryOn(raw: Dict, proposal: Proposal): Dict | null {
     return copy;
   }
   return null;
-}
-
-/** 診断の数え上げ（名前ごとの件数）。 */
-const tally = (names: string[]): Map<string, number> => {
-  const counts = new Map<string, number>();
-  for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
-  return counts;
-};
-
-/** 診断が減っていて、**新しい名前が出ていない**か。 */
-function improves(before: string[], after: string[]): boolean {
-  if (after.length >= before.length) return false;
-  const known = tally(before);
-  for (const [name, count] of tally(after)) {
-    if ((known.get(name) ?? 0) < count) return false; // 増えた or 新顔
-  }
-  return true;
 }
 
 const messageOf = (proposal: Proposal): string =>

@@ -979,6 +979,49 @@ describe("hatake advise", () => {
     expect(runCli(["advise", "page.yaml", "--rules", "team.json"], io)).toBe(1);
     expect(io.stderr.join("\n")).toContain("規則名ではありません");
   });
+
+  it("--apply で選んだ助言を当てる（既定はファイルを触らない）", () => {
+    const io = fakeIo({
+      "page.yaml": THIN,
+      "picks.json": JSON.stringify([
+        { rule: "no-search-filter", value: [{ field: "orderNo", label: "受注番号" }] },
+      ]),
+    });
+    expect(runCli(["advise", "page.yaml", "--apply", "picks.json"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain(
+      "search: { filters: [{ field: orderNo, label: 受注番号 }] }",
+    );
+    expect(io.stderr.join("\n")).toContain("1 件を当てました");
+    expect(io.written).toEqual({});
+  });
+
+  it("--apply --write はファイルを上書きする", () => {
+    const io = fakeIo({
+      "page.yaml": THIN,
+      "picks.json": JSON.stringify({
+        picks: [{ rule: "open-dangerous-action", value: ["manager"] }],
+      }),
+    });
+    expect(runCli(["advise", "page.yaml", "--apply", "picks.json", "--write"], io)).toBe(0);
+    expect(io.written["page.yaml"]).toContain("roles: [manager]");
+    // 当てたところ以外は1文字も変えない。
+    expect(io.written["page.yaml"].replace(", roles: [manager]", "")).toBe(THIN);
+  });
+
+  it("頼んだのに当てられなかったものがあれば 1（好みでは落とさないが、頼み事は落とす）", () => {
+    const io = fakeIo({
+      "page.yaml": THIN,
+      "picks.json": JSON.stringify([{ rule: "open-dangerous-action" }]),
+    });
+    expect(runCli(["advise", "page.yaml", "--apply", "picks.json"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("value に渡してください");
+  });
+
+  it("当てる助言を並べていなければ、そう言う（全部当てる口は無い）", () => {
+    const io = fakeIo({ "page.yaml": THIN, "picks.json": "[]" });
+    expect(runCli(["advise", "page.yaml", "--apply", "picks.json"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("全部当てる口はありません");
+  });
 });
 
 describe("hatake explain --review", () => {

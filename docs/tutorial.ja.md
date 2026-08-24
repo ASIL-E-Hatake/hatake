@@ -238,6 +238,24 @@ npx hatake advise order_entry.yaml
 助言は**好みの話**なので終了コードは変えない（「書いたのに効かない」は 4 段目の担当）。
 案件の決めごとがあるなら物差しを渡せる（`--rules team.json`）。
 
+当てると決めたものは、**そのまま書き込める**。書く値は自分で決めて渡し、書く場所は機械が決める。
+
+```bash
+cat > picks.json <<'JSON'
+[
+  { "rule": "bulk-without-confirm",
+    "value": { "message": "{count} 件を承認します。よろしいですか？" } },
+  { "rule": "money-without-format" }
+]
+JSON
+npx hatake advise order_entry.yaml --apply picks.json --write
+```
+
+`value` を省けるのは定義から決まるものだけ（金額の見せ方など）。確認の文・1回に何件まで・
+誰に見せるかは業務の決めごとなので、渡さなければ当てずに「何を渡せばいいか」を言う。
+当てたあとに「読める・別の問題が出ない・その助言が消える」を確かめているので、
+通ったものは壊れていない。
+
 ## 7. アプリに繋ぐ
 
 定義が**外に何を要求しているか**を数える。
