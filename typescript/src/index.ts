@@ -78,6 +78,7 @@ export * from "./restTarget.js";
 export * from "./probeShape.js";
 export * from "./probe.js";
 export * from "./attack.js";
+export * from "./attackSweep.js";
 export * from "./types.js";
 export * from "./formatter.js";
 export * from "./converter.js";

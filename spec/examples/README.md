@@ -26,6 +26,7 @@ npx hatake examples --json    # ツール向け
 | 件数・金額・グラフのカードを並べて数字を見せたい | [sales_dashboard.yaml](sales_dashboard.yaml) | `dashboard` |
 | 一覧の印刷版。グループごとの小計と CSV 出力が欲しい | [sales_report.yaml](sales_report.yaml) | `report` |
 | 複数の画面をメニューで束ねて1つのアプリにしたい | [sales_app.yaml](sales_app.yaml) | `app` |
+| 見せる相手を役割で変えたい（画面ごと・列だけ・押せる人だけ） | [roles_app.yaml](roles_app.yaml) | `app` |
 
 ## 機能から引く
 
@@ -44,6 +45,8 @@ npx hatake examples --json    # ツール向け
 | グループ・小計・用紙（`groupBy` / `totals` / `paper`） | sales_report |
 | CSV 出力（`export` アクション） | sales_report / sales_dashboard |
 | メニューと画面遷移（`menu` / `navigate`） | sales_app |
+| 権限で出し分け（`roles` を書ける5か所） | roles_app |
+| 一括の上限を役割で変える（`maxRows.byRole`） | roles_app |
 
 ## 書いたら検証する
 

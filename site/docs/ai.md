@@ -116,6 +116,7 @@ npx hatake minimize page.yaml          # 既定値と同じ指定を落として
 npx hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権限・アプリ構成）
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか
 npx hatake registry lib/main.dart              # アプリが登録しているものを実装から読む
+npx hatake attack app.yaml --all-roles --accounts accounts.json --base …  # 役割ぜんぶ＋誰でもない人で権限の穴を突く
 ```
 
 `validate` は構文エラーだけでなく、**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション、存在しないページへの遷移、`sort` の無い `groupBy` など）。画面を見ても気づけない類なので、警告が出たら直す。
@@ -313,7 +314,9 @@ manaher … 1 か所
 ※ 1か所しか出てこない役割は**綴り違いの疑い**があります（並びは出てくる回数の多い順）。
 ```
 
-出てくる回数の多い順なので、**1か所しか出てこない役割が下に落ちてくる**。上の `manaher` がそれ。MCP なら `hatake_explain` に `roles: true`。
+出てくる回数の多い順なので、**1か所しか出てこない役割が下に落ちてくる**。上の `manaher` がそれ。役割ごとに「その役割だから開ける画面」も出る（空なら、その役割は列や項目にしか効いていない）。MCP なら `hatake_explain` に `roles: true`。
+
+書き方の見本は [`spec/examples/roles_app.yaml`](https://github.com/ASIL-E-Hatake/hatake/blob/main/spec/examples/roles_app.yaml)（`roles` を書ける5か所ぜんぶと、役割ごとの一括上限）。`npx hatake examples 権限` で引ける。
 
 出るのは**定義に書いてある名前**だけで、アプリ側の権限判定と合っているかは見られない（それは Framework の外の話）。「誰がどの画面を開けるか」は入口を辿った別の答えで、`explain` の「開ける人」に出る。
 

@@ -38,10 +38,21 @@ const PAGE = `page:
 
 describe("画面の索引", () => {
   it("app の中身も1枚ずつ数える（ファイル単位ではなく画面単位）", () => {
-    // 同梱は11ファイル。うち sales_app が8枚を持つので、画面は18枚になる。
-    expect(shipped).toHaveLength(11);
-    expect(index.screens).toHaveLength(18);
+    // 数で押さえると例を1つ足すたびに落ちるので、**名前で**見る。
+    // app のファイルは1行ではなく、中の画面ぶんの行になっているか。
+    const apps = new Map<string, number>();
+    for (const screen of index.screens) {
+      apps.set(screen.file, (apps.get(screen.file) ?? 0) + 1);
+    }
+    expect(apps.get("sales_app.yaml")).toBeGreaterThan(1);
+    expect(apps.get("roles_app.yaml")).toBeGreaterThan(1);
+    expect(apps.get("customer_form.yaml")).toBe(1);
+    // 同梱の例は全部読める（読めないものが混ざったら索引が嘘になる）。
     expect(index.unreadable).toEqual([]);
+    expect(index.screens.length).toBeGreaterThan(shipped.length);
+    // 画面 id は索引の中で一意（同じ id が2枚あると、探して開けない）。
+    const ids = index.screens.map((one) => `${one.file}/${one.id}`);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("1行の要約をそのまま持つ（索引のために別の語彙を作らない）", () => {

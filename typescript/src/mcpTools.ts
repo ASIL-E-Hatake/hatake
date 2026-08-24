@@ -12,6 +12,7 @@ import { parse as parseYamlText } from "yaml";
 import { deriveDto } from "./dto.js";
 import { diffDefinitions } from "./defDiff.js";
 import { renderExplain } from "./explain.js";
+import { appAccess, opensByRole } from "./appAccess.js";
 import { renderRoles, roleTitleOf } from "./explainRoles.js";
 import { roleInventory } from "./roles.js";
 import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
@@ -681,7 +682,11 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             throw new Error("定義（map）として読めません。");
           }
           const raw = document as Record<string, unknown>;
-          return renderRoles(roleInventory(raw), roleTitleOf(raw));
+          return renderRoles(
+            roleInventory(raw),
+            roleTitleOf(raw),
+            opensByRole(appAccess(raw)),
+          );
         }
         const page = str(args, "page");
         return args.brief === true

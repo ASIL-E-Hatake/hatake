@@ -284,6 +284,39 @@
         "density",
         "全部入り"
       ]
+    },
+    {
+      "file": "roles_app.yaml",
+      "kind": "app",
+      "title": "人事管理",
+      "task": "見せる相手を役割で変えたい（画面ごと隠す・列や項目だけ隠す・押せる人を絞る）",
+      "keys": [
+        "menu",
+        "group",
+        "items",
+        "roles",
+        "columns",
+        "fields",
+        "scope",
+        "maxRows",
+        "byRole",
+        "confirm",
+        "onError",
+        "onSuccess"
+      ],
+      "keywords": [
+        "権限",
+        "ロール",
+        "roles",
+        "出し分け",
+        "見せない",
+        "隠す",
+        "アクセス制御",
+        "一括の上限",
+        "役割ごとの上限",
+        "人事",
+        "給与"
+      ]
     }
   ]
 }

@@ -78,6 +78,15 @@ import {
 } from "./restTarget.js";
 import { hasProbeError, probe, probeRequests, renderProbe } from "./probe.js";
 import { attack, attackRequests, hasHole, renderAttack } from "./attack.js";
+import {
+  ANONYMOUS,
+  ANONYMOUS_LABEL,
+  attackAll,
+  parseAttackAccounts,
+  renderAttackSweep,
+  rolesToSweep,
+  sweepHasHole,
+} from "./attackSweep.js";
 import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
 import {
@@ -86,6 +95,7 @@ import {
   renderAdviceApply,
 } from "./adviseApply.js";
 import { withDrafts } from "./adviseDraft.js";
+import { appAccess, opensByRole } from "./appAccess.js";
 import { renderRoles, roleTitleOf } from "./explainRoles.js";
 import { roleInventory } from "./roles.js";
 import type { Lang } from "./explainPhrases.js";
@@ -318,6 +328,15 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       **読むだけ**（POST / PUT / DELETE は叩かない）。--dry-run は叩かずに
       「何を叩くか」だけ出す。集合の名前は wire と同じ推測（--collection で上書き）。
 
+  hatake attack <file> --all-roles --accounts accounts.json --base http://…
+              [--dry-run] [--json]
+      **定義に出てくる役割ぜんぶ＋誰でもない人**で叩いて、1枚の表にする。役割が
+      増えるたびに全部やり直すのは人が続けられないし、**1つ足したときに他が緩んで
+      いないか**は並べないと読めない。資格は**役割ごとに要る**（accounts.json に
+      { "hr": { "token": "…" } } の形）＝1つの資格で他の役割を判定すると、返ってきた
+      200 が穴なのか正しいのか区別できないので。資格の無い役割は叩かず、理由を残す。
+      誰でもない人（資格なし）は毎回1本入る。
+
   hatake attack <file> --role <role> --base http://localhost:8080/api
               [--token <jwt>] [--headers headers.json] [--collection k=name]
               [--dry-run] [--json]
@@ -392,6 +411,7 @@ const BOOLEAN_FLAGS = new Set([
   "diff",
   "brief",
   "roles",
+  "all-roles",
   "review",
   "repro",
   "write",
@@ -647,9 +667,13 @@ async function attackCommand(
   io: CliIo,
   send: HttpSend,
 ): Promise<number> {
+  if (flags["all-roles"] === true) return sweepCommand(files, flags, io, send);
   const role = str(flags, "role");
   if (role === undefined) {
-    throw new Error("--role を渡してください（誰として叩くかが要ります）。");
+    throw new Error(
+      "--role を渡してください（誰として叩くかが要ります）。" +
+        "役割ぜんぶを1枚にするなら --all-roles（資格は役割ごとに要ります）。",
+    );
   }
   const { targets, headers } = probeSetup(files, flags, io);
   if (flags["dry-run"] === true) {
@@ -668,6 +692,68 @@ async function attackCommand(
       : renderAttack(report),
   );
   return hasHole(report) ? 1 : 0;
+}
+
+/**
+ * 役割ぜんぶ＋誰でもない人で叩く（`--all-roles`）。
+ *
+ * `--token` / `--headers` は受け付けない＝1つの資格を全部の役割に使うと、返ってきた
+ * 200 が「その役割でも見えてしまう」なのか「いま使った資格なら正しい」なのか区別が
+ * つかない（穴が在ることにも無いことにもできてしまう）。
+ */
+async function sweepCommand(
+  files: string[],
+  flags: Args["flags"],
+  io: CliIo,
+  send: HttpSend,
+): Promise<number> {
+  if (str(flags, "token") !== undefined || str(flags, "headers") !== undefined) {
+    throw new Error(
+      "--all-roles では資格を役割ごとに渡します（--accounts accounts.json）。" +
+        "1つの資格で全部の役割を判定すると、200 が穴なのか正しいのか区別できません。",
+    );
+  }
+  const path = str(flags, "accounts");
+  if (path === undefined) {
+    throw new Error(
+      '--accounts accounts.json を渡してください（{ "hr": { "token": "…" } } の形）。' +
+        "資格の無い役割は叩かず、理由を残します。",
+    );
+  }
+  const accounts = parseAttackAccounts(JSON.parse(io.readFile(path)));
+  const { targets } = probeSetup(files, flags, io);
+  if (flags["dry-run"] === true) {
+    const roles = rolesToSweep(targets, accounts);
+    const plan = roles.map((role) => ({
+      role,
+      credential: accounts[role] === undefined ? null : "accounts から",
+      requests: attackRequests(targets, role),
+    }));
+    plan.push({
+      role: ANONYMOUS_LABEL,
+      credential: null,
+      requests: attackRequests(targets, ANONYMOUS),
+    });
+    io.out(
+      flags.json === true
+        ? JSON.stringify({ plan }, null, 2)
+        : [
+            "叩く要求（--dry-run なので送っていません）:",
+            ...plan.flatMap((one) => [
+              `  ${one.role}${one.credential === null ? "（資格なし）" : ""}`,
+              ...one.requests.map((request) => `    ${request}`),
+            ]),
+          ].join("\n"),
+    );
+    return 0;
+  }
+  const sweep = await attackAll(targets, accounts, send);
+  io.out(
+    flags.json === true
+      ? JSON.stringify(sweep, null, 2)
+      : renderAttackSweep(sweep),
+  );
+  return sweepHasHole(sweep) ? 1 : 0;
 }
 
 /** 解析して問題を報告する。1ファイルでも落ちれば終了コードは 1。 */
@@ -1191,7 +1277,8 @@ function explainRoles(source: string, flags: Args["flags"], io: CliIo): number {
     io.out(JSON.stringify(inventory, null, 2));
     return 0;
   }
-  io.out(renderRoles(inventory, roleTitleOf(raw)));
+  const access = appAccess(raw);
+  io.out(renderRoles(inventory, roleTitleOf(raw), opensByRole(access)));
   return 0;
 }
 

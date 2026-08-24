@@ -19,6 +19,7 @@
 // 同じ答えを出す。
 
 import { ActionScopes } from "./definition.js";
+import { roleNames } from "./roles.js";
 import type { Lang } from "./explainPhrases.js";
 import { voice } from "./explainVoice.js";
 
@@ -244,31 +245,41 @@ export function appAccess(raw: Dict): AppAccess {
     if (found.length > 0) openDanger.set(id, found);
   }
 
-  return { audience, entries, openDanger, roles: allRoles(raw) };
+  // 役割名の一覧は棚卸し（[roleNames]）と同じ数え方を使う。ここで別に数えると、
+  // 「知らない役割」の判定が道具ごとに変わる（`--role` は通るのに棚卸しには出ない、等）。
+  return { audience, entries, openDanger, roles: roleNames(raw) };
+}
+
+/** その役割で開ける画面。 */
+export interface RoleOpen {
+  /** **権限で絞られている**画面のうち、その役割で開けるもの（ページ id）。 */
+  gated: string[];
+  /** 誰でも開ける画面の数（役割に関係なく開けるので、並べない）。 */
+  everyone: number;
 }
 
 /**
- * 定義に出てくる役割名の全部。
+ * 役割ごとに「開ける画面」を出す。
  *
- * `--role` の綴り違いを黙って通さないために要る（知らない役割を渡すと「全部開ける」に見えて
- * しまい、一番まずい読み違えになる）。列・項目・カードの `roles` も入れる＝入口には効かないが
- * **その案件の役割の一覧**なので、綴りの確認には使える。
+ * 並べるのは**権限で絞られている画面だけ**。誰でも開ける画面は全部の役割に付いてくるので、
+ * 並べると本題（この役割だから開ける画面はどれか）が埋まる。数だけ添える。
+ *
+ * これは**辿った結果**で、`roles` が書いてある場所（[roleSpots]）とは別の答え。混ぜると
+ * 「列にしか書いていない役割」が「画面を開ける役割」に見える。
  */
-function allRoles(raw: Dict): string[] {
-  const found: string[] = [];
-  const dig = (value: unknown): void => {
-    if (Array.isArray(value)) {
-      for (const one of value) dig(one);
-      return;
-    }
-    if (!isDict(value)) return;
-    for (const [key, child] of Object.entries(value)) {
-      if (key === "roles") found.push(...strings(child));
-      else dig(child);
-    }
-  };
-  dig(raw);
-  return sorted(found);
+export function opensByRole(
+  access: AppAccess,
+  roles: string[] = access.roles,
+): Map<string, RoleOpen> {
+  const everyone = [...access.audience.values()].filter((one) => one.everyone).length;
+  const found = new Map<string, RoleOpen>();
+  for (const role of roles) {
+    const gated = [...access.audience.entries()]
+      .filter(([, audience]) => !audience.everyone && canOpen(audience, role))
+      .map(([id]) => id);
+    found.set(role, { gated, everyone });
+  }
+  return found;
 }
 
 /** その役割で開けるか。 */

@@ -1,0 +1,125 @@
+# 権限で出し分けるアプリの例（`roles` を書ける5か所ぜんぶ）。
+#
+# 押さえておくこと3つ:
+#   ・**画面そのものに `roles` は書けない。** 画面ごと見せたくないなら、そこへの
+#     入口（メニュー項目・グループ）に書く。開ける人は入口から辿った結果になる。
+#   ・`roles` が止めるのは**画面に出すかどうかだけ**。API を直接叩けばデータは取れる。
+#     本当の遮断はバックエンドの仕事（Framework は認証も認可も持たない）。
+#   ・一括（`scope: selection`）は役割で件数を変えられる（`maxRows.byRole`）。
+#     1回の操作が件数ぶん動くので、慣れていない役割は少なく。
+#
+# 誰が何を見られるかは `npx hatake explain roles_app.yaml --roles` で数えられる
+# （役割名は定義の中だけの取り決めなので、綴りを間違えても画面は出る）。
+dsl_version: "1.0"
+app:
+  id: hr_admin
+  title: 人事管理
+  home: hrDashboard
+  menu:
+    - { id: hrDashboard, label: ダッシュボード, icon: insights, page: hr_dashboard }
+    - { id: employees, label: 社員, icon: people, page: employee_search }
+    # グループの roles は中身にも掛かる（このグループが見えない人は、
+    # 中の画面をメニューから開けない）。
+    - group: 給与
+      icon: payments
+      roles: [hr]
+      items:
+        - { id: salaries, label: 給与一覧, page: salary_search }
+  pages:
+    # カード単位で見せる相手を変えられる（人件費は hr と役員だけ）。
+    - type: dashboard
+      id: hr_dashboard
+      title: 人事ダッシュボード
+      repository: employeeRepository
+      layout: { columns: 3 }
+      items:
+        - { id: headcount, title: 在籍人数, action: openEmployees }
+        - id: payrollTotal
+          title: 人件費（月額）
+          value: { aggregate: sum, field: salary }
+          format: currency
+          roles: [hr, executive]
+        - id: byDepartment
+          type: chart
+          title: 部門別の人数
+          span: 2
+          chart: { kind: bar, labelField: department, valueField: employeeNo, aggregate: count }
+      actions:
+        - { id: openEmployees, type: navigate, label: 社員一覧, page: employee_search }
+
+    - type: search
+      id: employee_search
+      title: 社員照会
+      repository: employeeRepository
+      key: employeeNo
+      search:
+        filters:
+          - { field: employeeNo, label: 社員番号 }
+          - { field: name, label: 氏名, type: text, operator: contains }
+          - field: department
+            label: 部門
+            type: select
+            operator: equals
+            options:
+              - { value: sales, label: 営業 }
+              - { value: dev, label: 開発 }
+      table:
+        rowActions: [detail]
+        columns:
+          - { field: employeeNo, label: 社員番号, sortable: true, width: 140 }
+          - { field: name, label: 氏名, sortable: true, width: 180 }
+          - { field: department, label: 部門, sortable: true, width: 120 }
+          # 列ごとに隠せる（見えない列は CSV 出力にも出ない）。
+          - { field: salary, label: 給与, type: number, format: currency, roles: [hr], width: 140 }
+      actions:
+        - { id: detail, type: navigate, label: 詳細, page: employee_detail, params: { id: "$row.employeeNo" } }
+        # 一括は役割で上限を変える（1回の操作が件数ぶん動くので）。
+        - id: approveRaise
+          type: plugin
+          plugin: approveRaises
+          label: 昇給を一括承認
+          scope: selection
+          roles: [hr, manager]
+          maxRows: { default: 5, byRole: { hr: 50 } }
+          confirm:
+            title: 昇給の承認
+            message: "{count} 件の昇給を承認します。よろしいですか？"
+          onError: { message: "{count} 件のうち {failed} 件を承認できませんでした" }
+          onSuccess: { message: "{count} 件を承認しました" }
+        # 持ち出しは hr だけ（画面の外に出たものは取り戻せない）。
+        - { id: csv, type: export, label: CSV 出力, roles: [hr], config: { filename: 社員一覧 } }
+
+    - type: detail
+      id: employee_detail
+      title: 社員詳細
+      repository: employeeRepository
+      key: employeeNo
+      form:
+        sections:
+          - title: 基本情報
+            fields:
+              - { field: employeeNo, label: 社員番号 }
+              - { field: name, label: 氏名 }
+              - { field: department, label: 部門 }
+          - title: 処遇
+            # 枠ごとではなく項目ごとに隠す（枠の見出しは残す）。
+            fields:
+              - { field: grade, label: 等級 }
+              - { field: salary, label: 給与, type: number, format: currency, roles: [hr] }
+              - { field: note, label: 備考, type: textarea, roles: [hr, manager] }
+
+    # メニューのグループが hr だけなので、この画面を開けるのも hr だけ。
+    - type: search
+      id: salary_search
+      title: 給与一覧
+      repository: salaryRepository
+      key: employeeNo
+      search:
+        filters:
+          - { field: month, label: 対象月, type: month }
+          - { field: employeeNo, label: 社員番号 }
+      table:
+        columns:
+          - { field: month, label: 対象月, sortable: true, width: 120 }
+          - { field: employeeNo, label: 社員番号, sortable: true, width: 140 }
+          - { field: amount, label: 支給額, type: number, format: currency, sortable: true, width: 140 }
