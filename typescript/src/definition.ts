@@ -244,7 +244,7 @@ export interface ActionDefinition {
    * 業務の決めごと（「承認は20件まで」）。超えて選んでいる間ボタンは押せない
    * （切り詰めて実行はしない）。無ければ上限は「画面に出ている行の数」。
    */
-  maxRows?: number;
+  maxRows?: RowLimit;
   config: Record<string, unknown>;
   /** Roles allowed to use this action (see isAllowed). Empty = everyone. */
   roles: string[];
@@ -642,6 +642,42 @@ export const ActionTypes = {
   print: "print",
   navigate: "navigate",
 } as const;
+
+/**
+ * 1回で動かせる行数の上限（`action.maxRows`）。
+ *
+ * `default` は役割で決まらないときの上限、`byRole` は役割ごと。値 `"all"` は上限なし。
+ * **複数の役割を持つ人には一番ゆるい上限が効く**（`roles` が「どれか1つ当てはまれば
+ * 見える」なのと同じ考え方＝役割は持っているほど広がる）。
+ */
+export interface RowLimit {
+  default: number | "all";
+  byRole: Record<string, number | "all">;
+}
+
+/**
+ * `roles` を持つ人の上限。**undefined = 上限なし。**
+ *
+ * バックエンドでも同じ判定を使えるように、ここに1つだけ置く（画面が止めても API を
+ * 直接叩けば通るので、守る側は同じ定義から同じ数を読む）。
+ */
+export function rowLimitFor(
+  limit: RowLimit | undefined,
+  roles: Iterable<string> = [],
+): number | undefined {
+  if (limit === undefined) return undefined;
+  let widest: number | undefined;
+  let matched = false;
+  for (const role of roles) {
+    if (!(role in limit.byRole)) continue;
+    const found = limit.byRole[role];
+    if (found === "all") return undefined; // 上限なし
+    matched = true;
+    if (widest === undefined || found > widest) widest = found;
+  }
+  if (matched) return widest;
+  return limit.default === "all" ? undefined : limit.default;
+}
 
 /**
  * What an action runs on. **Closed set** — unlike an action type this is not a

@@ -70,7 +70,17 @@ const _approveUpTo1 = ActionDefinition(
   plugin: 'approveOrders',
   label: '一括承認',
   scope: ActionScopes.selection,
-  maxRows: 1,
+  maxRows: RowLimit.of(1),
+);
+
+/// 役割で上限が変わる一括（担当は1件・管理者は上限なし）。
+const _approveByRole = ActionDefinition(
+  id: 'approve',
+  type: ActionTypes.plugin,
+  plugin: 'approveOrders',
+  label: '一括承認',
+  scope: ActionScopes.selection,
+  maxRows: RowLimit(rows: 1, byRole: {'admin': null}),
 );
 
 /// 確認を出す一括（文言に件数の差し込みを持つ）。
@@ -379,5 +389,41 @@ void main() {
     await tester.tap(_button());
     await tester.pumpAndSettle();
     expect(ran, 1);
+  });
+
+  // 上限は役割で変わる（）。同じ定義・同じ選び方で、役割だけを変えて見る。
+  const byRolePage = SearchPageDefinition(
+    id: 'order_search',
+    title: '受注照会',
+    repository: 'orderRepository',
+    keyField: 'orderNo',
+    table: _table,
+    actions: [_approveByRole],
+  );
+
+  testWidgets('役割が無ければ既定の上限が効く（1件まで）', (tester) async {
+    await tester.pumpWidget(_harness(_Orders(_rows()), definition: byRolePage));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.tap(find.byType(Checkbox).at(2));
+    await tester.pumpAndSettle();
+
+    expect(_enabled(tester), isFalse);
+    expect(find.text('一括承認（2 件：1 件まで）'), findsOneWidget);
+  });
+
+  testWidgets('その役割が上限なしなら、同じ件数でも押せる', (tester) async {
+    await tester.pumpWidget(_harness(
+      _Orders(_rows()),
+      definition: byRolePage,
+      roles: const {'admin'},
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.tap(find.byType(Checkbox).at(2));
+    await tester.pumpAndSettle();
+
+    expect(_enabled(tester), isTrue);
+    expect(find.text('一括承認（2 件）'), findsOneWidget);
   });
 }

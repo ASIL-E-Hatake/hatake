@@ -122,6 +122,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
                           .pick(_controller.items, _def.keyField)
                           .length,
                       onPressed: () => _onAction(action),
+                      roles: _roles,
                     )
                   else
                     FilledButton(

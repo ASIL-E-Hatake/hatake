@@ -345,7 +345,9 @@
       "blurb": "一覧にチェックボックスを出して、選んだ行に対してボタンを1回押す。",
       "keys": [
         "scope",
-        "maxRows"
+        "maxRows",
+        "default",
+        "byRole"
       ],
       "demo": "order_search"
     },

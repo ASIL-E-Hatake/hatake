@@ -79,6 +79,9 @@ export function findWarnings(
   const found: DefinitionWarning[] = [];
   const app = isDict(document.app) ? document.app : undefined;
   const page = isDict(document.page) ? document.page : undefined;
+  // このアプリに出てくる役割名（`roles` に書いてあるものの全部）。役割名の綴り違いは
+  // 「誰にも当てはまらない」形で静かに効かなくなるので、突き合わせる相手が要る。
+  const appRoles = collectRoles(document);
 
   if (app !== undefined) {
     const pages = list(app.pages).filter(isDict);
@@ -88,17 +91,39 @@ export function findWarnings(
     checkApp(app, pages, pageIds, found);
     checkAccess(document, pages, found);
     pages.forEach((p, i) =>
-      checkPage(p, `app.pages[${i}]`, pageIds, found),
+      checkPage(p, `app.pages[${i}]`, pageIds, found, appRoles),
     );
   }
   if (page !== undefined) {
     // 単票の定義では他のページを知らないので、遷移先の存在は確かめられない。
-    checkPage(page, "page", null, found);
+    checkPage(page, "page", null, found, appRoles);
   }
   if (options.registry !== undefined) {
     checkRegistry(document, options.registry, found);
   }
   return found;
+}
+
+/**
+ * 定義のどこかに書いてある役割名を全部集める。
+ *
+ * `roles` は画面・ボタン・項目・列・メニューに書けるので、1つのノードだけ見ても
+ * 役割の一覧にはならない。素の document を丸ごと歩く。
+ */
+function collectRoles(value: unknown, into: Set<string> = new Set()): Set<string> {
+  if (Array.isArray(value)) {
+    for (const one of value) collectRoles(one, into);
+    return into;
+  }
+  if (!isDict(value)) return into;
+  for (const [key, child] of Object.entries(value)) {
+    if (key === "roles") {
+      for (const role of list(child)) if (typeof role === "string") into.add(role);
+      continue;
+    }
+    collectRoles(child, into);
+  }
+  return into;
 }
 
 /** 参照の種類ごとの言い方（何が起きるかを、その種類の言葉で言う）。 */
@@ -367,6 +392,7 @@ function checkPage(
   path: string,
   pageIds: Set<string> | null,
   found: DefinitionWarning[],
+  appRoles: Set<string> = new Set(),
 ): void {
   const actions = list(page.actions).filter(isDict);
   const actionIds = new Set(
@@ -375,7 +401,7 @@ function checkPage(
 
   checkActions(actions, `${path}.actions`, pageIds, found);
   checkPrint(page, actions, path, found);
-  checkSelection(page, actions, path, found);
+  checkSelection(page, actions, path, found, appRoles);
   checkPlaceholders(actions, `${path}.actions`, found);
   checkPrompt(actions, `${path}.actions`, found);
   checkCreateAction(page, actions, `${path}.actions`, found);
@@ -432,6 +458,7 @@ function checkSelection(
   actions: Dict[],
   path: string,
   found: DefinitionWarning[],
+  appRoles: Set<string> = new Set(),
 ): void {
   const hasTable = isDict(page.table);
   actions.forEach((action, i) => {
@@ -463,7 +490,7 @@ function checkSelection(
       );
     }
   });
-  checkMaxRows(page, actions, path, found);
+  checkMaxRows(page, actions, path, found, appRoles);
 }
 
 /**
@@ -481,6 +508,7 @@ function checkMaxRows(
   actions: Dict[],
   path: string,
   found: DefinitionWarning[],
+  appRoles: Set<string>,
 ): void {
   const table = isDict(page.table) ? page.table : undefined;
   const pagination = isDict(table?.pagination) ? table?.pagination : undefined;
@@ -488,14 +516,15 @@ function checkMaxRows(
   const pageSize =
     typeof pagination?.pageSize === "number" ? pagination.pageSize : DEFAULT_PAGE_SIZE;
   actions.forEach((action, i) => {
-    const max = action.maxRows;
-    if (typeof max !== "number") return;
+    const raw = action.maxRows;
+    if (raw === undefined || raw === null) return;
+    const at = `${path}.actions[${i}].maxRows`;
     const label = str(action.label) ?? str(action.id) ?? "ボタン";
     if (str(action.scope) !== ActionScopes.selection) {
       warn(
         found,
         "maxrows-without-selection",
-        `${path}.actions[${i}].maxRows`,
+        at,
         `「${label}」に1回の上限（\`maxRows\`）が書いてありますが、このボタンは` +
           `**選んだ行に対して実行するボタンではありません**（\`scope: selection\` が` +
           `ありません）。数える対象が無いので、上限は効きません。`,
@@ -504,17 +533,63 @@ function checkMaxRows(
       );
       return;
     }
-    if (table === undefined || !paging || max <= pageSize) return;
-    warn(
-      found,
-      "maxrows-above-page-size",
-      `${path}.actions[${i}].maxRows`,
-      `「${label}」の上限は ${max} 件ですが、この表は1ページ ${pageSize} 件です。` +
-        `選べるのは**画面に出ている行**だけなので、${max} 件は選べません＝この上限は` +
-        `一度も効きません。`,
-      `上限を ${pageSize} 件以下にするか、\`table.pagination.pageSize\` を上げて` +
-        "ください（1回で動く件数を増やすことになるので、上限の意味を先に決めてください）。",
-    );
+
+    // 「効かない上限」は、書いた数のどれについても言える（既定でも役割ごとでも）。
+    const overPageSize = (rows: number, where: string, who: string): void => {
+      if (table === undefined || !paging || rows <= pageSize) return;
+      warn(
+        found,
+        "maxrows-above-page-size",
+        where,
+        `「${label}」の上限${who}は ${rows} 件ですが、この表は1ページ ${pageSize} 件です。` +
+          `選べるのは**画面に出ている行**だけなので、${rows} 件は選べません＝この上限は` +
+          `一度も効きません。`,
+        `上限を ${pageSize} 件以下にするか、\`table.pagination.pageSize\` を上げて` +
+          "ください（1回で動く件数を増やすことになるので、上限の意味を先に決めてください）。",
+      );
+    };
+
+    if (typeof raw === "number") {
+      overPageSize(raw, at, "");
+      return;
+    }
+    if (!isDict(raw)) return;
+    if (typeof raw.default === "number") overPageSize(raw.default, `${at}.default`, "");
+    if (!isDict(raw.byRole)) return;
+
+    // 役割ごとの上限は、その役割が**このボタンを押せる**ときだけ効く。
+    // 押せない役割に上限を書いても何も起きない（しかも定義は通る）。
+    const allowed = list(action.roles).map(String);
+    for (const [role, value] of Object.entries(raw.byRole)) {
+      const where = `${at}.byRole.${role}`;
+      if (typeof value === "number") overPageSize(value, where, `（${role}）`);
+      if (allowed.length > 0 && !allowed.includes(role)) {
+        warn(
+          found,
+          "maxrows-unknown-role",
+          where,
+          `「${label}」は ${allowed.join(" / ")} だけに出るボタンですが、上限を ` +
+            `${role} について書いています。${role} はこのボタンを押せないので、` +
+            `この上限は効きません。`,
+          `${role} にも押させるなら \`roles\` に足してください。` +
+            "そうでなければこの行を消してください。",
+        );
+        continue;
+      }
+      if (appRoles.size > 0 && !appRoles.has(role)) {
+        const near = closestKey(role, [...appRoles]);
+        warn(
+          found,
+          "maxrows-unknown-role",
+          where,
+          `上限を書いてある役割 "${role}" は、このアプリのどこにも出てきません。` +
+            `誰にも当てはまらないので、この上限は効きません（みんな既定の上限になります）。`,
+          near === null
+            ? "`roles` に書いてある役割名で書いてください。"
+            : `${near} の間違いではないですか？`,
+        );
+      }
+    }
   });
 }
 

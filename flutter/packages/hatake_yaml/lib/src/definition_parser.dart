@@ -464,6 +464,34 @@ ValidatorDefinition _parseValidator(Map<String, Object?> m) {
   );
 }
 
+/// `maxRows` は「数」か「役割ごと」の2通り。値 `all` は上限なし（null）。
+///
+/// 知らない書き方（文字列 `all` 以外・0以下・入れ物違い）は**無視せず落とす**
+/// （スキーマが弾くものと同じものを、解析でも弾く）。
+RowLimit? _parseRowLimit(Object? raw) {
+  if (raw == null) return null;
+  if (raw is int) return RowLimit.of(raw);
+  if (raw is Map) {
+    final m = raw.cast<String, Object?>();
+    final byRole = <String, int?>{};
+    final roles = m['byRole'];
+    if (roles is Map) {
+      for (final e in roles.entries) {
+        byRole['${e.key}'] = _rowLimitValue(e.value, at: 'maxRows.byRole');
+      }
+    }
+    return RowLimit(rows: _rowLimitValue(m['default'], at: 'maxRows.default'), byRole: byRole);
+  }
+  throw DefinitionParseException('maxRows は数か { default, byRole } です');
+}
+
+/// 上限1つ。`all` は null（上限なし）。
+int? _rowLimitValue(Object? raw, {required String at}) {
+  if (raw == null || raw == 'all') return null;
+  if (raw is int && raw > 0) return raw;
+  throw DefinitionParseException('$at は1以上の数か all です');
+}
+
 ActionDefinition _parseAction(Map<String, Object?> m) {
   return ActionDefinition(
     id: m.reqString('id', at: 'action.id'),
@@ -475,7 +503,7 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
     onSuccess: _parseActionSuccess(m.optMap('onSuccess')),
     onError: _parseActionError(m.optMap('onError')),
     prompt: _parseActionPrompt(m.optMap('prompt')),
-    maxRows: m.optInt('maxRows'),
+    maxRows: _parseRowLimit(m['maxRows']),
     // Lift top-level `page` / `params` (navigate actions) into config so the
     // ActionDefinition model stays unchanged.
     config: {

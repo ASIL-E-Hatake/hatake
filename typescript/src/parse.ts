@@ -27,6 +27,7 @@ import {
   type TableDefinition,
   type WizardStepDefinition,
   type ValidatorDefinition,
+  type RowLimit,
 } from "./definition.js";
 
 export class DefinitionParseError extends Error {
@@ -536,13 +537,45 @@ function parseOptionsSource(m: Dict | undefined): OptionsSource | undefined {
   };
 }
 
+/**
+ * `maxRows` は「数」か「役割ごと」の2通り。値 `all` は上限なし。
+ *
+ * 知らない書き方は無視せず落とす（スキーマが弾くものと同じものを解析でも弾く）。
+ * 黙って捨てると「上限を決めたつもり」で通ってしまう。
+ */
+function parseRowLimit(raw: unknown): RowLimit | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw === "number") {
+    return { default: rowLimitValue(raw, "maxRows"), byRole: {} };
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new DefinitionParseError('maxRows は数か { default, byRole } です');
+  }
+  const m = raw as Record<string, unknown>;
+  const byRole: Record<string, number | "all"> = {};
+  const roles = m.byRole;
+  if (typeof roles === "object" && roles !== null && !Array.isArray(roles)) {
+    for (const [role, value] of Object.entries(roles as Record<string, unknown>)) {
+      byRole[role] = rowLimitValue(value, `maxRows.byRole.${role}`);
+    }
+  }
+  return { default: rowLimitValue(m.default, "maxRows.default"), byRole };
+}
+
+/** 上限1つ。`all` はそのまま持つ（上限なし）。 */
+function rowLimitValue(raw: unknown, at: string): number | "all" {
+  if (raw === "all") return "all";
+  if (typeof raw === "number" && Number.isInteger(raw) && raw > 0) return raw;
+  throw new DefinitionParseError(`${at} は1以上の数か all です`);
+}
+
 function parseAction(m: Dict): ActionDefinition {
   return {
     id: reqString(m, "id", "action.id"),
     type: reqString(m, "type", "action.type"),
     label: reqString(m, "label", "action.label"),
     scope: optString(m, "scope") ?? ActionScopes.page,
-    maxRows: optNumber(m, "maxRows"),
+    maxRows: parseRowLimit(m.maxRows),
     plugin: optString(m, "plugin"),
     confirm: parseConfirm(optDict(m, "confirm")),
     onSuccess: parseActionSuccess(optDict(m, "onSuccess")),

@@ -525,7 +525,8 @@ jobs:
           # （危険度がそこで変わるのに、定義を読んでも出てこない）。
           node dist/cli.js explain "$DEMO" --page order_search > /tmp/bulk.log
           # 上限を定義に書いてあるなら、**それが上限**だと言う（1ページの件数ではなく）。
-          grep -q '1回で最大 20 件まで＝定義で決めた上限' /tmp/bulk.log
+          # 承認は役割ごと（担当20件・管理者は1ページ全部）。誰にとっての上限かまで言う。
+          grep -q '1回で最大 20 件まで（manager は 50 件）＝定義で決めた上限' /tmp/bulk.log
           grep -q '1回で最大 5 件まで＝定義で決めた上限' /tmp/bulk.log
           # 表の無い画面に置いたら、押せないボタンになると言うこと。
           cat > /tmp/bulk-nowhere.yaml <<'YAML'
@@ -637,6 +638,63 @@ jobs:
             grep -q "\"rule\": \"$rule\"" /tmp/maxrows-bad.json || {
               echo "$rule が出ていない"; exit 1; }
           done
+          # 役割ごとの上限（byRole）。3版が同じ数を出すことは共有フィクスチャが縛るので、
+          # ここでは「読み上げ」と「効かない書き方」を見る。
+          cat > /tmp/maxrows-roles.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              pagination: { pageSize: 100 }
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - id: approve
+                type: plugin
+                plugin: approveOrders
+                label: 一括承認
+                scope: selection
+                roles: [staff, manager, admin]
+                maxRows:
+                  default: 20
+                  byRole: { manager: 100, admin: all }
+                confirm: { message: '{count} 件を承認します' }
+                onError: { message: 'x' }
+          YAML
+          node dist/cli.js validate --warn-as-error /tmp/maxrows-roles.yaml
+          node dist/cli.js explain /tmp/maxrows-roles.yaml > /tmp/maxrows-roles.log
+          grep -q '1回で最大 20 件まで（manager は 100 件・admin は 上限なし）＝定義で決めた上限' \
+                /tmp/maxrows-roles.log
+          # 押せない役割・どこにも無い役割名に書いた上限は効かない。
+          cat > /tmp/maxrows-role-bad.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - id: approve
+                type: plugin
+                plugin: approveOrders
+                label: 一括承認
+                scope: selection
+                roles: [manager]
+                maxRows: { default: 20, byRole: { staff: 10 } }
+                confirm: { message: '{count} 件を承認します' }
+                onError: { message: 'x' }
+          YAML
+          if node dist/cli.js validate --warn-as-error /tmp/maxrows-role-bad.yaml \
+                2> /tmp/maxrows-role-bad.err; then
+            echo "押せない役割の上限を通してしまった"; exit 1
+          fi
+          node dist/cli.js validate --json /tmp/maxrows-role-bad.yaml \
+                > /tmp/maxrows-role-bad.json
+          grep -q '"rule": "maxrows-unknown-role"' /tmp/maxrows-role-bad.json
           # 上限を書いてあれば、件数の助言は言わない（Renderer が止めるので）。
           cat > /tmp/maxrows-ok.yaml <<'YAML'
           page:

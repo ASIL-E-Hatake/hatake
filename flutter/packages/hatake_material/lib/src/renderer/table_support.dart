@@ -80,12 +80,15 @@ bool _hasSelectionAction(List<ActionDefinition> actions, Set<String> roles) {
 /// ラベルには「いま何件で、何件までか」を出す＝押してから断られるのではなく、
 /// 押す前に理由が読める。**切り詰めて実行はしない**（選んだうちの一部だけが動いた
 /// ことに、押した人は気づけない）。
+///
+/// 上限は役割で変わる（`byRole`）ので、[roles] を渡して**その人の上限**を出す。
 Widget _bulkButton({
   required ActionDefinition action,
   required int count,
   required VoidCallback onPressed,
+  Set<String> roles = const {},
 }) {
-  final max = action.maxRows;
+  final max = action.maxRows?.forRoles(roles);
   final tooMany = max != null && count > max;
   return FilledButton(
     key: Key('hatake.action.${action.id}'),

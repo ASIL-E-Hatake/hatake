@@ -72,6 +72,7 @@ export const strictKeyTable: Record<string, string[]> = {
     "id", "type", "label", "scope", "plugin", "page", "params", "confirm",
     "onSuccess", "onError", "prompt", "maxRows", "config", "roles",
   ],
+  maxRows: ["default", "byRole"],
   confirm: ["title", "message", "okLabel", "cancelLabel", "danger"],
   actionSuccess: ["message", "page", "params"],
   actionError: ["message"],
@@ -90,6 +91,8 @@ const children: Record<string, Record<string, string>> = {
     onSuccess: "actionSuccess",
     onError: "actionError",
     prompt: "actionPrompt",
+    // `byRole` の中は役割名（自由な入れ物）なので降りない。
+    maxRows: "maxRows",
   },
   crudPage: { search: "search", table: "table", form: "form", actions: "action[]" },
   masterPage: { search: "search", table: "table", form: "form", actions: "action[]" },

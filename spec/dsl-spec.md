@@ -1170,7 +1170,7 @@ Decisions:
 | `confirm` | [confirm](#confirm) | | Ask before running it. |
 | `onSuccess` | [onSuccess](#onsuccess) | | What to do once it succeeded. |
 | `onError` | [onError](#onerror) | | What the user is told when it failed. |
-| `maxRows` | integer | | For `scope: selection`: how many rows one press may act on (min 1). While more are picked the button is disabled. Omit and the real limit is the page size. |
+| `maxRows` | integer \| object | | For `scope: selection`: how many rows one press may act on (min 1). The object form (`{ default, byRole }`, where a limit may be `all`) caps per role — with several matching roles the **most permissive** wins. While more are picked the button is disabled. Omit and the real limit is the page size. The backend can read the same limit (`checkBulkLimit` / `BulkLimits.check`). |
 | `prompt` | [prompt](#prompt) | | Asked before it runs (a small form). |
 | `config` | map | | Extra settings. |
 | `roles` | string[] | | Roles allowed to run it (see [access control](#access-control-roles)). Empty = everyone. |
@@ -1416,6 +1416,7 @@ npx hatake validate page.yaml --no-warn --json
 | `computed-field-and-fields` | both `field` and `fields` are written — `field` wins and `fields` does nothing |
 | `create-action-unusable` | `type: create` on a page other than `crud` / `master` — the button appears but **nothing happens when pressed** (`create` opens the new-record form of a list; `form` / `wizard` already have a save button) |
 | `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure, **before it runs only `{count}` fills** — there is no failure and no reason yet — and **any other name, a field like `{orderNo}`, has nothing to fill it**) — it stays as literal text and you find out by pressing the button |
+| `maxrows-unknown-role` | a role in `byRole` cannot use the button (not in `roles`) or appears nowhere in the definition — nothing matches it, so that limit never applies |
 | `maxrows-without-selection` | `maxRows` on an action that is not `scope: selection` — there is nothing to count, so the limit does nothing |
 | `maxrows-above-page-size` | `maxRows` is larger than the page size — only the rows on screen can be picked, so the limit can never bind |
 | `selection-without-table` | a `scope: selection` button on a page with **no table** — there is no way to choose rows, so the button stays unpressable |

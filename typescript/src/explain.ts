@@ -37,6 +37,7 @@ import { voice, type Voice } from "./explainVoice.js";
 import {
   type ActionDefinition,
   ActionScopes,
+  type RowLimit,
   ActionTypes,
   type AppDefinition,
   type ColumnDefinition,
@@ -586,6 +587,25 @@ function selectionLimitOf(page: PageDefinition): SelectionLimit {
   return pagination.enabled ? { rows: pagination.pageSize } : "all";
 }
 
+/**
+ * 1回で動かせる上限の言い方。
+ *
+ * 役割ごとの上限まで言う（「1回で最大 20 件まで（manager は 100 件・admin は上限なし）」）。
+ * 役割を書いたのに読み上げないと、**誰にとっての上限なのか**が定義を読むまで分からない。
+ */
+function describeRowLimit(limit: RowLimit, lang: Lang): string {
+  const v = voice(lang);
+  // 先頭は文として読める形、括弧の中は短い形（同じ言い方を繰り返さない）。
+  const base = limit.default === "all" ? v.rowsUnlimited : v.rowsUpTo(limit.default);
+  const short = (value: number | "all"): string =>
+    value === "all" ? v.rowsUnlimited : v.rowsCount(value);
+  const roles: [string, number | "all"][] = Object.entries(limit.byRole);
+  if (roles.length === 0) return base;
+  return (
+    base + v.rowsByRole(roles.map(([role, value]) => v.rowsForRole(role, short(value))))
+  );
+}
+
 function describeAction(
   action: ActionDefinition,
   target: string | undefined,
@@ -607,7 +627,7 @@ function describeAction(
       ? ""
       : v.clause(
           action.maxRows !== undefined
-            ? v.onSelectionCapped(action.maxRows)
+            ? v.onSelectionCapped(describeRowLimit(action.maxRows, lang))
             : limit === undefined
               ? v.onSelection
               : limit === "all"

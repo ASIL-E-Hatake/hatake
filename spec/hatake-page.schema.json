@@ -1091,9 +1091,16 @@
           "$ref": "#/$defs/actionPrompt"
         },
         "maxRows": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "For `scope: selection`: how many rows one press may act on. While more than this are picked the button is disabled and says the limit — it never truncates the selection, since acting on part of what was picked is the failure nobody notices. Omit to leave it unbounded, in which case the real limit is how many rows are on screen (`table.pagination.pageSize`).",
+          "description": "For `scope: selection`: how many rows one press may act on. A plain integer caps everyone; the object form caps per role. While more than the limit are picked the button is disabled and says the limit — it never truncates the selection, since acting on part of what was picked is the failure nobody notices. Omit to leave it unbounded, in which case the real limit is how many rows are on screen (`table.pagination.pageSize`).",
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "$ref": "#/$defs/maxRows"
+            }
+          ],
           "examples": [
             20
           ]
@@ -1105,6 +1112,38 @@
           "$ref": "#/$defs/roles"
         }
       }
+    },
+    "maxRows": {
+      "type": "object",
+      "description": "A per-role row limit. `default` applies to anyone the roles do not name. With several matching roles the **most permissive** one wins, the same way `roles` grants access when any role matches.",
+      "required": [
+        "default"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "$ref": "#/$defs/rowLimit"
+        },
+        "byRole": {
+          "type": "object",
+          "description": "Role name -> limit. A role that is not named falls back to `default`.",
+          "additionalProperties": {
+            "$ref": "#/$defs/rowLimit"
+          }
+        }
+      }
+    },
+    "rowLimit": {
+      "description": "A row limit: a positive count, or `all` for no limit.",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "const": "all"
+        }
+      ]
     },
     "confirm": {
       "type": "object",

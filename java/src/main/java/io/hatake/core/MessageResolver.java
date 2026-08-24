@@ -29,7 +29,10 @@ public final class MessageResolver {
                     Map.entry("compare.gt", "{target}より大きい値にしてください"),
                     Map.entry("compare.gte", "{target}以上にしてください"),
                     Map.entry("compare.lt", "{target}より小さい値にしてください"),
-                    Map.entry("compare.lte", "{target}以下にしてください")));
+                    Map.entry("compare.lte", "{target}以下にしてください"),
+                    // 1回で動かせる件数の上限（action.maxRows）を超えて届いたとき。
+                    // 画面は押させないので、これが出るのは API を直接叩かれたとき。
+                    Map.entry("bulk.tooMany", "1回に実行できるのは {value} 件までです（{count} 件届きました）")));
 
     private final String locale;
     private final Map<String, Map<String, String>> messages;

@@ -6,6 +6,7 @@ import 'action_scopes.dart';
 import 'action_success_definition.dart';
 import 'action_types.dart';
 import 'confirm_definition.dart';
+import 'row_limit.dart';
 
 /// A page-level or row-level action (button / menu item).
 class ActionDefinition extends Equatable {
@@ -43,11 +44,14 @@ class ActionDefinition extends Equatable {
 
   /// How many rows one press may act on, for `scope: selection`.
   ///
-  /// 業務の決めごと（「承認は20件まで」）。上限を超えて選んでいる間、ボタンは
-  /// **押せない**（件数と上限をラベルに出す）。切り詰めて実行はしない＝選んだうちの
-  /// 一部だけが動いたことに気づけないのが一番まずい。null = 上限を決めていない
+  /// 業務の決めごと（「承認は20件まで、管理者は上限なし」）。上限を超えて選んでいる間、
+  /// ボタンは**押せない**（件数と上限をラベルに出す）。切り詰めて実行はしない＝選んだ
+  /// うちの一部だけが動いたことに気づけないのが一番まずい。null = 上限を決めていない
   /// （選べるのは画面に出ている行だけなので、実際の上限は1ページの件数になる）。
-  final int? maxRows;
+  ///
+  /// 役割で変わる上限は [RowLimit.byRole]。実際の上限は
+  /// `maxRows?.forRoles(roles)` で決まる（null なら上限なし）。
+  final RowLimit? maxRows;
 
   /// Plugin / renderer specific extra configuration.
   final Map<String, Object?> config;

@@ -213,14 +213,13 @@
         },
         {
           "key": "maxRows",
-          "type": "integer",
+          "type": "object",
           "required": false,
-          "description": "For `scope: selection`: how many rows one press may act on. While more than this are picked the button is disabled and says the limit — it never truncates the selection, since acting on part of what was picked is the failure nobody notices. Omit to leave it unbounded, in which case the real limit is how many rows are on screen (`table.pagination.pageSize`).",
-          "minimum": 1,
-          "values": [
-            "20"
-          ],
-          "open": true
+          "description": "For `scope: selection`: how many rows one press may act on. A plain integer caps everyone; the object form caps per role. While more than the limit are picked the button is disabled and says the limit — it never truncates the selection, since acting on part of what was picked is the failure nobody notices. Omit to leave it unbounded, in which case the real limit is how many rows are on screen (`table.pagination.pageSize`).",
+          "nodes": [
+            "action.maxRows",
+            "maxRows"
+          ]
         },
         {
           "key": "config",
@@ -239,6 +238,23 @@
           "items": "string"
         }
       ]
+    },
+    "action.maxRows": {
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "action"
+      ],
+      "keys": []
     },
     "action.params": {
       "description": "Route params for a navigate action; $row.id / $record.id template against the current row/record.",
@@ -1821,6 +1837,79 @@
         }
       ]
     },
+    "maxRows": {
+      "description": "A per-role row limit. `default` applies to anyone the roles do not name. With several matching roles the **most permissive** one wins, the same way `roles` grants access when any role matches.",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "action"
+      ],
+      "keys": [
+        {
+          "key": "default",
+          "type": "object",
+          "required": true,
+          "description": "A row limit: a positive count, or `all` for no limit.",
+          "nodes": [
+            "maxRows.default",
+            "maxRows.default"
+          ]
+        },
+        {
+          "key": "byRole",
+          "type": "object",
+          "required": false,
+          "description": "Role name -> limit. A role that is not named falls back to `default`.",
+          "nodes": [
+            "maxRows.byRole"
+          ]
+        }
+      ]
+    },
+    "maxRows.byRole": {
+      "description": "Role name -> limit. A role that is not named falls back to `default`.",
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "maxRows"
+      ],
+      "keys": []
+    },
+    "maxRows.default": {
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "maxRows"
+      ],
+      "keys": []
+    },
     "menuItem": {
       "description": "A navigation menu node: a leaf (opens `page`) or a group (has `items`).",
       "closed": true,
@@ -2754,6 +2843,9 @@
     "brightness": [
       "theme"
     ],
+    "byRole": [
+      "maxRows"
+    ],
     "cancelLabel": [
       "actionPrompt",
       "confirm"
@@ -2783,6 +2875,9 @@
     ],
     "danger": [
       "confirm"
+    ],
+    "default": [
+      "maxRows"
     ],
     "defaultValue": [
       "field"
