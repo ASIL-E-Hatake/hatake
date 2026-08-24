@@ -463,6 +463,59 @@ function checkSelection(
       );
     }
   });
+  checkMaxRows(page, actions, path, found);
+}
+
+/**
+ * 1回で動かせる件数の上限（`maxRows`）の辻褄。
+ *
+ * 上限は**選んだ行に対して実行するボタン**の話。ほかのボタンに書いても Renderer は
+ * 見ないので、書いた人は「上限を決めた」と思ったまま何も効いていない。
+ *
+ * 効かないもう1つの形が「1ページの件数より大きい上限」。選べるのは**画面に出ている行**
+ * だけなので、1ページ 50 件の表に `maxRows: 200` と書いても、200 件は選べない＝上限は
+ * 一度も効かない（ページ送りを切っている表は全件出るので、この話にならない）。
+ */
+function checkMaxRows(
+  page: Dict,
+  actions: Dict[],
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  const table = isDict(page.table) ? page.table : undefined;
+  const pagination = isDict(table?.pagination) ? table?.pagination : undefined;
+  const paging = pagination?.enabled !== false;
+  const pageSize =
+    typeof pagination?.pageSize === "number" ? pagination.pageSize : DEFAULT_PAGE_SIZE;
+  actions.forEach((action, i) => {
+    const max = action.maxRows;
+    if (typeof max !== "number") return;
+    const label = str(action.label) ?? str(action.id) ?? "ボタン";
+    if (str(action.scope) !== ActionScopes.selection) {
+      warn(
+        found,
+        "maxrows-without-selection",
+        `${path}.actions[${i}].maxRows`,
+        `「${label}」に1回の上限（\`maxRows\`）が書いてありますが、このボタンは` +
+          `**選んだ行に対して実行するボタンではありません**（\`scope: selection\` が` +
+          `ありません）。数える対象が無いので、上限は効きません。`,
+        "選んだ行にまとめて実行するなら `scope: selection` を足してください。" +
+          "画面全体に対する操作なら `maxRows` を消してください（件数の概念がありません）。",
+      );
+      return;
+    }
+    if (table === undefined || !paging || max <= pageSize) return;
+    warn(
+      found,
+      "maxrows-above-page-size",
+      `${path}.actions[${i}].maxRows`,
+      `「${label}」の上限は ${max} 件ですが、この表は1ページ ${pageSize} 件です。` +
+        `選べるのは**画面に出ている行**だけなので、${max} 件は選べません＝この上限は` +
+        `一度も効きません。`,
+      `上限を ${pageSize} 件以下にするか、\`table.pagination.pageSize\` を上げて` +
+        "ください（1回で動く件数を増やすことになるので、上限の意味を先に決めてください）。",
+    );
+  });
 }
 
 /**
@@ -533,6 +586,14 @@ function checkCreateAction(
     );
   });
 }
+
+/**
+ * 1ページの既定の件数（`table.pagination.pageSize` を書かなかったとき）。
+ *
+ * スキーマの既定・3エディションの解析の既定と同じ値。ここだけ違うと「効かない上限」の
+ * 判定が嘘になる。
+ */
+const DEFAULT_PAGE_SIZE = 50;
 
 /** 件数の差し込み（一括のときだけ埋まる）。 */
 const COUNT_PLACEHOLDERS = ["{count}", "{failed}", "{total}"];

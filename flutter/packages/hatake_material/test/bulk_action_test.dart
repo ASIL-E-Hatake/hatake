@@ -63,6 +63,16 @@ const _approve = ActionDefinition(
   scope: ActionScopes.selection,
 );
 
+/// 1回で動かせる件数に上限がある一括（業務の決めごと）。
+const _approveUpTo1 = ActionDefinition(
+  id: 'approve',
+  type: ActionTypes.plugin,
+  plugin: 'approveOrders',
+  label: '一括承認',
+  scope: ActionScopes.selection,
+  maxRows: 1,
+);
+
 /// 確認を出す一括（文言に件数の差し込みを持つ）。
 const _approveAsking = ActionDefinition(
   id: 'approve',
@@ -332,5 +342,42 @@ void main() {
     await tester.tap(_button());
     await tester.pumpAndSettle();
     expect(find.text('2 件を承認します。よろしいですか？'), findsOneWidget);
+  });
+
+  testWidgets('上限を超えて選んでいる間は押せない（何件までかもラベルに出す）', (tester) async {
+    var ran = 0;
+    await tester.pumpWidget(_harness(
+      _Orders(_rows()),
+      approve: (ctx) async => ran = ctx.records.length,
+      definition: const SearchPageDefinition(
+        id: 'order_search',
+        title: '受注照会',
+        repository: 'orderRepository',
+        keyField: 'orderNo',
+        table: _table,
+        actions: [_approveUpTo1],
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // 上限ちょうど（1件）なら押せる。
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.pumpAndSettle();
+    expect(_enabled(tester), isTrue);
+    expect(find.text('一括承認（1 件）'), findsOneWidget);
+
+    // 1件足すと上限を超える＝押せない。**切り詰めて実行はしない。**
+    await tester.tap(find.byType(Checkbox).at(2));
+    await tester.pumpAndSettle();
+    expect(_enabled(tester), isFalse);
+    expect(find.text('一括承認（2 件：1 件まで）'), findsOneWidget);
+
+    // 選び直して上限内に戻せば、また押せる（行き止まりにしない）。
+    await tester.tap(find.byType(Checkbox).at(2));
+    await tester.pumpAndSettle();
+    expect(_enabled(tester), isTrue);
+    await tester.tap(_button());
+    await tester.pumpAndSettle();
+    expect(ran, 1);
   });
 }

@@ -475,6 +475,7 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
     onSuccess: _parseActionSuccess(m.optMap('onSuccess')),
     onError: _parseActionError(m.optMap('onError')),
     prompt: _parseActionPrompt(m.optMap('prompt')),
+    maxRows: m.optInt('maxRows'),
     // Lift top-level `page` / `params` (navigate actions) into config so the
     // ActionDefinition model stays unchanged.
     config: {

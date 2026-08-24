@@ -70,7 +70,7 @@ export const strictKeyTable: Record<string, string[]> = {
   subTableSource: ["repository", "parentKey", "key", "pageSize"],
   action: [
     "id", "type", "label", "scope", "plugin", "page", "params", "confirm",
-    "onSuccess", "onError", "prompt", "config", "roles",
+    "onSuccess", "onError", "prompt", "maxRows", "config", "roles",
   ],
   confirm: ["title", "message", "okLabel", "cancelLabel", "danger"],
   actionSuccess: ["message", "page", "params"],

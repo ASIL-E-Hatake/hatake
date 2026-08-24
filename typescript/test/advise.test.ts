@@ -512,7 +512,8 @@ ${pagination}    columns:
   it("ページ送りを切った表に一括があれば言う（1回で全件動く）", () => {
     const source = bulk(FULL, "    pagination: { enabled: false }\n");
     const found = advise(source).find((one) => one.rule === "bulk-on-many-rows");
-    expect(found?.where).toBe("page.table.pagination.pageSize");
+    // 直す場所は「表の件数」ではなく**そのボタンの上限**（止める口があるほうを指す）。
+    expect(found?.where).toBe("page.actions[0].maxRows");
     expect(found?.says).toContain("1回で全件");
   });
 
@@ -530,5 +531,46 @@ ${pagination}    columns:
     // 1件ずつのボタンに「件数を書け」「失敗の言い方を書け」と言うのは見当違い。
     const source = bulk(`{ id: csv, type: export, label: CSV出力, roles: [manager] }`);
     expect(bulkRules(source)).toEqual([]);
+  });
+});
+
+describe("上限を書いてあれば、件数の助言は言わない", () => {
+  const bulk = (action: string, pagination: string) => `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  search:
+    filters:
+      - { field: orderNo, label: 受注番号 }
+  table:
+${pagination}    columns:
+      - { field: orderNo, label: 受注番号, sortable: true }
+  actions:
+    - ${action}
+`;
+
+  const FULL = (extra: string) =>
+    `{ id: approve, type: plugin, plugin: p, label: 一括承認,
+        scope: selection, roles: [manager], ${extra}
+        confirm: { message: '{count} 件を承認します' },
+        onError: { message: '{failed} 件は承認できませんでした' } }`;
+
+  it("上限を書いてあれば、ページ送りを切っていても言わない（Renderer が止める）", () => {
+    const source = bulk(FULL("maxRows: 20,"), "    pagination: { enabled: false }\n");
+    expect(rules(source).filter((one) => one.startsWith("bulk-"))).toEqual([]);
+  });
+
+  it("上限が無ければ、直し方は maxRows を指す（止める口があるので）", () => {
+    const source = bulk(FULL(""), "    pagination: { enabled: false }\n");
+    const found = advise(source).find((one) => one.rule === "bulk-on-many-rows");
+    expect(found?.where).toBe("page.actions[0].maxRows");
+    expect(found?.key).toBe("maxRows");
+    expect(found?.add).toContain("maxRows");
+  });
+
+  it("1ページが多すぎる表でも、上限を書いてあれば言わない", () => {
+    const source = bulk(FULL("maxRows: 20,"), "    pagination: { pageSize: 500 }\n");
+    expect(rules(source).filter((one) => one.startsWith("bulk-"))).toEqual([]);
   });
 });

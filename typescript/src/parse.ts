@@ -542,6 +542,7 @@ function parseAction(m: Dict): ActionDefinition {
     type: reqString(m, "type", "action.type"),
     label: reqString(m, "label", "action.label"),
     scope: optString(m, "scope") ?? ActionScopes.page,
+    maxRows: optNumber(m, "maxRows"),
     plugin: optString(m, "plugin"),
     confirm: parseConfirm(optDict(m, "confirm")),
     onSuccess: parseActionSuccess(optDict(m, "onSuccess")),

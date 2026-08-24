@@ -529,3 +529,51 @@ describe("突き合わせも「何で絞ったか」を言う", () => {
     );
   });
 });
+
+describe("1回で何件動くのかを言う", () => {
+  const page = (action: string, pagination: string) => `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+${pagination}    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - ${action}
+`;
+
+  const BULK = (extra: string) =>
+    `{ id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
+        scope: selection, ${extra} }`;
+
+  it("定義に上限があれば、それが上限だと言う", () => {
+    const text = renderExplain(
+      explainSource(page(BULK("maxRows: 20,"), "    pagination: { pageSize: 100 }\n")),
+    );
+    expect(text).toContain("1回で最大 20 件まで＝定義で決めた上限");
+  });
+
+  it("上限が無ければ、1ページの件数で言う", () => {
+    const text = renderExplain(
+      explainSource(page(BULK(""), "    pagination: { pageSize: 30 }\n")),
+    );
+    expect(text).toContain("一度に最大 30 件");
+  });
+
+  it("ページ送りを切っていて上限も無ければ、上限が無いと言う", () => {
+    // ここで「一度に最大 50 件」と言うのは嘘になる（全件出ている）。
+    const text = renderExplain(
+      explainSource(page(BULK(""), "    pagination: { enabled: false }\n")),
+    );
+    expect(text).toContain("**上限が無い**");
+    expect(text).not.toContain("一度に最大");
+  });
+
+  it("英語も同じことを言う", () => {
+    const text = renderExplain(
+      explainSource(page(BULK("maxRows: 20,"), ""), { lang: "en" }),
+    );
+    expect(text).toContain("at most 20 per press, set in the definition");
+  });
+});

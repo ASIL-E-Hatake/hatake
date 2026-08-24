@@ -1625,3 +1625,81 @@ describe("押す前の文言に書ける差し込み", () => {
     expect(found.map((w) => w.rule)).toContain("placeholder-not-filled");
   });
 });
+
+describe("1回で動かせる件数の上限（maxRows）", () => {
+  /** 一覧1枚＋ボタン1つ。[pagination] は表のページ送り。 */
+  const page = (action: string, pagination = "") => `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+${pagination}    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - ${action}
+`;
+
+  it("一括に上限を書くのは正しい（何も言わない）", () => {
+    expect(
+      rulesOf(
+        page(`{ id: approve, type: plugin, plugin: p, label: 一括承認,
+        scope: selection, maxRows: 20, roles: [m],
+        confirm: { message: '{count} 件' }, onError: { message: x } }`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("一括でないボタンの上限は効かない", () => {
+    const found = warningsOf(
+      page(`{ id: csv, type: export, label: CSV出力, maxRows: 20, roles: [m] }`),
+    );
+    const w = found.find((x) => x.rule === "maxrows-without-selection");
+    expect(w?.path).toBe("page.actions[0].maxRows");
+    expect(w?.message).toContain("上限は効きません");
+  });
+
+  it("1ページの件数より大きい上限は一度も効かない", () => {
+    const found = warningsOf(
+      page(
+        `{ id: approve, type: plugin, plugin: p, label: 一括承認,
+        scope: selection, maxRows: 200, roles: [m],
+        confirm: { message: '{count} 件' }, onError: { message: x } }`,
+        "    pagination: { pageSize: 10 }\n",
+      ),
+    );
+    const w = found.find((x) => x.rule === "maxrows-above-page-size");
+    expect(w?.message).toContain("1ページ 10 件");
+    expect(w?.fix).toContain("10 件以下");
+  });
+
+  it("書かなかったときの1ページの件数は 50（スキーマの既定と同じ）", () => {
+    // 既定を51件で超える／50件で超えない、の両方を見る（数がずれたら落ちる）。
+    const over = warningsOf(
+      page(`{ id: approve, type: plugin, plugin: p, label: 一括承認,
+        scope: selection, maxRows: 51, roles: [m],
+        confirm: { message: '{count} 件' }, onError: { message: x } }`),
+    );
+    expect(over.map((w) => w.rule)).toContain("maxrows-above-page-size");
+    expect(
+      rulesOf(
+        page(`{ id: approve, type: plugin, plugin: p, label: 一括承認,
+        scope: selection, maxRows: 50, roles: [m],
+        confirm: { message: '{count} 件' }, onError: { message: x } }`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("ページ送りを切っている表なら、大きい上限でも効く（全件出るので）", () => {
+    expect(
+      rulesOf(
+        page(
+          `{ id: approve, type: plugin, plugin: p, label: 一括承認,
+        scope: selection, maxRows: 500, roles: [m],
+        confirm: { message: '{count} 件' }, onError: { message: x } }`,
+          "    pagination: { enabled: false }\n",
+        ),
+      ),
+    ).toEqual([]);
+  });
+});

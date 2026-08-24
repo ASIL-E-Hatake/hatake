@@ -252,9 +252,9 @@ export function explainPage(
         describeAction(
           action,
           targets.get(action.id),
-          // 一括は「一度に何件動くか」で危険度が変わる。件数の上限は表のページ送りで
-          // 決まっているのに、定義を読んでも出てこないので、ここで言う。
-          "table" in page ? page.table.pagination.pageSize : undefined,
+          // 一括は「一度に何件動くか」で危険度が変わる。定義を読んでも出てこないので
+          // ここで言う。上限は3通りある（定義に書いた上限・1ページの件数・上限なし）。
+          selectionLimitOf(page),
           lang,
         ),
       ),
@@ -570,10 +570,26 @@ function navigateTargets(raw: Record<string, unknown>): Map<string, string> {
   return found;
 }
 
+/**
+ * 1回で選べる行の上限。
+ *
+ * `undefined` = 表が無い（選ぶ手段そのものが無い。`validate` が言う）／
+ * `"all"` = ページ送りを切っている（全件が1画面に出る＝上限が無い）／
+ * `{ rows }` = 1ページの件数。定義に書いた上限（`maxRows`）はこれより強いので、
+ * 判断は [describeAction] の側でする。
+ */
+type SelectionLimit = { rows: number } | "all" | undefined;
+
+function selectionLimitOf(page: PageDefinition): SelectionLimit {
+  if (!("table" in page)) return undefined;
+  const pagination = page.table.pagination;
+  return pagination.enabled ? { rows: pagination.pageSize } : "all";
+}
+
 function describeAction(
   action: ActionDefinition,
   target: string | undefined,
-  pageSize: number | undefined,
+  limit: SelectionLimit,
   lang: Lang,
 ): string {
   const v = voice(lang);
@@ -584,11 +600,19 @@ function describeAction(
       : action.type === ActionTypes.plugin && action.plugin !== undefined
         ? v.viaPlugin(action.plugin)
         : "";
+  // 「1回で何件動くのか」は危険度そのものなので、**どれが上限なのか**まで言う。
+  // 定義に書いた上限（`maxRows`）＞1ページの件数＞（ページ送りが無ければ）上限なし。
   const on =
     action.scope !== ActionScopes.selection
       ? ""
       : v.clause(
-          pageSize === undefined ? v.onSelection : v.onSelectionUpTo(pageSize),
+          action.maxRows !== undefined
+            ? v.onSelectionCapped(action.maxRows)
+            : limit === undefined
+              ? v.onSelection
+              : limit === "all"
+                ? v.onSelectionUncapped
+                : v.onSelectionUpTo(limit.rows),
         );
   const asks =
     action.prompt !== undefined

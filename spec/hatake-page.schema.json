@@ -1090,6 +1090,14 @@
         "prompt": {
           "$ref": "#/$defs/actionPrompt"
         },
+        "maxRows": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "For `scope: selection`: how many rows one press may act on. While more than this are picked the button is disabled and says the limit — it never truncates the selection, since acting on part of what was picked is the failure nobody notices. Omit to leave it unbounded, in which case the real limit is how many rows are on screen (`table.pagination.pageSize`).",
+          "examples": [
+            20
+          ]
+        },
         "config": {
           "$ref": "#/$defs/config"
         },

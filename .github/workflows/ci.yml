@@ -524,7 +524,9 @@ jobs:
           # 説明は「選んだ行に対して実行する」と読み上げ、**一度に何件動くか**まで言う
           # （危険度がそこで変わるのに、定義を読んでも出てこない）。
           node dist/cli.js explain "$DEMO" --page order_search > /tmp/bulk.log
-          grep -q '選んだ行に対して実行する（一度に最大' /tmp/bulk.log
+          # 上限を定義に書いてあるなら、**それが上限**だと言う（1ページの件数ではなく）。
+          grep -q '1回で最大 20 件まで＝定義で決めた上限' /tmp/bulk.log
+          grep -q '1回で最大 5 件まで＝定義で決めた上限' /tmp/bulk.log
           # 表の無い画面に置いたら、押せないボタンになると言うこと。
           cat > /tmp/bulk-nowhere.yaml <<'YAML'
           page:
@@ -608,6 +610,57 @@ jobs:
                   confirm: { message: '{count} 件を破棄します' },
                   onError: { message: 'x' } }
           YAML
+          # 上限（maxRows）の書き間違いは、押す前に言う。
+          cat > /tmp/maxrows-bad.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              pagination: { pageSize: 10 }
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - { id: csv, type: export, label: CSV出力, maxRows: 20 }
+              - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
+                  scope: selection, maxRows: 200, roles: [manager],
+                  confirm: { message: '{count} 件を承認します' },
+                  onError: { message: 'x' } }
+          YAML
+          if node dist/cli.js validate --warn-as-error /tmp/maxrows-bad.yaml \
+                2> /tmp/maxrows-bad.err; then
+            echo "効かない上限を通してしまった"; exit 1
+          fi
+          node dist/cli.js validate --json /tmp/maxrows-bad.yaml > /tmp/maxrows-bad.json
+          for rule in maxrows-without-selection maxrows-above-page-size; do
+            grep -q "\"rule\": \"$rule\"" /tmp/maxrows-bad.json || {
+              echo "$rule が出ていない"; exit 1; }
+          done
+          # 上限を書いてあれば、件数の助言は言わない（Renderer が止めるので）。
+          cat > /tmp/maxrows-ok.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            search:
+              filters: [{ field: status, label: 状態 }]
+            table:
+              pagination: { enabled: false }
+              columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+            actions:
+              - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
+                  scope: selection, maxRows: 20, roles: [manager],
+                  confirm: { message: '{count} 件を承認します' },
+                  onError: { message: 'x' } }
+          YAML
+          node dist/cli.js validate --warn-as-error /tmp/maxrows-ok.yaml
+          node dist/cli.js advise /tmp/maxrows-ok.yaml > /tmp/maxrows-ok.log
+          if grep -q 'bulk-on-many-rows' /tmp/maxrows-ok.log; then
+            echo "上限を書いてあるのに件数の助言を出している"; exit 1
+          fi
           node dist/cli.js advise /tmp/bulk-risky.yaml > /tmp/bulk-risky.log
           for rule in bulk-without-confirm bulk-confirm-without-count \
                 bulk-without-error-message bulk-destructive-without-danger \

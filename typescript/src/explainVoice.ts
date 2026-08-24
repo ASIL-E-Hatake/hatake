@@ -244,6 +244,17 @@ const WORDS = {
     (size: number) => `選んだ行に対して実行する（一度に最大 ${size} 件）`,
     (size: number) => `runs on the rows the user checked (at most ${size} at a time)`,
   ),
+  /** 定義で決めた上限（`maxRows`）。1ページの件数より強い＝ここが本当の上限。 */
+  onSelectionCapped: pair(
+    (max: number) => `選んだ行に対して実行する（1回で最大 ${max} 件まで＝定義で決めた上限）`,
+    (max: number) =>
+      `runs on the rows the user checked (at most ${max} per press, set in the definition)`,
+  ),
+  /** ページ送りを切っていて上限も無い＝1回で全件動く。 */
+  onSelectionUncapped: pair(
+    "選んだ行に対して実行する（**上限が無い**＝ページ送りを切っているので全件選べる）",
+    "runs on the rows the user checked (**no limit** — paging is off, so every row can be picked)",
+  ),
   asksFor: pair(
     (items: string[]) => `押すと ${list(items)} を聞く`,
     (items: string[]) => `asks for ${list(items)} first`,

@@ -270,6 +270,29 @@ page:
 ''', strict: true) as SearchPageDefinition;
       expect(page.actions[0].scope, ActionScopes.page);
       expect(page.actions[1].scope, ActionScopes.selection);
+      // 上限を書かなければ null（＝画面に出ている行の数が実際の上限）。
+      expect(page.actions[1].maxRows, isNull);
+    });
+
+    test('maxRows を読む（1回で動かせる件数の上限）', () {
+      final page = parsePageYaml('''
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+      maxRows: 20
+''', strict: true) as SearchPageDefinition;
+      expect(page.actions.single.maxRows, 20);
     });
 
     test('onError を読む（失敗したときの文言は定義側に置ける）', () {

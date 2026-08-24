@@ -238,6 +238,13 @@ export interface ActionDefinition {
   onError?: ActionErrorDefinition;
   /** Asked before it runs; the values reach the handler. */
   prompt?: ActionPromptDefinition;
+  /**
+   * How many rows one press may act on, for `scope: selection`.
+   *
+   * 業務の決めごと（「承認は20件まで」）。超えて選んでいる間ボタンは押せない
+   * （切り詰めて実行はしない）。無ければ上限は「画面に出ている行の数」。
+   */
+  maxRows?: number;
   config: Record<string, unknown>;
   /** Roles allowed to use this action (see isAllowed). Empty = everyone. */
   roles: string[];

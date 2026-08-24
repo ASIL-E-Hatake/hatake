@@ -96,7 +96,7 @@ public final class StrictKeys {
                     "roles", "columns", "fields", "source")),
             Map.entry("subTableSource", keys("repository", "parentKey", "key", "pageSize")),
             Map.entry("action", keys("id", "type", "label", "scope", "plugin", "page", "params",
-                    "confirm", "onSuccess", "onError", "prompt", "config", "roles")),
+                    "confirm", "onSuccess", "onError", "prompt", "maxRows", "config", "roles")),
             Map.entry("confirm", keys("title", "message", "okLabel", "cancelLabel", "danger")),
             Map.entry("actionSuccess", keys("message", "page", "params")),
             Map.entry("actionError", keys("message")),

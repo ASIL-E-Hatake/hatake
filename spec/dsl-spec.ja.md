@@ -594,7 +594,9 @@ actions:
     plugin: approveOrders
     label: 一括承認
     scope: selection
-    confirm: { message: 選んだ受注を承認します }
+    # 1回で動かせる上限（業務の決めごと）。超えて選んでいる間ボタンは押せない。
+    maxRows: 20
+    confirm: { message: '{count} 件の受注を承認します' }
 ```
 
 | 決めごと | なぜ |
@@ -606,6 +608,8 @@ actions:
 | 実行できるのは `type: plugin` **だけ** | 一括の中身（承認・締め・出荷確定）は業務で、Framework は業務を持たない |
 | **消すのを複数まとめる口は無い** | 取り消せない操作は、事故が件数ぶん大きくなる。消すのは1件ずつ（行アクションの `delete`） |
 | 渡すのは**行**（キーではない） | 一括の判断には状態や金額が要る。キーだけ渡すと、ハンドラが件数ぶん読み直すことになる |
+| **1回の上限は定義に書ける**（`maxRows`）。超えている間は押せない | 上限は業務の決めごと（承認は20件まで／締めは全件）。**切り詰めて実行はしない**＝選んだうちの一部だけが動いたことに、押した人は気づけない |
+| 上限を書かなければ、実際の上限は**画面に出ている行の数** | 選べるのは表に出ている行だけ。`table.pagination.pageSize` がそのまま上限になり、ページ送りを切っていれば全件になる |
 
 Flutter では登録したハンドラが `ActionContext.records` で受け取る。**呼び出しは1回**なので、
 API も1回で済ませられる（件数ぶんの往復にしない）。
@@ -1108,6 +1112,7 @@ computed: { op: sum, field: lines, of: amount,
 | `onSuccess` | [onSuccess](#onsuccess) | | 成功したあとの後処理。 |
 | `onError` | [onError](#onerror) | | 失敗したときに出す文言。 |
 | `prompt` | [prompt](#prompt) | | 実行の前に聞くこと（小さなフォーム）。 |
+| `maxRows` | integer | | `scope: selection` のとき、**1回で動かせる行数の上限**（1以上）。超えて選んでいる間ボタンは押せない。無ければ上限は1ページの件数。 |
 | `config` | map | | 追加設定。 |
 | `roles` | string[] | | 実行を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
 
@@ -1359,6 +1364,8 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `computed-field-and-fields` | `field` と `fields` の両方を書いた → `field` が勝ち、`fields` は効かない |
 | `create-action-unusable` | `type: create` を `crud` / `master` 以外の画面に置いた → ボタンは出るが**押しても何も起きない**（`create` が開くのは一覧からの新規入力。`form` / `wizard` には保存ボタンが最初から出ている） |
 | `placeholder-not-filled` | 文言に**埋まらない差し込み**を書いた（`onSuccess` / `onError` は件数が `scope: selection` だけ・`{error}` は失敗だけ、**押す前**（`confirm` / `prompt.title`）は `{count}` だけ＝まだ失敗も理由も無い、**それ以外の名前＝`{orderNo}` のような項目名は埋める口が無い**）→ 押すまで気づけず、文字のまま出る |
+| `maxrows-without-selection` | `maxRows` を `scope: selection` でないボタンに書いた → 数える対象が無いので上限は効かない |
+| `maxrows-above-page-size` | `maxRows` が1ページの件数より大きい → 画面に出ている行しか選べないので、その上限は一度も効かない |
 | `selection-without-table` | `scope: selection` のボタンを**表の無い画面**に置いた → 選ぶ手段が無いので、押せないボタンが出たままになる |
 | `selection-unsupported-type` | `scope: selection` を `plugin` 以外の型に書いた → 押しても実行されない（一括の中身は業務＝アプリ側の処理） |
 | `print-without-report` | `type: print` のボタンを **`report` の無い画面**に置いた → 刷る紙が無いので、ボタンは出るのに押すと「このページでは刷れません」と言われる |

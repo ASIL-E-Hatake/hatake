@@ -362,32 +362,42 @@ function checkBuiltins(
   //
   // 一括が効くのは**選べる行**＝表に出ている行。ページ送りを切ると全件が出るので、
   // 「全部選ぶ」が1回で全件を動かす操作になる。
-  if (bulkActions.length > 0 && enabled(rules, "bulk-on-many-rows") && table !== undefined) {
+  //
+  // **上限を書いてある（`maxRows`）ボタンは数えない。** 上限は業務の決めごとで、
+  // 書いてあれば Renderer が止める＝助言の仕事は終わっている。1つでも上限の無い
+  // 一括が残っているときだけ言う（言う場所は「何件出す表なのか」なので1件）。
+  const uncapped = bulkActions.filter(
+    ({ action }) => typeof action.maxRows !== "number",
+  );
+  if (uncapped.length > 0 && enabled(rules, "bulk-on-many-rows") && table !== undefined) {
     const pagination = isDict(table.pagination) ? table.pagination : undefined;
     const paging = pagination?.enabled !== false;
     const size = typeof pagination?.pageSize === "number" ? pagination.pageSize : undefined;
     const max = knob(rules, "bulk-on-many-rows", "maxRows", 100);
+    const who = uncapped.map(({ action }) => `「${labelOf(action)}」`).join("");
     if (!paging) {
       found.push({
         rule: "bulk-on-many-rows",
-        where: `${path}.table.pagination.pageSize`,
+        where: `${path}.actions[${uncapped[0].index}].maxRows`,
         says:
-          `まとめて実行するボタンがあるのに、ページ送りを切ってあります` +
+          `${who}はまとめて実行するボタンですが、この表はページ送りを切ってあります` +
           `（全件が1画面に出ます）。「全部選ぶ」が**1回で全件**を動かす操作になります。`,
-        add: "`pagination: { pageSize: 50 }`（1回で動く上限を決める）。",
-        key: "pageSize",
-        node: "pagination",
+        add: "`maxRows: 20`（1回で動かせる上限。超えて選んでいる間は押せなくなる）。",
+        key: "maxRows",
+        node: "action",
       });
     } else if (size !== undefined && size > max) {
       found.push({
         rule: "bulk-on-many-rows",
-        where: `${path}.table.pagination.pageSize`,
+        where: `${path}.actions[${uncapped[0].index}].maxRows`,
         says:
-          `1ページ ${size} 件なので、まとめて実行すると**1回で ${size} 件**動きます` +
+          `1ページ ${size} 件なので、${who}は**1回で ${size} 件**動きます` +
           `（${max} 件を超えています）。`,
-        add: `\`pageSize\` を ${max} 件以下にする（絞り込みで探してから選ぶ形にする）。`,
-        key: "pageSize",
-        node: "pagination",
+        add:
+          `\`maxRows\`（1回で動かせる上限）を書く。` +
+          `1回で ${size} 件を動かして良いなら、そう書いてあること自体が答えになります。`,
+        key: "maxRows",
+        node: "action",
       });
     }
   }

@@ -75,14 +75,25 @@ bool _hasSelectionAction(List<ActionDefinition> actions, Set<String> roles) {
 }
 
 /// 一括ボタンの見せ方。選んだ件数を出す（0 件なら押せない）。
+///
+/// 定義に上限（`maxRows`）が書いてあるときは、超えて選んでいる間**押せない**。
+/// ラベルには「いま何件で、何件までか」を出す＝押してから断られるのではなく、
+/// 押す前に理由が読める。**切り詰めて実行はしない**（選んだうちの一部だけが動いた
+/// ことに、押した人は気づけない）。
 Widget _bulkButton({
   required ActionDefinition action,
   required int count,
   required VoidCallback onPressed,
 }) {
+  final max = action.maxRows;
+  final tooMany = max != null && count > max;
   return FilledButton(
     key: Key('hatake.action.${action.id}'),
-    onPressed: count == 0 ? null : onPressed,
-    child: Text(count == 0 ? action.label : '${action.label}（$count 件）'),
+    onPressed: count == 0 || tooMany ? null : onPressed,
+    child: Text(switch (count) {
+      0 => action.label,
+      _ when tooMany => '${action.label}（$count 件：$max 件まで）',
+      _ => '${action.label}（$count 件）',
+    }),
   );
 }

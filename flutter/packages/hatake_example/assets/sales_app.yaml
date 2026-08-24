@@ -180,6 +180,9 @@ app:
           plugin: approveOrders
           label: 一括承認
           scope: selection
+          # 1回で動かせる上限は業務の決めごと。超えて選んでいる間は押せない
+          # （切り詰めて実行はしない＝一部だけ動いたことに気づけないのを避ける）。
+          maxRows: 20
           # 確認の文の {count} は**押す前に**埋まる（選んだ行の数）。ボタンにも件数は
           # 出るが、最後に読むのはこの文なので、数はここにも出す。
           confirm: { message: '{count} 件の受注を承認します' }
@@ -192,6 +195,8 @@ app:
           plugin: rejectOrders
           label: 却下
           scope: selection
+          # 戻せない操作なので、承認より小さい上限にしてある。
+          maxRows: 5
           confirm: { message: '{count} 件を却下します。元に戻せません。', danger: true }
           prompt:
             title: 却下の理由
