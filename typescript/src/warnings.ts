@@ -30,6 +30,7 @@ import {
   type RefKind,
 } from "./refs.js";
 import { paperName, paperSize } from "./papers.js";
+import { roleNames } from "./roles.js";
 import { closestKey } from "./strictKeys.js";
 import { COMPARE_OPERATORS } from "./validators.js";
 
@@ -81,7 +82,8 @@ export function findWarnings(
   const page = isDict(document.page) ? document.page : undefined;
   // このアプリに出てくる役割名（`roles` に書いてあるものの全部）。役割名の綴り違いは
   // 「誰にも当てはまらない」形で静かに効かなくなるので、突き合わせる相手が要る。
-  const appRoles = collectRoles(document);
+  // 役割名の一覧は棚卸しと同じ数え方（[roleNames]）＝2箇所で違うことを言わない。
+  const appRoles = new Set(roleNames(document));
 
   if (app !== undefined) {
     const pages = list(app.pages).filter(isDict);
@@ -102,28 +104,6 @@ export function findWarnings(
     checkRegistry(document, options.registry, found);
   }
   return found;
-}
-
-/**
- * 定義のどこかに書いてある役割名を全部集める。
- *
- * `roles` は画面・ボタン・項目・列・メニューに書けるので、1つのノードだけ見ても
- * 役割の一覧にはならない。素の document を丸ごと歩く。
- */
-function collectRoles(value: unknown, into: Set<string> = new Set()): Set<string> {
-  if (Array.isArray(value)) {
-    for (const one of value) collectRoles(one, into);
-    return into;
-  }
-  if (!isDict(value)) return into;
-  for (const [key, child] of Object.entries(value)) {
-    if (key === "roles") {
-      for (const role of list(child)) if (typeof role === "string") into.add(role);
-      continue;
-    }
-    collectRoles(child, into);
-  }
-  return into;
 }
 
 /** 参照の種類ごとの言い方（何が起きるかを、その種類の言葉で言う）。 */

@@ -366,6 +366,22 @@ const result = (
 export const EXPLAIN_DIFF_NOTE =
   "※ ここは**見え方**の話です。呼び出し側が壊れるか（後方互換）は hatake diff で見てください。";
 
+/**
+ * 変えた前後を**画面の言葉で言い直す**（言えなければ undefined）。
+ *
+ * 機械が定義を書き換える道具（[fixSource] / [applyAdvice]）は、どれも「何をしたか」を
+ * 道で言う（`page.actions[0].confirm に … を書きました`）。それはレビューに使えないので、
+ * 同じ変更を画面の言葉でも言う。**strict で読めないときは黙って何も言わない**
+ * （直す前の定義が壊れているのは普通のことなので、そこで失敗させない）。
+ */
+export function describeChange(before: string, after: string): string | undefined {
+  try {
+    return renderExplainDiff(explainDiffSources(before, after));
+  } catch {
+    return undefined;
+  }
+}
+
 /** 人が読む形。節ごとにまとめ、文が言っていない値だけ前後を添える。 */
 export function renderExplainDiff(diff: ExplainDiff): string {
   const out = [diff.headline, ""];

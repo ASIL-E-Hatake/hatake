@@ -11,6 +11,7 @@
 // 目の前の画面の話だと読み違える）。
 
 import { type Advice, ADVICE_NOTE, findAdvice } from "./advise.js";
+import { withDrafts } from "./adviseDraft.js";
 import { type AdviceRules, DEFAULT_RULES } from "./adviseRules.js";
 import { type ExplainDocument, renderExplain } from "./explain.js";
 import { explainSource, rawDocument } from "./explainSource.js";
@@ -36,7 +37,9 @@ export function reviewSource(
   options: { page?: string; rules?: AdviceRules } = {},
 ): ReviewDocument {
   const explain = explainSource(source, { page: options.page });
-  const all = findAdvice(rawDocument(source), options.rules ?? DEFAULT_RULES);
+  const raw = rawDocument(source);
+  // 下書きも添える（レビューする人が「じゃあ何を書くのか」で止まらないように）。
+  const all = withDrafts(raw, findAdvice(raw, options.rules ?? DEFAULT_RULES));
   const advice =
     options.page === undefined
       ? all
