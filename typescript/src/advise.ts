@@ -93,6 +93,19 @@ const DESTRUCTIVE_WORDS = [
 ];
 
 /**
+ * 1回の上限が**誰かに効いている**か。
+ *
+ * 数を書いてあれば効いている。役割ごとの形は、既定も役割も全部 `all` なら誰にも
+ * 効いていない＝書いていないのと同じなので、助言する側では「無い」と数える。
+ */
+function hasRowLimit(raw: unknown): boolean {
+  if (typeof raw === "number") return true;
+  if (!isDict(raw)) return false;
+  const values = [raw.default, ...Object.values(isDict(raw.byRole) ? raw.byRole : {})];
+  return values.some((one) => typeof one === "number");
+}
+
+/**
  * 助言を集める。素の document を見る（既定値で埋まった姿ではなく、**書いてあるもの**を
  * 見たいので）。
  *
@@ -366,9 +379,7 @@ function checkBuiltins(
   // **上限を書いてある（`maxRows`）ボタンは数えない。** 上限は業務の決めごとで、
   // 書いてあれば Renderer が止める＝助言の仕事は終わっている。1つでも上限の無い
   // 一括が残っているときだけ言う（言う場所は「何件出す表なのか」なので1件）。
-  const uncapped = bulkActions.filter(
-    ({ action }) => typeof action.maxRows !== "number",
-  );
+  const uncapped = bulkActions.filter(({ action }) => !hasRowLimit(action.maxRows));
   if (uncapped.length > 0 && enabled(rules, "bulk-on-many-rows") && table !== undefined) {
     const pagination = isDict(table.pagination) ? table.pagination : undefined;
     const paging = pagination?.enabled !== false;

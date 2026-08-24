@@ -16,6 +16,9 @@ export const defaultValidationMessages: Record<string, Record<string, string>> =
     "compare.gte": "{target}以上にしてください",
     "compare.lt": "{target}より小さい値にしてください",
     "compare.lte": "{target}以下にしてください",
+    // 1回で動かせる件数の上限（`action.maxRows`）を超えて届いたとき。
+    // 画面は押させないので、これが出るのは API を直接叩かれたとき。
+    "bulk.tooMany": "1回に実行できるのは {value} 件までです（{count} 件届きました）",
   },
 };
 

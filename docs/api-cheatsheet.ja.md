@@ -411,6 +411,10 @@ actions:
 
 **1回で動かせる件数の上限**は定義に書ける（`maxRows: 20`）。超えて選んでいる間ボタンは押せず、ラベルが「（80 件：20 件まで）」になる。**切り詰めて実行はしない**（選んだうちの一部だけが動いたことに気づけないのが一番まずい）。書かなければ上限は1ページの件数＝`pagination.pageSize`（切っていれば全件）。
 
+役割で変えるなら `maxRows: { default: 20, byRole: { manager: 50, admin: all } }`。**当てはまる役割が複数あれば一番ゆるい方**（`roles` と同じ考え方）。`all` は上限なし。押せない役割・どこにも無い役割名に書いても効かないので `validate` が言う。
+
+上限は**バックエンドでも同じ数**で判定できる（TypeScript は `checkBulkLimit(document, actionId, count, roles)`、Java は `BulkLimits.check(...)`）。画面の上限は早く気づかせるため、サーバの上限は守るため。
+
 **一括だけは既定で厳しい**。`advise` が言うのは5つ: 確認が無い（`prompt` があればそれが確認）・確認に件数が無い・失敗の言い方が無い・戻せない名前なのに `danger` が無い・1回で動く件数が多すぎる（ページ送りを切っていると全件）。`roles` で絞っていない一括は型に関わらず「誰でも押せる危ないボタン」に数える（`advise` も `explain --roles` も同じ見方）。
 
 `plugin` は `plugin: <key>` で登録ハンドラにディスパッチ。`navigate` は `page` と `params`、`export` は CSV 出力（上記）、`print` は帳票の印刷（下記）。`table.rowActions` は**アクション id の文字列配列**（`edit` / `delete` は組み込みなので宣言不要）。

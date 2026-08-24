@@ -1,0 +1,130 @@
+{
+  "_comment": "1回で動かせる行数の上限（action.maxRows）の解き方。各エディションが document を読み、actionId のアクションを探して、roles を持つ人の上限を出す。limit が null なら『上限なし』。ここで固定したいのは4つ: (1) 数を書けば全員その上限、(2) 役割ごとに変えられる（byRole）、(3) **複数の役割に当てはまるときは一番ゆるい上限**（roles が「どれか1つ当てはまれば見える」なのと同じ考え方）、(4) all は上限なし。画面が止めても API を直接叩けば通るので、守る側（TypeScript / Java）と見せる側（Dart）が同じ数を出すことが値打ち。",
+  "document": {
+    "dsl_version": "1.0",
+    "page": {
+      "type": "search",
+      "id": "order_search",
+      "title": "受注照会",
+      "repository": "orderRepository",
+      "key": "orderNo",
+      "table": { "columns": [{ "field": "orderNo", "label": "受注番号" }] },
+      "actions": [
+        {
+          "id": "everyone",
+          "type": "plugin",
+          "plugin": "approveOrders",
+          "label": "一括承認（全員20件）",
+          "scope": "selection",
+          "maxRows": 20
+        },
+        {
+          "id": "byRole",
+          "type": "plugin",
+          "plugin": "closeOrders",
+          "label": "一括締め（役割ごと）",
+          "scope": "selection",
+          "maxRows": {
+            "default": 20,
+            "byRole": { "manager": 100, "admin": "all", "trainee": 5 }
+          }
+        },
+        {
+          "id": "openDefault",
+          "type": "plugin",
+          "plugin": "notifyOrders",
+          "label": "通知（既定は上限なし・担当だけ絞る）",
+          "scope": "selection",
+          "maxRows": { "default": "all", "byRole": { "trainee": 5 } }
+        },
+        {
+          "id": "noLimit",
+          "type": "plugin",
+          "plugin": "exportOrders",
+          "label": "上限を書いていない",
+          "scope": "selection"
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "数を書けば全員その上限",
+      "actionId": "everyone",
+      "roles": [],
+      "limit": 20
+    },
+    {
+      "name": "数を書いた上限は役割で変わらない",
+      "actionId": "everyone",
+      "roles": ["admin", "manager"],
+      "limit": 20
+    },
+    {
+      "name": "役割が当てはまらなければ default",
+      "actionId": "byRole",
+      "roles": ["staff"],
+      "limit": 20
+    },
+    {
+      "name": "役割が無い人も default",
+      "actionId": "byRole",
+      "roles": [],
+      "limit": 20
+    },
+    {
+      "name": "当てはまる役割の上限が効く",
+      "actionId": "byRole",
+      "roles": ["manager"],
+      "limit": 100
+    },
+    {
+      "name": "厳しい役割の上限も効く（default より小さくできる）",
+      "actionId": "byRole",
+      "roles": ["trainee"],
+      "limit": 5
+    },
+    {
+      "name": "複数当てはまれば一番ゆるい方（100 と 5 なら 100）",
+      "actionId": "byRole",
+      "roles": ["trainee", "manager"],
+      "limit": 100
+    },
+    {
+      "name": "all が混ざれば上限なし（一番ゆるいので）",
+      "actionId": "byRole",
+      "roles": ["trainee", "admin"],
+      "limit": null
+    },
+    {
+      "name": "all の役割は上限なし",
+      "actionId": "byRole",
+      "roles": ["admin"],
+      "limit": null
+    },
+    {
+      "name": "default が all なら、当てはまらない人は上限なし",
+      "actionId": "openDefault",
+      "roles": ["manager"],
+      "limit": null
+    },
+    {
+      "name": "default が all でも、絞った役割には上限が効く",
+      "actionId": "openDefault",
+      "roles": ["trainee"],
+      "limit": 5
+    },
+    {
+      "name": "書いていなければ上限なし",
+      "actionId": "noLimit",
+      "roles": ["admin"],
+      "limit": null
+    },
+    {
+      "name": "無いアクションの上限は無い（探して見つからない）",
+      "actionId": "missing",
+      "roles": [],
+      "limit": null
+    }
+  ]
+}

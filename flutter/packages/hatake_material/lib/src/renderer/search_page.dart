@@ -110,6 +110,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
                     action: action,
                     count: _selection.pick(_controller.items, _def.keyField).length,
                     onPressed: () => _runAction(action),
+                    roles: HatakeScope.of(context).roles,
                   )
                 else
                   FilledButton(

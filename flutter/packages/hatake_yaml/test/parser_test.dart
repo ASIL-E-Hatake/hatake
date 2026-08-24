@@ -292,7 +292,9 @@ page:
       scope: selection
       maxRows: 20
 ''', strict: true) as SearchPageDefinition;
-      expect(page.actions.single.maxRows, 20);
+      // 数を書けば全員その上限（役割を持っていても変わらない）。
+      expect(page.actions.single.maxRows, const RowLimit.of(20));
+      expect(page.actions.single.maxRows?.forRoles({'admin'}), 20);
     });
 
     test('onError を読む（失敗したときの文言は定義側に置ける）', () {

@@ -574,3 +574,41 @@ ${pagination}    columns:
     expect(rules(source).filter((one) => one.startsWith("bulk-"))).toEqual([]);
   });
 });
+
+describe("上限が誰にも効いていなければ、助言は言う", () => {
+  const bulk = (maxRows: string) => `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  search:
+    filters:
+      - { field: orderNo, label: 受注番号 }
+  table:
+    pagination: { enabled: false }
+    columns:
+      - { field: orderNo, label: 受注番号, sortable: true }
+  actions:
+    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+      roles: [manager]
+      confirm: { message: '{count} 件を承認します' }
+      onError: { message: x }
+${maxRows}
+`;
+
+  it("役割ごとに数を書いてあれば言わない", () => {
+    const source = bulk("      maxRows: { default: all, byRole: { manager: 20 } }");
+    expect(rules(source).filter((one) => one.startsWith("bulk-"))).toEqual([]);
+  });
+
+  it("全部 all なら「上限が無い」と同じ＝言う", () => {
+    // 書いてあるのに誰にも効かない形。書いた人は上限を決めたつもりでいる。
+    const source = bulk("      maxRows: { default: all, byRole: { manager: all } }");
+    const found = advise(source).find((one) => one.rule === "bulk-on-many-rows");
+    expect(found?.key).toBe("maxRows");
+  });
+});

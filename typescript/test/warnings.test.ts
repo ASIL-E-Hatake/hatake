@@ -1703,3 +1703,76 @@ ${pagination}    columns: [{ field: orderNo, label: 受注番号 }]
     ).toEqual([]);
   });
 });
+
+describe("役割ごとの上限（maxRows の byRole）", () => {
+  const page = (maxRows: string, extra = "") => `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    pagination: { pageSize: 30 }
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+${extra}      confirm: { message: '{count} 件' }
+      onError: { message: x }
+      maxRows:
+${maxRows}
+`;
+
+  it("役割ごとに書くのは正しい（何も言わない）", () => {
+    expect(
+      rulesOf(
+        page("        default: 20\n        byRole: { manager: 30 }\n",
+             "      roles: [staff, manager]\n"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("押せない役割の上限は効かない", () => {
+    const found = warningsOf(
+      page("        default: 20\n        byRole: { staff: 10 }\n",
+           "      roles: [manager]\n"),
+    );
+    const w = found.find((x) => x.rule === "maxrows-unknown-role");
+    expect(w?.path).toBe("page.actions[0].maxRows.byRole.staff");
+    expect(w?.message).toContain("押せないので");
+  });
+
+  it("どこにも無い役割名は綴り違いを出す", () => {
+    // 役割名は定義のどこかに1つでも出ていれば突き合わせる（1つも無ければ黙る＝
+    // 何と比べればいいか分からないので）。ここでは manager が列に出ている。
+    const found = warningsOf(
+      page("        default: 20\n        byRole: { manger: 10 }\n").replace(
+        "columns: [{ field: orderNo, label: 受注番号 }]",
+        "columns: [{ field: orderNo, label: 受注番号, roles: [manager] }]",
+      ),
+    );
+    const w = found.find((x) => x.rule === "maxrows-unknown-role");
+    expect(w?.message).toContain("どこにも出てきません");
+  });
+
+  it("役割ごとの上限も、1ページの件数を超えていれば言う", () => {
+    const found = warningsOf(
+      page("        default: 20\n        byRole: { manager: 500 }\n",
+           "      roles: [manager]\n"),
+    );
+    const w = found.find((x) => x.rule === "maxrows-above-page-size");
+    expect(w?.path).toBe("page.actions[0].maxRows.byRole.manager");
+    expect(w?.message).toContain("上限（manager）は 500 件");
+  });
+
+  it("既定が all でも、役割ごとの上限は見る", () => {
+    const found = warningsOf(
+      page("        default: all\n        byRole: { manager: 500 }\n",
+           "      roles: [manager]\n"),
+    );
+    expect(found.map((w) => w.rule)).toContain("maxrows-above-page-size");
+  });
+});

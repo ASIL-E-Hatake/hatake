@@ -88,6 +88,7 @@ const Map<String, Set<String>> strictKeyTable = {
     'id', 'type', 'label', 'scope', 'plugin', 'page', 'params', 'confirm',
     'onSuccess', 'onError', 'prompt', 'maxRows', 'config', 'roles',
   },
+  'maxRows': {'default', 'byRole'},
   'confirm': {'title', 'message', 'okLabel', 'cancelLabel', 'danger'},
   'actionSuccess': {'message', 'page', 'params'},
   'actionError': {'message'},
@@ -107,6 +108,8 @@ const Map<String, Map<String, String>> _children = {
     'onSuccess': 'actionSuccess',
     'onError': 'actionError',
     'prompt': 'actionPrompt',
+    // `byRole` の中は役割名（自由な入れ物）なので降りない。
+    'maxRows': 'maxRows',
   },
   'crudPage': {
     'search': 'search', 'table': 'table', 'form': 'form', 'actions': 'action[]',

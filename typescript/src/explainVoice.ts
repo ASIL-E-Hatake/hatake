@@ -246,9 +246,25 @@ const WORDS = {
   ),
   /** 定義で決めた上限（`maxRows`）。1ページの件数より強い＝ここが本当の上限。 */
   onSelectionCapped: pair(
-    (max: number) => `選んだ行に対して実行する（1回で最大 ${max} 件まで＝定義で決めた上限）`,
-    (max: number) =>
-      `runs on the rows the user checked (at most ${max} per press, set in the definition)`,
+    (shown: string) => `選んだ行に対して実行する（${shown}＝定義で決めた上限）`,
+    (shown: string) => `runs on the rows the user checked (${shown}, set in the definition)`,
+  ),
+  /** 上限そのものの言い方（件数 / 上限なし）。 */
+  rowsUpTo: pair(
+    (max: number) => `1回で最大 ${max} 件まで`,
+    (max: number) => `at most ${max} per press`,
+  ),
+  rowsUnlimited: pair("上限なし", "no limit"),
+  /** 括弧の中に並べる短い形（役割ごとの上限）。 */
+  rowsCount: pair((max: number) => `${max} 件`, (max: number) => `${max}`),
+  /** 役割ごとの上限（「manager は 100 件」）。 */
+  rowsForRole: pair(
+    (role: string, shown: string) => `${role} は ${shown}`,
+    (role: string, shown: string) => `${role} ${shown}`,
+  ),
+  rowsByRole: pair(
+    (parts: string[]) => `（${parts.join("・")}）`,
+    (parts: string[]) => ` (${parts.join(", ")})`,
   ),
   /** ページ送りを切っていて上限も無い＝1回で全件動く。 */
   onSelectionUncapped: pair(

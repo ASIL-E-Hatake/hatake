@@ -51,6 +51,7 @@ export * from "./repro.js";
 export * from "./yamlSpans.js";
 export * from "./fix.js";
 export * from "./advise.js";
+export * from "./bulkLimit.js";
 export * from "./adviseCompare.js";
 export * from "./adviseRules.js";
 export * from "./adviseRequire.js";

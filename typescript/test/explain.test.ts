@@ -577,3 +577,37 @@ ${pagination}    columns: [{ field: orderNo, label: 受注番号 }]
     expect(text).toContain("at most 20 per press, set in the definition");
   });
 });
+
+describe("役割ごとの上限も読み上げる", () => {
+  const source = `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+      roles: [staff, manager, admin]
+      maxRows:
+        default: 20
+        byRole: { manager: 100, admin: all }
+`;
+
+  it("誰にとっての上限かまで言う", () => {
+    expect(renderExplain(explainSource(source))).toContain(
+      "1回で最大 20 件まで（manager は 100 件・admin は 上限なし）＝定義で決めた上限",
+    );
+  });
+
+  it("英語も同じことを言う", () => {
+    expect(renderExplain(explainSource(source, { lang: "en" }))).toContain(
+      "at most 20 per press (manager 100, admin no limit), set in the definition",
+    );
+  });
+});

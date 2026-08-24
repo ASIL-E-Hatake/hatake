@@ -595,7 +595,10 @@ actions:
     label: 一括承認
     scope: selection
     # 1回で動かせる上限（業務の決めごと）。超えて選んでいる間ボタンは押せない。
-    maxRows: 20
+    # 役割で変えるなら { default, byRole }。`all` は上限なし。
+    maxRows:
+      default: 20
+      byRole: { manager: 50, admin: all }
     confirm: { message: '{count} 件の受注を承認します' }
 ```
 
@@ -609,6 +612,8 @@ actions:
 | **消すのを複数まとめる口は無い** | 取り消せない操作は、事故が件数ぶん大きくなる。消すのは1件ずつ（行アクションの `delete`） |
 | 渡すのは**行**（キーではない） | 一括の判断には状態や金額が要る。キーだけ渡すと、ハンドラが件数ぶん読み直すことになる |
 | **1回の上限は定義に書ける**（`maxRows`）。超えている間は押せない | 上限は業務の決めごと（承認は20件まで／締めは全件）。**切り詰めて実行はしない**＝選んだうちの一部だけが動いたことに、押した人は気づけない |
+| 上限は**役割で変えられる**（`byRole`）。当てはまる役割が複数あれば**一番ゆるい方** | 「担当は20件・管理者は上限なし」は業務の形。ゆるい方を採るのは、`roles` が「どれか1つ当てはまれば見える」のと同じ考え方＝役割は持っているほど広がる |
+| 上限は**バックエンドでも同じ数**で判定できる（TypeScript / Java） | 画面の上限は**早く気づかせるため**、サーバの上限は**守るため**。画面が止めても API を直接叩けば通るので、同じ定義から同じ数を読む（検証を両方で回すのと同じ形） |
 | 上限を書かなければ、実際の上限は**画面に出ている行の数** | 選べるのは表に出ている行だけ。`table.pagination.pageSize` がそのまま上限になり、ページ送りを切っていれば全件になる |
 
 Flutter では登録したハンドラが `ActionContext.records` で受け取る。**呼び出しは1回**なので、
@@ -1112,9 +1117,36 @@ computed: { op: sum, field: lines, of: amount,
 | `onSuccess` | [onSuccess](#onsuccess) | | 成功したあとの後処理。 |
 | `onError` | [onError](#onerror) | | 失敗したときに出す文言。 |
 | `prompt` | [prompt](#prompt) | | 実行の前に聞くこと（小さなフォーム）。 |
-| `maxRows` | integer | | `scope: selection` のとき、**1回で動かせる行数の上限**（1以上）。超えて選んでいる間ボタンは押せない。無ければ上限は1ページの件数。 |
+| `maxRows` | integer \| [maxRows](#maxrows) | | `scope: selection` のとき、**1回で動かせる行数の上限**（1以上）。超えて選んでいる間ボタンは押せない。無ければ上限は1ページの件数。 |
 | `config` | map | | 追加設定。 |
 | `roles` | string[] | | 実行を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
+
+### maxRows
+
+`scope: selection` の「1回で動かせる行数の上限」。数を書けば全員に同じ上限、
+`{ default, byRole }` を書けば役割ごと。
+
+```yaml
+maxRows: 20                                  # 全員 20 件
+maxRows:                                     # 役割ごと
+  default: 20
+  byRole: { manager: 50, admin: all }
+```
+
+| キー | 型 | 必須 | 説明 |
+|---|---|---|---|
+| `default` | integer \| `all` | ✅ | 役割で決まらないときの上限。`all` は上限なし。 |
+| `byRole` | map（役割名 → integer \| `all`） | | 役割ごとの上限。書いていない役割は `default`。 |
+
+決めごと:
+
+- **当てはまる役割が複数あれば、一番ゆるい上限**（`all` があれば上限なし）。`roles` が
+  「どれか1つ当てはまれば見える」のと同じ考え方
+- 上限を超えて選んでいる間、ボタンは**押せない**（ラベルに「いま何件で何件までか」を出す）。
+  **切り詰めて実行はしない**
+- 押せない役割・どこにも無い役割名に上限を書いても効かない（`validate` が言う）
+- バックエンドでも同じ数で判定できる（TypeScript は `checkBulkLimit`、Java は
+  `BulkLimits.check`）。3版が同じ答えを出すことは共有フィクスチャで縛る
 
 ### confirm
 
@@ -1364,6 +1396,7 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `computed-field-and-fields` | `field` と `fields` の両方を書いた → `field` が勝ち、`fields` は効かない |
 | `create-action-unusable` | `type: create` を `crud` / `master` 以外の画面に置いた → ボタンは出るが**押しても何も起きない**（`create` が開くのは一覧からの新規入力。`form` / `wizard` には保存ボタンが最初から出ている） |
 | `placeholder-not-filled` | 文言に**埋まらない差し込み**を書いた（`onSuccess` / `onError` は件数が `scope: selection` だけ・`{error}` は失敗だけ、**押す前**（`confirm` / `prompt.title`）は `{count}` だけ＝まだ失敗も理由も無い、**それ以外の名前＝`{orderNo}` のような項目名は埋める口が無い**）→ 押すまで気づけず、文字のまま出る |
+| `maxrows-unknown-role` | `byRole` に書いた役割が、そのボタンを押せない（`roles` に無い）／定義のどこにも出てこない → 誰にも当てはまらないので、その上限は効かない |
 | `maxrows-without-selection` | `maxRows` を `scope: selection` でないボタンに書いた → 数える対象が無いので上限は効かない |
 | `maxrows-above-page-size` | `maxRows` が1ページの件数より大きい → 画面に出ている行しか選べないので、その上限は一度も効かない |
 | `selection-without-table` | `scope: selection` のボタンを**表の無い画面**に置いた → 選ぶ手段が無いので、押せないボタンが出たままになる |
