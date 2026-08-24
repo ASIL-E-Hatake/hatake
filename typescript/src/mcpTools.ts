@@ -12,8 +12,14 @@ import { parse as parseYamlText } from "yaml";
 import { deriveDto } from "./dto.js";
 import { diffDefinitions } from "./defDiff.js";
 import { renderExplain } from "./explain.js";
+import { renderRoles, roleTitleOf } from "./explainRoles.js";
+import { roleInventory } from "./roles.js";
 import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
-import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
+import {
+  describeChange,
+  explainDiffSources,
+  renderExplainDiff,
+} from "./explainDiff.js";
 import { briefSource, renderBrief } from "./explainBrief.js";
 import type { Lang } from "./explainPhrases.js";
 import { minimizeSource } from "./minimize.js";
@@ -34,6 +40,7 @@ import { type FailureCatalog } from "./failures.js";
 import { findWarnings } from "./warnings.js";
 import { ADVICE_NOTE, findAdvice, unwritableAdvice } from "./advise.js";
 import { type AdvicePick, applyAdvice } from "./adviseApply.js";
+import { withDrafts } from "./adviseDraft.js";
 import { DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import { toJsonSchema } from "./jsonSchema.js";
@@ -91,7 +98,11 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
    さらに hatake_advise を1回（**書いていない所**は検証に出てこない＝並べ替えできない一覧・
    誰でも消せる画面・確認の無い一括。好みなので直すかは業務の判断）
    当てると決めたものは hatake_apply_advice に渡す（**書く場所は機械のほうが正確**。
-   値＝確認の文・件数・見せる相手は業務の決めごとなので、こちらで決めて value に渡す）
+   値＝確認の文・件数・見せる相手は業務の決めごとなので、こちらで決めて value に渡す。
+   助言に draft が付いていれば、中身を見てそのまま value に渡してよい）
+   roles や maxRows.byRole を書くときは先に hatake_explain の roles: true で
+   **定義に出てくる役割**を引く
+   （役割名を想像で書くと、画面は出るのに誰にも見えない）
 5. **帳票（type: report）を書いたら hatake_print_preview**（刷ったらどう見えるかを文字で返す。
    列の並び・小計の位置・切れた文字は、explain では分からない）
 6. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
@@ -323,7 +334,11 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "一括（scope: selection）だけは既定で厳しい（確認・件数・失敗の言い方・赤いボタン・" +
         "1回で動く件数）＝1回の操作が件数ぶん動くので。" +
         "出るのは**好み**なので、直すかどうかは業務の判断。要らない助言は rules の off で" +
-        "止められる（案件の決めごとを足すこともできる）。",
+        "止められる（案件の決めごとを足すこともできる）。" +
+        "**draft が付いていたら、それが書く値の下書き**（定義から作れるものだけ。" +
+        "draftFrom に何から作ったかが書いてある）。中身を見て、そのままでよければ" +
+        "hatake_apply_advice の picks[].value にそのまま渡す＝**値を決める往復が1回で終わる**。" +
+        "下書きは正解ではない（確認の文は業務の言葉に直すこと）。",
       inputSchema: {
         type: "object",
         properties: {
@@ -356,7 +371,9 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           typeof args.rules === "object" && args.rules !== null
             ? parseAdviceRules(args.rules)
             : DEFAULT_RULES;
-        const all = findAdvice(document as Record<string, unknown>, rules);
+        const raw = document as Record<string, unknown>;
+        // 書く値の下書きも添える（「何を足すか」まで言えても、値で止まるので）。
+        const all = withDrafts(raw, findAdvice(raw, rules));
         // 物差しが「その場所に書けないキー」を勧めていたら、助言を出さずに止める。
         // 間違いを教える助言は、無いほうがまし（CLI と同じ判断）。
         const bad = unwritableAdvice(all, reference());
@@ -398,7 +415,10 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "確かめるので、通したあとに壊れていることはない。" +
         "当てなかったものは skipped に理由つきで入る（**次に何を渡せばいいかまで書いてある**）。" +
         "remaining はまだ書き足せる所。**助言を当てても警告は減らない**（書いていないことは" +
-        "警告に出ない）ので、当てたあとは hatake_validate と hatake_explain で読み返す。",
+        "警告に出ない）ので、当てたあとは hatake_validate と hatake_explain で読み返す。" +
+        "**changed に「何が変わったか」が画面の言葉で入る**（「押すと確認を出す」「manager だけに出る」）" +
+        "＝人に報告するときはこれをそのまま見せる（道の書き方ではレビューできない）。" +
+        "picks[].value は hatake_advise の draft をそのまま渡してよい（中身を見てから）。",
       inputSchema: {
         type: "object",
         properties: {
@@ -469,7 +489,15 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           });
         }
         const result = applyAdvice(source, picks, { rules });
-        return pretty({ ok: true, note: ADVICE_NOTE, ...result });
+        // 当てた所を画面の言葉で言い直す（人に見せる形。読めなければ黙って出さない）。
+        const changed =
+          result.applied.length > 0 ? describeChange(source, result.source) : undefined;
+        return pretty({
+          ok: true,
+          note: ADVICE_NOTE,
+          ...result,
+          ...(changed === undefined ? {} : { changed }),
+        });
       },
     },
     {
@@ -596,7 +624,10 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "（人に「何を変えたか」を伝えるのはこの出力。hatake_diff は壊れるかどうかの判定で、両方要る）。" +
         "brief を true にすると1行だけ（画面一覧・要約・PR 本文に貼る用）。" +
         "lang に en を渡すと英語（節の見出しと言い回しだけ。**定義に書いてあるラベルは訳さない**" +
-        "＝業務の言葉なので、訳すと現場と違うものを指す）。before との差と助言は日本語だけ。",
+        "＝業務の言葉なので、訳すと現場と違うものを指す）。before との差と助言は日本語だけ。" +
+        "**roles を true にすると、定義に出てくる役割の一覧**（どこに書いてあるか付き）。" +
+        "`roles` や `maxRows.byRole` を書く前にこれを引く＝**役割名を想像で書かない**" +
+        "（定義に無い名前を書いても画面は出るので、誰も気づけない）。",
       inputSchema: {
         type: "object",
         properties: {
@@ -616,6 +647,12 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           brief: {
             type: "boolean",
             description: "1行の要約だけを返す（既定 false）。",
+          },
+          roles: {
+            type: "boolean",
+            description:
+              "定義に出てくる役割の一覧を返す（既定 false）。書いてある場所つき。" +
+              "出るのは定義に書いてある名前だけで、アプリ側の権限判定は見ない。",
           },
           lang: {
             type: "string",
@@ -637,6 +674,14 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             );
           }
           return renderExplainDiff(explainDiffSources(before, source));
+        }
+        if (args.roles === true) {
+          const document = parseYamlText(source);
+          if (typeof document !== "object" || document === null) {
+            throw new Error("定義（map）として読めません。");
+          }
+          const raw = document as Record<string, unknown>;
+          return renderRoles(roleInventory(raw), roleTitleOf(raw));
         }
         const page = str(args, "page");
         return args.brief === true

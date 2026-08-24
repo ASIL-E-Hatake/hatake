@@ -980,6 +980,14 @@ describe("hatake advise", () => {
     expect(io.stderr.join("\n")).toContain("規則名ではありません");
   });
 
+  it("助言に値の下書きが付く（値で止まらないように）", () => {
+    const io = fakeIo({ "page.yaml": THIN });
+    expect(runCli(["advise", "page.yaml"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("値の下書き:");
+    expect(out).toContain("**下書きです**");
+  });
+
   it("--apply で選んだ助言を当てる（既定はファイルを触らない）", () => {
     const io = fakeIo({
       "page.yaml": THIN,
@@ -992,6 +1000,8 @@ describe("hatake advise", () => {
       "search: { filters: [{ field: orderNo, label: 受注番号 }] }",
     );
     expect(io.stderr.join("\n")).toContain("1 件を当てました");
+    // 当てた所を画面の言葉でも言う（道の書き方ではレビューできない）。
+    expect(io.stderr.join("\n")).toContain("変わったところ");
     expect(io.written).toEqual({});
   });
 
@@ -2146,5 +2156,69 @@ describe("explain --diff --if-changed", () => {
     const io = fakeIo({ "a.yaml": BEFORE, "b.yaml": REORDERED });
     expect(runCli(["explain", "--diff", "a.yaml", "b.yaml"], io)).toBe(0);
     expect(io.stdout.join("\n")).toContain("変わりません");
+  });
+});
+
+describe("hatake explain --roles", () => {
+  const APP = `app:
+  id: sales
+  title: 販売管理
+  menu:
+    - { id: orders, label: 受注, page: order_search }
+    - { id: costs, label: 原価, page: order_search, roles: [manager] }
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      search:
+        filters: [{ field: orderNo, label: 受注番号 }]
+      table:
+        columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+      actions:
+        - { id: exportCsv, type: export, label: CSV 出力, roles: [manager, admin] }
+`;
+
+  it("出てくる役割と、書いてある場所を出す", () => {
+    const io = fakeIo({ "app.yaml": APP });
+    expect(runCli(["explain", "app.yaml", "--roles"], io)).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("販売管理（sales）");
+    expect(out).toContain("manager … 2 か所");
+    expect(out).toContain("app.pages[0].actions[0].roles");
+    expect(out).toContain("アプリ側の権限判定");
+  });
+
+  it("--json は機械可読（AI に役割名を渡す口）", () => {
+    const io = fakeIo({ "app.yaml": APP });
+    expect(runCli(["explain", "app.yaml", "--roles", "--json"], io)).toBe(0);
+    const inventory = JSON.parse(io.stdout.join("\n")) as {
+      role: string;
+      spots: { where: string }[];
+    }[];
+    expect(inventory.map((one) => one.role)).toEqual(["manager", "admin"]);
+  });
+
+  it("--page では絞れないと言う（黙って無視しない）", () => {
+    const io = fakeIo({ "app.yaml": APP });
+    expect(runCli(["explain", "app.yaml", "--roles", "--page", "order_search"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("定義全体で数えます");
+  });
+
+  it("1つも書いていなければ、そう言う（読むための道具なので 0 を返す）", () => {
+    const io = fakeIo({
+      "page.yaml": `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  search:
+    filters: [{ field: orderNo, label: 受注番号 }]
+  table:
+    columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+`,
+    });
+    expect(runCli(["explain", "page.yaml", "--roles"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("全部の人に全部見えます");
   });
 });

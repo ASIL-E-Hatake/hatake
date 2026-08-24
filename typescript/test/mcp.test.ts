@@ -917,3 +917,54 @@ describe("hatake_apply_advice", () => {
     expect(stopped.source).toBeUndefined();
   });
 });
+
+describe("役割の一覧と値の下書き（MCP）", () => {
+  const APP = `app:
+  id: sales
+  title: 販売管理
+  menu:
+    - { id: orders, label: 受注, page: order_search }
+    - { id: costs, label: 原価, page: order_search, roles: [manager] }
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      search:
+        filters: [{ field: orderNo, label: 受注番号 }]
+      table:
+        columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+      actions:
+        - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
+            scope: selection }
+`;
+
+  it("hatake_explain の roles で、定義に出てくる役割を引ける", () => {
+    const text = call("hatake_explain", { source: APP, roles: true }).text;
+    expect(text).toContain("販売管理（sales）");
+    expect(text).toContain("manager … 1 か所");
+    expect(text).toContain("app.menu[1].roles");
+  });
+
+  it("hatake_advise は書く値の下書きも返す（そのまま当てられる形）", () => {
+    const found = JSON.parse(call("hatake_advise", { source: APP }).text) as {
+      advice: { rule: string; where: string; draft?: unknown; draftFrom?: string }[];
+    };
+    const confirm = found.advice.find((one) => one.rule === "bulk-without-confirm");
+    expect(confirm?.draft).toEqual({
+      message: "{count} 件を「一括承認」します。よろしいですか？",
+    });
+    expect(confirm?.draftFrom).toBeTruthy();
+
+    // 下書きをそのまま渡せば当たる（値を決める往復が1回で終わる）。
+    const applied = JSON.parse(
+      call("hatake_apply_advice", {
+        source: APP,
+        picks: [{ rule: confirm?.rule, where: confirm?.where, value: confirm?.draft }],
+      }).text,
+    ) as { applied: unknown[]; changed?: string };
+    expect(applied.applied).toHaveLength(1);
+    // 当てた所は画面の言葉でも返る（人に見せる形）。
+    expect(applied.changed).toContain("押すと確認を出す");
+  });
+});

@@ -42,7 +42,11 @@ import {
 import { deriveDto } from "./dto.js";
 import { renderExplain } from "./explain.js";
 import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
-import { explainDiffSources, renderExplainDiff } from "./explainDiff.js";
+import {
+  describeChange,
+  explainDiffSources,
+  renderExplainDiff,
+} from "./explainDiff.js";
 import { briefSource, renderBrief } from "./explainBrief.js";
 import {
   briefMarkdown,
@@ -81,6 +85,9 @@ import {
   applyAdvice,
   renderAdviceApply,
 } from "./adviseApply.js";
+import { withDrafts } from "./adviseDraft.js";
+import { renderRoles, roleTitleOf } from "./explainRoles.js";
+import { roleInventory } from "./roles.js";
 import type { Lang } from "./explainPhrases.js";
 import { type AdviceRules, DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
 import { renderReview, reviewSource } from "./review.js";
@@ -240,6 +247,12 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       1件ずつ当てて「問題が減る・新しい問題が出ない」ことを確かめ、崩れたら何もしない。
       直さなかったものは**理由つきで**標準エラーに出す（意図が要るものは人の仕事）。
 
+  hatake explain <file> --roles [--json]
+      **定義に出てくる役割の全部**と、どこに書いてあるか（メニュー・ボタン・列・項目）。
+      出てくる回数の多い順に並べるので、1か所しか出てこない役割＝綴り違いの疑いが
+      下に落ちてくる。出るのは**定義に書いてある名前**だけで、アプリ側の権限判定と
+      合っているかは見られない（誰がどの画面を開けるかは explain の「開ける人」）。
+
   hatake advise <file> [--rules team.json] [--apply picks.json] [--write] [--json]
       **書き足したほうがいい所**を挙げる（並べ替えできる列が無い・絞り込みが無い・
       誰でも消せる・金額に桁区切りが無い…）。これは助言で警告ではないので、
@@ -378,6 +391,7 @@ const BOOLEAN_FLAGS = new Set([
   "markdown",
   "diff",
   "brief",
+  "roles",
   "review",
   "repro",
   "write",
@@ -778,6 +792,7 @@ function explain(files: string[], flags: Args["flags"], io: CliIo): number {
   if (lang === null) return 1;
   const source = io.readFile(files[0]);
   const wanted = str(flags, "page");
+  if (flags.roles === true) return explainRoles(source, flags, io);
   if (flags.review === true) return review(source, wanted, flags, io);
   const document =
     flags.brief === true
@@ -1150,6 +1165,37 @@ function fix(files: string[], flags: Args["flags"], io: CliIo): number {
 }
 
 /**
+ * 定義に出てくる役割を数える（`explain --roles`）。
+ *
+ * 終了コードは変えない（**読むための道具**。役割が1つも無いことは間違いではない
+ * ＝小さな社内ツールなら権限を書かない）。書き忘れを言うのは advise の担当。
+ */
+function explainRoles(source: string, flags: Args["flags"], io: CliIo): number {
+  // 役割は**定義全体**で数える（1枚に絞ると、メニューに書いた役割が落ちて
+  // 「この画面には役割が無い」に見える）。黙って無視せず、そう言って止める。
+  if (str(flags, "page") !== undefined) {
+    io.err(
+      "--roles は定義全体で数えます（--page では絞れません）。" +
+        "メニューに書いた役割はどの画面のものでもないので、1枚に絞ると落ちます。",
+    );
+    return 1;
+  }
+  const document = parseYamlText(source);
+  if (typeof document !== "object" || document === null) {
+    io.err("定義（map）として読めません。");
+    return 1;
+  }
+  const raw = document as Record<string, unknown>;
+  const inventory = roleInventory(raw);
+  if (flags.json === true) {
+    io.out(JSON.stringify(inventory, null, 2));
+    return 0;
+  }
+  io.out(renderRoles(inventory, roleTitleOf(raw)));
+  return 0;
+}
+
+/**
  * 書き足したほうがいい所を挙げる。
  *
  * **終了コードは always 0**。助言で CI を落とすと、助言が「守らせるもの」になって好みを
@@ -1171,7 +1217,11 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
   if (picks !== undefined) {
     return applyPicked(files[0], source, picks, rules, flags, io);
   }
-  const advice = findAdvice(document as Record<string, unknown>, rules);
+  // 下書きも添える（「何を足すか」までは言えても、値で止まるので）。
+  const advice = withDrafts(
+    document as Record<string, unknown>,
+    findAdvice(document as Record<string, unknown>, rules),
+  );
   // 物差しが「その場所に書けないキー」を勧めていたら、助言を出す前に止める。
   // 間違いを教える助言は、無いほうがまし。
   if (unwritable(advice, flags, io) > 0) return 1;
@@ -1232,6 +1282,15 @@ function applyPicked(
     io.out(result.source.trimEnd());
   }
   io.err(renderAdviceApply(result));
+  // 当てた所を画面の言葉で言い直す（道で言われてもレビューできない）。
+  if (result.applied.length > 0) {
+    const said = describeChange(source, result.source);
+    io.err("");
+    io.err(
+      said ??
+        "（当てる前の定義は strict で読めないので、画面の言葉での言い直しは出せません）",
+    );
+  }
   return result.skipped.length > 0 ? 1 : 0;
 }
 

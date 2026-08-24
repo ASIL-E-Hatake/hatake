@@ -67,6 +67,31 @@ $ npx hatake explain app.yaml --page price_master
 
 定義には書かない。アプリを起動するときに、その利用者のロールを Framework に渡す（Flutter なら `HatakeScope(roles: {'admin'})`）。ログイン処理も、ロールをどう決めるかも、Framework の外の話。
 
+## 綴り違いは、並べると見つかる
+
+5か所に散って書けるということは、**綴りを間違えても何も起きない**ということでもある。`manager` と書くつもりで `manaher` と書いた列は、誰にも見えないまま出荷される（定義としては正しいので、検証も通る）。
+
+書く前・直したあとに、定義に出てくる役割を数える。
+
+```bash
+npx hatake explain app.yaml --roles
+```
+
+```
+販売管理（sales） — 出てくる役割 3
+
+manager … 2 か所
+  ・メニュー「原価」 … app.menu[1].roles
+  ・ボタン「CSV 出力」（order_search） ＋ admin … app.pages[0].actions[1].roles
+
+manaher … 1 か所
+  ・列「原価」（cost_search） … app.pages[1].table.columns[1].roles
+```
+
+**出てくる回数の多い順**に並ぶので、1か所しか出てこない役割が下に落ちてくる。役割は普通あちこちで使われるので、1回しか出てこないものは疑ってよい。
+
+`maxRows.byRole` に定義のどこにも無い役割を書いた場合だけは、`validate` が警告で言う（そこは「書いたのに効かない」＝事実なので）。それ以外の綴り違いは**この一覧で人が見つける**しかない。ここに出るのは定義に書いてある名前だけで、アプリ側が実際にその役割を持っているかは見られない。
+
 ## ロール名の付け方
 
 `roles` に書くのは自分で決めた文字列で、Framework は意味を知らない。業務の役割（`hr` `manager` `approver`）で名付けると読める定義になる。画面や操作の名前（`can_export`）で付けると、権限体系が画面数に比例して増えていくので避けたほうがいい。

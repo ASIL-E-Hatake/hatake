@@ -20,7 +20,9 @@ import { ActionScopes } from "./definition.js";
 import { checkCompare } from "./adviseCompare.js";
 import { checkRequired } from "./adviseRequire.js";
 import { type AdviceRules, DEFAULT_RULES, enabled, knob } from "./adviseRules.js";
+import { rawFormFields } from "./pageParts.js";
 import { type DslReference } from "./reference.js";
+import { flowText } from "./yamlWrite.js";
 
 type Dict = Record<string, unknown>;
 
@@ -51,13 +53,26 @@ export interface Advice {
   node: string;
   /** true = 名前から推測している（外れることがある）。 */
   guess?: boolean;
+  /**
+   * 書く値の下書き（[withDrafts] を通したときだけ）。**そのまま当てられる形**。
+   *
+   * 決めるのは人。下書きが在ることは「これが正解」ではない。
+   */
+  draft?: unknown;
+  /** 下書きを何から作ったか（1行）。 */
+  draftFrom?: string;
 }
 
 /** 保存する画面。ここでしか「必須が無い」は言わない（照会に必須は無関係）。 */
 const WRITES = new Set(["crud", "master", "form", "wizard"]);
 
-/** 金額らしい名前（桁区切りが無いと読めない列を拾うための、名前による推測）。 */
-const MONEY_WORDS = [
+/**
+ * 金額らしい名前（桁区切りが無いと読めない列を拾うための、名前による推測）。
+ *
+ * 下書き（[withDrafts]）も同じ語で見る＝「金額らしい」の判断が2つあると、助言と下書きで
+ * 違う列を指す。
+ */
+export const MONEY_WORDS = [
   "amount",
   "price",
   "total",
@@ -126,6 +141,10 @@ export function findAdvice(
   if (isDict(document.page)) checkPage(document.page, "page", found, rules);
   return found;
 }
+
+/** フォームとステップの項目（節点だけ。道が要るのは当てる側と下書き）。 */
+const formFields = (page: Dict): Dict[] =>
+  rawFormFields(page).map((part) => part.node);
 
 function checkPage(page: Dict, path: string, found: Advice[], rules: AdviceRules): void {
   const from = found.length;
@@ -473,17 +492,6 @@ const looksLikeMoney = (field: string, words: string[]): boolean => {
   return words.some((word) => name.includes(word.toLowerCase()));
 };
 
-/** フォームとステップの項目を、区別せず全部。 */
-function formFields(page: Dict): Dict[] {
-  const fields: Dict[] = [];
-  const form = isDict(page.form) ? page.form : undefined;
-  if (form !== undefined) {
-    for (const section of dicts(form.sections)) fields.push(...dicts(section.fields));
-  }
-  for (const step of dicts(page.steps)) fields.push(...dicts(step.fields));
-  return fields;
-}
-
 /**
  * 助言が挙げるキーが、そのノードに**本当に書けるか**を確かめる。
  *
@@ -527,6 +535,11 @@ export function renderAdvice(
     out.push(`# ${one.where} [${one.rule}]${one.guess === true ? "（名前からの推測）" : ""}`);
     out.push(`  こうなる: ${one.says}`);
     out.push(`  書き足す: ${one.add}`);
+    if (one.draft !== undefined) {
+      const text = flowText(one.draft) ?? JSON.stringify(one.draft);
+      out.push(`  値の下書き: ${text}`);
+      out.push(`    （${one.draftFrom ?? "定義から"}。**下書きです**＝決めるのは業務の側）`);
+    }
   }
   out.push("");
   out.push(...ruler);

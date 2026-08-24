@@ -809,6 +809,98 @@ jobs:
           node dist/cli.js diagram /tmp/bulk-open.yaml --json > /tmp/bulk-roles.json
           grep -q 'まとめて実行ができる画面' /tmp/bulk-roles.json
 
+      - name: Roles are counted, and every drafted value can be applied
+        working-directory: typescript
+        run: |
+          set -e
+          # 役割名は定義のあちこちに散る。棚卸しは**出てくる回数の多い順**なので、
+          # 1か所しか出てこない役割（綴り違いの疑い）が下に落ちてくる。
+          cat > /tmp/roles-app.yaml <<'YAML'
+          app:
+            id: sales
+            title: 販売管理
+            menu:
+              - { id: orders, label: 受注, page: order_search }
+              - { id: costs, label: 原価, page: cost_search, roles: [manager] }
+            pages:
+              - type: search
+                id: order_search
+                title: 受注照会
+                repository: orderRepository
+                search:
+                  filters: [{ field: orderNo, label: 受注番号 }]
+                table:
+                  columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+                actions:
+                  - { id: exportCsv, type: export, label: CSV 出力, roles: [manager, admin] }
+              - type: search
+                id: cost_search
+                title: 原価照会
+                repository: costRepository
+                search:
+                  filters: [{ field: itemCode, label: 品目コード }]
+                table:
+                  columns:
+                    - { field: itemCode, label: 品目コード, sortable: true }
+                    - { field: cost, label: 原価, roles: [manaher] }
+          YAML
+          node dist/cli.js explain /tmp/roles-app.yaml --roles > /tmp/roles.log
+          grep -q 'manager … 2 か所' /tmp/roles.log
+          grep -q 'manaher … 1 か所' /tmp/roles.log
+          grep -q '綴り違いの疑い' /tmp/roles.log
+          # 定義に書いてある名前だけ、と毎回言う（権限がかかっている証明ではない）。
+          grep -q 'アプリ側の権限判定' /tmp/roles.log
+          # 役割を1つも書いていない定義でも、黙って空を返さない。
+          node dist/cli.js explain ../spec/examples/order_entry.yaml --roles > /tmp/noroles.log
+          grep -q '全部の人に全部見えます' /tmp/noroles.log
+
+          # 助言の**下書きは、そのまま当てられる**（当てられない下書きは出さない）。
+          cat > /tmp/draft-page.yaml <<'YAML'
+          page:
+            type: crud
+            id: order_list
+            title: 受注一覧
+            repository: orderRepository
+            key: orderNo
+            table:
+              pagination: { pageSize: 200 }
+              columns:
+                - { field: customer, label: 得意先 }
+                - { field: orderDate, label: 受注日, type: date }
+                - { field: amount, label: 金額 }
+            form:
+              sections:
+                - fields:
+                    - { field: orderNo, label: 受注番号 }
+                    - { field: customer, label: 得意先 }
+            actions:
+              - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
+                  scope: selection, roles: [manager] }
+          YAML
+          node dist/cli.js advise /tmp/draft-page.yaml > /tmp/draft-advice.log
+          grep -q '値の下書き:' /tmp/draft-advice.log
+          grep -q '下書きです' /tmp/draft-advice.log
+          node dist/cli.js advise /tmp/draft-page.yaml --json > /tmp/draft-advice.json
+          node -e '
+            const fs = require("fs");
+            const advice = JSON.parse(fs.readFileSync("/tmp/draft-advice.json", "utf8"));
+            const picks = advice
+              .filter((one) => one.draft !== undefined)
+              .map((one) => ({ rule: one.rule, where: one.where, value: one.draft }));
+            if (picks.length < 4) {
+              console.error("下書きが少なすぎる: " + picks.length);
+              process.exit(1);
+            }
+            fs.writeFileSync("/tmp/draft-picks.json", JSON.stringify(picks));
+          '
+          # 1件でも当てられなければ 1 が返る＝下書きが嘘をついていないことの確認。
+          node dist/cli.js advise /tmp/draft-page.yaml --apply /tmp/draft-picks.json \
+            --write > /tmp/draft-applied.log 2>&1
+          # 当てた所は画面の言葉でも言う。
+          grep -q '変わったところ' /tmp/draft-applied.log
+          # 当てたあとも strict で通る。
+          node dist/cli.js validate /tmp/draft-page.yaml
+
       - name: A failure speaks the definition's words
         working-directory: typescript
         run: |
@@ -1393,9 +1485,13 @@ jobs:
             '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"hatake_validate","arguments":{"source":"page: {type: crud, id: x, title: X, repository: xRepository}"}}}' \
             '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"hatake_advise","arguments":{"source":"page: {type: search, id: s, title: S, repository: r, table: {columns: [{field: a, label: A}]}}"}}}' \
             '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"hatake_apply_advice","arguments":{"source":"page: {type: search, id: s, title: S, repository: r, table: {columns: [{field: amount, label: A}]}}","picks":[{"rule":"money-without-format"}]}}}' \
+            '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"hatake_explain","arguments":{"source":"page: {type: search, id: s, title: S, repository: r, table: {columns: [{field: a, label: A, roles: [manager]}]}}","roles":true}}}' \
             | node dist/mcp.js > /tmp/mcp.log
-          # 通知には返事をしない = 6 送って 5 行。stdout に他のものを書いていないことも見る。
-          test "$(wc -l < /tmp/mcp.log)" -eq 5
+          # 通知には返事をしない = 7 送って 6 行。stdout に他のものを書いていないことも見る。
+          test "$(wc -l < /tmp/mcp.log)" -eq 6
+          # 役割名は定義から引ける（想像で書かせない）。
+          grep -q '出てくる役割' /tmp/mcp.log
+          grep -q 'manager' /tmp/mcp.log
           grep -q '"protocolVersion":"2025-06-18"' /tmp/mcp.log
           grep -q 'hatake_reference' /tmp/mcp.log
           grep -q 'crud' /tmp/mcp.log
@@ -1407,6 +1503,8 @@ jobs:
           # 選んだ助言はその場に書き込める（AI が手で YAML を書き足すと転ぶ所）。
           grep -q 'hatake_apply_advice' /tmp/mcp.log
           grep -q 'format: currency' /tmp/mcp.log
+          # 当てた所は**画面の言葉**でも返る（道の書き方では人がレビューできない）。
+          grep -q 'changed' /tmp/mcp.log
 
       - name: Scaffolds are valid definitions
         working-directory: typescript

@@ -26,6 +26,7 @@ import { type Advice, findAdvice } from "./advise.js";
 import { type AdviceRules, BUILTIN_RULES, DEFAULT_RULES } from "./adviseRules.js";
 import { ActionScopes } from "./definition.js";
 import { diagnoses, notWorse, readable } from "./diagnose.js";
+import { labelFor, rawFormFields } from "./pageParts.js";
 import { type DefinitionRegistry } from "./refs.js";
 import { type Path, parsePath, valueAt } from "./shrink.js";
 import { applySpans } from "./yamlSpans.js";
@@ -110,19 +111,14 @@ const spotsOf = (raw: Dict, at: Path): Spot[] =>
     return field === undefined ? [] : [{ field, path: [...at, index] }];
   });
 
-/** 入力できる項目（枠の中とステップの中を区別せず全部）。 */
+/** 入力できる項目（枠の中とステップの中を区別せず全部）。道は定義の頭から。 */
 function fieldSpots(raw: Dict, page: Path): Spot[] {
-  const found: Spot[] = [];
-  const form = valueAt(raw, [...page, "form"]);
-  if (isDict(form)) {
-    dicts(form.sections).forEach((_, index) =>
-      found.push(...spotsOf(raw, [...page, "form", "sections", index, "fields"])),
-    );
-  }
-  dicts(valueAt(raw, [...page, "steps"])).forEach((_, index) =>
-    found.push(...spotsOf(raw, [...page, "steps", index, "fields"])),
-  );
-  return found;
+  const node = valueAt(raw, page);
+  if (!isDict(node)) return [];
+  return rawFormFields(node).flatMap((part) => {
+    const field = str(part.node.field);
+    return field === undefined ? [] : [{ field, path: [...page, ...part.path] }];
+  });
 }
 
 const names = (spots: Spot[]): string =>
@@ -162,31 +158,13 @@ function byField(
   return plans;
 }
 
-/** その項目の業務名を定義の中から探す（同じ項目が別の場所に出ていれば、それが正）。 */
-function labelOf(node: unknown, field: string): string | undefined {
-  if (Array.isArray(node)) {
-    for (const one of node) {
-      const found = labelOf(one, field);
-      if (found !== undefined) return found;
-    }
-    return undefined;
-  }
-  if (!isDict(node)) return undefined;
-  if (str(node.field) === field && str(node.label) !== undefined) return str(node.label);
-  for (const value of Object.values(node)) {
-    const found = labelOf(value, field);
-    if (found !== undefined) return found;
-  }
-  return undefined;
-}
-
 /** 1件を指すキーを一覧に足す（列そのものを1本作るので、業務名が要る）。 */
 function keyColumn(raw: Dict, at: Path, given: unknown): Plan[] | string {
   if (isDict(given)) return [{ path: at, kind: "append", value: given }];
   const page = valueAt(raw, pagePathOf(at));
   const field = isDict(page) ? str(page.key) : undefined;
   if (field === undefined) return "1件を指すキー（page.key）が読めません。";
-  const label = str(given) ?? labelOf(page, field);
+  const label = str(given) ?? labelFor(page, field);
   if (label === undefined) {
     return (
       `列に出す名前（label）が定義の中にありません。value に業務名を渡してください` +
