@@ -8,17 +8,13 @@
 // 依存は増やさない: 引数解析も出力も手書き。CLI が npm の流行に引きずられると、
 // 「業務システムを10年動かす」側の都合と合わなくなる。
 
-import { execFileSync } from "node:child_process";
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
 import { dirname, join } from "node:path";
 import { parse as parseYamlText } from "yaml";
+import { fetchSend, type HttpSend } from "./httpProbe.js";
+import { loginFetch, type LoginSend } from "./loginRun.js";
+import { type Args, collectionOverrides, str } from "./cliArgs.js";
+import { type CliIo, nodeIo } from "./cliIo.js";
+import { attackCommand, probeCommand } from "./cliProbe.js";
 import { type DefinitionWarning, findWarnings } from "./warnings.js";
 import {
   CATALOG_PATH,
@@ -70,23 +66,6 @@ import {
 import { minimizeSource, renderMinimize } from "./minimize.js";
 import { wireApp } from "./wire.js";
 import { mergeWiring, renderWireMerge } from "./wireMerge.js";
-import { bearer, fetchSend, type HttpSend, readHeaders } from "./httpProbe.js";
-import {
-  type RestTargets,
-  restTargets,
-  restTargetsForPage,
-} from "./restTarget.js";
-import { hasProbeError, probe, probeRequests, renderProbe } from "./probe.js";
-import { attack, attackRequests, hasHole, renderAttack } from "./attack.js";
-import {
-  ANONYMOUS,
-  ANONYMOUS_LABEL,
-  attackAll,
-  parseAttackAccounts,
-  renderAttackSweep,
-  rolesToSweep,
-  sweepHasHole,
-} from "./attackSweep.js";
 import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
 import {
@@ -155,53 +134,9 @@ import {
 } from "./registryScan.js";
 import { toJavaRecords, toTypeScript } from "./types.js";
 
-/** CLI が触る外界。テストから差し替えられるようにまとめてある。 */
-export interface CliIo {
-  out(text: string): void;
-  err(text: string): void;
-  readFile(path: string): string;
-  writeFile(path: string, content: string): void;
-  /**
-   * ディレクトリの中のファイルを再帰的に並べる（`registry` がソースを集めるため）。
-   * ディレクトリでなければ null。
-   */
-  listFiles(path: string): string[] | null;
-  /**
-   * git を1回呼ぶ（`--git`）。標準出力を返し、失敗したら投げる。
-   *
-   * 任意なのは、git が無い所でも CLI を動かすため（試験・生成された環境）。無ければ
-   * `--git` だけが使えないと言う。
-   */
-  git?(args: string[]): string;
-}
 
-export const nodeIo: CliIo = {
-  out: (text) => process.stdout.write(`${text}\n`),
-  err: (text) => process.stderr.write(`${text}\n`),
-  readFile: (path) => readFileSync(path, "utf8"),
-  writeFile: (path, content) => {
-    const dir = dirname(path);
-    if (dir && !existsSync(dir)) mkdirSync(dir, { recursive: true });
-    writeFileSync(path, content, "utf8");
-  },
-  git: (args) =>
-    execFileSync("git", args, {
-      encoding: "utf8",
-      // 定義1つぶんなので小さいが、既定の 1MB は大きい定義で足りない。
-      maxBuffer: 32 * 1024 * 1024,
-      stdio: ["ignore", "pipe", "pipe"],
-    }),
-  listFiles: (path) => {
-    if (!existsSync(path) || !statSync(path).isDirectory()) return null;
-    const found: string[] = [];
-    for (const entry of readdirSync(path, { withFileTypes: true })) {
-      const child = join(path, entry.name);
-      if (entry.isDirectory()) found.push(...(nodeIo.listFiles(child) ?? []));
-      else found.push(child);
-    }
-    return found;
-  },
-};
+export { type Args, str } from "./cliArgs.js";
+export { type CliIo, nodeIo } from "./cliIo.js";
 
 const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
 
@@ -324,8 +259,9 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       目印（HatakeScope と child:）が無い形なら、何もせず理由を言う。
 
   hatake probe <file> --base http://localhost:8080/api [--page <id>]
-              [--token <jwt>] [--headers headers.json] [--collection k=name]
-              [--dry-run] [--json]
+              [--token <jwt>] [--headers headers.json] [--login login.json]
+              [--collection k=name] [--since 前回.json] [--save 次回.json]
+              [--fail-on any|new] [--dry-run] [--json]
       定義が要求している口を**実際に叩いて**、返ってきた形を宣言と突き合わせる
       （足りない項目・型違い・{items, totalCount} でない・pageSize が効かない・
       行に鍵が無い）。食い違いがあれば終了コード 1。
@@ -333,7 +269,8 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       「何を叩くか」だけ出す。集合の名前は wire と同じ推測（--collection で上書き）。
 
   hatake attack <file> --all-roles --accounts accounts.json --base http://…
-              [--dry-run] [--json]
+              [--login login.json] [--since 前回.json] [--save 次回.json]
+              [--fail-on any|new] [--dry-run] [--json]
       **定義に出てくる役割ぜんぶ＋誰でもない人**で叩いて、1枚の表にする。役割が
       増えるたびに全部やり直すのは人が続けられないし、**1つ足したときに他が緩んで
       いないか**は並べないと読めない。資格は**役割ごとに要る**（accounts.json に
@@ -342,12 +279,35 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       誰でもない人（資格なし）は毎回1本入る。
 
   hatake attack <file> --role <role> --base http://localhost:8080/api
-              [--token <jwt>] [--headers headers.json] [--collection k=name]
-              [--dry-run] [--json]
+              [--token <jwt>] [--headers headers.json] [--login login.json]
+              [--collection k=name] [--since 前回.json] [--save 次回.json]
+              [--fail-on any|new] [--dry-run] [--json]
       その役割で**画面から見えない**はずの口を叩いて、API が実際に拒否するか見る。
       開ける画面が拒否されたら、それも食い違いとして出す（画面は出てもデータが
       来ない）。穴が1つでもあれば終了コード 1。app: の定義が要る。
       押せないはずのボタン（POST / PUT / DELETE）は**叩かず**に一覧で出す。
+
+  叩く道具（probe / attack）に共通の旗 ── 人が横に居ない所で回すため:
+
+      --login login.json  資格を**毎回取る**。トークンは期限で落ちるので、CI に置く
+          なら渡す形では続かない。login.json は「1往復ぶんの要求」だけを書いた JSON
+          （url / tokenAt / body、--all-roles なら役割ごとの roles）。値は \${環境変数}
+          で外から渡す＝秘密をファイルに書かない。無い環境変数は落とす（空のまま
+          送ると 401 が返り「穴が無い」と読める結果になる）。取ったトークンは
+          報告にも --dry-run にも出さない。--token / --headers とは併用しない。
+
+      --since 前回.json  前回の結果と比べて**変わった所だけ**出す。毎晩回すと出力は
+          毎晩同じで、人は同じ表を読み続けられない。前回叩けていた相手を今回叩いて
+          いなければ（資格切れ・役割の書き忘れ）、消えた穴は「直った」ではなく
+          **「叩いていないので分かりません」**と言う。
+
+      --save 次回.json  叩いた結果をそのまま残す（次の晩の --since に渡す相手）。
+          書くのは --json と同じもの。--since を付けると出力は違いだけになるので、
+          残す口を別にしている。
+
+      --fail-on new  落とすのを**新しい分だけ**にする（既定の any は、前から在る穴
+          でも落ちる）。--since が要る。資格が切れて相手を叩けなくなったことも
+          「新しい」に数える＝何も見ていない晩に静かに通らないように。
 
   hatake paper <file> [--page <id>] [--rows rows.json] [--role admin]
               [--columns 110] [--json]
@@ -405,11 +365,6 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
 
 const VERSION = "0.0.1";
 
-interface Args {
-  command?: string;
-  positional: string[];
-  flags: Record<string, string | boolean>;
-}
 
 /**
  * 値を取らないフラグ。これを知らないと `validate --warn-as-error a.yaml` で
@@ -472,8 +427,6 @@ export function parseArgs(argv: string[]): Args {
   return { command: positional[0], positional: positional.slice(1), flags };
 }
 
-const str = (flags: Args["flags"], key: string): string | undefined =>
-  typeof flags[key] === "string" ? (flags[key] as string) : undefined;
 
 /**
  * CLI 本体。終了コードを返す（`process.exit` はしないので、テストから普通に呼べる）。
@@ -580,191 +533,20 @@ export async function runCliAsync(
   argv: string[],
   io: CliIo = nodeIo,
   send: HttpSend = fetchSend,
+  // 資格を取る口（`--login`）は**別の送り口**。業務の口を叩く [send] は GET しか
+  // 送れないままにしておく（縛りを解かない）。
+  loginSend: LoginSend = loginFetch,
 ): Promise<number> {
   const { command, positional, flags } = parseArgs(argv);
   if (command !== "probe" && command !== "attack") return runCli(argv, io);
   try {
     return command === "probe"
-      ? await probeCommand(positional, flags, io, send)
-      : await attackCommand(positional, flags, io, send);
+      ? await probeCommand(positional, flags, io, send, loginSend)
+      : await attackCommand(positional, flags, io, send, loginSend);
   } catch (error) {
     io.err(message(error));
     return 1;
   }
-}
-
-/** `--collection a=x,b=y` を読む（当たらない推測を上書きするための口）。 */
-function collectionOverrides(value: string | undefined): Record<string, string> {
-  if (value === undefined) return {};
-  const found: Record<string, string> = {};
-  for (const pair of value.split(",")) {
-    const eq = pair.indexOf("=");
-    if (eq <= 0) {
-      throw new Error(
-        `--collection は "orderRepository=sales-orders" の形で書いてください（"${pair}"）。`,
-      );
-    }
-    found[pair.slice(0, eq).trim()] = pair.slice(eq + 1).trim();
-  }
-  return found;
-}
-
-/** 叩く道具に共通の引数（基点・資格・集合の名前）。 */
-function probeSetup(
-  files: string[],
-  flags: Args["flags"],
-  io: CliIo,
-): { targets: RestTargets; headers: Record<string, string> } {
-  const file = files[0];
-  if (file === undefined) throw new Error("定義ファイルを1つ渡してください。");
-  const baseUrl = str(flags, "base");
-  if (baseUrl === undefined) {
-    throw new Error(
-      "--base を渡してください（例: --base http://localhost:8080/api）。" +
-        "定義は URL を知りません（知ってはいけない）ので、基点は人が渡します。",
-    );
-  }
-  const source = io.readFile(file);
-  const options = {
-    baseUrl,
-    collections: collectionOverrides(str(flags, "collection")),
-  };
-  const page = str(flags, "page");
-  const targets =
-    page === undefined
-      ? restTargets(source, options)
-      : restTargetsForPage(source, page, options);
-  const token = str(flags, "token");
-  const headersFile = str(flags, "headers");
-  return {
-    targets,
-    headers: {
-      ...(token === undefined ? {} : bearer(token)),
-      ...(headersFile === undefined ? {} : readHeaders(io.readFile(headersFile))),
-    },
-  };
-}
-
-/** 定義とサーバの食い違いを、実際に叩いて見る。 */
-async function probeCommand(
-  files: string[],
-  flags: Args["flags"],
-  io: CliIo,
-  send: HttpSend,
-): Promise<number> {
-  const { targets, headers } = probeSetup(files, flags, io);
-  if (flags["dry-run"] === true) {
-    const requests = probeRequests(targets);
-    io.out(
-      flags.json === true
-        ? JSON.stringify({ requests, skipped: targets.skipped }, null, 2)
-        : ["叩く要求（--dry-run なので送っていません）:", ...requests.map((one) => `  ${one}`)].join("\n"),
-    );
-    return 0;
-  }
-  const report = await probe(targets, send, headers);
-  io.out(
-    flags.json === true
-      ? JSON.stringify(report, null, 2)
-      : renderProbe(report),
-  );
-  return hasProbeError(report) ? 1 : 0;
-}
-
-/** 見えないはずの口を、その役割で叩いて見る。 */
-async function attackCommand(
-  files: string[],
-  flags: Args["flags"],
-  io: CliIo,
-  send: HttpSend,
-): Promise<number> {
-  if (flags["all-roles"] === true) return sweepCommand(files, flags, io, send);
-  const role = str(flags, "role");
-  if (role === undefined) {
-    throw new Error(
-      "--role を渡してください（誰として叩くかが要ります）。" +
-        "役割ぜんぶを1枚にするなら --all-roles（資格は役割ごとに要ります）。",
-    );
-  }
-  const { targets, headers } = probeSetup(files, flags, io);
-  if (flags["dry-run"] === true) {
-    const requests = attackRequests(targets, role);
-    io.out(
-      flags.json === true
-        ? JSON.stringify({ role, requests }, null, 2)
-        : [`役割 "${role}" で叩く要求（--dry-run なので送っていません）:`, ...requests.map((one) => `  ${one}`)].join("\n"),
-    );
-    return 0;
-  }
-  const report = await attack(targets, role, send, headers);
-  io.out(
-    flags.json === true
-      ? JSON.stringify(report, null, 2)
-      : renderAttack(report),
-  );
-  return hasHole(report) ? 1 : 0;
-}
-
-/**
- * 役割ぜんぶ＋誰でもない人で叩く（`--all-roles`）。
- *
- * `--token` / `--headers` は受け付けない＝1つの資格を全部の役割に使うと、返ってきた
- * 200 が「その役割でも見えてしまう」なのか「いま使った資格なら正しい」なのか区別が
- * つかない（穴が在ることにも無いことにもできてしまう）。
- */
-async function sweepCommand(
-  files: string[],
-  flags: Args["flags"],
-  io: CliIo,
-  send: HttpSend,
-): Promise<number> {
-  if (str(flags, "token") !== undefined || str(flags, "headers") !== undefined) {
-    throw new Error(
-      "--all-roles では資格を役割ごとに渡します（--accounts accounts.json）。" +
-        "1つの資格で全部の役割を判定すると、200 が穴なのか正しいのか区別できません。",
-    );
-  }
-  const path = str(flags, "accounts");
-  if (path === undefined) {
-    throw new Error(
-      '--accounts accounts.json を渡してください（{ "hr": { "token": "…" } } の形）。' +
-        "資格の無い役割は叩かず、理由を残します。",
-    );
-  }
-  const accounts = parseAttackAccounts(JSON.parse(io.readFile(path)));
-  const { targets } = probeSetup(files, flags, io);
-  if (flags["dry-run"] === true) {
-    const roles = rolesToSweep(targets, accounts);
-    const plan = roles.map((role) => ({
-      role,
-      credential: accounts[role] === undefined ? null : "accounts から",
-      requests: attackRequests(targets, role),
-    }));
-    plan.push({
-      role: ANONYMOUS_LABEL,
-      credential: null,
-      requests: attackRequests(targets, ANONYMOUS),
-    });
-    io.out(
-      flags.json === true
-        ? JSON.stringify({ plan }, null, 2)
-        : [
-            "叩く要求（--dry-run なので送っていません）:",
-            ...plan.flatMap((one) => [
-              `  ${one.role}${one.credential === null ? "（資格なし）" : ""}`,
-              ...one.requests.map((request) => `    ${request}`),
-            ]),
-          ].join("\n"),
-    );
-    return 0;
-  }
-  const sweep = await attackAll(targets, accounts, send);
-  io.out(
-    flags.json === true
-      ? JSON.stringify(sweep, null, 2)
-      : renderAttackSweep(sweep),
-  );
-  return sweepHasHole(sweep) ? 1 : 0;
 }
 
 /** 解析して問題を報告する。1ファイルでも落ちれば終了コードは 1。 */

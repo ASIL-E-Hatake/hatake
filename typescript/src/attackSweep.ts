@@ -143,10 +143,13 @@ const headersFor = (account: AttackAccount): Record<string, string> => ({
 export function rolesToSweep(
   targets: RestTargets,
   accounts: AttackAccounts,
+  troubles: Record<string, string> = {},
 ): string[] {
   const found = new Set<string>([
     ...(targets.access?.roles ?? []),
     ...Object.keys(accounts),
+    // 資格が取れなかった役割も並べる（消すと表から行が消えて「全部 ok」に見える）。
+    ...Object.keys(troubles),
   ]);
   return [...found].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
 }
@@ -160,18 +163,26 @@ export async function attackAll(
   targets: RestTargets,
   accounts: AttackAccounts,
   send: HttpSend,
+  /**
+   * 資格が取れなかった役割と理由（`--login` が取りに行って失敗したぶん）。
+   *
+   * 渡さないと「資格が書かれていません」と言うことになり、**取りに行って断られた**のと
+   * 区別が付かない（前者は書き忘れ、後者は期限切れや利用者名の間違い）。
+   */
+  troubles: Record<string, string> = {},
 ): Promise<AttackSweep> {
   const runs: SweepRun[] = [];
   const skipped: SweepSkip[] = [];
 
-  for (const role of rolesToSweep(targets, accounts)) {
+  for (const role of rolesToSweep(targets, accounts, troubles)) {
     const account = accounts[role];
     if (account === undefined) {
       skipped.push({
         role,
         reason:
+          troubles[role] ??
           "資格が無いので叩いていません（accounts に token か headers を足してください）。" +
-          "1つの資格で他の役割を判定すると、返ってきた 200 が穴なのか正しいのか区別できません。",
+            "1つの資格で他の役割を判定すると、返ってきた 200 が穴なのか正しいのか区別できません。",
       });
       continue;
     }

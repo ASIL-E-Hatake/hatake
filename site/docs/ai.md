@@ -118,6 +118,8 @@ npx hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか
 npx hatake registry lib/main.dart              # アプリが登録しているものを実装から読む
 npx hatake attack app.yaml --all-roles --accounts accounts.json --base …  # 役割ぜんぶ＋誰でもない人で権限の穴を突く
+npx hatake attack app.yaml --all-roles --login login.json --since last.json --fail-on new
+                                       # 毎晩回す形（資格は毎回取る・変わった所だけ出す）
 ```
 
 `validate` は構文エラーだけでなく、**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション、存在しないページへの遷移、`sort` の無い `groupBy` など）。画面を見ても気づけない類なので、警告が出たら直す。

@@ -1427,19 +1427,34 @@ jobs:
           # ここから先は**本物の通信**。わざと食い違ったサーバを立てる
           # （偽の送信器を差し替えた試験では、fetch そのものは通らない）。
           cat > /tmp/stub-api.mjs <<'JS'
-          import { writeFileSync } from "node:fs";
+          import { appendFileSync, writeFileSync } from "node:fs";
           import { createServer } from "node:http";
           const json = (res, status, body) => {
             res.writeHead(status, { "content-type": "application/json" });
             res.end(JSON.stringify(body));
           };
           createServer((req, res) => {
+            const path = req.url.split("?")[0];
+            if (req.method === "POST" && path === "/auth/login") {
+              // 資格の口。**POST を受けるのはここだけ**（業務の口に POST が来たら
+              // 下で試験を落とす）。合言葉が違えば 401 を返す。
+              let body = "";
+              req.on("data", (chunk) => { body += chunk; });
+              req.on("end", () => {
+                const given = JSON.parse(body || "{}");
+                appendFileSync("/tmp/stub-logins", `${given.userId}\n`);
+                if (!String(given.password ?? "").endsWith("-pass")) {
+                  return json(res, 401, { message: "bad credentials" });
+                }
+                json(res, 200, { data: { accessToken: `tok-${given.userId}` } });
+              });
+              return;
+            }
             if (req.method !== "GET") {
               // 読むだけ、を**サーバ側から**縛る。1回でも来たら試験を落とす。
               writeFileSync("/tmp/stub-write-attempt", req.method);
               return json(res, 405, { message: "read-only stub" });
             }
-            const path = req.url.split("?")[0];
             const staff = req.headers.authorization === "Bearer staff";
             if (path === "/api/orders") {
               // 金額を**文字で**返す（BigDecimal を文字列で出す実装。画面では
@@ -1487,7 +1502,7 @@ jobs:
                 form:
                   sections: [{ fields: [{ field: itemCode, label: 品目 }] }]
           YAML
-          rm -f /tmp/stub-write-attempt
+          rm -f /tmp/stub-write-attempt /tmp/stub-logins
           node /tmp/stub-api.mjs & STUB=$!
           trap 'kill $STUB' EXIT
           curl -sf --retry 30 --retry-delay 1 --retry-connrefused             http://127.0.0.1:8099/api/orders > /dev/null
@@ -1538,7 +1553,88 @@ jobs:
             echo "1つの資格で役割ぜんぶを判定してしまった"; exit 1
           fi
           grep -q '役割ごとに渡します' /tmp/sweep-bad.log
-          # ここまでで、書き込む方式は1回も飛んでいないこと。
+
+          # ── 人が横に居ない所で回す（--login / --since / --fail-on new）────────
+          cat > /tmp/login.json <<'JSON'
+          {
+            "$comment": "資格の取り方。値は環境変数から取るので、このファイルは commit できる。",
+            "url": "http://127.0.0.1:8099/auth/login",
+            "tokenAt": "data.accessToken",
+            "roles": {
+              "admin": { "userId": "probe-admin", "password": "${ADMIN_PASSWORD}" },
+              "staff": { "userId": "probe-staff", "password": "${STAFF_PASSWORD}" }
+            }
+          }
+          JSON
+          # 環境変数が無ければ**落ちる**（空のまま送ると 401 が返り、「穴が無い」と
+          # 読める結果になる）。この段では1本も送っていないこと。
+          if node dist/cli.js attack /tmp/probe-app.yaml --all-roles \
+               --login /tmp/login.json --base http://127.0.0.1:8099/api \
+               > /tmp/login-noenv.log 2>&1; then
+            echo "合言葉が空なのに通ってしまった"; exit 1
+          fi
+          grep -q 'ADMIN_PASSWORD が空です' /tmp/login-noenv.log
+          test ! -f /tmp/stub-logins
+          export ADMIN_PASSWORD=a-pass STAFF_PASSWORD=s-pass
+          # --save が書くのは --json と同じもの（次の晩に読み直せる形でないと比べられない）。
+          node dist/cli.js attack /tmp/probe-app.yaml --all-roles \
+            --login /tmp/login.json --base http://127.0.0.1:8099/api \
+            --json > /tmp/night1-json.txt || true
+          node dist/cli.js attack /tmp/probe-app.yaml --all-roles \
+            --login /tmp/login.json --base http://127.0.0.1:8099/api \
+            --save /tmp/night1.json > /tmp/night1.log || true
+          diff /tmp/night1-json.txt /tmp/night1.json
+          # 役割ごとに取っている（役割の数だけ資格の口を叩く）。
+          grep -qx 'probe-admin' /tmp/stub-logins
+          grep -qx 'probe-staff' /tmp/stub-logins
+          # 取ったトークンは**どこにも出さない**（CI のログは残る）。
+          if grep -q 'tok-probe' /tmp/night1.log /tmp/night1.json; then
+            echo "トークンが出力に出た"; exit 1
+          fi
+          grep -q '誰でもない人=穴' /tmp/night1.log
+          # 手引きに書いた「初回は空の結果を置く」が本当に読めること。
+          echo '{"runs":[],"skipped":[],"pages":[]}' > /tmp/empty-run.json
+          if node dist/cli.js attack /tmp/probe-app.yaml --all-roles \
+               --login /tmp/login.json --base http://127.0.0.1:8099/api \
+               --since /tmp/empty-run.json --fail-on new > /tmp/first.log; then
+            echo "初回に穴が出たのに通ってしまった"; exit 1
+          fi
+          grep -q '新しく出たもの' /tmp/first.log
+          # 2晩目: 何も変わっていないので --fail-on new は落ちない。前から在る穴は
+          # 並べずに数だけ言う（毎晩同じ表を読ませない）。
+          node dist/cli.js attack /tmp/probe-app.yaml --all-roles \
+            --login /tmp/login.json --base http://127.0.0.1:8099/api \
+            --since /tmp/night1.json --save /tmp/night2.json --fail-on new \
+            > /tmp/night2.log
+          grep -q '前回と同じです' /tmp/night2.log
+          grep -q '前から続いているもの' /tmp/night2.log
+          if grep -q '誰でもない人=穴' /tmp/night2.log; then
+            echo "変わっていないものを並べている"; exit 1
+          fi
+          # 3晩目: staff の資格が通らなくなった。穴は報告から消えるが、**直ったとは
+          # 言わない**し、新しい分だけで落とす設定でも**落ちる**（何も見ていない晩に
+          # 静かに緑になるのが、この道具で一番まずい嘘）。
+          if STAFF_PASSWORD=wrong node dist/cli.js attack /tmp/probe-app.yaml \
+               --all-roles --login /tmp/login.json \
+               --base http://127.0.0.1:8099/api --since /tmp/night2.json \
+               --fail-on new > /tmp/night3.log; then
+            echo "叩けなくなったのに通ってしまった"; exit 1
+          fi
+          grep -q '前回は叩けていたのに、今回叩いていない相手' /tmp/night3.log
+          grep -q '資格が取れませんでした（401 が返りました）' /tmp/night3.log
+          if grep -q '\[直った\]' /tmp/night3.log; then
+            echo "叩いていない相手のぶんを「直った」と言った"; exit 1
+          fi
+          # --fail-on new は前回が無いと決められない。
+          if node dist/cli.js attack /tmp/probe-app.yaml --all-roles \
+               --login /tmp/login.json --base http://127.0.0.1:8099/api \
+               --fail-on new > /tmp/failon.log 2>&1; then
+            echo "比べる相手が無いのに新しいかどうかを言ってしまった"; exit 1
+          fi
+          grep -q -- '--since 前回.json が要ります' /tmp/failon.log
+
+          # ここまでで、業務の口に書き込む方式は1回も飛んでいないこと
+          # （POST を受けたのは資格の口だけ）。
           if [ -f /tmp/stub-write-attempt ]; then
             echo "読むだけの道具が $(cat /tmp/stub-write-attempt) を送った"; exit 1
           fi
