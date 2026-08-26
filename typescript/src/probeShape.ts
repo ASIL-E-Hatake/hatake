@@ -8,12 +8,42 @@ import type { DtoShape } from "./dto.js";
 /** 見つけたものの重さ。`error` があれば終了コードは 1。 */
 export type ProbeLevel = "error" | "caution";
 
+/**
+ * 食い違いの種類（**機械が引く鍵**）。
+ *
+ * `what` は人が読む文で、中に数が入る（「50 件を頼んで 61 件返っています」）。前回と
+ * 比べる（`--since`）ときに文で照合すると、**同じ食い違いが数が変わっただけで
+ * 「新しく出た」に見える**＝毎晩「新しい」と言い続ける表になる。なので「どこの・何が」
+ * は数を含まない印で持つ。
+ */
+export type ProbeKind =
+  | "unreachable"
+  | "no-endpoint"
+  | "refused"
+  | "bad-status"
+  | "not-json"
+  | "list-shape"
+  | "page-size-ignored"
+  | "total-too-small"
+  | "no-rows"
+  | "row-not-object"
+  | "rows-not-object"
+  | "no-key"
+  | "item-missing"
+  | "item-not-object"
+  | "missing-member"
+  | "type-mismatch";
+
 /** 食い違い1件。どこを叩いたかは [probe] が足す。 */
 export interface ProbeFinding {
   page: string;
+  /** 何の食い違いか（前回と比べるときの鍵）。 */
+  kind: ProbeKind;
   level: ProbeLevel;
   /** 叩いた要求（`GET http://…`）。 */
   request: string;
+  /** 項目の食い違いなら、その項目名（鍵の一部。数を含まない）。 */
+  at?: string;
   /** 何が食い違っているか（画面から見て何が起きるか、まで書く）。 */
   what: string;
   /** どうするか。直す先がサーバなのか定義なのかを言う。 */
@@ -70,6 +100,8 @@ function compareType(
   const harm = typeHarm(member.type, actual);
   if (harm === undefined) return undefined;
   return {
+    kind: "type-mismatch",
+    at: member.name,
     level: member.type === "string" ? "caution" : "error",
     what:
       `${where}の ${member.name} は ${member.type} の約束ですが ` +
@@ -93,6 +125,8 @@ export function compareRows(
     const present = rows.filter((row) => member.name in row);
     if (present.length === 0) {
       found.push({
+        kind: "missing-member",
+        at: member.name,
         level: "error",
         what: `一覧のどの行にも ${member.name}（${member.label || member.name}）がありません`,
         fix:
@@ -124,6 +158,8 @@ export function compareRecord(
     if (!(member.name in record)) {
       // 宣言していて返って来ない＝画面は空欄になる。任意なら業務の話なので軽く言う。
       found.push({
+        kind: "missing-member",
+        at: member.name,
         level: member.optional ? "caution" : "error",
         what: `${where}に ${member.name}（${member.label || member.name}）がありません`,
         fix:

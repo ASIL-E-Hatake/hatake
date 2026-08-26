@@ -199,6 +199,10 @@ npx hatake probe app.yaml --base http://localhost:8080/api --token "$JWT"
 食い違いがあれば終了コード 1 なので、**API 側の CI に置けます**（定義は API の受け入れ
 条件になります）。`--dry-run` を付けると叩かずに「何を叩くか」だけ出ます。
 
+`--json` では食い違い1件ごとに `kind` が付きます（`type-mismatch` / `list-shape` /
+`page-size-ignored` …）。文言（`what`）には件数が入るので、**同じものかどうかを機械が
+見るのはこの印**です（前回と比べる `--since` もこれを使っています）。
+
 **読むだけです。** `POST` / `PUT` / `DELETE` は宣言できても叩きません（試すたびに
 データが増える・消える）。方式は実行時に弾いてあるので、道具が壊れても業務データは
 壊れません。
@@ -258,6 +262,101 @@ npx hatake attack app.yaml --all-roles --accounts accounts.json --base http://lo
 定義に出てこない役割も `accounts` に書けば叩きます。穴を突く相手はたいてい**定義に
 書かれていない役割**です（`roles:` に書くのは絞る側の名前だけなので、平社員の名前は
 どこにも出てこない）。
+
+### 人が横に居ない所で回す（`--login` / `--since` / `--fail-on new`）
+
+ここまでの2つは**手で叩く道具**です。手で叩く道具は、忘れられたら手書きと同じなので、
+毎晩回る形にしておきます。そのために足りないものが3つありました。
+
+| 足りなかったもの | 何が起きるか | 足したもの |
+|---|---|---|
+| 資格を人が取っている（`--token`） | トークンは期限で落ちる＝CI に置けない | `--login login.json` |
+| 出力が毎晩同じ | 人は同じ表を読み続けられない＝読まれなくなる | `--since 前回.json` |
+| 前から在る穴でも落ちる | 毎晩赤いと、赤いことに意味が無くなる | `--fail-on new` |
+
+**資格の取り方をファイルに書きます。** 秘密は書きません（値は環境から取ります）。
+
+```json
+{
+  "$comment": "資格の取り方。値は環境変数から取るので、このファイルは commit できる。",
+  "url": "https://staging.example.com/auth/login",
+  "tokenAt": "data.accessToken",
+  "roles": {
+    "admin": { "userId": "probe-admin", "password": "${ADMIN_PASSWORD}" },
+    "staff": { "userId": "probe-staff", "password": "${STAFF_PASSWORD}" }
+  }
+}
+```
+
+- **環境変数が無ければ落ちます。** 空のまま送ると 401 が返り、その役割は「叩けなかった」
+  ではなく「穴が無い」と読める結果になります
+- **取ったトークンは出しません**（報告にも `--dry-run` にも）。CI のログは残るので
+- **役割ごとに取ります**（`--all-roles` が1つの資格を断っているのと同じ理由）。
+  取れなかった役割は**理由つきで**飛ばします＝「資格が書かれていません」（書き忘れ）と
+  「401 が返りました」（期限切れ・利用者名の間違い）が区別できる形で
+- `POST` はこの1本だけです。業務の口を叩く側は**いまも GET しか送れません**
+- 生の合言葉が書いてあれば言います（止めはしません＝捨ててよい環境で試す使い方があるので）
+
+**前回と比べて、変わった所だけ出します。**
+
+```bash
+npx hatake attack app.yaml --all-roles --login login.json --base "$BASE" \
+  --since last.json --save last.json --fail-on new
+```
+
+```
+権限の穴（役割ぜんぶ）: 前回との違い
+
+■ 新しく出たもの
+  [穴] staff: price_master: 画面からは見えないのに、200 で返ってきました（API が遮断していません）
+
+前から続いているもの: 2 件（変わっていないので並べていません）
+```
+
+- `--save` が書くのは `--json` と同じものです（次の晩の `--since` に渡す相手）。
+  `--since` を付けると出力は**違いだけ**になるので、残す口を別にしています
+- 数が変わっただけでは「新しく出た」になりません（`50 件を頼んで 61 件` → `71 件` は
+  同じ食い違いの続き）。基点（`--base`）が変わっても同じものとして扱います
+- **前回叩けていた相手を今回叩いていなければ、消えた穴を「直った」と言いません。**
+  資格が切れて役割を1つ叩けなくなった晩に静かに緑になるのが、この道具で一番まずい嘘なので、
+  そこは「叩いていないので分かりません」と言い、`--fail-on new` でも**落ちます**
+
+毎晩回す形（GitHub Actions）。前の晩の結果は artifact で持ち回ります。
+
+```yaml
+name: nightly-probe
+on:
+  schedule: [{ cron: "0 18 * * *" }]   # UTC
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: hatake-last-run, path: ., merge-multiple: true }
+        continue-on-error: true        # 初回は前回が無い
+      - run: |
+          test -f last.json || echo '{"runs":[],"skipped":[],"pages":[]}' > last.json
+          npx hatake attack app.yaml --all-roles --login login.json \
+            --base "$BASE" --since last.json --save next.json --fail-on new
+        env:
+          BASE: https://staging.example.com/api
+          ADMIN_PASSWORD: ${{ secrets.PROBE_ADMIN_PASSWORD }}
+          STAFF_PASSWORD: ${{ secrets.PROBE_STAFF_PASSWORD }}
+      - if: always()
+        run: mv next.json last.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: hatake-last-run, path: last.json, overwrite: true }
+```
+
+初回は前の晩が無いので、空の結果（`{"runs":[],"skipped":[],"pages":[]}`）を置いています。
+**初回だけは在るもの全部が「新しく出たもの」として出て、落ちます**（無いものを「前から
+在った」と書いて黙らせるよりは、1回読んでもらう方が正しい）。
+
+落ちた晩だけ読めばいい形になります（`--fail-on new` なので、**変わった晩だけ**赤くなる）。
+`probe` も同じ3つの旗を取ります。
 
 ## 押さえておくこと
 

@@ -2122,6 +2122,328 @@ describe("hatake probe / attack", () => {
     expect(runCli(["probe", "app.yaml", "--base", "http://x/api"], io)).toBe(1);
     expect(io.stderr.join("")).toContain("この入口からは呼べません");
   });
+
+  // ── 人が横に居ない所で回すための3つ（--login / --since / --fail-on）────────
+  //
+  // ここで守るのは、**何も見ていない晩に静かに緑にならないこと**。資格が切れて役割を
+  // 叩けなくなった晩は、穴が消えても「直った」と言わないし、--fail-on new でも落ちる。
+
+  const LOGIN = JSON.stringify({
+    url: "http://x/auth/login",
+    tokenAt: "accessToken",
+    roles: {
+      admin: { userId: "admin", password: "${ADMIN_PASSWORD}" },
+      staff: { userId: "staff", password: "${STAFF_PASSWORD}" },
+    },
+  });
+
+  /** 資格の口。役割ごとに違うトークンを返す（staff は拒否させられる）。 */
+  const authServer = (deny: string[] = []) => {
+    const sent: string[] = [];
+    const send = async (request: { url: string; body: string }) => {
+      const who = JSON.parse(request.body).userId as string;
+      sent.push(who);
+      return deny.includes(who)
+        ? { status: 401, body: "" }
+        : { status: 200, body: JSON.stringify({ accessToken: `jwt-${who}` }) };
+    };
+    return { send, sent };
+  };
+
+  const withEnv = (files: Record<string, string>) => ({
+    ...fakeIo(files),
+    env: { ADMIN_PASSWORD: "a-pass", STAFF_PASSWORD: "s-pass" },
+  });
+
+  /** 単価マスタが誰にでも開いている（穴が2つ在る）サーバで1回叩く。 */
+  const runSweep = async (
+    io: ReturnType<typeof fakeIo>,
+    extra: string[] = [],
+  ): Promise<number> => {
+    const { send } = server();
+    return runCliAsync(
+      [
+        "attack",
+        "app.yaml",
+        "--base",
+        "http://x/api",
+        "--all-roles",
+        "--accounts",
+        "accounts.json",
+        ...extra,
+      ],
+      io,
+      send,
+    );
+  };
+
+  const ACCOUNTS = '{"admin":{"token":"a"},"staff":{"token":"s"}}';
+
+  it("--save が書くのは --json と同じもの（次の晩に読み直せる形）", async () => {
+    const one = fakeIo({ "app.yaml": APP, "accounts.json": ACCOUNTS });
+    await runSweep(one, ["--json"]);
+    const two = fakeIo({ "app.yaml": APP, "accounts.json": ACCOUNTS });
+    await runSweep(two, ["--save", "last.json"]);
+    expect(two.written["last.json"]).toBe(`${one.stdout.join("\n")}\n`);
+  });
+
+  it("--since は変わった所だけ出す（叩いた結果そのものは出ない）", async () => {
+    const first = fakeIo({ "app.yaml": APP, "accounts.json": ACCOUNTS });
+    await runSweep(first, ["--save", "last.json"]);
+
+    const io = fakeIo({
+      "app.yaml": APP,
+      "accounts.json": ACCOUNTS,
+      "last.json": first.written["last.json"],
+    });
+    // 同じサーバ＝変わっていない。前から在る穴は並べず、数だけ言う。
+    expect(await runSweep(io, ["--since", "last.json"])).toBe(1);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("前回と同じです");
+    expect(out).toContain("前から続いているもの: 2 件");
+    expect(out).not.toContain("staff=穴");
+  });
+
+  it("--fail-on new は、前から在る穴では落ちない（変わった晩だけ鳴らす）", async () => {
+    const first = fakeIo({ "app.yaml": APP, "accounts.json": ACCOUNTS });
+    await runSweep(first, ["--save", "last.json"]);
+    const io = fakeIo({
+      "app.yaml": APP,
+      "accounts.json": ACCOUNTS,
+      "last.json": first.written["last.json"],
+    });
+    expect(
+      await runSweep(io, ["--since", "last.json", "--fail-on", "new"]),
+    ).toBe(0);
+  });
+
+  it("--fail-on new でも、資格が取れなくなった晩は落ちる", async () => {
+    const first = withEnv({ "app.yaml": APP, "login.json": LOGIN });
+    const { send } = server();
+    await runCliAsync(
+      [
+        "attack",
+        "app.yaml",
+        "--base",
+        "http://x/api",
+        "--all-roles",
+        "--login",
+        "login.json",
+        "--save",
+        "last.json",
+      ],
+      first,
+      send,
+      authServer().send,
+    );
+
+    const io = withEnv({
+      "app.yaml": APP,
+      "login.json": LOGIN,
+      "last.json": first.written["last.json"],
+    });
+    expect(
+      await runCliAsync(
+        [
+          "attack",
+          "app.yaml",
+          "--base",
+          "http://x/api",
+          "--all-roles",
+          "--login",
+          "login.json",
+          "--since",
+          "last.json",
+          "--fail-on",
+          "new",
+        ],
+        io,
+        server().send,
+        authServer(["staff"]).send,
+      ),
+    ).toBe(1);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("前回は叩けていたのに、今回叩いていない相手");
+    expect(out).toContain("401");
+    // 消えた穴を「直った」と言わない。
+    expect(out).toContain("直ったかは分かりません");
+    expect(out).not.toContain("[直った]");
+  });
+
+  it("--fail-on new は --since が無いと決められない", async () => {
+    const io = fakeIo({ "app.yaml": APP, "accounts.json": ACCOUNTS });
+    expect(await runSweep(io, ["--fail-on", "new"])).toBe(1);
+    expect(io.stderr.join("")).toContain("--since 前回.json が要ります");
+  });
+
+  it("--fail-on の知らない値は断る", async () => {
+    const io = fakeIo({ "app.yaml": APP, "accounts.json": ACCOUNTS });
+    expect(await runSweep(io, ["--fail-on", "hole"])).toBe(1);
+    expect(io.stderr.join("")).toContain("--fail-on は any か new");
+  });
+
+  it("--login は役割ごとに資格を取る。トークンは出力に出さない", async () => {
+    const io = withEnv({ "app.yaml": APP, "login.json": LOGIN });
+    const auth = authServer();
+    expect(
+      await runCliAsync(
+        [
+          "attack",
+          "app.yaml",
+          "--base",
+          "http://x/api",
+          "--all-roles",
+          "--login",
+          "login.json",
+          "--json",
+        ],
+        io,
+        server().send,
+        auth.send,
+      ),
+    ).toBe(1);
+    expect(auth.sent).toEqual(["admin", "staff"]);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("price_master");
+    expect(out).not.toContain("jwt-admin");
+    expect(out).not.toContain("a-pass");
+  });
+
+  it("--login で取れなかった役割は、書き忘れではなく理由で飛ばす", async () => {
+    const io = withEnv({ "app.yaml": APP, "login.json": LOGIN });
+    await runCliAsync(
+      [
+        "attack",
+        "app.yaml",
+        "--base",
+        "http://x/api",
+        "--all-roles",
+        "--login",
+        "login.json",
+      ],
+      io,
+      server().send,
+      authServer(["staff"]).send,
+    );
+    const out = io.stdout.join("\n");
+    expect(out).toContain("資格が取れませんでした（401 が返りました）");
+    expect(out).not.toContain("資格が無いので叩いていません");
+  });
+
+  it("--login --dry-run は送らず、値も出さない", async () => {
+    const io = withEnv({ "app.yaml": APP, "login.json": LOGIN });
+    const auth = authServer();
+    const { send, urls } = server();
+    expect(
+      await runCliAsync(
+        [
+          "attack",
+          "app.yaml",
+          "--base",
+          "http://x/api",
+          "--all-roles",
+          "--login",
+          "login.json",
+          "--dry-run",
+        ],
+        io,
+        send,
+        auth.send,
+      ),
+    ).toBe(0);
+    expect(urls).toEqual([]);
+    expect(auth.sent).toEqual([]);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("POST http://x/auth/login");
+    expect(out).toContain('"password":"***"');
+    expect(out).not.toContain("a-pass");
+    expect(out).toContain("login から（毎回取ります）");
+  });
+
+  it("資格の出どころは1つ（--login と --token / --accounts は併用しない）", async () => {
+    const io = withEnv({ "app.yaml": APP, "login.json": LOGIN, "accounts.json": ACCOUNTS });
+    expect(
+      await runCliAsync(
+        [
+          "probe",
+          "app.yaml",
+          "--base",
+          "http://x/api",
+          "--login",
+          "login.json",
+          "--token",
+          "t",
+        ],
+        io,
+        server().send,
+        authServer().send,
+      ),
+    ).toBe(1);
+    expect(io.stderr.join("")).toContain("--login と --token / --headers は一緒に使えません");
+
+    const io2 = withEnv({
+      "app.yaml": APP,
+      "login.json": LOGIN,
+      "accounts.json": ACCOUNTS,
+    });
+    expect(await runSweep(io2, ["--login", "login.json"])).toBe(1);
+    expect(io2.stderr.join("")).toContain("--accounts と --login は一緒に使えません");
+  });
+
+  it("--all-roles の --login は役割ごとの取り方が要る", async () => {
+    const io = withEnv({
+      "app.yaml": APP,
+      "login.json": JSON.stringify({
+        url: "http://x/auth/login",
+        tokenAt: "accessToken",
+        body: { userId: "one", password: "${ADMIN_PASSWORD}" },
+      }),
+    });
+    expect(
+      await runCliAsync(
+        [
+          "attack",
+          "app.yaml",
+          "--base",
+          "http://x/api",
+          "--all-roles",
+          "--login",
+          "login.json",
+        ],
+        io,
+        server().send,
+        authServer().send,
+      ),
+    ).toBe(1);
+    expect(io.stderr.join("")).toContain("login.json に roles が要ります");
+  });
+
+  it("生の合言葉が書いてあれば言う（止めはしない）", async () => {
+    const io = fakeIo({
+      "app.yaml": APP,
+      "login.json": JSON.stringify({
+        url: "http://x/auth/login",
+        tokenAt: "accessToken",
+        body: { userId: "one", password: "hunter2" },
+      }),
+    });
+    expect(
+      await runCliAsync(
+        [
+          "probe",
+          "app.yaml",
+          "--base",
+          "http://x/api",
+          "--login",
+          "login.json",
+        ],
+        io,
+        server().send,
+        authServer().send,
+      ),
+    ).toBe(0);
+    expect(io.stderr.join("")).toContain("password に生の値");
+  });
 });
 
 describe("hatake wire --merge", () => {

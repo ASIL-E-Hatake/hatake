@@ -16,10 +16,18 @@ npx hatake wire app.yaml --merge lib/wiring.dart --write     # add only the miss
 npx hatake probe app.yaml --base http://localhost:8080/api   # does the server answer what the definition declares?
 npx hatake attack app.yaml --role staff --base http://localhost:8080/api  # does the API refuse what the screen hides?
 npx hatake attack app.yaml --all-roles --accounts accounts.json --base …   # every role + nobody, in one table (one credential per role)
+npx hatake attack app.yaml --all-roles --login login.json --base … --since last.json --save last.json --fail-on new   # nightly: only what changed
 ```
 
 `probe` and `attack` are **read-only** (they never send `POST` / `PUT` / `DELETE`); pass
 `--dry-run` to print the requests instead of sending them.
+
+To run them unattended, `--login login.json` fetches the credentials itself (one round trip
+per role; secrets come from `${ENVIRONMENT_VARIABLES}`, never from the file, and the token is
+never printed) and `--since last.json` prints **only what changed** since the previous run
+(`--save` writes the run for next time; `--fail-on new` fails only on what is new). If a role
+that was probed before was **not** probed this time (expired credentials), its holes are
+reported as "we did not look" rather than "fixed", and `--fail-on new` still fails.
 
 `refs` lists the names the definition expects from outside (repositories, plugins, custom
 formatters). Pass that list to `validate --registry <file>` and a mismatched name is

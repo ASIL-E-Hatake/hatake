@@ -25,16 +25,19 @@ import {
   compareRows,
   kindOf,
   type ProbeFinding,
+  type ProbeKind,
   type ProbeLevel,
 } from "./probeShape.js";
 import type { RestTarget, RestTargets, SkippedPage } from "./restTarget.js";
 
-export type { ProbeFinding, ProbeLevel } from "./probeShape.js";
+export type { ProbeFinding, ProbeKind, ProbeLevel } from "./probeShape.js";
 
 export interface ProbeReport {
   findings: ProbeFinding[];
   /** 叩いた要求（叩いた順）。 */
   requests: string[];
+  /** 叩いた画面（`--since` で前回と比べるとき、相手が減ったかを見るのに使う）。 */
+  pages: string[];
   /** 叩かなかったものと理由。 */
   skipped: SkippedPage[];
 }
@@ -90,16 +93,22 @@ async function probeList(
   findings: ProbeFinding[],
 ): Promise<Record<string, unknown> | undefined> {
   const request = `GET ${target.listUrl}`;
-  const add = (level: ProbeLevel, what: string, fix?: string): void => {
-    findings.push({ page: target.page, level, request, what, fix });
+  const add = (
+    kind: ProbeKind,
+    level: ProbeLevel,
+    what: string,
+    fix?: string,
+  ): void => {
+    findings.push({ page: target.page, kind, level, request, what, fix });
   };
   const answer = await get(send, target.listUrl, headers);
   if ("error" in answer) {
-    add("error", `叩けませんでした（${answer.error}）`, "基点（--base）とサーバが動いているかを確かめてください。");
+    add("unreachable", "error", `叩けませんでした（${answer.error}）`, "基点（--base）とサーバが動いているかを確かめてください。");
     return undefined;
   }
   if (answer.status === 404) {
     add(
+      "no-endpoint",
       "error",
       "その口がありません（404）",
       "集合の名前が違います。--collection で実物に合わせてください" +
@@ -109,6 +118,7 @@ async function probeList(
   }
   if (answer.status === 401 || answer.status === 403) {
     add(
+      "refused",
       "error",
       `拒否されました（${answer.status}）`,
       "--token / --headers で、その画面を開ける人の資格を渡してください。",
@@ -116,11 +126,12 @@ async function probeList(
     return undefined;
   }
   if (answer.status < 200 || answer.status >= 300) {
-    add("error", `${answer.status} が返りました（${head(answer.body)}）`);
+    add("bad-status", "error", `${answer.status} が返りました（${head(answer.body)}）`);
     return undefined;
   }
   if (answer.json === undefined) {
     add(
+      "not-json",
       "error",
       `JSON が返っていません（${head(answer.body)}）`,
       "一覧は {items, totalCount} の JSON を返す約束です。",
@@ -132,6 +143,7 @@ async function probeList(
   const total = body?.totalCount;
   if (body === undefined || !Array.isArray(items) || typeof total !== "number") {
     add(
+      "list-shape",
       "error",
       `一覧の形が違います（返り: ${Array.isArray(answer.json) ? "配列" : `{${Object.keys(body ?? {}).join(", ")}}`}）`,
       "{items: [...], totalCount: 0} を返してください" +
@@ -141,6 +153,7 @@ async function probeList(
   }
   if (items.length > target.pageSize) {
     add(
+      "page-size-ignored",
       "caution",
       `${target.pageSize} 件を頼んで ${items.length} 件返っています`,
       "pageSize が効いていません（ページ送りが動かず、行が増えるほど重くなります）。",
@@ -148,6 +161,7 @@ async function probeList(
   }
   if (total < items.length) {
     add(
+      "total-too-small",
       "caution",
       `totalCount（${total}）が返ってきた行数（${items.length}）より少ないです`,
       "件数は絞り込み後の全件です（ページ送りの表示と次ページの有無が狂います）。",
@@ -155,6 +169,7 @@ async function probeList(
   }
   if (items.length === 0) {
     add(
+      "no-rows",
       "caution",
       "0 件でした（返ってくる項目を確かめられません）",
       "1件でもデータを入れてから叩いてください（形の食い違いは行が無いと出ません）。",
@@ -166,11 +181,12 @@ async function probeList(
   );
   const first = rows[0];
   if (first === undefined) {
-    add("error", `一覧の行が object ではありません（${kindOf(items[0])}）`);
+    add("row-not-object", "error", `一覧の行が object ではありません（${kindOf(items[0])}）`);
     return undefined;
   }
   if (rows.length < items.length) {
     add(
+      "rows-not-object",
       "error",
       `一覧に object でない行が ${items.length - rows.length} 件あります`,
     );
@@ -186,6 +202,7 @@ async function probeList(
     !rows.some((row) => target.keyField! in row)
   ) {
     add(
+      "no-key",
       "error",
       `行に鍵（${target.keyField}）がありません`,
       "行を特定できないので、開く・直す・消すが動きません（列に出さなくても返してください）。",
@@ -204,16 +221,22 @@ async function probeItem(
 ): Promise<void> {
   const url = `${target.collection}/${encodeURIComponent(key)}`;
   const request = `GET ${url}`;
-  const add = (level: ProbeLevel, what: string, fix?: string): void => {
-    findings.push({ page: target.page, level, request, what, fix });
+  const add = (
+    kind: ProbeKind,
+    level: ProbeLevel,
+    what: string,
+    fix?: string,
+  ): void => {
+    findings.push({ page: target.page, kind, level, request, what, fix });
   };
   const answer = await get(send, url, headers);
   if ("error" in answer) {
-    add("error", `叩けませんでした（${answer.error}）`);
+    add("unreachable", "error", `叩けませんでした（${answer.error}）`);
     return;
   }
   if (answer.status === 404) {
     add(
+      "item-missing",
       "error",
       `一覧に在る行（${key}）が1件取得で見つかりません`,
       "鍵の綴りか経路が違います（詳細も編集も開けません）。",
@@ -221,12 +244,13 @@ async function probeItem(
     return;
   }
   if (answer.status < 200 || answer.status >= 300) {
-    add("error", `${answer.status} が返りました（${head(answer.body)}）`);
+    add("bad-status", "error", `${answer.status} が返りました（${head(answer.body)}）`);
     return;
   }
   const record = asDict(answer.json);
   if (record === undefined) {
     add(
+      "item-not-object",
       "error",
       `1件のレコード（object）ではありません（${kindOf(answer.json)}）`,
       "1件取得は object を返す約束です（配列で包まないでください）。",
@@ -289,7 +313,12 @@ export async function probe(
     requests.push(`GET ${target.collection}/${encodeURIComponent(`${key}`)}`);
     await probeItem(target, `${key}`, send, headers, findings);
   }
-  return { findings, requests, skipped };
+  return {
+    findings,
+    requests,
+    pages: targets.targets.map((one) => one.page),
+    skipped,
+  };
 }
 
 const SIGN: Record<ProbeLevel, string> = { error: "食い違い", caution: "要確認" };
