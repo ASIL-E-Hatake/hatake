@@ -1390,6 +1390,27 @@ describe("hatake reference", () => {
     expect(reference.nodes.column.keys[0].key).toBe("field");
   });
 
+  it("--placeholders は差し込みの一覧（スキーマは読まない）", () => {
+    // spec/ を渡していなくても引ける＝差し込みはスキーマではなく、埋める側の取り決め。
+    const io = fakeIo();
+    expect(runCli(["reference", "--placeholders"], io)).toBe(0);
+    const text = io.stdout.join("\n");
+    expect(text).toContain("{failedKeys}");
+    expect(text).toContain("埋まるのは");
+    expect(text).toContain("ここに無いものは埋まりません");
+
+    const asJson = fakeIo();
+    expect(runCli(["reference", "--placeholders", "--json"], asJson)).toBe(0);
+    const doc = JSON.parse(asJson.stdout.join("\n")) as {
+      contexts: { id: string; placeholders: { name: string }[] }[];
+    };
+    expect(doc.contexts.map((one) => one.id)).toEqual([
+      "action-message",
+      "validation-message",
+      "route-params",
+    ]);
+  });
+
   it("looks one name up — which is the point of having an index", () => {
     const io = fakeIo(specFiles);
     expect(runCli(["reference", "rowsPerPage", "--spec", SPEC], io)).toBe(0);

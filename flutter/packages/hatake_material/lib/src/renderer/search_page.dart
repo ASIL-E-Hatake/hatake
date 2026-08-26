@@ -67,11 +67,22 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
       record: record,
       records: selected,
       onExport: _export,
+      onSelectFailed: _selectFailed,
     );
     // 実行できたら選択を解く（同じ行に二度実行するのは、まず事故）。
     if (ran && selected.isNotEmpty && mounted) {
       setState(_selection.clear);
     }
+  }
+
+  /// 一括が一部だけ失敗したとき、**失敗した行だけを選び直す**。
+  ///
+  /// 「3件失敗しました」で終わると、現場は全部やり直すことになる。名指しできている
+  /// なら、その行だけを選んだ状態に戻して、もう一度押せるようにする。いま画面に無い
+  /// 行は選ばない（[_RowSelection.keepOnly] が絞る）。
+  void _selectFailed(List<Object?> keys) {
+    if (!mounted) return;
+    setState(() => _selection.keepOnly(keys, _controller.items, _def.keyField));
   }
 
   /// Re-query so the CSV holds the whole result, not just the page on screen.

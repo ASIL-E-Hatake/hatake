@@ -73,7 +73,15 @@ onError:
 
 **`onError` に遷移先は書けない。** `onSuccess` は書けるのに無いのは意図的で、失敗した画面から離れると、何が起きたか読めなくなり、直すべき行も視界から消える。
 
-`{error}` は失敗の理由。ほかに `{count}` / `{failed}` / `{total}`（件数）が書けるが、**埋まるのは一括（`scope: selection`）のときだけ**。埋まらない差し込みは文字のまま出てしまうので、`npx hatake validate` が押す前に言う（`placeholder-not-filled`）。
+`{error}` は失敗の理由。ほかに `{count}` / `{failed}` / `{total}`（件数）と `{failedKeys}`（失敗した行のキー）が書けるが、**埋まるのは一括（`scope: selection`）のときだけ**。埋まらない差し込みは文字のまま出てしまうので、`npx hatake validate` が押す前に言う（`placeholder-not-filled`）。
+
+差し込みは**閉じた集合**。`{orderNo}` のように項目名を書いても埋まらず、そのまま文字で出る（レコードの値は文言に渡っていない）。開いた形なのは遷移のパラメータ（`$row.<項目名>`）だけで、そこと混同しやすい。書ける全部と「いつ埋まるか」は引ける。
+
+```bash
+npx hatake reference --placeholders
+```
+
+`onError` を**書かなかった**ときは、失敗の理由がそのまま画面に出る（業務の言葉ではない）。書き忘れても動くので、`npx hatake explain` が「失敗したら理由がそのまま出る」と読み返しに出す。
 
 ## 一括は「一部だけ失敗」が普通
 
@@ -82,19 +90,30 @@ onError:
 ```dart
 'approveOrders': (ctx) async {
   final rejected = await api.approve(ctx.records);   // 呼ぶのは1回
-  ctx.report(ActionOutcome(
+  // 行を**名指しで**報告する（件数だけでも動く）。
+  ctx.report(ActionOutcome.rejected(
     succeeded: ctx.records.length - rejected.length,
-    failed: rejected.length,
+    rows: [for (final one in rejected) FailedRow(one.orderNo, reason: one.why)],
   ));
 },
 ```
 
 ```yaml
 onSuccess: { message: '{count} 件を承認しました' }
-onError:   { message: '{count} 件を承認しました（{failed} 件は出荷済み）' }
+onError:   { message: '{count} 件を承認しました（{failed} 件は出荷済み: {failedKeys}）' }
 ```
 
 **1件でも失敗が残っていれば `onSuccess` は動かない。** 画面を移してしまうと、直すべき行が視界から消えるため。何も報告せずに戻ったら成功扱いで、一括なら渡した行数がそのまま `{count}` に入る。
+
+### 「3件失敗しました」で終わらせない
+
+件数だけ言われると、現場は**全部やり直す**しかない。行を名指しで報告すると3つ付いてくる。
+
+- 文言の `{failedKeys}` が埋まる（`SO-2, SO-7`）
+- 失敗の通知から**「どの行か」**を開ける（キーと理由を1件ずつ。理由は行ごとに違ってよい）
+- そこから**その行だけを選び直せる**（もう一度押す相手を、人が選び直さなくていい）
+
+名指ししなければ件数だけの報告として扱われ、`{failedKeys}` は文字のまま出る（「行が分かっていない」と読める）。`failed` より少なく名指ししてもよく、そのときは「1 件だけが分かっています」と出る＝分かっていない分を無かったことにしない。
 
 ## 文言だけ差し替えたいとき
 

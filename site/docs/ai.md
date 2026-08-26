@@ -103,6 +103,7 @@ AI に書かせるにしても、最後は機械で確かめる。エージェ�
 npx hatake validate page.yaml          # 検証。--json で機械可読、--warn-as-error で CI を落とせる
 npx hatake new crud --id customer --title 顧客マスタ
 npx hatake reference rowsPerPage       # そのキーの型・既定値・書ける場所
+npx hatake reference --placeholders    # 文言に書ける差し込みと、いつ埋まるか
 npx hatake examples 帳票               # 近い例
 npx hatake pitfalls groupBy            # 間違い → 正しい書き方
 npx hatake failures unknown-repository # 実際に転んだ実例（なぜそう書くか付き）

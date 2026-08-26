@@ -14,6 +14,7 @@ import { diffDefinitions } from "./defDiff.js";
 import { renderExplain } from "./explain.js";
 import { appAccess, opensByRole } from "./appAccess.js";
 import { renderRoles, roleTitleOf } from "./explainRoles.js";
+import { PLACEHOLDER_CONTEXTS } from "./placeholders.js";
 import { roleInventory } from "./roles.js";
 import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
 import {
@@ -93,6 +94,8 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 1. hatake_examples で近い例を探す（例をコピーして直すのが一番速い）
 2. 新規なら hatake_new_page で雛形を出す
 3. キーの型・既定値・書ける場所に迷ったら hatake_reference で引く（仕様書は読まなくていい）
+   文言に差し込み（{count} など）を書くなら hatake_reference の placeholders: true
+   （**閉じた集合**なので、項目名を書いても埋まらない＝そのまま文字で出る）
 4. 書けたら必ず hatake_validate にかける（知らないキーは黙って捨てられるので、書いた気になって効いていない事故が起きる）
    問題が出たら hatake_fix に通す（綴り違いのような**一意な直し**は自分で書き直さない。別の所を壊す）
    そのあと hatake_explain で読み返す（**書いたものが意図どおりか**は、警告では分からない）
@@ -167,7 +170,12 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "ページ種別（crud）のどれを渡してもよく、当たったものを全部返す。" +
         "name を省くと全体（大きいので pageKind での絞り込みを推奨）。" +
         "values は取れる値で、open が true なら組み込みの一覧＝プラグインで足せる、false なら enum。" +
-        "closed が false のノードは中身が自由（config など）。",
+        "closed が false のノードは中身が自由（config など）。" +
+        "**placeholders を true にすると、文言に書ける差し込みの一覧**" +
+        "（{count} / {failed} / {failedKeys} / {error} / {value} / $row.<項目名>）と、" +
+        "それぞれ**いつ埋まるか**。差し込みは**閉じた集合**で、書いていないものは" +
+        "そのまま文字として出る（レコードの値は文言に渡っていない）＝ここを引かずに" +
+        "書くと、押すまで気づけない。",
       inputSchema: {
         type: "object",
         properties: {
@@ -180,9 +188,19 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             description:
               "その画面で使える範囲だけに絞る（crud / master / search / detail / form / wizard / dashboard / report）。",
           },
+          placeholders: {
+            type: "boolean",
+            description:
+              "文言に書ける差し込みの一覧を返す（既定 false）。name / pageKind は見ない。",
+          },
         },
       },
       run(args) {
+        // 差し込みはスキーマに書いていない取り決め（埋める側の約束）なので、
+        // リファレンスとは別の答えとして返す。
+        if (args.placeholders === true) {
+          return pretty({ contexts: PLACEHOLDER_CONTEXTS });
+        }
         const kind = str(args, "pageKind");
         let ref = reference();
         if (kind !== undefined) {

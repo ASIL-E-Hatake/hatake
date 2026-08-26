@@ -292,6 +292,12 @@ const WORDS = {
     (message: string) => `失敗したら「${message}」と出す`,
     (message: string) => `on failure says "${message}"`,
   ),
+  // 書いていないときに何が出るかも言う。失敗の文言は**書き忘れても動く**ので、
+  // レビューで一番落ちる（画面には生の理由が出て、現場には読めない）。
+  onFailRaw: pair(
+    "失敗したら理由がそのまま出る（業務の言葉にするなら onError）",
+    "on failure shows the raw reason (write onError to say it in business words)",
+  ),
   onlyForRoles: pair(
     (roles: string[]) => `${list(roles)} だけに出る`,
     (roles: string[]) => `shown to ${list(roles)} only`,

@@ -28,14 +28,21 @@ class BulkDialog extends StatelessWidget {
         input: ctx.input,
       ),
     );
-    // 「出荷済みは承認できない」＝業務の判断はアプリ側。結果は件数で報告して、
-    // 何と言うかは定義（onSuccess / onError）に任せる。一部だけ失敗するのが
-    // 一括の普通の姿なので、デモもそこを見せる。
+    // 「出荷済みは承認できない」＝業務の判断はアプリ側。結果を報告して、何と言うかは
+    // 定義（onSuccess / onError）に任せる。一部だけ失敗するのが一括の普通の姿なので、
+    // デモもそこを見せる。
+    //
+    // **行を名指しで報告する**（件数だけでも動くが、それだと現場は全部やり直すことに
+    // なる）。名指しすると、文言の {failedKeys} が埋まり、画面から「どの行か」を開けて、
+    // その行だけを選び直せる。
     final rejected =
-        ctx.records.where((r) => r['status'] == '出荷済').length;
-    ctx.report(ActionOutcome(
-      succeeded: ctx.records.length - rejected,
-      failed: rejected,
+        ctx.records.where((r) => r['status'] == '出荷済').toList();
+    ctx.report(ActionOutcome.rejected(
+      succeeded: ctx.records.length - rejected.length,
+      rows: [
+        for (final row in rejected)
+          FailedRow(row['orderNo'], reason: '出荷済みなので承認できません'),
+      ],
     ));
   }
 

@@ -447,7 +447,7 @@ actions:
 * `onError` が無ければ**失敗の理由がそのまま出る**（`RepositoryHttpException: … 500 …`）。業務の言葉で言うならここに書く。**`page` は無い**＝失敗した画面から離れると、何が起きたか読めなくなり直す行も見えなくなる
 * 差し込みは**埋まるときだけ**埋まる（`{error}` は失敗時、`{count}` / `{failed}` / `{total}` は `scope: selection` のときだけ）。**書けるのはこの4つだけ**＝`{orderNo}` のような項目名は埋まらない（レコードの値は文言に渡っていない）。埋まらない差し込みは文字のまま出るので、`validate` が `placeholder-not-filled` で先に言う
 * **押す前の文言**（`confirm.title` / `confirm.message` / `prompt.title`）にも `{count}` を書ける＝**選んだ行の数**が入る。走る前なので `{failed}` / `{total}` / `{error}` は埋まらない。ボタンにも件数は出るが、**最後に読むのは確認の文**なので、そこに書く（`advise` が `bulk-confirm-without-count` で言う）
-* 一括の結果はハンドラが `ctx.report(ActionOutcome(succeeded: …, failed: …))` で返す。**一部でも失敗したら `onSuccess` は動かない**（1件残っているのに画面を移さない）
+* 一括の結果はハンドラが `ctx.report(ActionOutcome.rejected(succeeded: …, rows: [FailedRow(key, reason: …)]))` で返す（件数だけの `ActionOutcome(succeeded:, failed:)` でもよい）。**一部でも失敗したら `onSuccess` は動かない**（1件残っているのに画面を移さない）。**行を名指しすると**文言の `{failedKeys}` が埋まり、通知から「どの行か」を開けて、その行だけを選び直せる
 * **実行の前に聞く**なら `prompt`（「却下の理由を書いてから却下」）。項目は**普通の `field`**（型・`required`・`validators`・`computed`・`normalize` がフォームと同じに効く）で、ハンドラは `ctx.input` で受け取る。**確認ダイアログは増えない**（`prompt` の OK が確認そのもの＝`confirm` の文言とボタン名を引き取る）。受け取れるのは `type: plugin` だけ
 
 ```yaml

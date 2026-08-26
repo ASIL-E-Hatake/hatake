@@ -142,6 +142,111 @@ void main() {
     expect(find.text('承認しました'), findsNothing);
   });
 
+  testWidgets('行を名指しで報告したら、{failedKeys} が埋まる', (tester) async {
+    await tester.pumpWidget(_harness(
+      _page(
+        scope: ActionScopes.selection,
+        onError: const ActionErrorDefinition(
+          message: '{failed} 件を承認できませんでした（{failedKeys}）',
+        ),
+      ),
+      (ctx) async => ctx.report(ActionOutcome.rejected(
+        succeeded: 1,
+        rows: const [FailedRow('SO-2', reason: '締め済み')],
+      )),
+    ));
+    await tester.pumpAndSettle();
+    await _press(tester, select: 2);
+
+    expect(find.text('1 件を承認できませんでした（SO-2）'), findsOneWidget);
+  });
+
+  testWidgets('名指しできていなければ {failedKeys} は文字のまま出る', (tester) async {
+    // 埋まらない差し込みを消してしまうと「行が分かっている」と読める。
+    await tester.pumpWidget(_harness(
+      _page(
+        scope: ActionScopes.selection,
+        onError: const ActionErrorDefinition(
+          message: '{failed} 件が失敗（{failedKeys}）',
+        ),
+      ),
+      (ctx) async => ctx.report(const ActionOutcome(succeeded: 1, failed: 1)),
+    ));
+    await tester.pumpAndSettle();
+    await _press(tester, select: 2);
+
+    expect(find.text('1 件が失敗（{failedKeys}）'), findsOneWidget);
+    // 行が分からないので「どの行か」も出さない。
+    expect(find.text('どの行か'), findsNothing);
+  });
+
+  testWidgets('「どの行か」で、失敗した行と理由が1件ずつ出る', (tester) async {
+    await tester.pumpWidget(_harness(
+      _page(scope: ActionScopes.selection),
+      (ctx) async => ctx.report(ActionOutcome.rejected(
+        rows: const [
+          FailedRow('SO-1', reason: '締め済み'),
+          FailedRow('SO-2'),
+        ],
+      )),
+    ));
+    await tester.pumpAndSettle();
+    await _press(tester, select: 2);
+
+    await tester.tap(find.text('どの行か'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('hatake.failedRows')), findsOneWidget);
+    expect(find.text('SO-1'), findsWidgets);
+    expect(find.text('締め済み'), findsOneWidget);
+    // 理由が無い行も並ぶ（黙って落とすと「1件だけ失敗した」に見える）。
+    expect(find.text('SO-2'), findsWidgets);
+  });
+
+  testWidgets('件数より少なく名指ししたら、そう言う（分かっている分だけ）',
+      (tester) async {
+    await tester.pumpWidget(_harness(
+      _page(scope: ActionScopes.selection),
+      (ctx) async => ctx.report(const ActionOutcome(
+        failed: 2,
+        rows: [FailedRow('SO-1')],
+      )),
+    ));
+    await tester.pumpAndSettle();
+    await _press(tester, select: 2);
+    await tester.tap(find.text('どの行か'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('1 件だけが分かっています'), findsOneWidget);
+  });
+
+  testWidgets('「この行だけ選ぶ」で、失敗した行だけが選ばれる', (tester) async {
+    await tester.pumpWidget(_harness(
+      _page(scope: ActionScopes.selection),
+      (ctx) async => ctx.report(ActionOutcome.rejected(
+        succeeded: 1,
+        rows: const [FailedRow('SO-2', reason: '締め済み')],
+      )),
+    ));
+    await tester.pumpAndSettle();
+    await _press(tester, select: 2);
+    // 2件選んで押した＝ボタンは「承認（2 件）」のまま（失敗なので選択は解けない）。
+    expect(find.text('承認（2 件）'), findsOneWidget);
+
+    await tester.tap(find.text('どの行か'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('hatake.failedRows.select')));
+    await tester.pumpAndSettle();
+
+    // 失敗した1件だけが選ばれた状態＝そのままもう一度押せる。
+    expect(find.text('承認（1 件）'), findsOneWidget);
+    final ticked = tester
+        .widgetList<Checkbox>(find.byType(Checkbox))
+        .where((one) => one.value == true)
+        .length;
+    expect(ticked, 1);
+  });
+
   testWidgets('全部失敗したら、そう言う', (tester) async {
     await tester.pumpWidget(_harness(
       _page(scope: ActionScopes.selection),
