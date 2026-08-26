@@ -86,7 +86,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 
 | 道具 | いつ使うか | 主な引数 |
 |---|---|---|
-| `hatake_reference` | キーの型・既定値・書ける場所・取れる値を知りたい。仕様書を読む代わり | `name`（キー名/ノード名/ページ種別）、`pageKind`（その画面の分だけに絞る） |
+| `hatake_reference` | キーの型・既定値・書ける場所・取れる値を知りたい。仕様書を読む代わり。**`placeholders: true` で文言に書ける差し込みの一覧**（`{count}` / `{failedKeys}` / `$row.<項目名>` …と、いつ埋まるか） | `name`（キー名/ノード名/ページ種別）、`pageKind`（その画面の分だけに絞る）、`placeholders` |
 | `hatake_examples` | 定義を書き始める前に近い例を探す。`file` を渡すと YAML 全文 | `query`（日本語でよい）、`file` |
 | `hatake_validate` | 書いたら/直したら必ず通す。知らないキーを全部まとめて指摘＋綴りの提案 | `source`（中身そのもの）、`strict`（既定 true）、`registry`（アプリ側で登録済みのもの＝外との辻褄も見る） |
 | `hatake_advise` | **検証を通したあと**：書いて**いない**から不便かもしれない所を挙げる（並べ替えできない一覧・誰でも消せる画面・確認の無い一括）。好みなので直すかは業務の判断。**`draft` に書く値の下書きが付く** | `source`、`page`（app のとき1枚だけ）、`rules`（案件の物差し＝`off` / `options` / `require`） |
@@ -125,6 +125,8 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 `hatake_diff` は変更を **area**（api / ui / access / app）と **impact**（breaking / caution / safe）で返します。`compatible: false` は呼び出し側の修正が要る話、`quiet: false` は「壊れないが人に確かめてほしい」話（列やボタンや選択肢が消えた・権限が変わった・ページやメニューが消えた）。エージェントには**後者を黙って進めず列挙させる**ようにしてあります。
 
 `hatake_validate` と `hatake_advise` は**別の物差し**です。前者は「書いたのに効かない」＝事実なので直す。後者は「書いていないから不便かもしれない」＝**好み**なので、直すかどうかは業務の判断。AI にとって大事なのは、**書いていないことは検証に出てこない**という点です（並べ替えできない一覧も、確認の無い一括も、定義としては正しい）。案件の決めごとがあるなら `rules` を渡してください（合わない規則を止める `off`、目盛りを変える `options`、決めごとを足す `require`）。知らないキーや知らない規則名は**黙って無視せずエラー**にします。
+
+`hatake_reference` の `placeholders: true` は、**文言に書ける差し込みの全部**を返します。差し込みは閉じた集合で、`{orderNo}` のように項目名を書いても埋まりません（そのまま文字として出る）。開いた形なのは遷移のパラメータ（`$row.<項目名>`）だけで、AI がいちばん混同するのがここです。埋まる条件も3つの印で返るので（`bulkOnly` / `afterRun` / `failureOnly`）、「一括のときだけ」「走ったあとだけ」「失敗したときだけ」を読み違えずに書けます。正は [`spec/placeholders.json`](../../spec/placeholders.json) で、**埋める側（Renderer）と検査（validate）も同じ1枚**を見ています。
 
 `hatake_apply_advice` は、その助言を**そのまま定義に書き込む**口です。分担がはっきり分かれています。
 

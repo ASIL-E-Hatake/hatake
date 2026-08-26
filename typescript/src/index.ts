@@ -26,6 +26,7 @@ export * from "./access.js";
 export * from "./aggregate.js";
 export * from "./csv.js";
 export * from "./papers.js";
+export * from "./placeholders.js";
 export * from "./printLayout.js";
 export * from "./printMetrics.js";
 export * from "./printStyle.js";

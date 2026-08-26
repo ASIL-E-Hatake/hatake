@@ -106,12 +106,93 @@ void _showActionFailure(
   ActionDefinition action, {
   Object? error,
   ActionOutcome? outcome,
+  void Function(List<Object?> keys)? onSelectFailed,
 }) {
   final declared = action.onError?.message;
   final message = declared != null
       ? _fillActionMessage(declared, error: error, outcome: outcome)
       : _defaultFailureMessage(action, error: error, outcome: outcome);
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  // 行を名指しできているなら、**どの行か**を開ける口を付ける。文言に入れるのは
+  // アプリの選択（`{failedKeys}`）なので、入れていなくても行は追える。
+  final named = outcome?.rows ?? const <FailedRow>[];
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    content: Text(message),
+    action: named.isEmpty
+        ? null
+        : SnackBarAction(
+            label: 'どの行か',
+            onPressed: () {
+              if (!context.mounted) return;
+              _showFailedRows(context, action, outcome!,
+                  onSelectFailed: onSelectFailed);
+            },
+          ),
+  ));
+}
+
+/// 失敗した行を1件ずつ見せる。
+///
+/// 件数だけ言われても、現場は**全部やり直す**しかない。名指しできているなら、その行
+/// だけを直せる。理由は行ごとに違うことがある（1件は締め済み、1件は在庫切れ）ので、
+/// 1行にまとめずに並べる。
+///
+/// [onSelectFailed] を渡せる画面（表を持つ画面）では「この行だけ選ぶ」も出す＝もう一度
+/// 押す相手を、人が選び直さなくていい。**いま画面に無い行は選べない**（読み直しで
+/// 消えた行に対して実行できてしまうのを防ぐ）ので、選び直しは画面側が絞る。
+Future<void> _showFailedRows(
+  BuildContext context,
+  ActionDefinition action,
+  ActionOutcome outcome, {
+  void Function(List<Object?> keys)? onSelectFailed,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      key: const Key('hatake.failedRows'),
+      title: Text('${action.label} — 失敗した ${outcome.failed} 件'),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!outcome.namesEveryFailure)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'このうち ${outcome.rows.length} 件だけが分かっています'
+                  '（残りはアプリ側が行を報告していません）。',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            for (final row in outcome.rows)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text('${row.key ?? "（キーが分かりません）"}'),
+                subtitle: row.reason == null ? null : Text(row.reason!),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        if (onSelectFailed != null && outcome.failedKeys.isNotEmpty)
+          TextButton(
+            key: const Key('hatake.failedRows.select'),
+            onPressed: () {
+              onSelectFailed(outcome.failedKeys);
+              Navigator.of(context).pop();
+            },
+            child: const Text('この行だけ選ぶ'),
+          ),
+        TextButton(
+          key: const Key('hatake.failedRows.close'),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('閉じる'),
+        ),
+      ],
+    ),
+  );
 }
 
 /// What to say when the definition says nothing.
@@ -164,6 +245,12 @@ String _fillActionMessage(
         .replaceAll('{count}', '${outcome.succeeded}')
         .replaceAll('{failed}', '${outcome.failed}')
         .replaceAll('{total}', '${outcome.total}');
+  }
+  // 行を名指しできたときだけ埋める。報告が件数だけなら文字のまま出す（`{failedKeys}`
+  // が見えている＝「アプリ側が行を報告していない」と読める）。
+  final keys = outcome?.failedKeys ?? const [];
+  if (keys.isNotEmpty) {
+    text = text.replaceAll('{failedKeys}', keys.join(', '));
   }
   return text;
 }

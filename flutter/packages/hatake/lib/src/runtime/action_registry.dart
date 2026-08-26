@@ -1,6 +1,22 @@
 import 'package:flutter/widgets.dart';
 import 'package:hatake_core/hatake_core.dart';
 
+/// A row a bulk handler could not get through.
+///
+/// The key is what the definition uses to point at a row (`page.key`), so the
+/// framework can put it in a message or tick the row again — without knowing
+/// anything about the business.
+class FailedRow {
+  /// The value of the page's key field for that row.
+  final Object? key;
+
+  /// Why that row failed, in the business's words. Null when the handler has
+  /// nothing to add beyond "this one did not go through".
+  final String? reason;
+
+  const FailedRow(this.key, {this.reason});
+}
+
 /// How a bulk handler finished: how many rows it got through, and how many it
 /// could not.
 ///
@@ -15,7 +31,29 @@ class ActionOutcome {
   /// Rows it could not (already shipped, rejected by the server, …).
   final int failed;
 
-  const ActionOutcome({this.succeeded = 0, this.failed = 0});
+  /// The rows it could not, **named**. Empty when the handler only counted.
+  ///
+  /// 「3件失敗しました」だけでは、現場は全部やり直すしかない。名指しできれば、
+  /// その3件だけ直せる（文言の `{failedKeys}` に入り、画面でも選び直せる）。
+  ///
+  /// May be shorter than [failed]: a handler that knows 3 failed but can only
+  /// name 1 says so, and the framework reports "1 of 3 が分かっています"
+  /// rather than pretending the other 2 do not exist.
+  final List<FailedRow> rows;
+
+  const ActionOutcome({
+    this.succeeded = 0,
+    this.failed = 0,
+    this.rows = const [],
+  });
+
+  /// The usual shape when the handler knows which rows failed: the count comes
+  /// from the rows, so the two can never disagree.
+  factory ActionOutcome.rejected({
+    int succeeded = 0,
+    required List<FailedRow> rows,
+  }) =>
+      ActionOutcome(succeeded: succeeded, failed: rows.length, rows: rows);
 
   /// Nothing failed. `onSuccess` runs.
   bool get isSuccess => failed == 0;
@@ -25,6 +63,16 @@ class ActionOutcome {
   bool get isPartial => failed > 0 && succeeded > 0;
 
   int get total => succeeded + failed;
+
+  /// The keys of the named rows, without the ones that have no key.
+  ///
+  /// A row with no key cannot be named in a message (there is nothing to
+  /// write), so it is left out here and only shows in the list on screen.
+  List<Object?> get failedKeys =>
+      [for (final row in rows) if (row.key != null) row.key];
+
+  /// Every failure is named（部分的にしか分かっていないなら、そう言うため）。
+  bool get namesEveryFailure => rows.length >= failed;
 }
 
 /// Context handed to a plugin action handler when it runs.
@@ -70,9 +118,10 @@ class ActionContext {
   ///
   /// ```dart
   /// final rejected = await api.approve(ctx.records);
-  /// ctx.report(ActionOutcome(
+  /// ctx.report(ActionOutcome.rejected(
   ///   succeeded: ctx.records.length - rejected.length,
-  ///   failed: rejected.length,
+  ///   // 行を名指しできるなら、そうする（画面で「どの行か」が出る）。
+  ///   rows: [for (final one in rejected) FailedRow(one.orderNo, reason: one.why)],
   /// ));
   /// ```
   final void Function(ActionOutcome outcome) report;

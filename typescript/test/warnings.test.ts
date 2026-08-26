@@ -943,7 +943,10 @@ ${body}
     const w = found.find((x) => x.rule === "placeholder-not-filled");
     expect(w?.path).toBe("page.actions[0].onSuccess.message");
     expect(w?.message).toContain("{orderNo}");
-    expect(w?.message).toContain("{count} / {failed} / {total} / {error}");
+    // 書けるものを全部並べて言う（並びは一覧のまま。数ではなく名前で見る）。
+    for (const known of ["{count}", "{total}", "{failed}", "{failedKeys}", "{error}"]) {
+      expect(w?.message, known).toContain(known);
+    }
     expect(w?.fix).toContain("文言に差し込めません");
   });
 

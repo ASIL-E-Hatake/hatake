@@ -52,6 +52,7 @@ Future<bool> _runPageAction(
   _PageDataRunner? onExport,
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
+  void Function(List<Object?> keys)? onSelectFailed,
 }) async {
   // 選んだ行にまとめて実行するなら、押す前に**何件動くのか**が分かっている。
   // 確認の文の `{count}` はここで埋まる（1件ずつのボタンでは埋めない＝件数が無い）。
@@ -73,7 +74,8 @@ Future<bool> _runPageAction(
       input: input,
       onExport: onExport,
       onPrint: onPrint,
-      onCreate: onCreate);
+      onCreate: onCreate,
+      onSelectFailed: onSelectFailed);
   // null = 実行できなかった／失敗した。何が起きたかは dispatch が既に言っている
   // （言う場所を1つにしないと、失敗の文言が種類ごとに散る）。
   if (outcome == null) return false;
@@ -102,6 +104,7 @@ Future<ActionOutcome?> _dispatchAction(
   _PageDataRunner? onExport,
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
+  void Function(List<Object?> keys)? onSelectFailed,
 }) async {
   try {
     return await _dispatch(context, action, controller,
@@ -110,7 +113,8 @@ Future<ActionOutcome?> _dispatchAction(
         input: input,
         onExport: onExport,
         onPrint: onPrint,
-        onCreate: onCreate);
+        onCreate: onCreate,
+        onSelectFailed: onSelectFailed);
   } catch (error) {
     // 例外を外に投げると、押しても何も起きない（Flutter のログにだけ出る）。
     if (context.mounted) _showActionFailure(context, action, error: error);
@@ -128,6 +132,7 @@ Future<ActionOutcome?> _dispatch(
   _PageDataRunner? onExport,
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
+  void Function(List<Object?> keys)? onSelectFailed,
 }) async {
   // 選んだ行に対して実行できるのは、いまはアプリ側の処理（plugin）だけ。
   // 「消す」を複数まとめるのは、取り消せない操作の事故を大きくするので入れていない。
@@ -182,7 +187,10 @@ Future<ActionOutcome?> _dispatch(
     if (outcome.isSuccess) return outcome;
     // 全部だめ・一部だめ。**一部でも onSuccess は動かさない**（1件失敗したまま
     // 画面を移すと、直すべき行が視界から消える）。
-    if (context.mounted) _showActionFailure(context, action, outcome: outcome);
+    if (context.mounted) {
+      _showActionFailure(context, action,
+          outcome: outcome, onSelectFailed: onSelectFailed);
+    }
     return null;
   }
   if (action.type == ActionTypes.export) {

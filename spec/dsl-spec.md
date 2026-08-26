@@ -660,9 +660,13 @@ say* stays in the definition (`onSuccess` / `onError`) instead of in every handl
 ```dart
 'approveOrders': (ctx) async {
   final rejected = await api.approve(ctx.records);   // one call
-  ctx.report(ActionOutcome(
+  // Name the rows it could not do: counting alone leaves the shop floor
+  // redoing all of them.
+  ctx.report(ActionOutcome.rejected(
     succeeded: ctx.records.length - rejected.length,
-    failed: rejected.length,
+    rows: [
+      for (final one in rejected) FailedRow(one.orderNo, reason: one.why),
+    ],
   ));
 },
 ```

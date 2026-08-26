@@ -97,6 +97,10 @@ import {
 import { withDrafts } from "./adviseDraft.js";
 import { appAccess, opensByRole } from "./appAccess.js";
 import { renderRoles, roleTitleOf } from "./explainRoles.js";
+import {
+  PLACEHOLDER_CONTEXTS,
+  renderPlaceholders,
+} from "./placeholders.js";
 import { roleInventory } from "./roles.js";
 import type { Lang } from "./explainPhrases.js";
 import { type AdviceRules, DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
@@ -379,6 +383,12 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       機械可読な DSL リファレンス（JSON）。name にノード名・キー名・ページ種別を
       渡すとその1件だけ。--page-kind でその画面で使えるところだけに絞る。
 
+  hatake reference --placeholders [--json]
+      **文言に書ける差し込みの全部**（{count} / {failed} / {failedKeys} / {error} /
+      {value} / $row.<項目名>）と、それぞれ**いつ埋まるか**。
+      差し込みは閉じた集合で、3つの文脈（ボタンの文言・検証のメッセージ・遷移の
+      パラメータ）に散っている。ここに無いものは書いても文字のまま出る。
+
   hatake examples [query] [--json]
       例のカタログ（やりたいこと → 例）。query で絞り込む。
 
@@ -411,6 +421,7 @@ const BOOLEAN_FLAGS = new Set([
   "diff",
   "brief",
   "roles",
+  "placeholders",
   "all-roles",
   "review",
   "repro",
@@ -2069,6 +2080,15 @@ function reference(
   flags: Args["flags"],
   io: CliIo,
 ): number {
+  // 差し込みの一覧（スキーマではなく、埋める側の取り決め）。
+  if (flags.placeholders === true) {
+    io.out(
+      flags.json === true
+        ? JSON.stringify({ contexts: PLACEHOLDER_CONTEXTS }, null, 2)
+        : renderPlaceholders(PLACEHOLDER_CONTEXTS),
+    );
+    return 0;
+  }
   const schema = readSpec(flags, io, SCHEMA_FILE);
   if (schema === null) return 1;
   let ref = buildReference(schema as Record<string, unknown>);

@@ -30,6 +30,11 @@ import {
   type RefKind,
 } from "./refs.js";
 import { paperName, paperSize } from "./papers.js";
+import {
+  ACTION_PLACEHOLDERS,
+  namesOf,
+  placeholdersWhere,
+} from "./placeholders.js";
 import { roleNames } from "./roles.js";
 import { closestKey } from "./strictKeys.js";
 import { COMPARE_OPERATORS } from "./validators.js";
@@ -650,8 +655,21 @@ function checkCreateAction(
  */
 const DEFAULT_PAGE_SIZE = 50;
 
-/** 件数の差し込み（一括のときだけ埋まる）。 */
-const COUNT_PLACEHOLDERS = ["{count}", "{failed}", "{total}"];
+/**
+ * 差し込みの規則は**一覧から作る**（[spec/placeholders.json] の転記）。
+ *
+ * 判定を手で並べると、差し込みが1つ増えたときに「一覧には載っているのに検査が知らない」
+ * が起きる（そして黙って通る）。印から作れば、載っていないものは検査も知らない。
+ */
+
+/** 一括のときだけ埋まる差し込み（1件ずつのボタンでは文字のまま出る）。 */
+const COUNT_PLACEHOLDERS = placeholdersWhere((one) => one.bulkOnly);
+
+/** 失敗したときにしか無い差し込み（成功の文言では埋まらない）。 */
+const FAILURE_PLACEHOLDERS = placeholdersWhere((one) => one.failureOnly);
+
+/** 押す前に埋まる差し込み（走る前に分かっているもの）。 */
+const BEFORE_RUN_PLACEHOLDERS = placeholdersWhere((one) => !one.afterRun);
 
 /**
  * 文言に書ける差し込みの**全部**。ここに無いものは埋まらない。
@@ -659,7 +677,7 @@ const COUNT_PLACEHOLDERS = ["{count}", "{failed}", "{total}"];
  * 閉じた集合なので機械が言える。開いていると思われがちなのが問題で、`{orderNo}` の
  * ように**項目名を書くと、そのまま文字として出る**（レコードの値は渡っていない）。
  */
-const KNOWN_PLACEHOLDERS = [...COUNT_PLACEHOLDERS, "{error}"];
+const KNOWN_PLACEHOLDERS = namesOf(ACTION_PLACEHOLDERS);
 
 /**
  * 埋まらない差し込みを書いた文言。
@@ -719,13 +737,18 @@ function checkPlaceholders(
             "値を見せたい操作は `type: plugin` で書いて、アプリ側から出してください。",
         );
       }
-      if (node === "onSuccess" && message.includes("{error}")) {
+      // 成功の文言に、失敗したときにしか無い差し込み（{error} / {failedKeys}）。
+      const onlyOnFailure = FAILURE_PLACEHOLDERS.filter((one) =>
+        message.includes(one),
+      );
+      if (node === "onSuccess" && onlyOnFailure.length > 0) {
         warn(
           found,
           "placeholder-not-filled",
           `${path}[${i}].onSuccess.message`,
-          `「${label}」の成功時の文言に {error} がありますが、成功に失敗の理由は` +
-            `ありません。そのまま文字として出ます。`,
+          `「${label}」の成功時の文言にある ${onlyOnFailure.join(" / ")} は` +
+            `埋まりません（成功に失敗の理由も失敗した行もありません）。` +
+            `そのまま文字として出ます。`,
           "失敗したときの文言は `onError.message` に書いてください。",
         );
       }
@@ -752,10 +775,10 @@ function checkPlaceholders(
             "1件の操作なら差し込みを外します。",
         );
       }
-      // 走る前なので、失敗の数も理由もまだ無い。
+      // 走る前なので、失敗の数も理由もまだ無い（埋まるのは押す前に分かるものだけ）。
       const early = [...message.matchAll(/\{[^{}]*\}/g)]
         .map((one) => one[0])
-        .filter((one) => one !== "{count}");
+        .filter((one) => !BEFORE_RUN_PLACEHOLDERS.includes(one));
       if (early.length > 0) {
         warn(
           found,

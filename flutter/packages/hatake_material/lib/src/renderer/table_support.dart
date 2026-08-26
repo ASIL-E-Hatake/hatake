@@ -52,6 +52,22 @@ class _RowSelection {
   List<DataRecord> pick(List<DataRecord> rows, String keyField) =>
       [for (final row in rows) if (_keys.contains(row[keyField])) row];
 
+  /// その行だけを選んだ状態にする（一括が一部だけ失敗したときの選び直し）。
+  ///
+  /// **いま画面に無いキーは捨てる。** 読み直しで消えた行を選んだままにすると、画面に
+  /// 出ていない行に対して実行できてしまう（[syncRows] が守っているのと同じ話）。
+  void keepOnly(
+    Iterable<Object?> keys,
+    List<DataRecord> rows,
+    String keyField,
+  ) {
+    final visible = {for (final row in rows) row[keyField]};
+    _rows = rows;
+    _keys
+      ..clear()
+      ..addAll(keys.where(visible.contains));
+  }
+
   /// 行が入れ替わっていたら選択を捨てる。捨てたかどうかを返す（再描画の判断用）。
   bool syncRows(List<DataRecord> rows) {
     if (_rows == null || identical(_rows, rows)) return false;

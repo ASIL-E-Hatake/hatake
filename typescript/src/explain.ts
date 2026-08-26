@@ -653,10 +653,15 @@ function describeAction(
       : action.onSuccess?.message !== undefined
         ? v.clause(v.thenSay(action.onSuccess.message))
         : "";
+  // 失敗したときの言い方。**書いていないときも言う**＝書き忘れても動くので、
+  // 読み返しに出ないと気づけない（画面には生の理由が出る）。遷移や新規のように
+  // 「失敗」がその場で出ない種類では言わない。
   const onError =
     action.onError !== undefined
       ? v.clause(v.onFailSay(action.onError.message))
-      : "";
+      : SAYS_ON_FAILURE.has(action.type)
+        ? v.clause(v.onFailRaw)
+        : "";
   const roles =
     action.roles.length > 0 ? v.clause(v.onlyForRoles(action.roles)) : "";
   return v.subject(
@@ -664,6 +669,18 @@ function describeAction(
     `${what}${to}${on}${asks}${confirm}${after}${onError}${roles}`,
   );
 }
+
+/**
+ * 押した先で失敗が起きうる種別（そのとき画面に何か出る）。
+ *
+ * `navigate` は移るだけ、`create` はフォームを開くだけ＝その場に失敗が無い。
+ */
+const SAYS_ON_FAILURE = new Set<string>([
+  ActionTypes.plugin,
+  ActionTypes.delete,
+  ActionTypes.export,
+  ActionTypes.print,
+]);
 
 function describeDashboard(
   items: DashboardItemDefinition[],

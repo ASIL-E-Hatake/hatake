@@ -628,12 +628,23 @@ API も1回で済ませられる（件数ぶんの往復にしない）。
 ```dart
 'approveOrders': (ctx) async {
   final rejected = await api.approve(ctx.records);   // 呼ぶのは1回
-  ctx.report(ActionOutcome(
+  // 行を**名指しで**報告する（件数だけでも動くが、それだと現場は全部やり直す）。
+  ctx.report(ActionOutcome.rejected(
     succeeded: ctx.records.length - rejected.length,
-    failed: rejected.length,
+    rows: [
+      for (final one in rejected) FailedRow(one.orderNo, reason: one.why),
+    ],
   ));
 },
 ```
+
+行を名指しすると3つが付いてくる。文言の `{failedKeys}` が埋まる・失敗の通知から
+**「どの行か」**を開ける（キーと理由を1件ずつ）・そこから**その行だけを選び直せる**
+（もう一度押す相手を人が選び直さなくていい）。名指ししなければ件数だけの報告として
+扱われ、`{failedKeys}` は文字のまま出る（「行が分かっていない」と読める）。
+
+`failed` より少なく名指ししてもよい（3件失敗して1件だけ分かる）。そのときは
+「1 件だけが分かっています」と出る＝分かっていない分を無かったことにしない。
 
 | 報告 | どう扱うか |
 |---|---|

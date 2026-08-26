@@ -937,6 +937,51 @@ jobs:
           # 2件出る（件数の差し込みと {error} は別の理由で埋まらない）。
           test "$(grep -c 'placeholder-not-filled' /tmp/ph.json)" -eq 2
 
+          # 失敗の言い方を**書いていない**ボタンは、何が出るかまで読み返しに出す
+          # （書き忘れても動くので、出ないと気づけない）。
+          node dist/cli.js explain /tmp/placeholder.yaml > /tmp/noerr.log
+          grep -q '失敗したら理由がそのまま出る' /tmp/noerr.log
+
+          # 差し込みの一覧（**閉じた集合**なので機械が言える）。一覧・埋める側・
+          # 検査が同じ1枚（spec/placeholders.json）を見ている。
+          node dist/cli.js reference --placeholders > /tmp/ph.log
+          grep -q '{failedKeys}' /tmp/ph.log
+          grep -q 'ここに無いものは埋まりません' /tmp/ph.log
+          node dist/cli.js reference --placeholders --json > /tmp/ph-list.json
+          # 一覧に載っているのに検査が知らない差し込みは無い（載っている名前を
+          # 全部 onError に書いて、警告が出ないことで確かめる）。
+          node -e '
+            const fs = require("fs");
+            const doc = JSON.parse(fs.readFileSync("/tmp/ph-list.json", "utf8"));
+            const action = doc.contexts.find((one) => one.id === "action-message");
+            const names = action.placeholders.map((one) => one.name).join(" ");
+            fs.writeFileSync("/tmp/all-ph.yaml", [
+              "page:",
+              "  type: search",
+              "  id: order_search",
+              "  title: 受注照会",
+              "  repository: orderRepository",
+              "  key: orderNo",
+              "  search:",
+              "    filters: [{ field: orderNo, label: 受注番号 }]",
+              "  table:",
+              "    columns: [{ field: orderNo, label: 受注番号, sortable: true }]",
+              "  actions:",
+              "    - id: approve",
+              "      type: plugin",
+              "      plugin: approveOrders",
+              "      label: 一括承認",
+              "      scope: selection",
+              "      onError: { message: '" + names + "' }",
+              "",
+            ].join("\n"));
+          '
+          node dist/cli.js validate --warn-as-error /tmp/all-ph.yaml
+
+          # デモは失敗した行を名指しで報告する（文言の {failedKeys} が埋まる）。
+          grep -q '{failedKeys}' "$DEMO"
+          grep -q 'ActionOutcome.rejected' ../flutter/packages/hatake_example/lib/bulk_dialog.dart
+
       - name: The wiring draft still compiles (generated, then diffed)
         working-directory: typescript
         run: |
