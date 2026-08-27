@@ -99,6 +99,7 @@ public final class StrictKeys {
                     "confirm", "onSuccess", "onError", "prompt", "maxRows", "batchSize",
                     "enabledWhen", "config", "roles")),
             Map.entry("maxRows", keys("default", "byRole")),
+            Map.entry("batchSize", keys("default", "byRole")),
             Map.entry("confirm", keys("title", "message", "okLabel", "cancelLabel", "danger")),
             Map.entry("actionSuccess", keys("message", "page", "params")),
             Map.entry("actionError", keys("message")),
@@ -116,7 +117,7 @@ public final class StrictKeys {
             // byRole の中は役割名（自由な入れ物）なので降りない。
             Map.entry("action", Map.of("confirm", "confirm", "onSuccess", "actionSuccess",
                     "onError", "actionError", "prompt", "actionPrompt",
-                    "maxRows", "maxRows")),
+                    "maxRows", "maxRows", "batchSize", "batchSize")),
             Map.entry("crudPage", Map.of("search", "search", "table", "table", "form", "form",
                     "actions", "action[]")),
             Map.entry("masterPage", Map.of("search", "search", "table", "table", "form", "form",

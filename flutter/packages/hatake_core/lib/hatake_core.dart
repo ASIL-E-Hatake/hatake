@@ -49,6 +49,7 @@ export 'src/definition/form_definition.dart';
 export 'src/definition/confirm_definition.dart';
 export 'src/definition/action_success_definition.dart';
 export 'src/definition/action_definition.dart';
+export 'src/definition/batch_size.dart';
 export 'src/definition/row_limit.dart';
 
 // Pages.

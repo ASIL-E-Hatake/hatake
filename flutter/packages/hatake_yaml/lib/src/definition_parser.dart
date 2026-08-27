@@ -464,13 +464,42 @@ ValidatorDefinition _parseValidator(Map<String, Object?> m) {
   );
 }
 
+/// `batchSize` は「数」か「役割ごと」の2通り。`all`（区切らない）は無い。
+///
+/// 区切らないなら `batchSize` を書かない、で足りる（キーに2通りの意味を持たせない）。
+BatchSize? _parseBatchSize(Object? raw) {
+  if (raw == null) return null;
+  if (raw is int) return BatchSize.of(_batchSizeValue(raw, at: 'batchSize'));
+  if (raw is Map) {
+    final m = raw.cast<Object?, Object?>();
+    final byRole = <String, int>{};
+    final roles = m['byRole'];
+    if (roles is Map) {
+      for (final e in roles.entries) {
+        byRole['${e.key}'] = _batchSizeValue(e.value, at: 'batchSize.byRole');
+      }
+    }
+    return BatchSize(
+      rows: _batchSizeValue(m['default'], at: 'batchSize.default'),
+      byRole: byRole,
+    );
+  }
+  throw DefinitionParseException('batchSize は数か { default, byRole } です');
+}
+
+/// 区切り1つ（1以上の数だけ）。
+int _batchSizeValue(Object? raw, {required String at}) {
+  if (raw is int && raw > 0) return raw;
+  throw DefinitionParseException('$at は1以上の数です');
+}
+
 /// `maxRows` は「数」か「役割ごと」の2通り。値 `all` は上限なし（null）。
 ///
 /// 知らない書き方（文字列 `all` 以外・0以下・入れ物違い）は**無視せず落とす**
 /// （スキーマが弾くものと同じものを、解析でも弾く）。
 RowLimit? _parseRowLimit(Object? raw) {
   if (raw == null) return null;
-  if (raw is int) return RowLimit.of(raw);
+  if (raw is int) return RowLimit.of(_rowLimitValue(raw, at: 'maxRows')!);
   if (raw is Map) {
     final m = raw.cast<String, Object?>();
     final byRole = <String, int?>{};
@@ -504,7 +533,7 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
     onError: _parseActionError(m.optMap('onError')),
     prompt: _parseActionPrompt(m.optMap('prompt')),
     maxRows: _parseRowLimit(m['maxRows']),
-    batchSize: m.optInt('batchSize'),
+    batchSize: _parseBatchSize(m['batchSize']),
     enabledWhen: m.optMap('enabledWhen'),
     // Lift top-level `page` / `params` (navigate actions) into config so the
     // ActionDefinition model stays unchanged.

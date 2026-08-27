@@ -1135,7 +1135,7 @@ computed: { op: sum, field: lines, of: amount,
 | `onError` | [onError](#onerror) | | 失敗したときに出す文言。 |
 | `prompt` | [prompt](#prompt) | | 実行の前に聞くこと（小さなフォーム）。 |
 | `maxRows` | integer \| [maxRows](#maxrows) | | `scope: selection` のとき、**1回で動かせる行数の上限**（1以上）。超えて選んでいる間ボタンは押せない。無ければ上限は1ページの件数。 |
-| `batchSize` | integer | | `scope: selection` のとき、**1回のハンドラ呼び出しに渡す件数**（1以上）。書かなければ全部まとめて1回。書くと枠組みが回すので**進み具合が出て、区切りで止められる**（→ [batchSize](#batchsize区切って実行する)）。 |
+| `batchSize` | integer \| `{ default, byRole }` | | `scope: selection` のとき、**1回のハンドラ呼び出しに渡す件数**（1以上）。書かなければ全部まとめて1回。書くと枠組みが回すので**進み具合と残り時間が出て、区切りで止められる**（→ [batchSize](#batchsize区切って実行する)）。役割ごとに変えられる。 |
 | `enabledWhen` | [condition](#条件condition) | | **いま押せるか**（→ [enabledWhen](#enabledwhen押せるかどうか)）。判定する相手は置き場所で決まる（行アクションはその行、一括は選んだ行ぜんぶ、レコードを持つ画面はそのレコード）。 |
 | `config` | map | | 追加設定。 |
 | `roles` | string[] | | 実行を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
@@ -1175,6 +1175,41 @@ computed: { op: sum, field: lines, of: amount,
 - 区切りが1回で終わるなら（選んだ件数 ≤ `batchSize`）今までと同じ＝ダイアログも出ない
 - 上限（`maxRows`）以上の区切りは1回で終わるので、`validate` が言う
   （`batchsize-above-maxrows`）
+
+**残り時間は「くらい」でしか言わない。** 出せる根拠は「ここまでの実測」しかないので、
+1区切りも終わっていないうち（と、速すぎて1秒も測れていないうち）は**何も言わない**。
+出すときは切り上げ・10秒単位で**多めに言う**（「あと 30 秒くらい」／「あと 2 分くらい」）。
+少なく言って待たされる方が、多めに言って早く終わるより悪い。
+
+**終わっていない行は、選んだままにする。** 中断したときも区切りが失敗したときも、
+最後に終わった区切りより後ろは選択に残る＝**もう一度押せば続きから動く**。だから
+止めたときの言い方も「2 件を実行しました（3 件は実行していません。残りは選んだまま
+なので、もう一度押せば続きます）」になる。失敗した区切りの行も「動いたのかどうか
+枠組みには分からない」側なので、終わっていない扱いにする（送った行を選び直すことは
+しない＝同じ行に二度実行するのは、まず事故）。
+
+**区切る件数は役割ごとに書ける。** 現場の事情で変わる（回線の細い拠点は小さく、社内は
+大きく）ので、上限（`maxRows`）と同じ形で書ける。
+
+```yaml
+    scope: selection
+    batchSize:
+      default: 20                     # 役割で決まらない人
+      byRole: { branch: 5, admin: 100 }
+```
+
+| キー | 型 | 既定 | 説明 |
+|---|---|---|---|
+| `default` | integer | （必須） | 役割で決まらないときの件数（1以上）。 |
+| `byRole` | map<string, integer> | `{}` | 役割 → 件数。書いていない役割は `default`。 |
+
+**当てはまる役割が複数あれば、一番小さい件数が効く（`maxRows` とは逆）。** 上限は
+「やっていいことの広さ」なので役割を持つほど広がるが、区切りは「1回に押し付ける量」
+なので安全な方に倒す（大きすぎる区切りは、待たされた末に落ちる）。
+
+`all`（区切らない）は無い。区切らない＝進み具合も中断も無い、というのは `batchSize` を
+書かないことで既に言える。押せない役割・定義のどこにも出てこない役割名に書いた区切りは
+効かないので `validate` が言う（`batchsize-unknown-role`）。
 
 ### enabledWhen（押せるかどうか）
 
@@ -1497,7 +1532,8 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `builtin-rowaction-unsupported` | 組み込みの行アクション（`edit` / `delete`）を `crud` / `master` 以外の `table.rowActions` に書いた → 行には何も出ない（`search` の `rowActions` が指すのは画面のアクションの id） |
 | `enabledwhen-without-record` | `enabledWhen` を**判定する相手が無い所**に書いた（一覧の上のボタン）→ ボタンは出て押せる＝出し分けが黙って効かない |
 | `batchsize-without-selection` | `batchSize` を**一括ではないボタン**に書いた → 区切るものが無いので何も起きない |
-| `batchsize-above-maxrows` | 区切りが1回で動かせる上限（`maxRows`）以上 → 区切りが1回で終わる＝**進み具合も中断も出ない** |
+| `batchsize-above-maxrows` | 区切りが1回で動かせる上限（`maxRows`）以上 → 区切りが1回で終わる＝**進み具合も中断も出ない**（役割ごとに書いてあれば、同じ役割の上限と比べる） |
+| `batchsize-unknown-role` | `batchSize.byRole` に、そのボタンを押せない役割／定義のどこにも出てこない役割名 → その区切りは効かない |
 | `placeholder-not-filled` | 文言に**埋まらない差し込み**を書いた（`onSuccess` / `onError` は件数が `scope: selection` だけ・`{error}` は失敗だけ、**押す前**（`confirm` / `prompt.title`）は `{count}` だけ＝まだ失敗も理由も無い、**それ以外の名前＝`{orderNo}` のような項目名は埋める口が無い**）→ 押すまで気づけず、文字のまま出る |
 | `maxrows-unknown-role` | `byRole` に書いた役割が、そのボタンを押せない（`roles` に無い）／定義のどこにも出てこない → 誰にも当てはまらないので、その上限は効かない |
 | `maxrows-without-selection` | `maxRows` を `scope: selection` でないボタンに書いた → 数える対象が無いので上限は効かない |

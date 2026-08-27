@@ -318,7 +318,8 @@ ActionDefinition action(
   ActionErrorDefinition? onError,
   ActionPromptDefinition? prompt,
   /// 選んだ行を何件ずつハンドラに渡すか（`scope: selection` のとき）。
-  int? batchSize,
+  /// 役割で変えるなら `BatchSize(rows: 20, byRole: { 'branch': 5 })`。
+  BatchSize? batchSize,
   /// いま押せるか（条件の書き方は項目の `enabledWhen` と同じ）。
   Map<String, Object?>? enabledWhen,
   Map<String, Object?> config = const {},

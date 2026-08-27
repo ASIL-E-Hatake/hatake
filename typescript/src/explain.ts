@@ -636,11 +636,23 @@ function describeAction(
                 ? v.onSelectionUncapped
                 : v.onSelectionUpTo(limit.rows),
         );
-  // 区切りは一括のときだけ意味がある（枠組みが回す回数）。
+  // 区切りは一括のときだけ意味がある（枠組みが回す回数）。役割で変えてあるなら
+  // **誰がどの件数で動くのか**まで言う（書いたのに読み上げないと、定義を読むまで
+  // 分からない＝`maxRows` と同じ作法）。
+  const batchSize =
+    action.scope === ActionScopes.selection ? action.batchSize : undefined;
+  const byRole = Object.entries(batchSize?.byRole ?? {});
   const batches =
-    action.scope === ActionScopes.selection && action.batchSize !== undefined
-      ? v.clause(v.inBatchesOf(action.batchSize))
-      : "";
+    batchSize === undefined
+      ? ""
+      : v.clause(v.inBatchesOf(batchSize.default)) +
+        (byRole.length === 0
+          ? ""
+          : v.clause(
+              v.batchesByRole(
+                byRole.map(([role, rows]) => v.rowsForRole(role, v.rowsCount(rows))),
+              ),
+            ));
   const asks =
     action.prompt !== undefined
       ? v.clause(v.asksFor(action.prompt.fields.map((f) => f.label)))

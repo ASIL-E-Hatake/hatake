@@ -311,6 +311,11 @@ const WORDS = {
     (rows: number) =>
       `runs in batches of ${rows} (progress is shown and it can be stopped between batches)`,
   ),
+  /** 区切りが役割で変わる（「branch は 5 件」）。 */
+  batchesByRole: pair(
+    (parts: string[]) => `区切りは役割で変わる（${parts.join("・")}）`,
+    (parts: string[]) => `the batch size depends on the role (${parts.join(", ")})`,
+  ),
   pressableWhen: pair(
     (when: string) => `押せるのは ${when} だけ`,
     (when: string) => `pressable only ${when}`,

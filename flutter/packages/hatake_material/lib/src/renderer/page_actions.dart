@@ -125,7 +125,8 @@ Future<bool> _runPageAction(
   _PageDataRunner? onExport,
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
-  void Function(List<Object?> keys)? onSelectFailed,
+  void Function(List<Object?> keys)? onSelectRows,
+  String? keyField,
 }) async {
   // 選んだ行にまとめて実行するなら、押す前に**何件動くのか**が分かっている。
   // 確認の文の `{count}` はここで埋まる（1件ずつのボタンでは埋めない＝件数が無い）。
@@ -148,7 +149,8 @@ Future<bool> _runPageAction(
       onExport: onExport,
       onPrint: onPrint,
       onCreate: onCreate,
-      onSelectFailed: onSelectFailed);
+      onSelectRows: onSelectRows,
+      keyField: keyField);
   // null = 実行できなかった／失敗した。何が起きたかは dispatch が既に言っている
   // （言う場所を1つにしないと、失敗の文言が種類ごとに散る）。
   if (outcome == null) return false;
@@ -156,6 +158,25 @@ Future<bool> _runPageAction(
   _afterActionSuccess(context, action.onSuccess,
       record: record, outcome: outcome);
   return true;
+}
+
+/// 区切って実行したあと、**終わっていない行だけを選んだ状態にする**。
+///
+/// 「終わっていない」＝最後に終わった区切りより後ろ（送っていない行と、失敗した区切り
+/// の行）。中断したところから続けられるようにするためで、**送った行を選び直すことは
+/// しない**（同じ行に二度実行するのは、まず事故）。失敗した区切りの行は「動いたか
+/// どうか枠組みには分からない」側なので、終わっていない扱いにする。
+///
+/// 全部終わっていれば何もしない（成功したときの選択解除は画面側の仕事）。
+void _keepUnfinished(
+  _BulkRunner runner,
+  String? keyField,
+  void Function(List<Object?> keys)? onSelectRows,
+) {
+  if (onSelectRows == null || keyField == null) return;
+  final rest = runner.unfinished;
+  if (rest.isEmpty) return;
+  onSelectRows([for (final row in rest) row[keyField]]);
 }
 
 /// The action itself.
@@ -177,7 +198,8 @@ Future<ActionOutcome?> _dispatchAction(
   _PageDataRunner? onExport,
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
-  void Function(List<Object?> keys)? onSelectFailed,
+  void Function(List<Object?> keys)? onSelectRows,
+  String? keyField,
 }) async {
   try {
     return await _dispatch(context, action, controller,
@@ -187,7 +209,8 @@ Future<ActionOutcome?> _dispatchAction(
         onExport: onExport,
         onPrint: onPrint,
         onCreate: onCreate,
-        onSelectFailed: onSelectFailed);
+        onSelectRows: onSelectRows,
+        keyField: keyField);
   } catch (error) {
     // 例外を外に投げると、押しても何も起きない（Flutter のログにだけ出る）。
     if (context.mounted) _showActionFailure(context, action, error: error);
@@ -205,7 +228,8 @@ Future<ActionOutcome?> _dispatch(
   _PageDataRunner? onExport,
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
-  void Function(List<Object?> keys)? onSelectFailed,
+  void Function(List<Object?> keys)? onSelectRows,
+  String? keyField,
 }) async {
   // 選んだ行に対して実行できるのは、いまはアプリ側の処理（plugin）だけ。
   // 「消す」を複数まとめるのは、取り消せない操作の事故を大きくするので入れていない。
@@ -264,25 +288,39 @@ Future<ActionOutcome?> _dispatch(
     // 区切って実行するなら、**枠組みが回す側**になる（進み具合を出して、区切りで
     // 止められる）。区切りが1回で終わるなら今までと同じ＝ダイアログは出さない
     // （出しても一瞬で消えるだけで、読む間が無い）。
-    final batchSize = action.batchSize;
+    //
+    // 何件ずつかは**その人の役割で決まる**（回線の細い拠点は小さく、社内は大きく）。
+    final batchSize =
+        action.batchSize?.forRoles(HatakeScope.of(context).roles);
     final batched = action.scope == ActionScopes.selection &&
         batchSize != null &&
         records.length > batchSize;
-    final outcome = batched
-        ? await _BulkRunner(
-            context: context,
-            action: action,
-            records: records,
-            batchSize: batchSize,
-            runBatch: call,
-          ).run()
-        : await call(records);
+    final ActionOutcome outcome;
+    if (batched) {
+      final runner = _BulkRunner(
+        context: context,
+        action: action,
+        records: records,
+        batchSize: batchSize,
+        runBatch: call,
+      );
+      try {
+        outcome = await runner.run();
+      } finally {
+        // **終わっていない行は選んだままにする**＝もう一度押せば続きから動く
+        // （中断したときも、区切りが失敗したときも）。選択が全部残っていると、
+        // 既に動いた行にもう一度実行することになる。
+        _keepUnfinished(runner, keyField, onSelectRows);
+      }
+    } else {
+      outcome = await call(records);
+    }
     if (outcome.isSuccess) return outcome;
     // 全部だめ・一部だめ。**一部でも onSuccess は動かさない**（1件失敗したまま
     // 画面を移すと、直すべき行が視界から消える）。
     if (context.mounted) {
       _showActionFailure(context, action,
-          outcome: outcome, onSelectFailed: onSelectFailed);
+          outcome: outcome, onSelectRows: onSelectRows);
     }
     return null;
   }

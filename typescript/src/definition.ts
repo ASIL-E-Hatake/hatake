@@ -200,6 +200,41 @@ export interface ActionPromptDefinition {
 }
 
 /**
+ * 1回のハンドラ呼び出しに渡す件数（`action.batchSize`）。
+ *
+ * `default` は役割で決まらないときの件数、`byRole` は役割ごと（回線の細い拠点は
+ * 小さく、社内は大きく）。**当てはまる役割が複数あれば一番小さい件数が効く**
+ * ＝`maxRows` とは逆。上限は「やっていいことの広さ」なので役割で広がるが、区切りは
+ * 「1回に押し付ける量」なので、安全な方に倒す（大きすぎる区切りは待たされて落ちる）。
+ *
+ * `all`（区切らない）は無い。区切らない＝進み具合も中断も無い、というのは
+ * `batchSize` を書かないことで既に言える。
+ */
+export interface BatchSize {
+  default: number;
+  byRole: Record<string, number>;
+}
+
+/**
+ * `roles` を持つ人に1回で渡す件数。**undefined = 区切らない**（1回で全部）。
+ *
+ * 当てはまる役割が複数あれば**一番小さい**もの。1つも当てはまらなければ `default`。
+ */
+export function batchSizeFor(
+  size: BatchSize | undefined,
+  roles: Iterable<string> = [],
+): number | undefined {
+  if (size === undefined) return undefined;
+  let smallest: number | undefined;
+  for (const role of roles) {
+    if (!(role in size.byRole)) continue;
+    const found = size.byRole[role];
+    if (smallest === undefined || found < smallest) smallest = found;
+  }
+  return smallest ?? size.default;
+}
+
+/**
  * What the user is told when the action failed.
  *
  * A failure never moves the screen (unlike `onSuccess`): leaving the screen that
@@ -252,8 +287,10 @@ export interface ActionDefinition {
    * 書かなければ、選んだ行を**全部まとめて1回**渡す（今までの動き）。書くと**枠組みが
    * 回す側**になるので、「どこまで進んだか」を出せて、区切りで止められる。止めたぶんは
    * 「送っていない」として報告に出る（`{skipped}`）。
+   *
+   * 役割で変えるなら [BatchSize.byRole]（実際の件数は `batchSizeFor(...)`）。
    */
-  batchSize?: number;
+  batchSize?: BatchSize;
   /**
    * 押せるのは、この条件に合っているときだけ（条件の書き方は `visibleWhen` と同じ）。
    *

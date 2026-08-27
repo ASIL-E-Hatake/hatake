@@ -297,6 +297,53 @@ page:
       expect(page.actions.single.maxRows?.forRoles({'admin'}), 20);
     });
 
+    test('batchSize を読む（役割ごとの件数・一番小さい方が効く）', () {
+      final page = parsePageYaml('''
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+      batchSize:
+        default: 20
+        byRole: { branch: 5, manager: 50 }
+''', strict: true) as SearchPageDefinition;
+      final size = page.actions.single.batchSize;
+      expect(size, const BatchSize(rows: 20, byRole: {'branch': 5, 'manager': 50}));
+      // 役割が当てはまらなければ既定。
+      expect(size?.forRoles({'staff'}), 20);
+      // 当てはまる役割が複数あれば**一番小さい**方（maxRows とは逆＝1回に押し付ける
+      // 量の話なので、安全な方に倒す）。
+      expect(size?.forRoles({'branch', 'manager'}), 5);
+    });
+
+    test('batchSize は1以上の数だけ（all は無い＝区切らないなら書かない）', () {
+      Object? parse(String value) => parsePageYaml('''
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - { id: approve, type: plugin, plugin: p, label: 承認, scope: selection, batchSize: $value }
+''');
+      expect(() => parse('all'), throwsA(isA<DefinitionParseException>()));
+      expect(() => parse('0'), throwsA(isA<DefinitionParseException>()));
+      expect(() => parse('[2]'), throwsA(isA<DefinitionParseException>()));
+    });
+
     test('onError を読む（失敗したときの文言は定義側に置ける）', () {
       final page = parsePageYaml('''
 page:

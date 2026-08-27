@@ -27,6 +27,7 @@ import {
   type TableDefinition,
   type WizardStepDefinition,
   type ValidatorDefinition,
+  type BatchSize,
   type RowLimit,
 } from "./definition.js";
 
@@ -562,6 +563,36 @@ function parseRowLimit(raw: unknown): RowLimit | undefined {
   return { default: rowLimitValue(m.default, "maxRows.default"), byRole };
 }
 
+/**
+ * `batchSize` は「数」か「役割ごと」の2通り。`all`（区切らない）は無い。
+ *
+ * 区切らないなら `batchSize` を書かない、で足りる（キーが2通りの意味を持たない）。
+ */
+function parseBatchSize(raw: unknown): BatchSize | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw === "number") {
+    return { default: batchSizeValue(raw, "batchSize"), byRole: {} };
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new DefinitionParseError("batchSize は数か { default, byRole } です");
+  }
+  const m = raw as Record<string, unknown>;
+  const byRole: Record<string, number> = {};
+  const roles = m.byRole;
+  if (typeof roles === "object" && roles !== null && !Array.isArray(roles)) {
+    for (const [role, value] of Object.entries(roles as Record<string, unknown>)) {
+      byRole[role] = batchSizeValue(value, `batchSize.byRole.${role}`);
+    }
+  }
+  return { default: batchSizeValue(m.default, "batchSize.default"), byRole };
+}
+
+/** 区切り1つ。 */
+function batchSizeValue(raw: unknown, at: string): number {
+  if (typeof raw === "number" && Number.isInteger(raw) && raw > 0) return raw;
+  throw new DefinitionParseError(`${at} は1以上の数です`);
+}
+
 /** 上限1つ。`all` はそのまま持つ（上限なし）。 */
 function rowLimitValue(raw: unknown, at: string): number | "all" {
   if (raw === "all") return "all";
@@ -581,7 +612,7 @@ function parseAction(m: Dict): ActionDefinition {
     onSuccess: parseActionSuccess(optDict(m, "onSuccess")),
     onError: parseActionError(optDict(m, "onError")),
     prompt: parseActionPrompt(optDict(m, "prompt")),
-    batchSize: optNumber(m, "batchSize"),
+    batchSize: parseBatchSize(m.batchSize),
     enabledWhen: optDict(m, "enabledWhen"),
     config: optDict(m, "config") ?? {},
     roles: optList(m, "roles").map(String),

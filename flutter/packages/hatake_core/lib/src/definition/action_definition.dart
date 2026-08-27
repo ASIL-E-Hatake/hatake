@@ -5,6 +5,7 @@ import 'action_prompt_definition.dart';
 import 'action_scopes.dart';
 import 'action_success_definition.dart';
 import 'action_types.dart';
+import 'batch_size.dart';
 import 'confirm_definition.dart';
 import 'row_limit.dart';
 
@@ -62,7 +63,11 @@ class ActionDefinition extends Equatable {
   ///
   /// 止めたぶん・送らなかったぶんは [ActionOutcome.skipped] として報告に出る
   /// （文言の `{skipped}` に入る）。
-  final int? batchSize;
+  ///
+  /// 役割で変わる件数は [BatchSize.byRole]。実際の件数は
+  /// `batchSize?.forRoles(roles)`（当てはまる役割が複数なら**一番小さい**方＝
+  /// `maxRows` とは逆。上限は権限の広さ、区切りは1回に押し付ける量なので）。
+  final BatchSize? batchSize;
 
   /// 押せるのは、この条件に合っているときだけ（条件の書き方は `visibleWhen` と同じ）。
   ///
