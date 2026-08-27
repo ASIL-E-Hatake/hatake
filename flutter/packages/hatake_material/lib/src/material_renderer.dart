@@ -10,6 +10,7 @@ part 'renderer/app_shell.dart';
 part 'renderer/app_menu.dart';
 part 'renderer/app_breadcrumb.dart';
 part 'renderer/table_support.dart';
+part 'renderer/live_record.dart';
 part 'renderer/action_hooks.dart';
 part 'renderer/page_actions.dart';
 part 'renderer/action_prompt.dart';

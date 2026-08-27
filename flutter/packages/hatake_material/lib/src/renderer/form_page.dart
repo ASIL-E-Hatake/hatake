@@ -21,6 +21,22 @@ class _MaterialFormPage extends StatefulWidget {
 class _MaterialFormPageState extends State<_MaterialFormPage> {
   final GlobalKey<_HatakeFormFieldsState> _fields = GlobalKey();
 
+  /// 画面のボタンは**いま入力されている値**で出し分ける（`enabledWhen`）。ボタンは
+  /// フォームの外に居るので、値が変わったことをここで受け取る。
+  late final _LiveRecord _live = _LiveRecord(widget.controller.draft);
+
+  /// 押せない理由を業務の言葉で言うための、項目名 → 見出し。
+  Map<String, String> get _labels => {
+        for (final field in widget.definition.form.fields)
+          field.field: field.label,
+      };
+
+  @override
+  void dispose() {
+    _live.dispose();
+    super.dispose();
+  }
+
   Future<void> _submit() async {
     final values = _fields.currentState!.collect();
     final saved = await widget.controller.submit(values);
@@ -48,11 +64,20 @@ class _MaterialFormPageState extends State<_MaterialFormPage> {
                   style: theme.textTheme.headlineSmall,
                 ),
               ),
-              ..._pageActionButtons(
-                context,
-                widget.definition.actions,
-                controller,
-                record: controller.draft,
+              // 入力されている値が変わったら、ここだけ描き直す。
+              AnimatedBuilder(
+                animation: _live,
+                builder: (context, _) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _pageActionButtons(
+                    context,
+                    widget.definition.actions,
+                    controller,
+                    record: _live.record,
+                    labels: _labels,
+                    mode: controller.formMode,
+                  ),
+                ),
               ),
             ],
           ),
@@ -65,6 +90,7 @@ class _MaterialFormPageState extends State<_MaterialFormPage> {
                       key: _fields,
                       form: widget.definition.form,
                       initial: controller.draft,
+                      live: _live,
                       validation: controller.validation,
                       fieldBuilders: widget.fieldBuilders,
                       roles: HatakeScope.of(context).roles,
