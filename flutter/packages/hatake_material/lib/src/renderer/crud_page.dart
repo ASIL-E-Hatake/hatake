@@ -81,7 +81,8 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
         _controller.startCreate();
         return _openForm();
       },
-      onSelectFailed: _selectFailed,
+      onSelectRows: _selectRows,
+      keyField: _def.keyField,
     );
     // 実行できたら選択を解く（同じ行に二度実行するのは、まず事故）。
     if (ran && selected.isNotEmpty && mounted) {
@@ -89,12 +90,13 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
     }
   }
 
-  /// 一括が一部だけ失敗したとき、**失敗した行だけを選び直す**。
+  /// **その行だけを選び直す**（一括の続きを押せるようにする）。
   ///
-  /// 「3件失敗しました」で終わると、現場は全部やり直すことになる。名指しできている
-  /// なら、その行だけを選んだ状態に戻して、もう一度押せるようにする。いま画面に無い
-  /// 行は選ばない（[_RowSelection.keepOnly] が絞る）。
-  void _selectFailed(List<Object?> keys) {
+  /// 使う場面は2つ。**一部だけ失敗した**とき（失敗した行だけ）と、**区切って実行して
+  /// 途中で終わった**とき（まだ終わっていない行だけ）。「3件失敗しました」「3件は
+  /// 実行していません」で終わると、現場は全部やり直すか選び直すことになる。
+  /// いま画面に無い行は選ばない（[_RowSelection.keepOnly] が絞る）。
+  void _selectRows(List<Object?> keys) {
     if (!mounted) return;
     setState(() => _selection.keepOnly(keys, _controller.items, _def.keyField));
   }

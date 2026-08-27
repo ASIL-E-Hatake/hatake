@@ -452,7 +452,7 @@ function checkSelection(
   appRoles: Set<string> = new Set(),
 ): void {
   const hasTable = isDict(page.table);
-  checkBatchSize(actions, path, found);
+  checkBatchSize(actions, path, found, appRoles);
   actions.forEach((action, i) => {
     if (str(action.scope) !== ActionScopes.selection) return;
     const label = str(action.label) ?? str(action.id) ?? "ボタン";
@@ -659,21 +659,27 @@ function checkDeadActions(
  * 区切りが効くのは**選んだ行に対して実行するボタン**だけ（1件ずつのボタンには区切る
  * ものが無い）。そして区切りが1回で終わるなら、**進み具合も中断も出ない**
  * （枠組みが回す回数が1回なので、途中が無い）＝書いたのに効かない。
+ *
+ * 役割ごとに変えられる（`byRole`）ので、**書いた数のどれについても**同じことを言う
+ * （既定だけ見て通すと「manager だけ効かない区切り」を見逃す）。押せない役割・
+ * どこにも出てこない役割名に書いた区切りも効かない（`maxRows` と同じ作法）。
  */
 function checkBatchSize(
   actions: Dict[],
   path: string,
   found: DefinitionWarning[],
+  appRoles: Set<string> = new Set(),
 ): void {
   actions.forEach((action, i) => {
-    const size = num(action.batchSize);
-    if (size === undefined) return;
+    const raw = action.batchSize;
+    if (raw === undefined || raw === null) return;
+    const at = `${path}.actions[${i}].batchSize`;
     const label = str(action.label) ?? str(action.id) ?? "ボタン";
     if (str(action.scope) !== ActionScopes.selection) {
       warn(
         found,
         "batchsize-without-selection",
-        `${path}.actions[${i}].batchSize`,
+        at,
         `「${label}」に区切り（\`batchSize\`）が書いてありますが、選んだ行に対して` +
           `実行するボタンではありません。区切るものが無いので、何も起きません。`,
         "`scope: selection` を書いてください（区切りは一括のときだけ効きます）。" +
@@ -681,20 +687,75 @@ function checkBatchSize(
       );
       return;
     }
-    // 上限（`maxRows`）より大きい区切りは、1回で終わる＝進み具合が出ない。
-    const limit = isDict(action.maxRows)
-      ? num(action.maxRows.default)
-      : num(action.maxRows);
-    if (limit !== undefined && size >= limit) {
+
+    // その人の上限（`maxRows`）。区切りが上限以上なら1回で終わる＝進み具合も中断も
+    // 出ない。役割ごとに上限を書いてあるなら、**同じ役割の上限**と比べる。
+    const rowLimit = (role?: string): number | undefined => {
+      const limit = action.maxRows;
+      if (!isDict(limit)) return num(limit);
+      if (role !== undefined && isDict(limit.byRole) && role in limit.byRole) {
+        return num(limit.byRole[role]);
+      }
+      return num(limit.default);
+    };
+
+    const aboveLimit = (rows: number, where: string, role?: string): void => {
+      const limit = rowLimit(role);
+      if (limit === undefined || rows < limit) return;
+      const who = role === undefined ? "" : `（${role}）`;
       warn(
         found,
         "batchsize-above-maxrows",
-        `${path}.actions[${i}].batchSize`,
-        `「${label}」の区切り（${size} 件）が1回で動かせる上限（${limit} 件）以上です。` +
-          `区切りが1回で終わるので、**進み具合も中断も出ません**。`,
+        where,
+        `「${label}」の区切り${who}（${rows} 件）が1回で動かせる上限（${limit} 件）` +
+          `以上です。区切りが1回で終わるので、**進み具合も中断も出ません**。`,
         `区切りを上限より小さくしてください（例 ${Math.max(1, Math.floor(limit / 2))} 件）。` +
           "区切る意味が無いなら `batchSize` を消してください（1回で渡します）。",
       );
+    };
+
+    if (typeof raw === "number") {
+      aboveLimit(raw, at);
+      return;
+    }
+    if (!isDict(raw)) return;
+    const fallback = num(raw.default);
+    if (fallback !== undefined) aboveLimit(fallback, `${at}.default`);
+    if (!isDict(raw.byRole)) return;
+
+    // 役割ごとの区切りは、その役割が**このボタンを押せる**ときだけ効く。
+    const allowed = list(action.roles).map(String);
+    for (const [role, value] of Object.entries(raw.byRole)) {
+      const where = `${at}.byRole.${role}`;
+      const rows = num(value);
+      if (rows !== undefined) aboveLimit(rows, where, role);
+      if (allowed.length > 0 && !allowed.includes(role)) {
+        warn(
+          found,
+          "batchsize-unknown-role",
+          where,
+          `「${label}」は ${allowed.join(" / ")} だけに出るボタンですが、区切りを ` +
+            `${role} について書いています。${role} はこのボタンを押せないので、` +
+            `この区切りは効きません。`,
+          `${role} にも押させるなら \`roles\` に足してください。` +
+            "そうでなければこの行を消してください。",
+        );
+        continue;
+      }
+      if (appRoles.size > 0 && !appRoles.has(role)) {
+        const near = closestKey(role, [...appRoles]);
+        warn(
+          found,
+          "batchsize-unknown-role",
+          where,
+          `区切りを書いてある役割 "${role}" は、このアプリのどこにも出てきません。` +
+            `誰にも当てはまらないので、この区切りは効きません（みんな既定の件数で` +
+            `動きます）。`,
+          near === null
+            ? "`roles` に書いてある役割名で書いてください。"
+            : `${near} の間違いではないですか？`,
+        );
+      }
     }
   });
 }

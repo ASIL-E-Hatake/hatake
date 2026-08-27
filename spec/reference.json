@@ -232,10 +232,13 @@
         },
         {
           "key": "batchSize",
-          "type": "integer",
+          "type": "object",
           "required": false,
-          "description": "For scope: selection: how many rows to hand the handler per call. Absent = one call with every checked row. With it the framework owns the loop, so it can show how far it got and stop between batches (a stopped run reports what it did not send).",
-          "minimum": 1
+          "description": "For scope: selection: how many rows to hand the handler per call. A plain integer is the same for everyone; the object form sets it per role. Absent = one call with every checked row. With it the framework owns the loop, so it can show how far it got, estimate what is left, and stop between batches (a stopped run reports what it did not send, and leaves the unfinished rows checked).",
+          "nodes": [
+            "action.batchSize",
+            "batchSize"
+          ]
         },
         {
           "key": "enabledWhen",
@@ -254,6 +257,23 @@
           "items": "string"
         }
       ]
+    },
+    "action.batchSize": {
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "action"
+      ],
+      "keys": []
     },
     "action.maxRows": {
       "closed": false,
@@ -477,6 +497,58 @@
           ]
         }
       ]
+    },
+    "batchSize": {
+      "description": "A per-role batch size. `default` applies to anyone the roles do not name. With several matching roles the **smallest** one wins — the opposite of `maxRows`, on purpose: a limit is about what someone is allowed to do (so roles widen it), while a batch is about how much is pushed through at once (so the safest number wins).",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "action"
+      ],
+      "keys": [
+        {
+          "key": "default",
+          "type": "integer",
+          "required": true,
+          "minimum": 1
+        },
+        {
+          "key": "byRole",
+          "type": "object",
+          "required": false,
+          "description": "Role name -> rows per call. A role that is not named falls back to `default`. There is no `all` here: not splitting means no progress and no stopping, which is what leaving `batchSize` out already says.",
+          "nodes": [
+            "batchSize.byRole"
+          ]
+        }
+      ]
+    },
+    "batchSize.byRole": {
+      "description": "Role name -> rows per call. A role that is not named falls back to `default`. There is no `all` here: not splitting means no progress and no stopping, which is what leaving `batchSize` out already says.",
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "batchSize"
+      ],
+      "keys": []
     },
     "chart": {
       "description": "How a `chart` card plots its rows. With `aggregate`, rows sharing a label fold into one point; without it every row is a point (which is what a pre-aggregated endpoint wants).",
@@ -2864,6 +2936,7 @@
       "theme"
     ],
     "byRole": [
+      "batchSize",
       "maxRows"
     ],
     "cancelLabel": [
@@ -2897,6 +2970,7 @@
       "confirm"
     ],
     "default": [
+      "batchSize",
       "maxRows"
     ],
     "defaultValue": [

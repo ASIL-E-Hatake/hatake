@@ -90,6 +90,7 @@ const Map<String, Set<String>> strictKeyTable = {
     'config', 'roles',
   },
   'maxRows': {'default', 'byRole'},
+  'batchSize': {'default', 'byRole'},
   'confirm': {'title', 'message', 'okLabel', 'cancelLabel', 'danger'},
   'actionSuccess': {'message', 'page', 'params'},
   'actionError': {'message'},
@@ -111,6 +112,7 @@ const Map<String, Map<String, String>> _children = {
     'prompt': 'actionPrompt',
     // `byRole` の中は役割名（自由な入れ物）なので降りない。
     'maxRows': 'maxRows',
+    'batchSize': 'batchSize',
   },
   'crudPage': {
     'search': 'search', 'table': 'table', 'form': 'form', 'actions': 'action[]',

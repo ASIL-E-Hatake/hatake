@@ -106,7 +106,7 @@ void _showActionFailure(
   ActionDefinition action, {
   Object? error,
   ActionOutcome? outcome,
-  void Function(List<Object?> keys)? onSelectFailed,
+  void Function(List<Object?> keys)? onSelectRows,
 }) {
   // 失敗が1件も無くて、送っていないぶんが在るだけ＝**止めた**（失敗ではない）。
   // そこに `onError` の文言（「承認できませんでした」）を出すのは嘘なので、枠組みの
@@ -129,7 +129,7 @@ void _showActionFailure(
             onPressed: () {
               if (!context.mounted) return;
               _showFailedRows(context, action, outcome!,
-                  onSelectFailed: onSelectFailed);
+                  onSelectRows: onSelectRows);
             },
           ),
   ));
@@ -141,14 +141,14 @@ void _showActionFailure(
 /// だけを直せる。理由は行ごとに違うことがある（1件は締め済み、1件は在庫切れ）ので、
 /// 1行にまとめずに並べる。
 ///
-/// [onSelectFailed] を渡せる画面（表を持つ画面）では「この行だけ選ぶ」も出す＝もう一度
+/// [onSelectRows] を渡せる画面（表を持つ画面）では「この行だけ選ぶ」も出す＝もう一度
 /// 押す相手を、人が選び直さなくていい。**いま画面に無い行は選べない**（読み直しで
 /// 消えた行に対して実行できてしまうのを防ぐ）ので、選び直しは画面側が絞る。
 Future<void> _showFailedRows(
   BuildContext context,
   ActionDefinition action,
   ActionOutcome outcome, {
-  void Function(List<Object?> keys)? onSelectFailed,
+  void Function(List<Object?> keys)? onSelectRows,
 }) {
   return showDialog<void>(
     context: context,
@@ -181,11 +181,11 @@ Future<void> _showFailedRows(
         ),
       ),
       actions: [
-        if (onSelectFailed != null && outcome.failedKeys.isNotEmpty)
+        if (onSelectRows != null && outcome.failedKeys.isNotEmpty)
           TextButton(
             key: const Key('hatake.failedRows.select'),
             onPressed: () {
-              onSelectFailed(outcome.failedKeys);
+              onSelectRows(outcome.failedKeys);
               Navigator.of(context).pop();
             },
             child: const Text('この行だけ選ぶ'),
@@ -216,7 +216,10 @@ String _defaultFailureMessage(
         ? '${outcome.skipped} 件は実行していません'
         : null;
     if (outcome.failed == 0) {
-      return '${outcome.succeeded} 件を実行しました（$rest）';
+      // 失敗ゼロで残っている＝止めた。残りは選んだままにしてあるので、
+      // 「次にどうすればいいか」まで言う（もう一度押せば続く）。
+      return '${outcome.succeeded} 件を実行しました（$rest。'
+          '残りは選んだままなので、もう一度押せば続きます）';
     }
     final failed = '${outcome.failed} 件失敗';
     final tail = rest == null ? failed : '$failed、$rest';

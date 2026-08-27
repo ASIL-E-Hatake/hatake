@@ -1875,6 +1875,84 @@ jobs:
           grep -q '2 件ずつ実行する' /tmp/demo-batch.log
           grep -q '{skipped} 件は実行していません' "$DEMO"
 
+      - name: A batch size per role (smallest wins)
+        working-directory: typescript
+        run: |
+          set -e
+          # 区切りは役割ごとに書ける（回線の細い拠点は小さく、社内は大きく）。
+          cat > /tmp/batch-role.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - id: approve
+                type: plugin
+                plugin: approveOrders
+                label: 一括承認
+                scope: selection
+                maxRows: { default: 40, byRole: { manager: all } }
+                batchSize:
+                  default: 20
+                  byRole: { branch: 5, manager: 50 }
+          YAML
+          # 1. 役割ごとの形は警告ゼロで通る（strict でも通る）。
+          node dist/cli.js validate --strict --warn-as-error /tmp/batch-role.yaml
+          # 2. 誰がどの件数で動くのかを読み返す（書いたのに読み上げないと、定義を
+          #    読むまで分からない）。
+          node dist/cli.js explain /tmp/batch-role.yaml > /tmp/batch-role.log
+          grep -q '20 件ずつ実行する（進み具合が出て、区切りで止められる）' /tmp/batch-role.log
+          grep -q '区切りは役割で変わる（branch は 5 件・manager は 50 件）' /tmp/batch-role.log
+          # 3. 効かない区切りは、役割ごとに書いてあっても言う（同じ役割の上限と比べる／
+          #    押せない役割に書いた区切りは効かない）。
+          cat > /tmp/batch-role-bad.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - id: approve
+                type: plugin
+                plugin: approveOrders
+                label: 一括承認
+                scope: selection
+                roles: [manager]
+                maxRows: { default: 40, byRole: { manager: 5 } }
+                batchSize:
+                  default: 20
+                  byRole: { manager: 5, branch: 5 }
+          YAML
+          if node dist/cli.js validate --warn-as-error --json /tmp/batch-role-bad.yaml \
+               > /tmp/batch-role-bad.json 2>&1; then
+            echo "効かない区切り（役割ごと）で通ってしまった"; exit 1
+          fi
+          grep -q 'batchsize-above-maxrows' /tmp/batch-role-bad.json
+          grep -q 'batchsize-unknown-role' /tmp/batch-role-bad.json
+          # 4. 区切らない（all）は書けない＝区切らないなら書かない。
+          cat > /tmp/batch-all.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - { id: approve, type: plugin, plugin: p, label: 承認, scope: selection, batchSize: all }
+          YAML
+          if node dist/cli.js validate /tmp/batch-all.yaml > /tmp/batch-all.log 2>&1; then
+            echo "batchSize: all が通ってしまった"; exit 1
+          fi
+
       - name: When a button may be pressed (enabledWhen)
         working-directory: typescript
         run: |

@@ -1177,7 +1177,7 @@ Decisions:
 | `onError` | [onError](#onerror) | | What the user is told when it failed. |
 | `maxRows` | integer \| object | | For `scope: selection`: how many rows one press may act on (min 1). The object form (`{ default, byRole }`, where a limit may be `all`) caps per role — with several matching roles the **most permissive** wins. While more are picked the button is disabled. Omit and the real limit is the page size. The backend can read the same limit (`checkBulkLimit` / `BulkLimits.check`). |
 | `prompt` | [prompt](#prompt) | | Asked before it runs (a small form). |
-| `batchSize` | integer | | For `scope: selection`: how many rows to hand the handler per call (min 1). Absent = one call with all of them. With it the framework owns the loop, so **progress is shown and the run can be stopped between batches** (see [batchSize](#batchsize)). |
+| `batchSize` | integer \| `{ default, byRole }` | | For `scope: selection`: how many rows to hand the handler per call (min 1). Absent = one call with all of them. With it the framework owns the loop, so **progress and an estimate are shown and the run can be stopped between batches** (see [batchSize](#batchsize)). Can be set per role. |
 | `enabledWhen` | [condition](#condition) | | Whether it **can be pressed right now** (see [enabledWhen](#enabledwhen)). Where the action sits decides what is judged. |
 | `config` | map | | Extra settings. |
 | `roles` | string[] | | Roles allowed to run it (see [access control](#access-control-roles)). Empty = everyone. |
@@ -1216,6 +1216,44 @@ come for free.
 - With one batch (picked rows ≤ `batchSize`) nothing changes and no dialog appears.
 - A batch at or above `maxRows` would be a single batch, so `validate` says
   `batchsize-above-maxrows`.
+
+**The estimate is only ever "about".** All it can be built from is what the run has
+measured so far, so before the first batch finishes (or while less than a second has
+passed) **nothing is said**. When it is said it is rounded **up**, to ten seconds
+("about 30 seconds left" / "about 2 minutes left"): being made to wait past a promise is
+worse than finishing early.
+
+**Unfinished rows stay checked.** Whether the user stopped the run or a batch failed,
+everything after the last finished batch is still selected — so **pressing again continues
+where it stopped**, which is why a stopped run says "2 done (3 never sent — the rest is
+still selected, press again to continue)". The rows of a failed batch count as unfinished
+too, since the framework cannot know whether they ran; rows that did finish are never
+re-selected (running the same row twice is an accident, not a retry).
+
+**The batch size can be written per role.** How much to push through at once depends on
+where the user sits (a thin line at a branch office wants small batches, the head office
+does not), so it takes the same shape as `maxRows`.
+
+```yaml
+    scope: selection
+    batchSize:
+      default: 20
+      byRole: { branch: 5, admin: 100 }
+```
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `default` | integer | (required) | Rows per call for anyone the roles do not name (min 1). |
+| `byRole` | map<string, integer> | `{}` | Role -> rows per call. A role not named falls back to `default`. |
+
+**With several matching roles the smallest one wins — the opposite of `maxRows`.** A limit
+is about what someone is allowed to do, so roles widen it; a batch is about how much is
+pushed through at once, so the safest number wins.
+
+There is no `all` here: not splitting means no progress and no stopping, which is what
+leaving `batchSize` out already says. A batch written for a role that cannot press the
+button, or for a role name that appears nowhere in the definition, does nothing —
+`validate` says `batchsize-unknown-role`.
 
 ### enabledWhen
 
@@ -1503,7 +1541,8 @@ npx hatake validate page.yaml --no-warn --json
 | `builtin-rowaction-unsupported` | a built-in row action (`edit` / `delete`) in `table.rowActions` of a page other than `crud` / `master` — nothing appears in the row (a `search` page's `rowActions` point at the ids of the page's own actions) |
 | `enabledwhen-without-record` | `enabledWhen` written where **there is no record to judge** (a button above a list) — the button appears and can be pressed, so the gating silently does nothing |
 | `batchsize-without-selection` | `batchSize` on an action that is **not** a bulk one — there is nothing to split, so nothing happens |
-| `batchsize-above-maxrows` | a batch at or above the per-press limit (`maxRows`) — it would be a single batch, so **no progress and no stopping** |
+| `batchsize-above-maxrows` | a batch at or above the per-press limit (`maxRows`) — it would be a single batch, so **no progress and no stopping** (per-role batches are compared with that role's limit) |
+| `batchsize-unknown-role` | `batchSize.byRole` names a role that cannot press the button, or one that appears nowhere in the definition — that batch size does nothing |
 | `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure, **before it runs only `{count}` fills** — there is no failure and no reason yet — and **any other name, a field like `{orderNo}`, has nothing to fill it**) — it stays as literal text and you find out by pressing the button |
 | `maxrows-unknown-role` | a role in `byRole` cannot use the button (not in `roles`) or appears nowhere in the definition — nothing matches it, so that limit never applies |
 | `maxrows-without-selection` | `maxRows` on an action that is not `scope: selection` — there is nothing to count, so the limit does nothing |
