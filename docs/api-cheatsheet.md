@@ -12,6 +12,8 @@ npx hatake validate page.yaml   # exit code 1 if anything is wrong
 npx hatake refs page.yaml --needs-registration   # what the application must register
 npx hatake diff old.yaml new.yaml                # what a change breaks / what to confirm
 npx hatake explain page.yaml --lang en                       # read the definition back in English
+npx hatake diagram app.yaml --format mermaid                 # the screen map, pasteable into a PR (or --format dot)
+npx hatake diagram page.yaml --computed                      # which field comes from which (red = declared out of order)
 npx hatake wire app.yaml --merge lib/wiring.dart --write     # add only the missing registrations (keeps your code)
 npx hatake wire app.yaml --merge lib/wiring.dart --write --todo   # ...and hand the added stubs over as a work list
 npx hatake refs app.yaml --filled --source lib/             # are those registrations actually filled in? (TODO / missing / cannot tell)

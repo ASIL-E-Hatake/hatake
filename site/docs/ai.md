@@ -113,6 +113,8 @@ npx hatake explain --diff before.yaml page.yaml  # 何を変えたのか、画�
 npx hatake harvest definitions/        # 繰り返し転んでいる所を実例カタログの候補に
 npx hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
 npx hatake diagram app.yaml --out app.svg  # 画面とメニューと遷移の図
+npx hatake diagram app.yaml --format mermaid  # PR に貼れる形（--format dot も）
+npx hatake diagram page.yaml --computed    # 計算の依存（順番が逆の線は赤）
 npx hatake minimize page.yaml          # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権限・アプリ構成）
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか

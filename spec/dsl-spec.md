@@ -1082,7 +1082,8 @@ the parent record can be folded: a subTable with `source` is paged, so its rows 
 all here (`validate` says so). If both `field` and `fields` are written, `field` wins.
 Computed fields are derived once, in declaration order — put the subtotal before the tax
 that uses it, or the tax is computed while the subtotal is still empty (`validate` says
-so).
+so). When the dependencies get tangled, `hatake diagram <file> --computed` draws them as
+one picture (Mermaid / DOT; an edge that runs against the declaration order is red).
 
 `where` is the same condition language as `visibleWhen` (a leaf `{ field, operator, value }`
 plus `all` / `any` / `not`) — this framework does not have two ways to write a condition —

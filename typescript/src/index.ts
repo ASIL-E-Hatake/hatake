@@ -69,6 +69,8 @@ export * from "./review.js";
 export * from "./screenIndex.js";
 export * from "./diagram.js";
 export * from "./appDiagram.js";
+export * from "./graphText.js";
+export * from "./computedGraph.js";
 export * from "./appAccess.js";
 export * from "./defDiff.js";
 export * from "./jsonSchema.js";
