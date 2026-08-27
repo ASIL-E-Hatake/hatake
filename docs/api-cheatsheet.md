@@ -27,10 +27,12 @@ checked** so pressing again continues where it stopped.
 
 An action may say **when it can be pressed**: `enabledWhen` (the `visibleWhen` condition
 language). Where it sits decides what is judged — a row action judges its row, `scope:
-selection` needs **every** checked row to match, and a page with a record judges that
-record. A button above a list has nothing to judge (`validate` says
-`enabledwhen-without-record`). A disabled button stays visible, greyed out, with what it
-depends on shown.
+selection` needs **every** checked row to match, a page being filled in (`form` / `wizard`)
+judges **the values currently entered** (before saving, computed fields and
+`{ mode: create }` included), and a read-only page (`detail`) judges the record it shows. A
+button above a list has nothing to judge (`validate` says `enabledwhen-without-record`). A
+disabled button stays visible, greyed out, with what it depends on shown — named with that
+screen's label.
 
 ```bash
 npx hatake wire app.yaml --merge lib/wiring.dart --write     # add only the missing registrations (keeps your code)

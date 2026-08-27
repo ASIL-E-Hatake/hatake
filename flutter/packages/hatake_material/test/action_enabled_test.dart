@@ -4,10 +4,12 @@ import 'package:hatake_material/hatake_material.dart';
 
 /// 押す前に**行の状態で出し分ける**（`enabledWhen`）。
 ///
-/// ここで守るのは3つ。**判定する相手は置き場所で決まる**（行アクションはその行、
-/// 一括は選んだ行ぜんぶ、レコードを持つ画面はそのレコード）・**一部だけ動かさない**
-/// （1件でも合わなければ押せない）・**理由の無い灰色を出さない**（何の状態で決まるのかを
-/// 画面に出す。文言は書かせない＝定義から出す）。
+/// ここで守るのは4つ。**判定する相手は置き場所で決まる**（行アクションはその行、
+/// 一括は選んだ行ぜんぶ、レコードを持つ画面はそのレコード）・**入力する画面では
+/// いま入力されている値で見る**（保存しないと押せないボタンを作らない。計算した項目も
+/// `{ mode: create }` も同じ record から判定する）・**一部だけ動かさない**（1件でも
+/// 合わなければ押せない）・**理由の無い灰色を出さない**（何の状態で決まるのかを画面に
+/// 出す。文言は書かせない＝定義から出す）。
 class _Orders implements Repository {
   final List<DataRecord> rows;
 
@@ -127,6 +129,123 @@ const _formPage = FormPageDefinition(
   ],
 );
 
+/// 計算した項目で出し分ける（合計が 0 より大きいときだけ送れる）。
+const _computedPage = FormPageDefinition(
+  id: 'order_entry',
+  title: '受注入力',
+  repository: 'orderRepository',
+  keyField: 'orderNo',
+  form: FormDefinition(
+    sections: [
+      SectionDefinition(
+        fields: [
+          FieldDefinition(field: 'orderNo', label: '受注番号'),
+          FieldDefinition(field: 'qty', label: '数量', type: FieldTypes.number),
+          FieldDefinition(field: 'extra', label: '追加', type: FieldTypes.number),
+          FieldDefinition(
+            field: 'total',
+            label: '合計',
+            type: FieldTypes.number,
+            computed: {'op': 'sum', 'fields': ['qty', 'extra']},
+          ),
+        ],
+      ),
+    ],
+  ),
+  actions: [
+    ActionDefinition(
+      id: 'send',
+      type: ActionTypes.plugin,
+      plugin: 'sendOrder',
+      label: '送信',
+      enabledWhen: {'field': 'total', 'operator': 'gt', 'value': 0},
+    ),
+  ],
+);
+
+/// 新規入力のときだけ押せるボタン（`{ mode: create }`）。
+const _modePage = FormPageDefinition(
+  id: 'order_entry',
+  title: '受注入力',
+  repository: 'orderRepository',
+  keyField: 'orderNo',
+  form: FormDefinition(
+    sections: [
+      SectionDefinition(
+        fields: [FieldDefinition(field: 'orderNo', label: '受注番号')],
+      ),
+    ],
+  ),
+  actions: [
+    ActionDefinition(
+      id: 'send',
+      type: ActionTypes.plugin,
+      plugin: 'sendOrder',
+      label: '下書き保存',
+      enabledWhen: {'mode': 'create'},
+    ),
+  ],
+);
+
+/// 詳細画面（読むだけの画面。判定するのは開いているレコード）。
+const _detailPage = DetailPageDefinition(
+  id: 'order_detail',
+  title: '受注詳細',
+  repository: 'orderRepository',
+  keyField: 'orderNo',
+  form: FormDefinition(
+    sections: [
+      SectionDefinition(
+        fields: [
+          FieldDefinition(field: 'orderNo', label: '受注番号'),
+          FieldDefinition(field: 'status', label: '状態'),
+        ],
+      ),
+    ],
+  ),
+  actions: [
+    ActionDefinition(
+      id: 'send',
+      type: ActionTypes.plugin,
+      plugin: 'sendOrder',
+      label: '送信',
+      enabledWhen: {'field': 'status', 'operator': 'equals', 'value': '未出荷'},
+    ),
+  ],
+);
+
+/// ステップに分けて入れる画面（1つ目のステップで入れた値で出し分ける）。
+const _wizardPage = WizardPageDefinition(
+  id: 'order_wizard',
+  title: '受注登録',
+  repository: 'orderRepository',
+  keyField: 'orderNo',
+  steps: [
+    WizardStepDefinition(
+      id: 'basic',
+      title: '基本',
+      fields: [
+        FieldDefinition(field: 'orderNo', label: '受注番号'),
+        FieldDefinition(field: 'status', label: '状態'),
+      ],
+    ),
+    WizardStepDefinition(
+      id: 'detail',
+      title: '明細',
+      fields: [FieldDefinition(field: 'note', label: '備考')],
+    ),
+  ],
+  actions: [
+    ActionDefinition(
+      id: 'send',
+      type: ActionTypes.plugin,
+      plugin: 'sendOrder',
+      label: '送信',
+      enabledWhen: {'field': 'status', 'operator': 'equals', 'value': '未出荷'},
+    ),
+  ],
+);
+
 Widget _harness(PageDefinition page, {Object? recordKey}) => MaterialApp(
       home: Scaffold(
         body: HatakeScope(
@@ -225,15 +344,96 @@ void main() {
     );
   });
 
-  testWidgets('判定するのは開いたときのレコード（入力中の値は見ない）', (tester) async {
-    // いまの作りでは、画面のボタンが見るのは controller が持っているレコード。
-    // 入力中の値は項目の側（visibleWhen / enabledWhen / computed）だけが見ている。
-    // **入力しながら押せるようになる**のは別の話なので、ここでは事実を固定しておく
-    // （ロードマップの候補: 入力中の値でも出し分ける）。
+  testWidgets('入力する画面は、いま入力されている値で出し分ける（保存しなくても効く）',
+      (tester) async {
+    // 出荷済の受注を開いた＝送信できない。
+    await tester.pumpWidget(_harness(_formPage, recordKey: 'SO-2'));
+    await tester.pumpAndSettle();
+    final send = find.byKey(const Key('hatake.action.send'));
+    expect(_pressable(tester, send), isFalse);
+
+    // 画面で直したら、その場で押せるようになる（保存を挟まない）。項目の側
+    // （visibleWhen / computed）が入力に追従しているのと同じ record を見る。
+    await tester.enterText(find.byKey(const Key('hatake.form.status')), '未出荷');
+    await tester.pumpAndSettle();
+    expect(_pressable(tester, send), isTrue);
+
+    // 戻せば、また押せなくなる（片道ではない）。
+    await tester.enterText(find.byKey(const Key('hatake.form.status')), '出荷済');
+    await tester.pumpAndSettle();
+    expect(_pressable(tester, send), isFalse);
+  });
+
+  testWidgets('計算した項目でも出し分けられる（入力から出る値も同じ record に入る）',
+      (tester) async {
+    await tester.pumpWidget(_harness(_computedPage));
+    await tester.pumpAndSettle();
+    final send = find.byKey(const Key('hatake.action.send'));
+    // 何も入れていない＝合計 0 なので押せない。
+    expect(_pressable(tester, send), isFalse);
+
+    await tester.enterText(find.byKey(const Key('hatake.form.qty')), '2');
+    await tester.pumpAndSettle();
+    expect(_pressable(tester, send), isTrue);
+  });
+
+  testWidgets('新規入力なら押せる（{ mode: create }）', (tester) async {
+    await tester.pumpWidget(_harness(_modePage));
+    await tester.pumpAndSettle();
+    expect(
+      _pressable(tester, find.byKey(const Key('hatake.action.send'))),
+      isTrue,
+    );
+  });
+
+  testWidgets('既存を開いたら押せない（{ mode: create }）', (tester) async {
+    await tester.pumpWidget(_harness(_modePage, recordKey: 'SO-1'));
+    await tester.pumpAndSettle();
+    expect(
+      _pressable(tester, find.byKey(const Key('hatake.action.send'))),
+      isFalse,
+    );
+  });
+
+  testWidgets('押せない理由は、フォームの見出しで言う（項目名ではない）',
+      (tester) async {
     await tester.pumpWidget(_harness(_formPage, recordKey: 'SO-2'));
     await tester.pumpAndSettle();
 
+    final tooltip = tester.widget<Tooltip>(
+      find.ancestor(
+        of: find.byKey(const Key('hatake.action.send')),
+        matching: find.byType(Tooltip),
+      ).first,
+    );
+    expect(tooltip.message, 'いまは押せません（状態 によります）');
+  });
+
+  testWidgets('ステップに分けて入れる画面も、入力した値で出し分ける', (tester) async {
+    await tester.pumpWidget(_harness(_wizardPage));
+    await tester.pumpAndSettle();
+    final send = find.byKey(const Key('hatake.action.send'));
+    expect(_pressable(tester, send), isFalse);
+
     await tester.enterText(find.byKey(const Key('hatake.form.status')), '未出荷');
+    await tester.pumpAndSettle();
+    expect(_pressable(tester, send), isTrue);
+  });
+
+  testWidgets('読むだけの画面（detail）も出し分ける（押せる側）', (tester) async {
+    await tester.pumpWidget(_harness(_detailPage, recordKey: 'SO-1'));
+    await tester.pumpAndSettle();
+    expect(
+      _pressable(tester, find.byKey(const Key('hatake.action.send'))),
+      isTrue,
+    );
+  });
+
+  testWidgets('読むだけの画面（detail）も出し分ける（押せない側）', (tester) async {
+    // ここは今まで**書いても効いていなかった**（詳細画面だけボタンを手で描いていた）。
+    // 仕様書と `validate` は「レコードを持つ画面は出し分ける」と言っていたので、
+    // 画面がそれに合っていなかった側。
+    await tester.pumpWidget(_harness(_detailPage, recordKey: 'SO-2'));
     await tester.pumpAndSettle();
     expect(
       _pressable(tester, find.byKey(const Key('hatake.action.send'))),

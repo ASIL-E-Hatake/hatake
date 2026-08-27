@@ -32,6 +32,11 @@ class _HatakeFormFields extends StatefulWidget {
   /// ([ConditionModes]). The caller knows it; the record does not.
   final String mode;
 
+  /// いま入力されている値を配る先（画面のボタンの `enabledWhen` が見る）。
+  ///
+  /// 渡さないこともある（ダイアログの中のフォームには画面のボタンが無い）。
+  final _LiveRecord? live;
+
   /// Repositories, for fields whose options come from one (`optionsSource`).
   /// Passed in for the same reason as [validators]: a dialog route sits outside
   /// the `HatakeScope` subtree.
@@ -55,6 +60,7 @@ class _HatakeFormFields extends StatefulWidget {
     required this.mode,
     this.repositories,
     this.computeds,
+    this.live,
   });
 
   @override
@@ -162,6 +168,8 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
     var record = collect();
     // 親が変わって選べない値が残っていたら捨てる（「大阪府なのに渋谷区」で保存させない）。
     if (_clearStaleChildValues(record)) record = collect();
+    // 画面のボタンにも同じ record を渡す（フォームの外に居るので届けないと見えない）。
+    widget.live?.publish(record);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,

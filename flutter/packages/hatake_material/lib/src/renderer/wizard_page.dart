@@ -25,7 +25,23 @@ class _MaterialWizardPageState extends State<_MaterialWizardPage> {
   /// each step needs its own handle to collect from.
   final Map<String, GlobalKey<_HatakeFormFieldsState>> _keys = {};
 
+  /// 画面のボタンは**いま入力されている値**で出し分ける（`enabledWhen`）。ここまでの
+  /// ステップで入れた値も入っている（各ステップのフォームは draft から始まる）。
+  late final _LiveRecord _live = _LiveRecord(widget.controller.draft);
+
+  /// 押せない理由を業務の言葉で言うための、項目名 → 見出し（全ステップぶん）。
+  Map<String, String> get _labels => {
+        for (final step in widget.definition.steps)
+          for (final field in step.form.fields) field.field: field.label,
+      };
+
   WizardController get _controller => widget.controller;
+
+  @override
+  void dispose() {
+    _live.dispose();
+    super.dispose();
+  }
 
   GlobalKey<_HatakeFormFieldsState> _keyFor(WizardStepDefinition step) =>
       _keys.putIfAbsent(step.id, GlobalKey<_HatakeFormFieldsState>.new);
@@ -70,11 +86,20 @@ class _MaterialWizardPageState extends State<_MaterialWizardPage> {
                   style: theme.textTheme.headlineSmall,
                 ),
               ),
-              ..._pageActionButtons(
-                context,
-                widget.definition.actions,
-                _controller,
-                record: _controller.draft,
+              // 入力されている値が変わったら、ここだけ描き直す。
+              AnimatedBuilder(
+                animation: _live,
+                builder: (context, _) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: _pageActionButtons(
+                    context,
+                    widget.definition.actions,
+                    _controller,
+                    record: _live.record,
+                    labels: _labels,
+                    mode: _controller.formMode,
+                  ),
+                ),
               ),
             ],
           ),
@@ -156,6 +181,7 @@ class _MaterialWizardPageState extends State<_MaterialWizardPage> {
           key: _keyFor(step),
           form: step.form,
           initial: _controller.draft,
+          live: _live,
           validation: _controller.validation,
           fieldBuilders: widget.fieldBuilders,
           roles: roles,

@@ -83,14 +83,21 @@ List<Widget> _pageActionButtons(
   _PageDataRunner? onPrint,
   /// 項目名 → 業務名（押せない理由を業務の言葉で言うため）。
   Map<String, String> labels = const {},
+
+  /// フォームの状態（`{ mode: create }` / `{ mode: edit }` の判定用）。
+  ///
+  /// 入力する画面（form / wizard）だけが知っている。渡さなければ `mode` のリーフは
+  /// 満たされない（その状態だと言えないので）。
+  String? mode,
 }) {
   final roles = HatakeScope.of(context).roles;
   final out = <Widget>[];
   for (final action in actions) {
     if (!isAllowed(action.roles, roles)) continue;
-    // レコードが在る画面（form / detail）はその1件で判定する。無い画面では
+    // レコードが在る画面（form / detail / wizard）はその1件で判定する。入力する画面
+    // では**いま入力されている値**が渡ってくる（保存前の値で出し分ける）。無い画面では
     // 出し分けない（判定する相手が無い＝押せるまま）。
-    final state = _actionEnabled(action, record: record);
+    final state = _actionEnabled(action, record: record, mode: mode);
     out.add(_withReason(
       FilledButton(
         key: Key('hatake.action.${action.id}'),

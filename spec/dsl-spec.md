@@ -1277,7 +1277,8 @@ actions:
 |---|---|
 | A row action listed in `table.rowActions` | that row |
 | `scope: selection` (bulk) | **every** checked row — one mismatch and the button is disabled |
-| A button on a page that has a record (`form` / `detail` / `wizard`) | the record being shown |
+| A button on a page being filled in (`form` / `wizard`) | **the values currently entered** (before saving; computed fields included) |
+| A button on a read-only page (`detail`) | the record being shown |
 | A button above a list (`search` / `crud` / `master` / `report` / `dashboard`) | **none** — `validate` reports `enabledwhen-without-record` |
 
 - **Bulk needs all of them.** Nobody notices that only part of a selection ran, so a
@@ -1290,7 +1291,15 @@ actions:
   whether it can be pressed right now. Both may be written.
 - **With nothing to judge the button stays enabled** — the tool does not gate on a
   condition it cannot evaluate.
-- A page with a record judges the **loaded** record, not what is being typed.
+- **On a page being filled in it changes without saving.** "A draft can be sent" is
+  expressible because the button judges the **same** record the fields judge
+  (`visibleWhen` / `computed`); a button that only reacts after a save looks broken while
+  the user is looking at the value they just fixed.
+- `{ mode: create }` / `{ mode: edit }` can be judged there too (a "Save draft" button that
+  only works while creating). A read-only page has no form state, so a `mode` leaf is not
+  satisfied.
+- The field named in the disabled reason uses **that screen's label** ("状態", not
+  `status`).
 
 ### confirm
 

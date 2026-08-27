@@ -26,15 +26,18 @@ class _MaterialDetailPage extends StatelessWidget {
                 child:
                     Text(definition.title, style: theme.textTheme.headlineSmall),
               ),
-              for (final action in definition.actions)
-                if (isAllowed(action.roles, HatakeScope.of(context).roles)) ...[
-                  FilledButton(
-                    key: Key('hatake.action.${action.id}'),
-                    onPressed: () => _runAction(context, action),
-                    child: Text(action.label),
-                  ),
-                  const SizedBox(width: 8),
-                ],
+              // 他の画面と同じ口を通す（権限で隠す・`enabledWhen` で灰色にする・
+              // 押せない理由を添える、を画面ごとに書き分けない）。
+              ..._pageActionButtons(
+                context,
+                definition.actions,
+                controller,
+                record: controller.record,
+                labels: {
+                  for (final field in definition.form.fields)
+                    field.field: field.label,
+                },
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -110,16 +113,5 @@ class _MaterialDetailPage extends StatelessWidget {
       return formatters.format(field.format!, value, field.config);
     }
     return value?.toString() ?? '';
-  }
-
-  /// One dispatcher for every page kind (see `_runPageAction`). A detail page has
-  /// no rows, so an `export` action there reports that instead of pretending.
-  Future<void> _runAction(BuildContext context, ActionDefinition action) {
-    return _runPageAction(
-      context,
-      action,
-      controller,
-      record: controller.record,
-    );
   }
 }
