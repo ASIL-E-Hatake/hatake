@@ -346,6 +346,7 @@
       "keys": [
         "scope",
         "maxRows",
+        "batchSize",
         "default",
         "byRole"
       ],

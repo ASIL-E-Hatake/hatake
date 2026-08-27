@@ -89,6 +89,17 @@ const ACTION_MESSAGE: PlaceholderContext = {
         "`rows`）。件数だけの報告なら文字のまま出る＝「行が分かっていない」と読める",
     },
     {
+      name: "{skipped}",
+      means:
+        "送っていない件数（区切りで止めた・途中で失敗して残りを送らなかった）",
+      bulkOnly: true,
+      afterRun: true,
+      failureOnly: true,
+      note:
+        "区切って実行するとき（batchSize）だけ 0 より大きくなる。" +
+        "「実行していない」と「失敗した」は別なので、数も別に持つ。",
+    },
+    {
       name: "{error}",
       means: "失敗の理由（例外の文字）",
       bulkOnly: false,

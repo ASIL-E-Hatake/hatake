@@ -231,6 +231,13 @@
           ]
         },
         {
+          "key": "batchSize",
+          "type": "integer",
+          "required": false,
+          "description": "For scope: selection: how many rows to hand the handler per call. Absent = one call with every checked row. With it the framework owns the loop, so it can show how far it got and stop between batches (a stopped run reports what it did not send).",
+          "minimum": 1
+        },
+        {
           "key": "enabledWhen",
           "type": "object",
           "required": false,
@@ -2849,6 +2856,9 @@
     "ascending": [
       "dashboardItem.sort",
       "report.sort"
+    ],
+    "batchSize": [
+      "action"
     ],
     "brightness": [
       "theme"

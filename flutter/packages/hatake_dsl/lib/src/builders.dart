@@ -317,6 +317,8 @@ ActionDefinition action(
   String? plugin,
   ActionErrorDefinition? onError,
   ActionPromptDefinition? prompt,
+  /// 選んだ行を何件ずつハンドラに渡すか（`scope: selection` のとき）。
+  int? batchSize,
   /// いま押せるか（条件の書き方は項目の `enabledWhen` と同じ）。
   Map<String, Object?>? enabledWhen,
   Map<String, Object?> config = const {},
@@ -330,6 +332,7 @@ ActionDefinition action(
     plugin: plugin,
     onError: onError,
     prompt: prompt,
+    batchSize: batchSize,
     enabledWhen: enabledWhen,
     config: config,
     roles: roles,

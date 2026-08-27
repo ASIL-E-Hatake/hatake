@@ -16,6 +16,11 @@ npx hatake diagram app.yaml --format mermaid                 # the screen map, p
 npx hatake diagram page.yaml --computed                      # which field comes from which (red = declared out of order)
 ```
 
+A bulk action may say **how many rows per call**: `batchSize: 20`. The framework then owns
+the loop, so it shows progress ("12 / 100") and can be **stopped between batches** —
+stopping only means "do not send the rest", so what was sent has run and the report counts
+it separately (`{skipped}`). A stopped run is not a success, so `onSuccess` does not run.
+
 An action may say **when it can be pressed**: `enabledWhen` (the `visibleWhen` condition
 language). Where it sits decides what is judged — a row action judges its row, `scope:
 selection` needs **every** checked row to match, and a page with a record judges that

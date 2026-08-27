@@ -636,6 +636,11 @@ function describeAction(
                 ? v.onSelectionUncapped
                 : v.onSelectionUpTo(limit.rows),
         );
+  // 区切りは一括のときだけ意味がある（枠組みが回す回数）。
+  const batches =
+    action.scope === ActionScopes.selection && action.batchSize !== undefined
+      ? v.clause(v.inBatchesOf(action.batchSize))
+      : "";
   const asks =
     action.prompt !== undefined
       ? v.clause(v.asksFor(action.prompt.fields.map((f) => f.label)))
@@ -679,7 +684,7 @@ function describeAction(
         );
   return v.subject(
     action.label,
-    `${what}${to}${on}${asks}${confirm}${after}${onError}${pressable}${roles}`,
+    `${what}${to}${on}${batches}${asks}${confirm}${after}${onError}${pressable}${roles}`,
   );
 }
 

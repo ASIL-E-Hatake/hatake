@@ -31,6 +31,14 @@ class ActionOutcome {
   /// Rows it could not (already shipped, rejected by the server, …).
   final int failed;
 
+  /// Rows that were **never sent** — the run stopped before reaching them.
+  ///
+  /// 区切って実行するとき（`batchSize`）だけ 0 より大きくなる。押した人が中断した・
+  /// 途中の区切りが失敗して残りを送らなかった、のどちらか。**「実行していない」と
+  /// 「失敗した」は別**なので、数も別に持つ（失敗はやり直す相手、実行していないぶんは
+  /// もう一度押す相手）。
+  final int skipped;
+
   /// The rows it could not, **named**. Empty when the handler only counted.
   ///
   /// 「3件失敗しました」だけでは、現場は全部やり直すしかない。名指しできれば、
@@ -44,6 +52,7 @@ class ActionOutcome {
   const ActionOutcome({
     this.succeeded = 0,
     this.failed = 0,
+    this.skipped = 0,
     this.rows = const [],
   });
 
@@ -55,14 +64,36 @@ class ActionOutcome {
   }) =>
       ActionOutcome(succeeded: succeeded, failed: rows.length, rows: rows);
 
-  /// Nothing failed. `onSuccess` runs.
-  bool get isSuccess => failed == 0;
+  /// Nothing failed **and nothing was left unsent**. `onSuccess` runs.
+  ///
+  /// 途中で止めた実行は成功ではない（選んだ行のうち一部は動いていない）。ここで
+  /// `onSuccess` を動かすと、画面が移って「動いていない行」が視界から消える。
+  bool get isSuccess => failed == 0 && skipped == 0;
 
   /// Some worked and some did not. **`onSuccess` does not run**: moving on from
   /// a screen where 1 of 5 rows failed hides the one that needs attention.
   bool get isPartial => failed > 0 && succeeded > 0;
 
   int get total => succeeded + failed;
+
+  /// 区切りをまとめる（枠組みが回すときに、区切りごとの報告を1つにする）。
+  ///
+  /// 数も名指しも足し合わせる＝押した人が見るのは**1回ぶんの結果**（何回に分けて
+  /// 送ったかは枠組みの都合なので、報告には出さない）。
+  ActionOutcome merge(ActionOutcome other) => ActionOutcome(
+        succeeded: succeeded + other.succeeded,
+        failed: failed + other.failed,
+        skipped: skipped + other.skipped,
+        rows: [...rows, ...other.rows],
+      );
+
+  /// 送らなかったぶんを足した写し（中断・途中で止めたとき）。
+  ActionOutcome withSkipped(int count) => ActionOutcome(
+        succeeded: succeeded,
+        failed: failed,
+        skipped: skipped + count,
+        rows: rows,
+      );
 
   /// The keys of the named rows, without the ones that have no key.
   ///

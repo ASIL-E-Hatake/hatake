@@ -108,7 +108,12 @@ void _showActionFailure(
   ActionOutcome? outcome,
   void Function(List<Object?> keys)? onSelectFailed,
 }) {
-  final declared = action.onError?.message;
+  // 失敗が1件も無くて、送っていないぶんが在るだけ＝**止めた**（失敗ではない）。
+  // そこに `onError` の文言（「承認できませんでした」）を出すのは嘘なので、枠組みの
+  // 言葉で言う。失敗も混ざっているなら失敗なので、定義の文言を使う。
+  final stoppedOnly =
+      outcome != null && outcome.failed == 0 && outcome.skipped > 0;
+  final declared = stoppedOnly ? null : action.onError?.message;
   final message = declared != null
       ? _fillActionMessage(declared, error: error, outcome: outcome)
       : _defaultFailureMessage(action, error: error, outcome: outcome);
@@ -204,10 +209,20 @@ String _defaultFailureMessage(
   Object? error,
   ActionOutcome? outcome,
 }) {
-  if (outcome != null && outcome.failed > 0) {
-    return outcome.isPartial
-        ? '${outcome.succeeded} 件を実行しました（${outcome.failed} 件失敗）'
-        : '${outcome.failed} 件すべて失敗しました';
+  if (outcome != null && (outcome.failed > 0 || outcome.skipped > 0)) {
+    // 「実行していない」は失敗ではない（もう一度押せば動く相手）。混ざるので、
+    // どちらも数で言う＝押した人が次に何をすればいいかが読める。
+    final rest = outcome.skipped > 0
+        ? '${outcome.skipped} 件は実行していません'
+        : null;
+    if (outcome.failed == 0) {
+      return '${outcome.succeeded} 件を実行しました（$rest）';
+    }
+    final failed = '${outcome.failed} 件失敗';
+    final tail = rest == null ? failed : '$failed、$rest';
+    return outcome.succeeded > 0
+        ? '${outcome.succeeded} 件を実行しました（$tail）'
+        : '${outcome.failed} 件すべて失敗しました${rest == null ? "" : "（$rest）"}';
   }
   return switch (action.type) {
     ActionTypes.export => '出力に失敗しました: $error',
@@ -246,6 +261,10 @@ String _fillActionMessage(
         .replaceAll('{failed}', '${outcome.failed}')
         .replaceAll('{total}', '${outcome.total}');
   }
+  // 送っていない件数。区切って実行して途中で止めたときだけ埋める（止めていないなら
+  // 0 と出すのは嘘＝そこは文字のまま出して「当てはまらない」と読ませる）。
+  final skipped = outcome?.skipped ?? 0;
+  if (skipped > 0) text = text.replaceAll('{skipped}', '$skipped');
   // 行を名指しできたときだけ埋める。報告が件数だけなら文字のまま出す（`{failedKeys}`
   // が見えている＝「アプリ側が行を報告していない」と読める）。
   final keys = outcome?.failedKeys ?? const [];

@@ -1108,6 +1108,11 @@
         "config": {
           "$ref": "#/$defs/config"
         },
+        "batchSize": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "For scope: selection: how many rows to hand the handler per call. Absent = one call with every checked row. With it the framework owns the loop, so it can show how far it got and stop between batches (a stopped run reports what it did not send)."
+        },
         "enabledWhen": {
           "$ref": "#/$defs/condition",
           "description": "Enabled only while this condition matches. The record judged is the row for a row action, every checked row for scope: selection (all of them must match), and the current record for a page that has one. A page with no record to judge leaves the button enabled (validate says so)."

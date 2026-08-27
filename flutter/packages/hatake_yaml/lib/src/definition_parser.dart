@@ -504,6 +504,7 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
     onError: _parseActionError(m.optMap('onError')),
     prompt: _parseActionPrompt(m.optMap('prompt')),
     maxRows: _parseRowLimit(m['maxRows']),
+    batchSize: m.optInt('batchSize'),
     enabledWhen: m.optMap('enabledWhen'),
     // Lift top-level `page` / `params` (navigate actions) into config so the
     // ActionDefinition model stays unchanged.
