@@ -66,6 +66,14 @@ import {
 import { minimizeSource, renderMinimize } from "./minimize.js";
 import { wireApp } from "./wire.js";
 import { mergeWiring, renderWireMerge } from "./wireMerge.js";
+import { renderWireTodo, wireTodo } from "./wireTodo.js";
+import {
+  filledReport,
+  hasUnfilled,
+  inState,
+  renderFilled,
+} from "./wiringFilled.js";
+import { looseTodos, usesInCode } from "./registryUse.js";
 import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
 import {
@@ -128,6 +136,7 @@ import { parseAppYaml } from "./appParse.js";
 import { closestKey } from "./strictKeys.js";
 import { scaffold, scaffoldKinds } from "./scaffold.js";
 import {
+  type RegistryScan,
   SCANNABLE_EXTENSIONS,
   scanRegistrations,
   type SourceFile,
@@ -237,11 +246,23 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       として報告し、終了コード 1 にする（黙って落とすと一覧が嘘になるため）。
 
   hatake refs <file...> [--json] [--needs-registration] [--unused]
+              [--filled] [--source <実装のパス>] [--pending-as-error]
+              [--unused-as-error]
       その定義が外に要求しているもの（Repository・プラグイン・フォーマッタ…）を
       種類ごとに並べる。--needs-registration で「組み込みに無い＝自分で登録が
       要るもの」だけ。出力はそのまま --registry に渡せる形。
       --unused は**逆向き**＝登録してあるのに、どの定義も使っていないものを出す
       （登録済みの一覧が要る。消し忘れた登録は「使われている」と誤解される）。
+
+      --filled --source <実装のパス> で、要求している登録が**本当に埋まったか**を
+      数える（埋まっている／TODO のまま／登録が無い／言えない）。「TODO のまま」は
+      wire が足した目印（UnimplementedError）が残っているもの＝動かすと落ちる。
+      読めなかった登録が在る種類は「言えない」＝在るとも無いとも言わない。
+      --pending-as-error で、TODO のまま・登録が無い が1件でもあれば落とす。
+
+      --unused に --source を渡すと、**アプリのコードの中で名前が書かれているか**も
+      見る（画面の外から直接呼んでいる登録は「消してよい」ではない）。
+      --unused-as-error は、コードのどこにも無いものが残っていれば落とす。
 
   hatake wire <file> [--base /api] [--out file] [--class Name] [--assets path]
       アプリ側の配線（Flutter）の下書きを出す。定義が要求している登録
@@ -253,10 +274,14 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       ならない（collection の名前は複数形を推測して埋める）。
 
   hatake wire <file> --merge <既にある配線.dart> [--write] [--out file] [--json]
+              [--todo]
       **足りない登録だけ**を足す（2回目以降はこちら）。手で埋めた中身は1バイトも
       変えない＝消さない・並べ替えない・整形しない。要らなくなった登録は言うだけで
       消さない（消すかどうかは業務の判断）。既定は標準出力、--write で上書き。
       目印（HatakeScope と child:）が無い形なら、何もせず理由を言う。
+      --todo で、足した登録を**次の1往復で渡す形**にする（どこに・何を書くか・
+      埋めるまで何が起きるか）。足した直後は全部 TODO なので、埋め忘れが
+      「動かして初めて分かる」から「渡した時点で見える」に変わる。
 
   hatake probe <file> --base http://localhost:8080/api [--page <id>]
               [--token <jwt>] [--headers headers.json] [--login login.json]
@@ -388,6 +413,9 @@ const BOOLEAN_FLAGS = new Set([
   "api-only",
   "needs-registration",
   "unused",
+  "unused-as-error",
+  "filled",
+  "pending-as-error",
   "todo",
   "dry-run",
   "if-changed",
@@ -936,11 +964,23 @@ function wireMerge(
   const result = mergeWiring(io.readFile(into), document, {
     collections: collectionOverrides(str(flags, "collection")),
   });
+  const out = str(flags, "out") ?? (flags.write === true ? into : undefined);
+  // 渡す形（`--todo`）のときは、標準出力は**一覧**になる（コードは --write / --out で
+  // 書く）。足したコードと渡す一覧を同じ流れに混ぜると、どちらも使えなくなる。
+  if (flags.todo === true) {
+    if (out !== undefined) io.writeFile(out, result.code);
+    const todo = wireTodo(result, out);
+    io.out(
+      flags.json === true
+        ? JSON.stringify(todo, null, 2)
+        : renderWireTodo(todo),
+    );
+    return 0;
+  }
   if (flags.json === true) {
     io.out(JSON.stringify(result, null, 2));
     return 0;
   }
-  const out = str(flags, "out") ?? (flags.write === true ? into : undefined);
   if (out === undefined) {
     io.out(result.code.trimEnd());
   } else if (result.code === io.readFile(into) && out === into) {
@@ -1440,6 +1480,7 @@ function refs(files: string[], flags: Args["flags"], io: CliIo): number {
       ? collectRefs(document as Record<string, unknown>)
       : [];
   });
+  if (flags.filled === true) return filled(files, collected, flags, io);
   if (flags.unused === true) return unused(files, collected, flags, io);
   const grouped =
     flags["needs-registration"] === true
@@ -1491,10 +1532,39 @@ function unused(
     );
     return 1;
   }
+  // 落とす旗は、実装を見ていないと置けない（画面の外から直接呼んでいる登録を
+  // 「使われていない」と言って落とすのは嘘）。
+  if (flags["unused-as-error"] === true && str(flags, "source") === undefined) {
+    throw new Error(
+      "--unused-as-error には --source <実装のパス> が要ります。" +
+        "定義から使われていないことは「消してよい」を意味しません" +
+        "（画面の外から直接呼んでいる登録が普通に在ります）。",
+    );
+  }
   const grouped = unusedRegistrations(registry, collected);
+  const names = Object.values(grouped).flatMap((one) => one ?? []);
+  // 実装を渡されたら、**登録の外**で名前が書かれているかも見る（画面の外から直接
+  // 呼んでいる登録は「消してよい」ではない）。落とす旗はこれが在って初めて置ける。
+  const scanned = str(flags, "source") === undefined ? undefined : sources(flags, io);
+  const inCode =
+    scanned === undefined
+      ? {}
+      : usesInCode(names, scanned.sources, scanned.scan.sites);
+  const dead = names.filter((name) => inCode[name] === undefined);
+
   if (flags.json === true) {
-    io.out(JSON.stringify({ files: files.length, unused: grouped }, null, 2));
-    return 0;
+    io.out(
+      JSON.stringify(
+        {
+          files: files.length,
+          unused: grouped,
+          ...(scanned === undefined ? {} : { usedInCode: inCode, dead }),
+        },
+        null,
+        2,
+      ),
+    );
+    return failIf(flags, "unused-as-error", scanned !== undefined && dead.length > 0);
   }
   const kinds = Object.keys(grouped);
   if (kinds.length === 0) {
@@ -1505,16 +1575,99 @@ function unused(
   for (const kind of kinds) {
     io.out(`${kind}:`);
     for (const name of grouped[kind as keyof typeof grouped] ?? []) {
-      io.out(`  ${name}`);
+      const uses = inCode[name];
+      io.out(
+        uses === undefined
+          ? `  ${name}`
+          : `  ${name}   ← コードに名前が書かれています（${uses.join(" / ")}）`,
+      );
     }
   }
   io.out("");
+  if (scanned === undefined) {
+    io.out(
+      "※ 渡した定義の中では使われていない、という事実だけです。" +
+        "**定義を全部渡していないと嘘になります**（app なら1枚で足ります）。" +
+        "アプリのコードから直接使っている登録もあるので、消す前に確かめてください" +
+        "（--source <実装のパス> を渡すと、そこも見ます）。",
+    );
+    return 0;
+  }
   io.out(
-    "※ 渡した定義の中では使われていない、という事実だけです。" +
-      "**定義を全部渡していないと嘘になります**（app なら1枚で足ります）。" +
-      "アプリのコードから直接使っている登録もあるので、消す前に確かめてください。",
+    `実装 ${scanned.sources.length} ファイルも見ました。` +
+      `コードのどこにも名前が無いのは ${dead.length} 件です` +
+      "（そこが消す候補。**定義を全部渡していないと嘘になります**）。",
   );
-  return 0;
+  if (scanned.scan.unreadable.length > 0) {
+    io.out(
+      `読めなかった登録が ${scanned.scan.unreadable.length} 件あるので、` +
+        "その分は消す候補に入れていません。",
+    );
+  }
+  return failIf(flags, "unused-as-error", dead.length > 0);
+}
+
+/** `--source` で渡された実装を走査する（`refs --filled` / `--unused` が使う）。 */
+function sources(
+  flags: Args["flags"],
+  io: CliIo,
+): { sources: SourceFile[]; scan: RegistryScan } {
+  const path = str(flags, "source");
+  if (path === undefined) {
+    throw new Error(
+      "--source <実装のパス> を渡してください（実装を読まないと、埋まったかは言えません）。",
+    );
+  }
+  const found: SourceFile[] = [];
+  for (const one of collectPaths([path], io, SCANNABLE_EXTENSIONS)) {
+    found.push({ path: one, source: io.readFile(one) });
+  }
+  if (found.length === 0) {
+    throw new Error(
+      `走査できるソースがありません（対象の拡張子: ${SCANNABLE_EXTENSIONS.join(" ")}）。`,
+    );
+  }
+  return { sources: found, scan: scanRegistrations(found) };
+}
+
+/** 旗が立っていれば落とす（既定は事実を言うだけ＝消す/埋めるかは業務の判断）。 */
+const failIf = (flags: Args["flags"], flag: string, bad: boolean): number =>
+  flags[flag] === true && bad ? 1 : 0;
+
+/**
+ * 要求している登録が**本当に埋まったか**を数える（`refs --filled --source <実装>`）。
+ *
+ * 足す所までは機械にやらせられるが、埋め忘れは動かして初めて分かる。定義と実装の
+ * 両方を読めば出荷前に数えられる。
+ */
+function filled(
+  files: string[],
+  collected: DefinitionRef[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const scanned = sources(flags, io);
+  const report = filledReport(
+    collected,
+    scanned.scan,
+    scanned.sources.length,
+    looseTodos(scanned.sources, scanned.scan.sites),
+  );
+  io.out(
+    flags.json === true
+      ? JSON.stringify(report, null, 2)
+      : renderFilled(report),
+  );
+  if (flags.json !== true && report.items.length > 0) {
+    const pending = inState(report, "pending").length;
+    if (pending > 0) {
+      io.err(
+        `TODO のまま残っているのが ${pending} 件あります` +
+          "（hatake wire --merge --todo で渡した所です）。",
+      );
+    }
+  }
+  return failIf(flags, "pending-as-error", hasUnfilled(report));
 }
 
 /**

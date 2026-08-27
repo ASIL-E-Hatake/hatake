@@ -12,7 +12,14 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
   `validate --registry <file>` に渡すと**名前の食い違い**と**繋いでいない口**も見る／
   `npx hatake wire <file> --base /api` で**その配線の下書き**（Flutter）が出る（中身は TODO）／
   画面を増やしたあとは `npx hatake wire <file> --merge <配線.dart> --write`＝**足りない登録だけ**を足す
-  （手で埋めた中身は消えない。要らなくなった登録は言うだけで消さない）
+  （手で埋めた中身は消えない。要らなくなった登録は言うだけで消さない）／`--todo` を付けると
+  足した所を**次の1往復で渡す形**で出す（どこに・何を書くか・埋めるまで何が起きるか）
+- 埋まったかを数える: `npx hatake refs <file> --filled --source lib/`＝要求している登録が
+  **埋まっている／TODO のまま／登録が無い／言えない**のどれか（「TODO のまま」は道具が置いた
+  `UnimplementedError` が残っているもの＝動かすと落ちる）。**登録の外**に残った TODO も出す
+  （REST の配線は登録だけ済んで通信する所が空いていることがある）。CI に置くなら
+  `--pending-as-error`。逆向きの `--unused` に `--source` を渡すと、コードに名前が書いてある
+  ものは消す候補から外す（`--unused-as-error` はそのときだけ置ける）
 - 繋いだあと（サーバが動いているとき）: `npx hatake probe <file> --base http://localhost:8080/api`
   で**定義とサーバの食い違い**を実際に叩いて見る（足りない項目・型違い・`{items, totalCount}` で
   ない・`pageSize` が効かない・行に鍵が無い）。権限は `npx hatake attack <app> --role staff --base …`（役割ぜんぶなら `--all-roles --accounts accounts.json`＝資格は役割ごとに要る）

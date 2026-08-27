@@ -17,7 +17,12 @@
 
 import { collectRefs, type RefKind, refsNeedingRegistration } from "./refs.js";
 import { mapLiteral } from "./wireMap.js";
-import { WIRE_KINDS, WIRE_SINKS } from "./wireKinds.js";
+import {
+  UNWIRED_REPOSITORY,
+  WIRE_KINDS,
+  WIRE_SINKS,
+  wireStub,
+} from "./wireKinds.js";
 
 type Dict = Record<string, unknown>;
 
@@ -173,7 +178,9 @@ export function wireApp(document: Dict, options: WireOptions = {}): string {
     // prefer_const_constructors を言う＝生成物が「直すべきコード」に見える）。
     push(
       `        repositories: const RepositoryRegistry(${mapLiteral(
-        repositories.map((r) => [r, `_UnwiredRepository('${r}')`] as [string, string]),
+        repositories.map(
+          (r) => [r, `${UNWIRED_REPOSITORY}('${r}')`] as [string, string],
+        ),
         "        ",
       )}),`,
     );
@@ -185,7 +192,7 @@ export function wireApp(document: Dict, options: WireOptions = {}): string {
     for (const line of kind.comment) push(`        ${line}`);
     push(
       `        ${kind.field}: ${kind.registry}(${mapLiteral(
-        names.map((name) => [name, kind.stub(name)] as [string, string]),
+        names.map((name) => [name, wireStub(kind, name)] as [string, string]),
         "        ",
       )}),`,
     );
@@ -197,7 +204,7 @@ export function wireApp(document: Dict, options: WireOptions = {}): string {
     const names = named(kind.need);
     if (names.length === 0) continue;
     const body = mapLiteral(
-      names.map((name) => [name, kind.stub(name)] as [string, string]),
+      names.map((name) => [name, wireStub(kind, name)] as [string, string]),
       "          ",
     );
     rendererArgs.push(
@@ -248,10 +255,10 @@ export function wireApp(document: Dict, options: WireOptions = {}): string {
     push("/// まだ繋いでいない Repository。**5つのメソッドだけ**が Framework との契約。");
     push("///");
     push("/// REST なら `hatake wire --base /api` で hatake_http を使う形が出る。");
-    push("class _UnwiredRepository implements Repository {");
+    push(`class ${UNWIRED_REPOSITORY} implements Repository {`);
     push("  final String name;");
     push("");
-    push("  const _UnwiredRepository(this.name);");
+    push(`  const ${UNWIRED_REPOSITORY}(this.name);`);
     push("");
     push("  Never get _todo => throw UnimplementedError('$name を繋ぐ');");
     push("");
