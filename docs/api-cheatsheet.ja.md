@@ -72,6 +72,14 @@ npx hatake new crud --id customer_master --title 顧客マスタ   # 雛形（8�
 npx hatake types page.yaml --lang java --out gen/            # ネイティブ型
 ```
 
+**押しても何も起きないボタンは、押す前に言う**（この枠組みで一番まずい転び方＝定義は通り、
+ボタンも出て、押すまで気づけない）: `create` を一覧の無い画面に（`create-action-unusable`）／
+`export` を表の無い画面に（`export-without-rows`）／`print` を `report` の無い画面に
+（`print-without-report`）／`plugin` に `plugin:` を書き忘れ（`plugin-without-name`）／
+`navigate` の行き先がその画面自身（`navigate-to-self`）／`edit` / `delete` を行の外に
+（`row-declaration-unused`）／組み込みの行アクションを `crud` / `master` 以外に
+（`builtin-rowaction-unsupported`）。判定は**1画面ぶんの情報だけ**で決まるので CI に置ける。
+
 **書き間違いを検出する（strict）**: パーサは既定では知らないキーを黙って捨てるので、
 任意キーの綴り間違い（`readonly` / `pagesize` / `visible_when`）は**何も起きない**。
 `strict` を付けると全部まとめて指摘される（近い既知キーの提案つき）。定義を書くとき・CI は strict 推奨。

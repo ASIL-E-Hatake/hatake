@@ -131,6 +131,22 @@ Widget _host(
 }
 
 void main() {
+  group('行の操作の宣言', () {
+    testWidgets('画面のボタンとしては出ない（押しても何も起きないボタンを作らない）',
+        (tester) async {
+      await tester.pumpWidget(_host(_Rows([..._rows]), _withHooks));
+      await tester.pumpAndSettle();
+
+      // `type: delete` を actions に書くのは、行の削除の言い方を業務の言葉にする
+      // **宣言**（下の confirm の試験がそれを確かめている）。画面のボタンとして
+      // 並べると、押しても「未実装です」と言うだけのボタンになる。
+      expect(find.byKey(const Key('hatake.action.delete')), findsNothing);
+      expect(find.widgetWithText(FilledButton, '削除'), findsNothing);
+      // 行の削除は出ている（宣言はそちらに効く）。
+      expect(find.byKey(const Key('hatake.delete.1')), findsOneWidget);
+    });
+  });
+
   group('confirm', () {
     testWidgets('宣言した文言とラベルがそのまま出る', (tester) async {
       await tester.pumpWidget(_host(_Rows([..._rows]), _withHooks));

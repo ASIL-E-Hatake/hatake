@@ -11,6 +11,7 @@ export * from "./scaffold.js";
 export * from "./examples.js";
 export * from "./pitfalls.js";
 export * from "./failures.js";
+export * from "./actionNeeds.js";
 export * from "./warnings.js";
 export * from "./wire.js";
 export * from "./refs.js";

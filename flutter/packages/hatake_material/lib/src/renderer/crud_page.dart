@@ -124,7 +124,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
               Expanded(
                 child: Text(_def.title, style: theme.textTheme.headlineSmall),
               ),
-              for (final action in _def.actions)
+              for (final action in _pageOnlyActions(_def.actions))
                 if (isAllowed(action.roles, _roles)) ...[
                   if (action.scope == ActionScopes.selection)
                     _bulkButton(
@@ -245,6 +245,20 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
         return Text(text);
     }
   }
+
+  /// 画面のボタンにするアクション（行の操作の**宣言**は外す）。
+  ///
+  /// `type: edit` / `type: delete` を `actions:` に書くのは、行の操作の言い方を業務の
+  /// 言葉にするための宣言（`confirm` を書くと行の削除がその文で聞く）。ボタンとして
+  /// 押す口ではないので、並べると**押しても「未実装です」と言うだけのボタン**が出る
+  /// ＝この枠組みで一番まずい転び方（押すまで気づけない）。
+  ///
+  /// 行に出す口は [_buildRowActions]（`table.rowActions` が決める）。
+  static List<ActionDefinition> _pageOnlyActions(List<ActionDefinition> actions) => [
+        for (final action in actions)
+          if (action.type != ActionTypes.edit && action.type != ActionTypes.delete)
+            action,
+      ];
 
   /// Deletes a row, asking first.
   ///

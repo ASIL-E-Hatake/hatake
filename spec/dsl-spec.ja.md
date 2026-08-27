@@ -1173,6 +1173,8 @@ maxRows:                                     # 役割ごと
 
 **`type: delete` は `confirm` が無くても必ず確認する**（取り消せない操作なので、既定を安全側に置く）。`confirm` を書いた場合は文言がそれに置き換わる。
 
+その宣言が読まれるのは **`id: delete`（組み込みの名前）で、`table.rowActions` に `delete` が並んでいるとき**。行の操作の宣言は画面のボタンにはならない（並べると押しても何も起きないボタンになるので、Renderer は出さない）。どこにも効かない書き方は `validate` が言う（`row-declaration-unused`）。
+
 ### onSuccess
 
 **成功したときだけ**動く。失敗時に動かないことがこの宣言の意味（呼び出しの後ろにコードを書くのとは違う）。
@@ -1406,6 +1408,11 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `computed-aggregate-without-of` | 行を畳む計算に `of` が無い（`count` 以外） → 何を畳むか決まらないので空欄になる |
 | `computed-field-and-fields` | `field` と `fields` の両方を書いた → `field` が勝ち、`fields` は効かない |
 | `create-action-unusable` | `type: create` を `crud` / `master` 以外の画面に置いた → ボタンは出るが**押しても何も起きない**（`create` が開くのは一覧からの新規入力。`form` / `wizard` には保存ボタンが最初から出ている） |
+| `export-without-rows` | `type: export` を**表の無い画面**（`form` / `wizard` / `dashboard` / `detail`）に置いた → CSV にする行が無いので、押しても何も出ない |
+| `plugin-without-name` | `type: plugin` なのに `plugin:` が無い → 呼ぶ相手が無いので、押しても何も起きない |
+| `navigate-to-self` | `type: navigate` の行き先がその画面自身 → 同じ画面がもう1枚開くだけで、何も起きなかったように見える |
+| `row-declaration-unused` | 行の操作の宣言（`type: edit` / `type: delete`）が**どこにも効かない** → 行を直す/消す枠が無い画面に置いた・`table.rowActions` にその名前が無い・id が組み込みの名前（`edit` / `delete`）ではない |
+| `builtin-rowaction-unsupported` | 組み込みの行アクション（`edit` / `delete`）を `crud` / `master` 以外の `table.rowActions` に書いた → 行には何も出ない（`search` の `rowActions` が指すのは画面のアクションの id） |
 | `placeholder-not-filled` | 文言に**埋まらない差し込み**を書いた（`onSuccess` / `onError` は件数が `scope: selection` だけ・`{error}` は失敗だけ、**押す前**（`confirm` / `prompt.title`）は `{count}` だけ＝まだ失敗も理由も無い、**それ以外の名前＝`{orderNo}` のような項目名は埋める口が無い**）→ 押すまで気づけず、文字のまま出る |
 | `maxrows-unknown-role` | `byRole` に書いた役割が、そのボタンを押せない（`roles` に無い）／定義のどこにも出てこない → 誰にも当てはまらないので、その上限は効かない |
 | `maxrows-without-selection` | `maxRows` を `scope: selection` でないボタンに書いた → 数える対象が無いので上限は効かない |

@@ -28,10 +28,16 @@ page:
     rowActions: [edit, approve]
     columns: [{ field: orderNo, label: 受注番号 }]
 `);
-    expect(found.map((w) => w.rule)).toEqual(["rowaction-not-declared"]);
-    expect(found[0].path).toBe("page.table.rowActions[1]");
-    expect(found[0].message).toContain("approve");
-    expect(found[0].fix).toContain("edit / delete");
+    // `search` に組み込みの `edit` を書いても行には出ない（一覧＋フォームを持つ画面の
+    // 機能なので）。approve は宣言が無いので出ない。**どちらも黙って消える**。
+    expect(found.map((w) => w.rule)).toEqual([
+      "builtin-rowaction-unsupported",
+      "rowaction-not-declared",
+    ]);
+    expect(found[0].path).toBe("page.table.rowActions[0]");
+    expect(found[1].path).toBe("page.table.rowActions[1]");
+    expect(found[1].message).toContain("approve");
+    expect(found[1].fix).toContain("edit / delete");
   });
 
   it("組み込み（edit / delete）と宣言済みは黙る", () => {
@@ -96,6 +102,9 @@ ${pages}
       id: customer_master
       title: 顧客マスタ
       repository: customerRepository
+      table:
+        rowActions: [delete]
+        columns: [{ field: code, label: コード }]
       actions:
         - id: delete
           type: delete

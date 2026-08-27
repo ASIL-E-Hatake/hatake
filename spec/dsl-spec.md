@@ -1193,6 +1193,8 @@ Ask before running, declared instead of coded once per screen.
 
 **A `type: delete` asks even without `confirm`** — it cannot be undone, so the safe default wins. Declaring `confirm` replaces the wording.
 
+That declaration is read when its **id is `delete` (the built-in name) and `table.rowActions` lists `delete`**. A row-operation declaration never becomes a screen button (listing one would produce a button that does nothing when pressed, so the renderer leaves it out). Declarations that take effect nowhere are reported by `validate` (`row-declaration-unused`).
+
 ### onSuccess
 
 Runs **only when the action succeeded**. That it does not run on failure is the point of declaring it rather than writing code after the call.
@@ -1419,6 +1421,11 @@ npx hatake validate page.yaml --no-warn --json
 | `computed-aggregate-without-of` | a row-folding `computed` without `of` (except `count`) — nothing says what to fold, so the field shows empty |
 | `computed-field-and-fields` | both `field` and `fields` are written — `field` wins and `fields` does nothing |
 | `create-action-unusable` | `type: create` on a page other than `crud` / `master` — the button appears but **nothing happens when pressed** (`create` opens the new-record form of a list; `form` / `wizard` already have a save button) |
+| `export-without-rows` | `type: export` on a page with **no table** (`form` / `wizard` / `dashboard` / `detail`) — there are no rows to write, so pressing it produces nothing |
+| `plugin-without-name` | `type: plugin` without `plugin:` — there is nobody to call, so nothing happens when pressed |
+| `navigate-to-self` | a `type: navigate` whose target is the page itself — it only opens another copy of the same screen, which reads as "nothing happened" |
+| `row-declaration-unused` | a row-operation declaration (`type: edit` / `type: delete`) that **takes effect nowhere** — a page with no rows to edit/delete, a name missing from `table.rowActions`, or an id that is not the built-in name (`edit` / `delete`) |
+| `builtin-rowaction-unsupported` | a built-in row action (`edit` / `delete`) in `table.rowActions` of a page other than `crud` / `master` — nothing appears in the row (a `search` page's `rowActions` point at the ids of the page's own actions) |
 | `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure, **before it runs only `{count}` fills** — there is no failure and no reason yet — and **any other name, a field like `{orderNo}`, has nothing to fill it**) — it stays as literal text and you find out by pressing the button |
 | `maxrows-unknown-role` | a role in `byRole` cannot use the button (not in `roles`) or appears nowhere in the definition — nothing matches it, so that limit never applies |
 | `maxrows-without-selection` | `maxRows` on an action that is not `scope: selection` — there is nothing to count, so the limit does nothing |
