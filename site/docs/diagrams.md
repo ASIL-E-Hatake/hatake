@@ -73,4 +73,69 @@ npx hatake diagram app.yaml --role admin --out admin.svg
 
 知らない役割名はエラーにする。綴り違いを黙って通すと「全部開ける」に見えて、一番まずい読み違えになるので。
 
+## 計算の依存
+
+**どの項目がどの項目から出るか**も定義から読める。計算は書いた順に1回なので、順番が
+入れ替わっていると「消費税だけ 0 円の伝票」が出る。順番が違うことは `validate` が言うが、
+**どこを動かせばいいか**は表を目で追うことになるので、絵にする。
+
+```bash
+npx hatake diagram spec/examples/order_entry.yaml --computed
+```
+
+下は同梱の例から**実際に出したもの**（CI が同じコマンドを走らせて、この図の中身が
+出ることを見ている）。
+
+```mermaid
+%% 受注入力: 計算の依存
+%% 左から右へ「この項目はここから出る」。赤い線は順番が逆（空のまま計算される）
+flowchart LR
+  lines_qty["数量<br/>明細 lines の行"]
+  lines_price["単価<br/>明細 lines の行"]
+  lines_amount["金額<br/>明細 lines の行"]
+  lines_cancelled["取消<br/>明細 lines の行"]
+  subtotal["小計"]
+  lines["明細"]
+  lineCount["明細行数"]
+  lines_item["品名<br/>明細 lines の行"]
+  itemNames["品名"]
+  total["合計金額"]
+  lines_qty --> lines_amount
+  lines_price --> lines_amount
+  lines_amount -->|sum| subtotal
+  lines_cancelled -.->|絞り込み| subtotal
+  lines -->|count| lineCount
+  lines_cancelled -.->|絞り込み| lineCount
+  lines_item -->|join| itemNames
+  lines_cancelled -.->|絞り込み| itemNames
+  subtotal --> total
+  classDef input fill:#e8f0fe,stroke:#4285f4,color:#202124
+  class lines_qty,lines_price,lines_cancelled,lines,lines_item input
+  classDef output fill:#fff7e0,stroke:#f9ab00,color:#202124
+  class lines_amount,subtotal,lineCount,itemNames,total output
+```
+
+この図は **SVG では出さない**。依存は行を飛ぶ線が出る（合計が小計と消費税の両方から
+来る形になると、1段飛ばしの線が必要になる）ので、上の縦積みの作図器（隣り合う行の
+あいだにしか線を引かない）では描けない。代わりに**貼れる形**で出す
+（Mermaid は GitHub の本文にそのまま描かれる。`--format dot` なら Graphviz）。
+
+細い点線は**畳む前の絞り込み**（`where` が見ている行の項目）。値が流れる線と区別できる
+ようにしてある。
+
+順番が逆の線は**赤い点線**になる。`合計金額` を `小計` より前に書いた定義なら
+`小計 -.->|順番が逆| 合計金額` が出て、受け側の箱も赤くなる ── **そこを動かせばいい**、が
+1枚で分かる（`validate` の警告と同じ判定なので、2つの言い方をしない）。
+
+## 貼れる形で出す
+
+画面の図も同じ口を通る。
+
+```bash
+npx hatake diagram app.yaml --format mermaid   # PR の本文にそのまま貼れる
+npx hatake diagram app.yaml --format dot       # Graphviz に渡す
+```
+
+箱の中身（誰が開けるか）も一緒に運ぶ。見出しだけの箱が並んだ図は、貼っても読めないので。
+
 書き方の入口は [機能別の書き方](/dsl/)、AI に書かせるなら [AI に書かせる](/ai)。

@@ -1037,7 +1037,9 @@ computed: { op: sum, field: lines, of: amount,
   `computed-of-paged-subtable` で言う）
 - `field` と `fields` の両方を書いたら **`field` が勝つ**（`validate` が言う）
 - 計算は**宣言順に1回**なので、`小計 → 消費税 → 合計` の順に並べる（後ろの項目は前の
-  結果を使える。逆に書くと**空のまま計算される**ので `validate` が `computed-order` で言う）
+  結果を使える。逆に書くと**空のまま計算される**ので `validate` が `computed-order` で言う）。
+  依存が絡んでいるときは `hatake diagram <file> --computed` で1枚の絵にできる
+  （Mermaid / DOT。順番が逆の線は赤で出る）
 
 `where` の決まりごと:
 

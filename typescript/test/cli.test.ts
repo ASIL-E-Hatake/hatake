@@ -698,6 +698,100 @@ app:
     expect(picture.rows.length).toBeGreaterThan(1);
   });
 
+  it("--format mermaid は PR に貼れる形（SVG は貼れる場所が限られる）", () => {
+    const io = fakeIo({ "app.yaml": app });
+    expect(runCli(["diagram", "app.yaml", "--format", "mermaid"], io)).toBe(0);
+    const text = io.stdout.join("\n");
+    expect(text).toContain("flowchart LR");
+    expect(text).not.toContain("<svg");
+    // 箱の中身（誰が開けるか）も運ぶ＝見出しだけの箱にしない。
+    expect(text).toContain("order_search[\"受注照会<br/>");
+  });
+
+  it("--format dot は Graphviz に渡す形", () => {
+    const io = fakeIo({ "app.yaml": app });
+    expect(runCli(["diagram", "app.yaml", "--format", "dot"], io)).toBe(0);
+    expect(io.stdout.join("\n")).toContain("digraph hatake {");
+  });
+
+  it("知らない形は、出せる形を言って落ちる", () => {
+    const io = fakeIo({ "app.yaml": app });
+    expect(runCli(["diagram", "app.yaml", "--format", "png"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("mermaid か dot");
+  });
+
+  // ── 計算の依存（--computed）────────────────────────────────────────────
+  const computedApp = `dsl_version: "1.0"
+app:
+  id: sales
+  title: 販売管理
+  menu:
+    - { id: entry, label: 受注入力, page: order_entry }
+  pages:
+    - type: form
+      id: order_entry
+      title: 受注入力
+      repository: orderRepository
+      key: orderNo
+      form:
+        sections:
+          - fields:
+              - { field: total, label: 合計, computed: { op: sum, fields: [subtotal] } }
+              - { field: subtotal, label: 小計, computed: { op: sum, fields: [price] } }
+              - { field: price, label: 単価, type: number }
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      key: orderNo
+      table:
+        columns: [{ field: orderNo, label: 受注番号 }]
+`;
+
+  it("--computed は依存の図を Mermaid で出す（縦積みの SVG では描けないので）", () => {
+    const io = fakeIo({ "app.yaml": computedApp });
+    expect(runCli(["diagram", "app.yaml", "--computed"], io)).toBe(0);
+    const text = io.stdout.join("\n");
+    expect(text).toContain("受注入力: 計算の依存");
+    expect(text).toContain("flowchart LR");
+    // 順番が逆（合計が先に書いてある）＝赤い線で出る。
+    expect(text).toContain("順番が逆");
+  });
+
+  it("--computed --json は機械が読める形", () => {
+    const io = fakeIo({ "app.yaml": computedApp });
+    runCli(["diagram", "app.yaml", "--computed", "--json"], io);
+    const graph = JSON.parse(io.stdout.join("\n"));
+    expect(graph.nodes.map((one: { id: string }) => one.id)).toContain("subtotal");
+    expect(
+      graph.edges.filter((one: { warn?: boolean }) => one.warn === true),
+    ).toHaveLength(1);
+  });
+
+  it("計算項目を持つ画面が1枚なら --page は要らない", () => {
+    const io = fakeIo({ "app.yaml": computedApp });
+    expect(runCli(["diagram", "app.yaml", "--computed", "--page", "order_search"], io)).toBe(0);
+    // 選べば、その画面の答えが返る（計算が無ければ「描くものが無い」と言う）。
+    expect(io.stdout.join("")).toContain("計算項目はありません");
+  });
+
+  it("知らない画面を選んだら、何が在るかまで言う", () => {
+    const io = fakeIo({ "app.yaml": computedApp });
+    expect(runCli(["diagram", "app.yaml", "--computed", "--page", "nope"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("order_entry / order_search");
+  });
+
+  it("--computed --out はそのまま書き出す", () => {
+    const io = fakeIo({ "app.yaml": computedApp });
+    expect(
+      runCli(
+        ["diagram", "app.yaml", "--computed", "--format", "dot", "--out", "deps.dot"],
+        io,
+      ),
+    ).toBe(0);
+    expect(io.written["deps.dot"]).toContain("digraph hatake {");
+  });
+
   it("図の元データを渡すと、それを描く（資料の図と同じ描画）", () => {
     const io = fakeIo({
       "d.json": JSON.stringify({

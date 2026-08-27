@@ -105,6 +105,13 @@ import {
   renderDiagram,
 } from "./diagram.js";
 import { appDiagram } from "./appDiagram.js";
+import { computedGraph } from "./computedGraph.js";
+import {
+  type GraphFormat,
+  graphFormats,
+  graphOfDiagram,
+  renderGraph,
+} from "./graphText.js";
 import { diffDefinitions, type DefinitionChange } from "./defDiff.js";
 import {
   collectRefs,
@@ -231,6 +238,7 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --by size で規模の大きい画面から。--json / --out はそのまま機械に渡せる形。
 
   hatake diagram <file> [--out file.svg] [--role admin] [--json]
+              [--format mermaid|dot] [--computed [--page <id>]]
       図解の SVG を出す。app: の定義を渡すと**画面とメニューと遷移**の図を作り
       （どこからも開けない画面も分かる）、図の元データ（rows を持つ JSON）を渡すと
       それを描く。--json で元データだけ（手で直してから描けるように）。
@@ -238,6 +246,14 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       ボタンの roles から辿って数える）。赤枠＝誰でも開けて消す/持ち出すができる画面、
       点線＝誰も開けない画面（入口の権限が食い違っている）。--role を渡すと
       **その役割で通れる道**だけの図になる（知らない役割名はエラー）。
+      --format mermaid で PR の本文にそのまま貼れる形、--format dot で Graphviz に
+      渡す形（SVG は貼れる場所が限られるので、貼れない図は共有されない）。
+
+      --computed で**計算の依存**の図（どの項目がどの項目から出るか。小計 → 消費税 →
+          合計、明細の行から親へ）。順番が逆の線は赤で出る＝計算の順番の警告が
+          出たときに**どこを動かせばいいか**が1枚で見える。依存は行を飛ぶ線が出るので
+          縦積みの SVG では描けない＝既定は Mermaid（--format dot も選べる）。
+          app: の定義なら --page でどの画面かを選ぶ。
 
   hatake registry <path...> [--json] [--out file]
       アプリの実装を読んで「登録済みのもの」の一覧を作る（validate --registry に
@@ -411,6 +427,7 @@ const BOOLEAN_FLAGS = new Set([
   "warn-as-error",
   "caution-as-error",
   "api-only",
+  "computed",
   "needs-registration",
   "unused",
   "unused-as-error",
@@ -1326,6 +1343,15 @@ function diagram(files: string[], flags: Args["flags"], io: CliIo): number {
   }
   const source = io.readFile(files[0]);
   const raw = parseYamlText(source) as Record<string, unknown>;
+  const format = graphFormatOf(flags);
+  if (format === null) {
+    io.err(
+      `--format は ${graphFormats.join(" か ")} です（"${str(flags, "format")}" は出せません）。` +
+        "旗を渡さなければ SVG です。",
+    );
+    return 1;
+  }
+  if (flags.computed === true) return computedDiagram(raw, format, flags, io);
   let picture;
   if (looksLikeDiagram(raw)) {
     picture = parseDiagram(raw);
@@ -1345,15 +1371,114 @@ function diagram(files: string[], flags: Args["flags"], io: CliIo): number {
     io.out(JSON.stringify(picture, null, 2));
     return 0;
   }
-  const svg = renderDiagram(picture);
+  const drawn =
+    format === undefined
+      ? renderDiagram(picture)
+      : renderGraph(graphOfDiagram(picture), format);
+  return write(drawn, flags, io);
+}
+
+/** 図を出す（既定は標準出力、`--out` でファイル）。 */
+function write(text: string, flags: Args["flags"], io: CliIo): number {
   const out = str(flags, "out");
   if (out === undefined) {
-    io.out(svg.trimEnd());
+    io.out(text.trimEnd());
   } else {
-    io.writeFile(out, svg);
+    io.writeFile(out, text);
     io.out(`書きました: ${out}`);
   }
   return 0;
+}
+
+/** `--format` を読む（渡されなければ undefined＝SVG）。知らない形は落とす。 */
+function graphFormatOf(flags: Args["flags"]): GraphFormat | undefined | null {
+  const given = str(flags, "format");
+  if (given === undefined) return undefined;
+  if ((graphFormats as readonly string[]).includes(given)) {
+    return given as GraphFormat;
+  }
+  return null;
+}
+
+/**
+ * 計算の依存の図（`--computed`）。
+ *
+ * 縦積みの SVG では描けない（合計は小計と消費税の両方から来る＝行を飛ぶ線が出る）ので、
+ * **貼れる形**で出す。既定は Mermaid（PR の本文にそのまま貼れる）。
+ */
+function computedDiagram(
+  raw: Record<string, unknown>,
+  format: GraphFormat | undefined,
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const page = computedPageOf(raw, str(flags, "page"), io);
+  if (page === null) return 1;
+  const graph = computedGraph(page.node, { title: `${page.title}: 計算の依存` });
+  if (graph.nodes.length === 0) {
+    io.out(`「${page.title}」に計算項目はありません（描くものがありません）。`);
+    return 0;
+  }
+  if (flags.json === true) {
+    io.out(JSON.stringify(graph, null, 2));
+    return 0;
+  }
+  return write(renderGraph(graph, format ?? "mermaid"), flags, io);
+}
+
+/**
+ * 依存の図にする画面を1枚取り出す。
+ *
+ * `app:` なら `--page` で選ぶ。**計算項目を持つ画面が1枚しか無ければ選ばなくてよい**
+ * （そこで手間を取らせる意味がない）。何が在るかまで言って落ちる。
+ */
+function computedPageOf(
+  raw: Record<string, unknown>,
+  wanted: string | undefined,
+  io: CliIo,
+): { node: Record<string, unknown>; title: string } | null {
+  const asDict = (value: unknown): Record<string, unknown> | undefined =>
+    typeof value === "object" && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : undefined;
+  const app = asDict(raw.app);
+  const pages =
+    app === undefined
+      ? [asDict(raw.page) ?? raw]
+      : (Array.isArray(app.pages) ? app.pages : []).flatMap((one) => {
+          const node = asDict(one);
+          return node === undefined ? [] : [node];
+        });
+  const titled = pages.map((node) => ({
+    node,
+    id: typeof node.id === "string" ? node.id : "",
+    title: typeof node.title === "string" ? node.title : String(node.id ?? "画面"),
+  }));
+  if (wanted !== undefined) {
+    const found = titled.find((one) => one.id === wanted);
+    if (found === undefined) {
+      io.err(
+        `画面 "${wanted}" はありません（${titled.map((one) => one.id).join(" / ")}）。`,
+      );
+      return null;
+    }
+    return found;
+  }
+  if (titled.length === 1) return titled[0];
+  // 計算項目を持つ画面だけに絞ってから聞く（1枚に決まるなら聞かない）。
+  const withComputed = titled.filter(
+    (one) => computedGraph(one.node).nodes.length > 0,
+  );
+  if (withComputed.length === 1) return withComputed[0];
+  if (withComputed.length === 0) {
+    io.err("計算項目を持つ画面がありません（描くものがありません）。");
+    return null;
+  }
+  io.err(
+    `計算項目を持つ画面が ${withComputed.length} 枚あります。--page で選んでください` +
+      `（${withComputed.map((one) => one.id).join(" / ")}）。`,
+  );
+  return null;
 }
 
 /**

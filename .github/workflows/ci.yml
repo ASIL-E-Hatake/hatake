@@ -1719,6 +1719,71 @@ jobs:
             echo "読むだけの道具が $(cat /tmp/stub-write-attempt) を送った"; exit 1
           fi
 
+      - name: The dependency picture, and diagrams you can paste
+        working-directory: typescript
+        run: |
+          set -e
+          # 計算の依存の図。**サイトに載せた図が本物であること**まで見る
+          # （手で書いた図は必ず腐る）。
+          node dist/cli.js diagram ../spec/examples/order_entry.yaml --computed \
+            > /tmp/deps.mmd
+          grep -q 'flowchart LR' /tmp/deps.mmd
+          # 明細の行から親へ（縦計）と、行の中の計算。
+          grep -q 'lines_amount -->|sum| subtotal' /tmp/deps.mmd
+          grep -q 'lines_qty --> lines_amount' /tmp/deps.mmd
+          # 畳む前の絞り込みは細い線（値の流れと区別する）。
+          grep -q 'lines_cancelled -.->|絞り込み| subtotal' /tmp/deps.mmd
+          # サイトの図解ページに貼ってあるものと、実際の出力が一致すること。
+          python3 - <<'PY'
+          import io, re
+          page = io.open("../site/docs/diagrams.md", encoding="utf-8").read()
+          blocks = re.findall(r"```mermaid\n(.*?)```", page, re.S)
+          assert len(blocks) == 1, "mermaid の塊が1つに決まらない: %d" % len(blocks)
+          real = io.open("/tmp/deps.mmd", encoding="utf-8").read()
+          if blocks[0].strip() != real.strip():
+              raise SystemExit(
+                  "サイトに貼ってある図と、実際の出力が違う:\n--- 貼ってある ---\n%s\n"
+                  "--- 実際 ---\n%s" % (blocks[0], real)
+              )
+          PY
+          # 順番が逆の依存は赤い線で出る（validate の警告と同じ判定）。
+          cat > /tmp/late.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - { field: total, label: 合計, computed: { op: sum, fields: [subtotal] } }
+                    - { field: subtotal, label: 小計, computed: { op: sum, fields: [price] } }
+                    - { field: price, label: 単価, type: number }
+          YAML
+          node dist/cli.js diagram /tmp/late.yaml --computed > /tmp/late.mmd
+          grep -q '順番が逆' /tmp/late.mmd
+          grep -q 'stroke-width:2px' /tmp/late.mmd
+          # 警告の側も同じことを言う（2つの言い方をしない）。
+          node dist/cli.js validate /tmp/late.yaml > /tmp/late.log 2>&1 || true
+          grep -q 'diagram --computed' /tmp/late.log
+
+          # 画面の図も貼れる形で出せる（箱の中身まで運ぶ）。
+          node dist/cli.js diagram ../spec/examples/sales_app.yaml \
+            --format mermaid > /tmp/app.mmd 2>/dev/null
+          grep -q 'flowchart LR' /tmp/app.mmd
+          grep -q 'order_search -->|詳細| order_detail' /tmp/app.mmd
+          grep -q '<br/>' /tmp/app.mmd
+          node dist/cli.js diagram ../spec/examples/sales_app.yaml \
+            --format dot > /tmp/app.dot 2>/dev/null
+          grep -q 'digraph hatake {' /tmp/app.dot
+          # 知らない形は、出せる形を言って落ちる。
+          if node dist/cli.js diagram ../spec/examples/sales_app.yaml \
+               --format png > /tmp/badformat.log 2>&1; then
+            echo "知らない形で通ってしまった"; exit 1
+          fi
+          grep -q 'mermaid か dot' /tmp/badformat.log
+
       - name: Buttons that do nothing when pressed
         working-directory: typescript
         run: |
