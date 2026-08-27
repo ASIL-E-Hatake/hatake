@@ -243,20 +243,40 @@ Future<ActionOutcome?> _dispatch(
       );
       return null;
     }
-    ActionOutcome? reported;
-    await handler(ActionContext(
-      buildContext: context,
-      controller: controller,
-      action: action,
-      record: record,
-      records: records,
-      input: input,
-      report: (outcome) => reported = outcome,
-    ));
-    // 何も言わずに戻った＝うまくいった。一括なら渡した行数を件数として扱う
-    // （`{count}` がハンドラの手間ゼロで埋まる）。
-    final outcome =
-        reported ?? ActionOutcome(succeeded: records.length);
+    /// 1回ぶん（区切り1つぶん）を呼ぶ。
+    ///
+    /// 何も言わずに戻った＝うまくいった。一括なら渡した行数を件数として扱う
+    /// （`{count}` がハンドラの手間ゼロで埋まる）。
+    Future<ActionOutcome> call(List<DataRecord> rows) async {
+      ActionOutcome? reported;
+      await handler(ActionContext(
+        buildContext: context,
+        controller: controller,
+        action: action,
+        record: record,
+        records: rows,
+        input: input,
+        report: (outcome) => reported = outcome,
+      ));
+      return reported ?? ActionOutcome(succeeded: rows.length);
+    }
+
+    // 区切って実行するなら、**枠組みが回す側**になる（進み具合を出して、区切りで
+    // 止められる）。区切りが1回で終わるなら今までと同じ＝ダイアログは出さない
+    // （出しても一瞬で消えるだけで、読む間が無い）。
+    final batchSize = action.batchSize;
+    final batched = action.scope == ActionScopes.selection &&
+        batchSize != null &&
+        records.length > batchSize;
+    final outcome = batched
+        ? await _BulkRunner(
+            context: context,
+            action: action,
+            records: records,
+            batchSize: batchSize,
+            runBatch: call,
+          ).run()
+        : await call(records);
     if (outcome.isSuccess) return outcome;
     // 全部だめ・一部だめ。**一部でも onSuccess は動かさない**（1件失敗したまま
     // 画面を移すと、直すべき行が視界から消える）。

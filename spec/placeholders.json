@@ -45,6 +45,14 @@
           "note": "**アプリ側が行を名指しで報告したときだけ**埋まる（`ActionOutcome.rejected` の `rows`）。件数だけの報告なら文字のまま出る＝「行が分かっていない」と読める"
         },
         {
+          "name": "{skipped}",
+          "means": "送っていない件数（区切りで止めた・途中で失敗して残りを送らなかった）",
+          "bulkOnly": true,
+          "afterRun": true,
+          "failureOnly": true,
+          "note": "区切って実行するとき（batchSize）だけ 0 より大きくなる。「実行していない」と「失敗した」は別なので、数も別に持つ。"
+        },
+        {
           "name": "{error}",
           "means": "失敗の理由（例外の文字）",
           "bulkOnly": false,
@@ -58,7 +66,9 @@
       "id": "validation-message",
       "title": "検証のメッセージ",
       "filledBy": "MessageResolver（3エディション共通）",
-      "where": ["field.validators[].message"],
+      "where": [
+        "field.validators[].message"
+      ],
       "placeholders": [
         {
           "name": "{value}",
@@ -80,7 +90,10 @@
       "id": "route-params",
       "title": "遷移のパラメータ",
       "filledBy": "Renderer（遷移するときに埋める）",
-      "where": ["action.params.*", "action.onSuccess.params.*"],
+      "where": [
+        "action.params.*",
+        "action.onSuccess.params.*"
+      ],
       "placeholders": [
         {
           "name": "$row.<項目名>",

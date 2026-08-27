@@ -304,6 +304,13 @@ const WORDS = {
   ),
   // **押せるかどうか**は「見えるかどうか」（roles）とは別の話。出たまま灰色になる
   // ので、読み返しで「いつ押せるのか」が分からないとレビューできない。
+  // 区切って実行する＝進み具合が出て、途中で止められる。**1回で送るなら出ない**
+  // 機能なので、区切りが在ることを読み返しに出す（危険度の読み方が変わる）。
+  inBatchesOf: pair(
+    (rows: number) => `${rows} 件ずつ実行する（進み具合が出て、区切りで止められる）`,
+    (rows: number) =>
+      `runs in batches of ${rows} (progress is shown and it can be stopped between batches)`,
+  ),
   pressableWhen: pair(
     (when: string) => `押せるのは ${when} だけ`,
     (when: string) => `pressable only ${when}`,

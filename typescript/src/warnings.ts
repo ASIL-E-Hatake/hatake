@@ -64,6 +64,8 @@ const isDict = (v: unknown): v is Dict =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+const num = (v: unknown): number | undefined =>
+  typeof v === "number" ? v : undefined;
 const str = (v: unknown): string | undefined =>
   typeof v === "string" ? v : undefined;
 
@@ -450,6 +452,7 @@ function checkSelection(
   appRoles: Set<string> = new Set(),
 ): void {
   const hasTable = isDict(page.table);
+  checkBatchSize(actions, path, found);
   actions.forEach((action, i) => {
     if (str(action.scope) !== ActionScopes.selection) return;
     const label = str(action.label) ?? str(action.id) ?? "ボタン";
@@ -648,6 +651,52 @@ function checkDeadActions(
       one.fix,
     );
   }
+}
+
+/**
+ * 区切って実行する件数（`batchSize`）の辻褄。
+ *
+ * 区切りが効くのは**選んだ行に対して実行するボタン**だけ（1件ずつのボタンには区切る
+ * ものが無い）。そして区切りが1回で終わるなら、**進み具合も中断も出ない**
+ * （枠組みが回す回数が1回なので、途中が無い）＝書いたのに効かない。
+ */
+function checkBatchSize(
+  actions: Dict[],
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  actions.forEach((action, i) => {
+    const size = num(action.batchSize);
+    if (size === undefined) return;
+    const label = str(action.label) ?? str(action.id) ?? "ボタン";
+    if (str(action.scope) !== ActionScopes.selection) {
+      warn(
+        found,
+        "batchsize-without-selection",
+        `${path}.actions[${i}].batchSize`,
+        `「${label}」に区切り（\`batchSize\`）が書いてありますが、選んだ行に対して` +
+          `実行するボタンではありません。区切るものが無いので、何も起きません。`,
+        "`scope: selection` を書いてください（区切りは一括のときだけ効きます）。" +
+          "1件ずつのボタンなら、区切りは要りません。",
+      );
+      return;
+    }
+    // 上限（`maxRows`）より大きい区切りは、1回で終わる＝進み具合が出ない。
+    const limit = isDict(action.maxRows)
+      ? num(action.maxRows.default)
+      : num(action.maxRows);
+    if (limit !== undefined && size >= limit) {
+      warn(
+        found,
+        "batchsize-above-maxrows",
+        `${path}.actions[${i}].batchSize`,
+        `「${label}」の区切り（${size} 件）が1回で動かせる上限（${limit} 件）以上です。` +
+          `区切りが1回で終わるので、**進み具合も中断も出ません**。`,
+        `区切りを上限より小さくしてください（例 ${Math.max(1, Math.floor(limit / 2))} 件）。` +
+          "区切る意味が無いなら `batchSize` を消してください（1回で渡します）。",
+      );
+    }
+  });
 }
 
 /**

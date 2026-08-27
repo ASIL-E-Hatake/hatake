@@ -247,6 +247,14 @@ export interface ActionDefinition {
   maxRows?: RowLimit;
   config: Record<string, unknown>;
   /**
+   * `scope: selection` のとき、**1回のハンドラ呼び出しに渡す件数**。
+   *
+   * 書かなければ、選んだ行を**全部まとめて1回**渡す（今までの動き）。書くと**枠組みが
+   * 回す側**になるので、「どこまで進んだか」を出せて、区切りで止められる。止めたぶんは
+   * 「送っていない」として報告に出る（`{skipped}`）。
+   */
+  batchSize?: number;
+  /**
    * 押せるのは、この条件に合っているときだけ（条件の書き方は `visibleWhen` と同じ）。
    *
    * 判定する相手は**置き場所で決まる**: 行アクションはその行、`scope: selection` は

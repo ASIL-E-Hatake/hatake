@@ -646,6 +646,10 @@ API も1回で済ませられる（件数ぶんの往復にしない）。
 `failed` より少なく名指ししてもよい（3件失敗して1件だけ分かる）。そのときは
 「1 件だけが分かっています」と出る＝分かっていない分を無かったことにしない。
 
+区切って実行する（`batchSize`）ときは、**送っていない件数**も別に持つ
+（`ActionOutcome.skipped` ／ 文言の `{skipped}`）。「実行していない」と「失敗した」は
+別で、前者はもう一度押せば動く相手、後者は直してからやり直す相手。
+
 | 報告 | どう扱うか |
 |---|---|
 | 何も報告しない（例外も投げない） | 成功。一括なら**渡した行数**が `{count}` に入る（ハンドラの手間ゼロ） |
@@ -1131,9 +1135,46 @@ computed: { op: sum, field: lines, of: amount,
 | `onError` | [onError](#onerror) | | 失敗したときに出す文言。 |
 | `prompt` | [prompt](#prompt) | | 実行の前に聞くこと（小さなフォーム）。 |
 | `maxRows` | integer \| [maxRows](#maxrows) | | `scope: selection` のとき、**1回で動かせる行数の上限**（1以上）。超えて選んでいる間ボタンは押せない。無ければ上限は1ページの件数。 |
+| `batchSize` | integer | | `scope: selection` のとき、**1回のハンドラ呼び出しに渡す件数**（1以上）。書かなければ全部まとめて1回。書くと枠組みが回すので**進み具合が出て、区切りで止められる**（→ [batchSize](#batchsize区切って実行する)）。 |
 | `enabledWhen` | [condition](#条件condition) | | **いま押せるか**（→ [enabledWhen](#enabledwhen押せるかどうか)）。判定する相手は置き場所で決まる（行アクションはその行、一括は選んだ行ぜんぶ、レコードを持つ画面はそのレコード）。 |
 | `config` | map | | 追加設定。 |
 | `roles` | string[] | | 実行を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
+
+### batchSize（区切って実行する）
+
+一括を**何件ずつハンドラに渡すか**。書かなければ選んだ行を全部まとめて1回渡す
+（呼ぶのは1回＝一括の既定）。
+
+```yaml
+- id: approveSelected
+  type: plugin
+  plugin: approveOrders
+  label: 一括承認
+  scope: selection
+  batchSize: 20        # 20 件ずつ渡す（進み具合が出て、区切りで止められる）
+  onError:
+    message: '{count} 件を承認しました（{failed} 件だめ／{skipped} 件は実行していません）'
+```
+
+**進み具合と中断は、区切りが在るときだけの機能。** 1回で全部渡してしまうと、どこまで
+進んだかを知っているのは**ハンドラの中だけ**で、枠組みには分からない（だから出せない）。
+区切りを枠組みが持つと、進み具合・中断・区切りごとの報告の合算が**ハンドラの手間ゼロ**で
+付いてくる。
+
+- 進み具合は「12 / 100 件」と件数で出す（棒だけでは「あと何件か」が読めない）。
+  **閉じるボタンは出さない**（消えたダイアログの裏で走り続けるのが分からないので、
+  終わるか、止めるかのどちらかでしか閉じない）
+- **中断は「まだ送っていない分を送らない」だけ。** 既に送った区切りは動いている
+  （取り消しではない）ので、報告では「実行した」と「送っていない」を別に数える
+  （`{skipped}`）
+- **区切りが失敗したら、残りは送らない。** 同じ理由で失敗し続ける可能性が高く、
+  止める手段が無いまま100件ぶん失敗し続けるのが一番まずい
+- **止めた実行は成功ではない**＝`onSuccess` は動かない（選んだ行の一部は動いていない）。
+  失敗が1件も無くて止めただけのときは、`onError` の文言ではなく枠組みの言葉で言う
+  （「2 件を実行しました（3 件は実行していません）」）
+- 区切りが1回で終わるなら（選んだ件数 ≤ `batchSize`）今までと同じ＝ダイアログも出ない
+- 上限（`maxRows`）以上の区切りは1回で終わるので、`validate` が言う
+  （`batchsize-above-maxrows`）
 
 ### enabledWhen（押せるかどうか）
 
@@ -1455,6 +1496,8 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `row-declaration-unused` | 行の操作の宣言（`type: edit` / `type: delete`）が**どこにも効かない** → 行を直す/消す枠が無い画面に置いた・`table.rowActions` にその名前が無い・id が組み込みの名前（`edit` / `delete`）ではない |
 | `builtin-rowaction-unsupported` | 組み込みの行アクション（`edit` / `delete`）を `crud` / `master` 以外の `table.rowActions` に書いた → 行には何も出ない（`search` の `rowActions` が指すのは画面のアクションの id） |
 | `enabledwhen-without-record` | `enabledWhen` を**判定する相手が無い所**に書いた（一覧の上のボタン）→ ボタンは出て押せる＝出し分けが黙って効かない |
+| `batchsize-without-selection` | `batchSize` を**一括ではないボタン**に書いた → 区切るものが無いので何も起きない |
+| `batchsize-above-maxrows` | 区切りが1回で動かせる上限（`maxRows`）以上 → 区切りが1回で終わる＝**進み具合も中断も出ない** |
 | `placeholder-not-filled` | 文言に**埋まらない差し込み**を書いた（`onSuccess` / `onError` は件数が `scope: selection` だけ・`{error}` は失敗だけ、**押す前**（`confirm` / `prompt.title`）は `{count}` だけ＝まだ失敗も理由も無い、**それ以外の名前＝`{orderNo}` のような項目名は埋める口が無い**）→ 押すまで気づけず、文字のまま出る |
 | `maxrows-unknown-role` | `byRole` に書いた役割が、そのボタンを押せない（`roles` に無い）／定義のどこにも出てこない → 誰にも当てはまらないので、その上限は効かない |
 | `maxrows-without-selection` | `maxRows` を `scope: selection` でないボタンに書いた → 数える対象が無いので上限は効かない |

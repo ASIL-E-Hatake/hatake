@@ -73,7 +73,7 @@ onError:
 
 **`onError` に遷移先は書けない。** `onSuccess` は書けるのに無いのは意図的で、失敗した画面から離れると、何が起きたか読めなくなり、直すべき行も視界から消える。
 
-`{error}` は失敗の理由。ほかに `{count}` / `{failed}` / `{total}`（件数）と `{failedKeys}`（失敗した行のキー）が書けるが、**埋まるのは一括（`scope: selection`）のときだけ**。埋まらない差し込みは文字のまま出てしまうので、`npx hatake validate` が押す前に言う（`placeholder-not-filled`）。
+`{error}` は失敗の理由。ほかに `{count}` / `{failed}` / `{total}`（件数）と `{failedKeys}`（失敗した行のキー）、`{skipped}`（送っていない件数）が書けるが、**埋まるのは一括（`scope: selection`）のときだけ**。埋まらない差し込みは文字のまま出てしまうので、`npx hatake validate` が押す前に言う（`placeholder-not-filled`）。
 
 差し込みは**閉じた集合**。`{orderNo}` のように項目名を書いても埋まらず、そのまま文字で出る（レコードの値は文言に渡っていない）。開いた形なのは遷移のパラメータ（`$row.<項目名>`）だけで、そこと混同しやすい。書ける全部と「いつ埋まるか」は引ける。
 

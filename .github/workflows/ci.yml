@@ -1784,6 +1784,97 @@ jobs:
           fi
           grep -q 'mermaid か dot' /tmp/badformat.log
 
+      - name: Running a bulk action in batches (progress and stopping)
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          cat > /tmp/batch.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - id: approve
+                type: plugin
+                plugin: approveOrders
+                label: 一括承認
+                scope: selection
+                maxRows: 40
+                batchSize: 10
+                confirm: { message: '{count} 件を承認します' }
+                onError:
+                  message: '{count} 件を承認（{failed} 件だめ／{skipped} 件は実行していません）'
+          YAML
+          # 1. 区切りは一括のときだけ効く（この形は警告ゼロ）。
+          node dist/cli.js validate --warn-as-error /tmp/batch.yaml
+          # 2. いつ止められるのかを読み返す。
+          node dist/cli.js explain /tmp/batch.yaml > /tmp/batch.log
+          grep -q '10 件ずつ実行する（進み具合が出て、区切りで止められる）' /tmp/batch.log
+          # 3. 効かない所に書いたら言う（1件ずつのボタン／上限以上の区切り）。
+          cat > /tmp/batch-bad.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - { id: one, type: plugin, plugin: approveOne, label: 承認, batchSize: 10 }
+              - id: approve
+                type: plugin
+                plugin: approveOrders
+                label: 一括承認
+                scope: selection
+                maxRows: 10
+                batchSize: 10
+          YAML
+          if node dist/cli.js validate --warn-as-error --json /tmp/batch-bad.yaml \
+               > /tmp/batch-bad.json 2>&1; then
+            echo "効かない区切りで通ってしまった"; exit 1
+          fi
+          grep -q 'batchsize-without-selection' /tmp/batch-bad.json
+          grep -q 'batchsize-above-maxrows' /tmp/batch-bad.json
+          # 4. 送っていない件数は、差し込みの一覧の1枚から来ている
+          #    （一覧・検査・埋める側が同じものを見る）。
+          node dist/cli.js reference --placeholders > /tmp/ph.log
+          grep -q '{skipped}' /tmp/ph.log
+          # 成功の文言に書いたら言う（成功に「実行していない分」は無い）。
+          cat > /tmp/batch-skipped.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - id: approve
+                type: plugin
+                plugin: approveOrders
+                label: 一括承認
+                scope: selection
+                batchSize: 10
+                onSuccess: { message: '{skipped} 件を残しました' }
+          YAML
+          if node dist/cli.js validate --warn-as-error --json /tmp/batch-skipped.yaml \
+               > /tmp/batch-skipped.json 2>&1; then
+            echo "成功の文言に {skipped} を書いて通ってしまった"; exit 1
+          fi
+          grep -q 'placeholder-not-filled' /tmp/batch-skipped.json
+          # デモにも入っている（2件ずつ渡すので、動かすと進み具合が見える）。
+          grep -q 'batchSize: 2' "$DEMO"
+          node dist/cli.js explain "$DEMO" --page order_search > /tmp/demo-batch.log
+          grep -q '2 件ずつ実行する' /tmp/demo-batch.log
+          grep -q '{skipped} 件は実行していません' "$DEMO"
+
       - name: When a button may be pressed (enabledWhen)
         working-directory: typescript
         run: |

@@ -198,10 +198,14 @@ app:
             byRole: { manager: 50 }
           # 確認の文の {count} は**押す前に**埋まる（選んだ行の数）。ボタンにも件数は
           # 出るが、最後に読むのはこの文なので、数はここにも出す。
+          # 何件ずつハンドラに渡すか。書くと**枠組みが回す側**になるので、進み具合が
+          # 出て、区切りで止められる（1回で全部渡してしまうと、途中の状態は枠組みには
+          # 分からない＝進み具合も中断も出せない）。止めたぶんは {skipped} に入る。
+          batchSize: 2
           confirm: { message: '{count} 件の受注を承認します' }
           onSuccess: { message: '{count} 件を承認しました' }
           onError:
-            message: '{count} 件を承認しました（{failed} 件は出荷済みなので承認できません: {failedKeys}）'
+            message: '{count} 件を承認しました（{failed} 件は出荷済みなので承認できません: {failedKeys}／{skipped} 件は実行していません）'
         # 実行の前に聞く。聞いた値はハンドラが ActionContext.input で受け取る。
         # prompt の OK が確認そのもの（ダイアログを2枚出さない）。
         - id: rejectSelected

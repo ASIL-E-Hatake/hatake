@@ -1177,9 +1177,45 @@ Decisions:
 | `onError` | [onError](#onerror) | | What the user is told when it failed. |
 | `maxRows` | integer \| object | | For `scope: selection`: how many rows one press may act on (min 1). The object form (`{ default, byRole }`, where a limit may be `all`) caps per role — with several matching roles the **most permissive** wins. While more are picked the button is disabled. Omit and the real limit is the page size. The backend can read the same limit (`checkBulkLimit` / `BulkLimits.check`). |
 | `prompt` | [prompt](#prompt) | | Asked before it runs (a small form). |
+| `batchSize` | integer | | For `scope: selection`: how many rows to hand the handler per call (min 1). Absent = one call with all of them. With it the framework owns the loop, so **progress is shown and the run can be stopped between batches** (see [batchSize](#batchsize)). |
 | `enabledWhen` | [condition](#condition) | | Whether it **can be pressed right now** (see [enabledWhen](#enabledwhen)). Where the action sits decides what is judged. |
 | `config` | map | | Extra settings. |
 | `roles` | string[] | | Roles allowed to run it (see [access control](#access-control-roles)). Empty = everyone. |
+
+### batchSize
+
+How many rows to hand the handler **per call**. Absent = every checked row in one call
+(the bulk default).
+
+```yaml
+- id: approveSelected
+  type: plugin
+  plugin: approveOrders
+  label: Approve
+  scope: selection
+  batchSize: 20
+  onError:
+    message: '{count} approved ({failed} failed, {skipped} never sent)'
+```
+
+**Progress and stopping only exist when there are batches.** Hand everything over in one
+call and only the handler knows how far it got — the framework cannot show what it cannot
+see. Once the framework owns the loop, progress, stopping and merging the per-batch reports
+come for free.
+
+- Progress is shown as a count ("12 / 100"), and the dialog has **no close button**: it
+  ends either by finishing or by being stopped, so nothing keeps running behind a dialog
+  the user dismissed.
+- **Stopping only means "do not send the rest".** What was already sent has run, so the
+  report counts "done" and "never sent" separately (`{skipped}`).
+- **A failed batch stops the rest** — the same reason usually fails again, and failing 100
+  rows with no way to stop is the worse outcome.
+- **A stopped run is not a success**, so `onSuccess` does not run. When nothing failed and
+  the run was merely stopped, the framework says so in its own words rather than borrowing
+  `onError`.
+- With one batch (picked rows ≤ `batchSize`) nothing changes and no dialog appears.
+- A batch at or above `maxRows` would be a single batch, so `validate` says
+  `batchsize-above-maxrows`.
 
 ### enabledWhen
 
@@ -1466,6 +1502,8 @@ npx hatake validate page.yaml --no-warn --json
 | `row-declaration-unused` | a row-operation declaration (`type: edit` / `type: delete`) that **takes effect nowhere** — a page with no rows to edit/delete, a name missing from `table.rowActions`, or an id that is not the built-in name (`edit` / `delete`) |
 | `builtin-rowaction-unsupported` | a built-in row action (`edit` / `delete`) in `table.rowActions` of a page other than `crud` / `master` — nothing appears in the row (a `search` page's `rowActions` point at the ids of the page's own actions) |
 | `enabledwhen-without-record` | `enabledWhen` written where **there is no record to judge** (a button above a list) — the button appears and can be pressed, so the gating silently does nothing |
+| `batchsize-without-selection` | `batchSize` on an action that is **not** a bulk one — there is nothing to split, so nothing happens |
+| `batchsize-above-maxrows` | a batch at or above the per-press limit (`maxRows`) — it would be a single batch, so **no progress and no stopping** |
 | `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure, **before it runs only `{count}` fills** — there is no failure and no reason yet — and **any other name, a field like `{orderNo}`, has nothing to fill it**) — it stays as literal text and you find out by pressing the button |
 | `maxrows-unknown-role` | a role in `byRole` cannot use the button (not in `roles`) or appears nowhere in the definition — nothing matches it, so that limit never applies |
 | `maxrows-without-selection` | `maxRows` on an action that is not `scope: selection` — there is nothing to count, so the limit does nothing |

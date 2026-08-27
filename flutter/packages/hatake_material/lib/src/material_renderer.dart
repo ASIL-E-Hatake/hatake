@@ -12,6 +12,7 @@ part 'renderer/table_support.dart';
 part 'renderer/action_hooks.dart';
 part 'renderer/page_actions.dart';
 part 'renderer/action_prompt.dart';
+part 'renderer/bulk_progress.dart';
 part 'renderer/options_fetcher.dart';
 part 'renderer/filter_input.dart';
 part 'renderer/crud_page.dart';

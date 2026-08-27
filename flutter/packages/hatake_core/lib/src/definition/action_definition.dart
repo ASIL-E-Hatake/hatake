@@ -53,6 +53,17 @@ class ActionDefinition extends Equatable {
   /// `maxRows?.forRoles(roles)` で決まる（null なら上限なし）。
   final RowLimit? maxRows;
 
+  /// `scope: selection` のとき、**1回のハンドラ呼び出しに渡す件数**。
+  ///
+  /// 書かなければ、選んだ行を**全部まとめて1回**渡す（呼ぶのは1回＝一括の既定）。
+  /// 書くと**枠組みが回す側**になるので、「どこまで進んだか」を出せて、**区切りで
+  /// 止められる**。1回で送ってしまうと、枠組みには途中の状態が分からない
+  /// （だから進み具合も中断も、区切りが在るときだけの機能）。
+  ///
+  /// 止めたぶん・送らなかったぶんは [ActionOutcome.skipped] として報告に出る
+  /// （文言の `{skipped}` に入る）。
+  final int? batchSize;
+
   /// 押せるのは、この条件に合っているときだけ（条件の書き方は `visibleWhen` と同じ）。
   ///
   /// **判定する相手は置き場所で決まる**:
@@ -85,6 +96,7 @@ class ActionDefinition extends Equatable {
     this.onError,
     this.prompt,
     this.maxRows,
+    this.batchSize,
     this.enabledWhen,
     this.config = const {},
     this.roles = const [],
@@ -102,6 +114,7 @@ class ActionDefinition extends Equatable {
         onError,
         prompt,
         maxRows,
+        batchSize,
         enabledWhen,
         config,
         roles,
