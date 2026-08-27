@@ -14,6 +14,16 @@ npx hatake diff old.yaml new.yaml                # what a change breaks / what t
 npx hatake explain page.yaml --lang en                       # read the definition back in English
 npx hatake diagram app.yaml --format mermaid                 # the screen map, pasteable into a PR (or --format dot)
 npx hatake diagram page.yaml --computed                      # which field comes from which (red = declared out of order)
+```
+
+An action may say **when it can be pressed**: `enabledWhen` (the `visibleWhen` condition
+language). Where it sits decides what is judged — a row action judges its row, `scope:
+selection` needs **every** checked row to match, and a page with a record judges that
+record. A button above a list has nothing to judge (`validate` says
+`enabledwhen-without-record`). A disabled button stays visible, greyed out, with what it
+depends on shown.
+
+```bash
 npx hatake wire app.yaml --merge lib/wiring.dart --write     # add only the missing registrations (keeps your code)
 npx hatake wire app.yaml --merge lib/wiring.dart --write --todo   # ...and hand the added stubs over as a work list
 npx hatake refs app.yaml --filled --source lib/             # are those registrations actually filled in? (TODO / missing / cannot tell)

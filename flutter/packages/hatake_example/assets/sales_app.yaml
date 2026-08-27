@@ -163,8 +163,15 @@ app:
       actions:
         # 行から詳細へ遷移。$row.no を詳細ページの key に渡す。
         - { id: detail, type: navigate, label: 詳細, page: order_detail, params: { id: "$row.orderNo" } }
-        # 行から親子（ヘッダ＋明細）編集へ。
-        - { id: openEntry, type: navigate, label: 明細編集, page: order_entry, params: { id: "$row.orderNo" } }
+        # 行から親子（ヘッダ＋明細）編集へ。出荷済の受注は明細を直せないので、
+        # その行では**押せない**（ボタンは出たまま灰色になり、何で決まるかが出る）。
+        # 判定するのは行アクションなので「その行のレコード」。
+        - id: openEntry
+          type: navigate
+          label: 明細編集
+          page: order_entry
+          params: { id: "$row.orderNo" }
+          enabledWhen: { field: status, operator: notEquals, value: 出荷済 }
         # 明細を別テーブルに持つ版へ。子行は親キーが要るので、行から開くのが本来の入口。
         - { id: openEntryPaged, type: navigate, label: 明細（別テーブル）, page: order_entry_paged, params: { id: "$row.orderNo" } }
         # 一覧の CSV。表示中のページではなく検索結果全体を出す。

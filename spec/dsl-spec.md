@@ -1177,8 +1177,46 @@ Decisions:
 | `onError` | [onError](#onerror) | | What the user is told when it failed. |
 | `maxRows` | integer \| object | | For `scope: selection`: how many rows one press may act on (min 1). The object form (`{ default, byRole }`, where a limit may be `all`) caps per role — with several matching roles the **most permissive** wins. While more are picked the button is disabled. Omit and the real limit is the page size. The backend can read the same limit (`checkBulkLimit` / `BulkLimits.check`). |
 | `prompt` | [prompt](#prompt) | | Asked before it runs (a small form). |
+| `enabledWhen` | [condition](#condition) | | Whether it **can be pressed right now** (see [enabledWhen](#enabledwhen)). Where the action sits decides what is judged. |
 | `config` | map | | Extra settings. |
 | `roles` | string[] | | Roles allowed to run it (see [access control](#access-control-roles)). Empty = everyone. |
+
+### enabledWhen
+
+Says "a shipped order cannot be rejected" **through the button's state**. The condition
+language is the same as `visibleWhen` ([condition](#condition)).
+
+```yaml
+table:
+  rowActions: [openEntry]
+actions:
+  - id: openEntry
+    type: navigate
+    label: Lines
+    page: order_entry
+    enabledWhen: { field: status, operator: notEquals, value: shipped }
+```
+
+**Where it sits decides what is judged.**
+
+| Where | Record judged |
+|---|---|
+| A row action listed in `table.rowActions` | that row |
+| `scope: selection` (bulk) | **every** checked row — one mismatch and the button is disabled |
+| A button on a page that has a record (`form` / `detail` / `wizard`) | the record being shown |
+| A button above a list (`search` / `crud` / `master` / `report` / `dashboard`) | **none** — `validate` reports `enabledwhen-without-record` |
+
+- **Bulk needs all of them.** Nobody notices that only part of a selection ran, so a
+  mismatch disables the button and the label says how many rows do not match (the same
+  stance as `maxRows`).
+- **A disabled button stays visible** — greyed out, with **what it depends on** shown
+  (built from the condition; you do not write the wording). Hiding it would hide that the
+  operation exists at all.
+- **Not the same as `roles`**: roles decide whether it is visible, `enabledWhen` decides
+  whether it can be pressed right now. Both may be written.
+- **With nothing to judge the button stays enabled** — the tool does not gate on a
+  condition it cannot evaluate.
+- A page with a record judges the **loaded** record, not what is being typed.
 
 ### confirm
 
@@ -1427,6 +1465,7 @@ npx hatake validate page.yaml --no-warn --json
 | `navigate-to-self` | a `type: navigate` whose target is the page itself — it only opens another copy of the same screen, which reads as "nothing happened" |
 | `row-declaration-unused` | a row-operation declaration (`type: edit` / `type: delete`) that **takes effect nowhere** — a page with no rows to edit/delete, a name missing from `table.rowActions`, or an id that is not the built-in name (`edit` / `delete`) |
 | `builtin-rowaction-unsupported` | a built-in row action (`edit` / `delete`) in `table.rowActions` of a page other than `crud` / `master` — nothing appears in the row (a `search` page's `rowActions` point at the ids of the page's own actions) |
+| `enabledwhen-without-record` | `enabledWhen` written where **there is no record to judge** (a button above a list) — the button appears and can be pressed, so the gating silently does nothing |
 | `placeholder-not-filled` | a message with a placeholder that cannot be filled (counts exist only for `scope: selection`, `{error}` only on failure, **before it runs only `{count}` fills** — there is no failure and no reason yet — and **any other name, a field like `{orderNo}`, has nothing to fill it**) — it stays as literal text and you find out by pressing the button |
 | `maxrows-unknown-role` | a role in `byRole` cannot use the button (not in `roles`) or appears nowhere in the definition — nothing matches it, so that limit never applies |
 | `maxrows-without-selection` | `maxRows` on an action that is not `scope: selection` — there is nothing to count, so the limit does nothing |

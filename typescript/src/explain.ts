@@ -256,6 +256,7 @@ export function explainPage(
           // 一括は「一度に何件動くか」で危険度が変わる。定義を読んでも出てこないので
           // ここで言う。上限は3通りある（定義に書いた上限・1ページの件数・上限なし）。
           selectionLimitOf(page),
+          vocabulary,
           lang,
         ),
       ),
@@ -610,6 +611,7 @@ function describeAction(
   action: ActionDefinition,
   target: string | undefined,
   limit: SelectionLimit,
+  vocabulary: Vocabulary,
   lang: Lang,
 ): string {
   const v = voice(lang);
@@ -664,9 +666,20 @@ function describeAction(
         : "";
   const roles =
     action.roles.length > 0 ? v.clause(v.onlyForRoles(action.roles)) : "";
+  // **いつ押せるのか**。権限（roles）は「見えるかどうか」で、こちらは出たまま灰色に
+  // なる話なので、両方言う。一括は「選んだ行が全部満たすとき」なので言い方を変える。
+  const when = describeCondition(action.enabledWhen, vocabulary, lang);
+  const pressable =
+    when === ""
+      ? ""
+      : v.clause(
+          action.scope === ActionScopes.selection
+            ? v.pressableWhenRows(when)
+            : v.pressableWhen(when),
+        );
   return v.subject(
     action.label,
-    `${what}${to}${on}${asks}${confirm}${after}${onError}${roles}`,
+    `${what}${to}${on}${asks}${confirm}${after}${onError}${pressable}${roles}`,
   );
 }
 

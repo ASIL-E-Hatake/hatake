@@ -12,6 +12,68 @@ typedef _PageDataRunner = Future<bool> Function(
   ActionDefinition action,
 );
 
+/// そのボタンが**いま押せるか**（`enabledWhen`）。
+///
+/// 判定する相手は置き場所で決まる（[ActionDefinition.enabledWhen] に書いてある）。
+/// 相手が無ければ**押せるまま**にする＝出し分けられないので出し分けない（書いても
+/// 効かないことは `hatake validate` が言う）。
+class _ActionEnabled {
+  final bool enabled;
+
+  /// 選んだ行のうち、条件に合わない行の数（一括のときだけ）。
+  final int failing;
+
+  /// 条件が見ている項目（押せない理由を言うのに使う）。
+  final List<String> fields;
+
+  const _ActionEnabled(this.enabled, {this.failing = 0, this.fields = const []});
+}
+
+/// [action] を [record]（1件）か [rows]（選んだ行）に対して判定する。
+///
+/// 一括は**全部満たすときだけ押せる**（1件でも合わなければ押せない）。選んだうちの
+/// 一部だけが動いたことに、押した人は気づけないので（`maxRows` と同じ考え方）。
+_ActionEnabled _actionEnabled(
+  ActionDefinition action, {
+  DataRecord? record,
+  List<DataRecord>? rows,
+  String? mode,
+}) {
+  final condition = action.enabledWhen;
+  if (condition == null || condition.isEmpty) return const _ActionEnabled(true);
+  final fields = conditionFieldNames(condition);
+  if (rows != null) {
+    final failing = rows
+        .where((row) => !evaluateCondition(condition, row, mode: mode))
+        .length;
+    return _ActionEnabled(failing == 0, failing: failing, fields: fields);
+  }
+  if (record == null) return _ActionEnabled(true, fields: fields);
+  return _ActionEnabled(
+    evaluateCondition(condition, record, mode: mode),
+    fields: fields,
+  );
+}
+
+/// 押せない理由（**何の状態で決まるのか**まで言う）。
+///
+/// 文言を書かせない＝定義から出す。項目の業務名が分かるなら業務名で言う（[labels]）。
+String _whyDisabled(_ActionEnabled state, Map<String, String> labels) {
+  if (state.fields.isEmpty) return 'いまは押せません';
+  final named = state.fields.map((one) => labels[one] ?? one).join(' / ');
+  return 'いまは押せません（$named によります）';
+}
+
+/// 押せないボタンに理由を添える（押せるときはそのまま）。
+Widget _withReason(
+  Widget button,
+  _ActionEnabled state,
+  Map<String, String> labels,
+) =>
+    state.enabled
+        ? button
+        : Tooltip(message: _whyDisabled(state, labels), child: button);
+
 List<Widget> _pageActionButtons(
   BuildContext context,
   List<ActionDefinition> actions,
@@ -19,20 +81,31 @@ List<Widget> _pageActionButtons(
   DataRecord? record,
   _PageDataRunner? onExport,
   _PageDataRunner? onPrint,
+  /// 項目名 → 業務名（押せない理由を業務の言葉で言うため）。
+  Map<String, String> labels = const {},
 }) {
   final roles = HatakeScope.of(context).roles;
-  return [
-    for (final action in actions)
-      if (isAllowed(action.roles, roles)) ...[
-        FilledButton(
-          key: Key('hatake.action.${action.id}'),
-          onPressed: () => _runPageAction(context, action, controller,
-              record: record, onExport: onExport, onPrint: onPrint),
-          child: Text(action.label),
-        ),
-        const SizedBox(width: 8),
-      ],
-  ];
+  final out = <Widget>[];
+  for (final action in actions) {
+    if (!isAllowed(action.roles, roles)) continue;
+    // レコードが在る画面（form / detail）はその1件で判定する。無い画面では
+    // 出し分けない（判定する相手が無い＝押せるまま）。
+    final state = _actionEnabled(action, record: record);
+    out.add(_withReason(
+      FilledButton(
+        key: Key('hatake.action.${action.id}'),
+        onPressed: state.enabled
+            ? () => _runPageAction(context, action, controller,
+                record: record, onExport: onExport, onPrint: onPrint)
+            : null,
+        child: Text(action.label),
+      ),
+      state,
+      labels,
+    ));
+    out.add(const SizedBox(width: 8));
+  }
+  return out;
 }
 
 /// Runs an action, with its declared hooks around it: `confirm` first, then the

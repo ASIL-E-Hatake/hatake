@@ -42,6 +42,8 @@ actions:
   - { id: detail, type: plugin, plugin: showDetail, label: 詳細 }
 ```
 
+行ごとに**押せるかどうか**を変えるなら `enabledWhen`。行アクションは**その行のレコード**で判定するので、「出荷済の行だけ灰色」が定義で書ける（→ [アクション](/dsl/actions)）。
+
 行から別の画面へ飛ばすなら `navigate` にして、`params` で行の値を渡す。
 
 ```yaml

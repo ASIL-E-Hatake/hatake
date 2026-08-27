@@ -53,6 +53,21 @@ class ActionDefinition extends Equatable {
   /// `maxRows?.forRoles(roles)` で決まる（null なら上限なし）。
   final RowLimit? maxRows;
 
+  /// 押せるのは、この条件に合っているときだけ（条件の書き方は `visibleWhen` と同じ）。
+  ///
+  /// **判定する相手は置き場所で決まる**:
+  ///   ・行アクション … その行のレコード
+  ///   ・`scope: selection` … 選んだ行**全部**（1件でも合わなければ押せない＝選んだ
+  ///     うちの一部だけが動くのを作らない。`maxRows` を超えたときと同じ考え方）
+  ///   ・レコードを持つ画面（`form` / `detail` / `wizard`）… いま開いているレコード
+  ///   ・判定する相手が無い画面のボタン … **押せるまま**（出し分けられないので
+  ///     出し分けない。書いても効かないことは `hatake validate` が言う）
+  ///
+  /// 権限（[roles]）との違いは「見えるかどうか」と「いま押せるかどうか」。権限で
+  /// 隠すものは最初から出ないが、こちらは**出たまま灰色になる**（その操作が在ること
+  /// 自体は分かる形にしておく）。
+  final Map<String, Object?>? enabledWhen;
+
   /// Plugin / renderer specific extra configuration.
   final Map<String, Object?> config;
 
@@ -70,6 +85,7 @@ class ActionDefinition extends Equatable {
     this.onError,
     this.prompt,
     this.maxRows,
+    this.enabledWhen,
     this.config = const {},
     this.roles = const [],
   });
@@ -86,6 +102,7 @@ class ActionDefinition extends Equatable {
         onError,
         prompt,
         maxRows,
+        enabledWhen,
         config,
         roles,
       ];

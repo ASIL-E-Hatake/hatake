@@ -1784,6 +1784,68 @@ jobs:
           fi
           grep -q 'mermaid か dot' /tmp/badformat.log
 
+      - name: When a button may be pressed (enabledWhen)
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          # 定義に増えたキーは1つだが、道具の側では4つ言うことがある。
+          # ここでは**同じ定義**に対して4つ全部が言えることを見る。
+          cat > /tmp/enabled.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              rowActions: [openEntry]
+              columns:
+                - { field: orderNo, label: 受注番号 }
+                - { field: status, label: 状態 }
+            actions:
+              - id: openEntry
+                type: navigate
+                label: 明細編集
+                page: order_entry
+                enabledWhen: { field: status, operator: notEquals, value: 出荷済 }
+          YAML
+          # 1. 行アクションに書いた条件は効く（警告ゼロ）。
+          node dist/cli.js validate --warn-as-error /tmp/enabled.yaml
+          # 2. いつ押せるのかを読み返す（業務の言葉で）。
+          node dist/cli.js explain /tmp/enabled.yaml > /tmp/enabled.log
+          grep -q '押せるのは 状態 が 出荷済 でないとき だけ' /tmp/enabled.log
+          # 3. 判定する相手が無い所に書いたら言う（ボタンは出て押せる＝黙って効かない）。
+          cat > /tmp/enabled-bad.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - id: csv
+                type: export
+                label: CSV出力
+                enabledWhen: { field: status, operator: equals, value: 未出荷 }
+          YAML
+          if node dist/cli.js validate --warn-as-error --json /tmp/enabled-bad.yaml \
+               > /tmp/enabled-bad.json 2>&1; then
+            echo "効かない所に書いたのに通ってしまった"; exit 1
+          fi
+          grep -q 'enabledwhen-without-record' /tmp/enabled-bad.json
+          # 4. 押せる条件が変わったら言う（現場の手が止まる/止まらなくなる変化）。
+          sed '/enabledWhen/d' /tmp/enabled.yaml > /tmp/enabled-before.yaml
+          node dist/cli.js diff /tmp/enabled-before.yaml /tmp/enabled.yaml \
+            > /tmp/enabled-diff.log
+          grep -q '押せる条件」が付きました' /tmp/enabled-diff.log
+          # デモにも入れてある（出荷済の受注は明細を直せない）。
+          grep -q 'enabledWhen' "$DEMO"
+          node dist/cli.js explain "$DEMO" --page order_search > /tmp/demo-enabled.log
+          grep -q '押せるのは 状態 が 出荷済 でないとき だけ' /tmp/demo-enabled.log
+
       - name: Buttons that do nothing when pressed
         working-directory: typescript
         run: |

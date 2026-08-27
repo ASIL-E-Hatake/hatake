@@ -440,6 +440,28 @@ function diffActions(before: Dict, after: Dict, path: string): DefinitionChange[
         ),
       );
     }
+    // 「いま押せるか」の条件。付くと押せない場面が増え、外れるといつでも押せる。
+    // どちらも**現場の手が止まる/止まらなくなる**変化なので、黙って通さない。
+    const wasWhen = JSON.stringify(action.enabledWhen ?? null);
+    const nowWhen = JSON.stringify(next.enabledWhen ?? null);
+    if (wasWhen !== nowWhen) {
+      const label = `ボタン「${str(action.label) ?? id}」`;
+      changes.push(
+        change(
+          "ui",
+          "enabledwhen-changed",
+          `${at}.enabledWhen`,
+          "caution",
+          nowWhen === "null"
+            ? `${label}の「押せる条件」が外れました。いつでも押せるようになります。`
+            : wasWhen === "null"
+              ? `${label}に「押せる条件」が付きました。合っていない状態では押せません（ボタンは出たまま灰色になります）。`
+              : `${label}の「押せる条件」が変わりました。押せる状態が変わります。`,
+          wasWhen,
+          nowWhen,
+        ),
+      );
+    }
     changes.push(
       ...diffRoles(action, next, at, `ボタン「${str(action.label) ?? id}」`),
     );

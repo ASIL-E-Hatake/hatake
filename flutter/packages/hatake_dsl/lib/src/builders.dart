@@ -317,6 +317,8 @@ ActionDefinition action(
   String? plugin,
   ActionErrorDefinition? onError,
   ActionPromptDefinition? prompt,
+  /// いま押せるか（条件の書き方は項目の `enabledWhen` と同じ）。
+  Map<String, Object?>? enabledWhen,
   Map<String, Object?> config = const {},
   List<String> roles = const [],
 }) {
@@ -328,6 +330,7 @@ ActionDefinition action(
     plugin: plugin,
     onError: onError,
     prompt: prompt,
+    enabledWhen: enabledWhen,
     config: config,
     roles: roles,
   );

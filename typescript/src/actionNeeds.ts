@@ -267,6 +267,56 @@ export function deadActions(page: Dict, actions: Dict[]): DeadAction[] {
   return found;
 }
 
+/** いま開いているレコードを持つ画面（そこに1件在るので、状態で出し分けられる）。 */
+export const PAGE_KINDS_WITH_RECORD = ["form", "detail", "wizard"];
+
+/**
+ * 判定する相手が無い所に書いた `enabledWhen`。
+ *
+ * 出し分けが効くのは3つだけ:
+ *   ・`table.rowActions` に並んでいる … その行のレコード
+ *   ・`scope: selection` … 選んだ行（全部満たすときだけ押せる）
+ *   ・レコードを持つ画面のボタン … いま開いているレコード
+ *
+ * 一覧の上のボタン（`search` / `crud` / `master` / `report` / `dashboard`）には
+ * 「いま開いているレコード」が無いので、**書いても出し分けられない**。画面は出るし
+ * ボタンも押せるので、書いた人は効いていると思ったまま出荷できる。
+ *
+ * **判定できないときに押せなくする、はしない**（押せるまま）。書き間違いで業務が
+ * 止まるほうが、出し分けが効かないより悪いので。
+ */
+export function unjudgeableEnabledWhen(
+  page: Dict,
+  actions: Dict[],
+): Array<{ index: number; what: string; fix: string }> {
+  const kind = kindOf(page);
+  if (PAGE_KINDS_WITH_RECORD.includes(kind)) return [];
+  const rowActions = rowActionsOf(page);
+  const found: Array<{ index: number; what: string; fix: string }> = [];
+  actions.forEach((action, index) => {
+    const condition = action.enabledWhen;
+    if (!isDict(condition) || Object.keys(condition).length === 0) return;
+    const id = str(action.id);
+    if (id !== undefined && rowActions.includes(id)) return;
+    if (str(action.scope) === "selection") return;
+    const label = str(action.label) ?? id ?? "ボタン";
+    found.push({
+      index,
+      what:
+        `「${label}」の \`enabledWhen\` は効きません（\`${kind}\` の画面のボタンには` +
+        `**いま開いているレコード**が無いので、何の状態で出し分けるのかが決まりません）。` +
+        `ボタンは出て、押せます。`,
+      fix:
+        `行ごとに出し分けるなら \`table.rowActions\` にその id を並べてください` +
+        `（その行で判定します）。選んだ行に対してなら \`scope: selection\`` +
+        `（選んだ行が全部満たすときだけ押せます）。` +
+        `画面全体の話なら、押せるかどうかではなく**押した先で断る**のが筋です` +
+        `（\`type: plugin\` の中で判定して \`onError\` で言う）。`,
+    });
+  });
+  return found;
+}
+
 /**
  * 組み込みの行アクション（`edit` / `delete`）を、行を直す枠が無い画面の
  * `table.rowActions` に書いたとき。

@@ -1108,6 +1108,10 @@
         "config": {
           "$ref": "#/$defs/config"
         },
+        "enabledWhen": {
+          "$ref": "#/$defs/condition",
+          "description": "Enabled only while this condition matches. The record judged is the row for a row action, every checked row for scope: selection (all of them must match), and the current record for a page that has one. A page with no record to judge leaves the button enabled (validate says so)."
+        },
         "roles": {
           "$ref": "#/$defs/roles"
         }
