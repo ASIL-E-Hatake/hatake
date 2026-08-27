@@ -13,6 +13,8 @@ npx hatake refs page.yaml --needs-registration   # what the application must reg
 npx hatake diff old.yaml new.yaml                # what a change breaks / what to confirm
 npx hatake explain page.yaml --lang en                       # read the definition back in English
 npx hatake wire app.yaml --merge lib/wiring.dart --write     # add only the missing registrations (keeps your code)
+npx hatake wire app.yaml --merge lib/wiring.dart --write --todo   # ...and hand the added stubs over as a work list
+npx hatake refs app.yaml --filled --source lib/             # are those registrations actually filled in? (TODO / missing / cannot tell)
 npx hatake probe app.yaml --base http://localhost:8080/api   # does the server answer what the definition declares?
 npx hatake attack app.yaml --role staff --base http://localhost:8080/api  # does the API refuse what the screen hides?
 npx hatake attack app.yaml --all-roles --accounts accounts.json --base …   # every role + nobody, in one table (one credential per role)

@@ -13,6 +13,29 @@
 //   Java              … `new XxxRegistry(Map.of("name", …))` / `Map.ofEntries(Map.entry(…))`
 
 import { type DefinitionRegistry, type RefKind } from "./refs.js";
+import { UNWIRED_REPOSITORY } from "./wireKinds.js";
+
+/**
+ * 「まだ埋めていない」の目印。
+ *
+ * `wire` が足す TODO は `throw UnimplementedError('名前: 何をするか')` なので、それが
+ * 残っているかどうかは**その場で読める**。手書きの空実装まで見つけようとすると
+ * （空の関数・null を返すだけ）業務として正しいものまで「埋めていない」と言うことに
+ * なるので、**道具が書いた目印と、3言語の定番**だけを見る。
+ */
+const NOT_FILLED = new RegExp(
+  [
+    "UnimplementedError",
+    "UnsupportedOperationException",
+    "NotImplementedError",
+    "TODO[(]",
+    // Repository だけは値がクラスなので、目印がクラス名になる。
+    UNWIRED_REPOSITORY,
+  ].join("|"),
+);
+
+/** その値が「まだ埋めていない」と読めるか。 */
+export const looksUnfilled = (value: string): boolean => NOT_FILLED.test(value);
 
 /** 読み取れた登録1箇所。 */
 export interface RegistrationSite {
@@ -20,8 +43,21 @@ export interface RegistrationSite {
   file: string;
   /** 1 始まりの行番号。 */
   line: number;
+  /**
+   * その登録が終わる行（1 始まり・その行を含む）。
+   *
+   * **名前が「登録の中」に書かれているのか「コードの中で使われている」のかを分ける**
+   * のに使う（`refs --unused` が、定義から使われていない登録を消してよいか判断する）。
+   */
+  endLine: number;
   /** その場で読み取れた名前（宣言順）。 */
   names: string[];
+  /**
+   * 名前は在るが、中身が**まだ埋まっていない**もの（`names` の部分集合）。
+   *
+   * 登録が在ることと動くことは別。`wire --merge` が足した直後は全部ここに入る。
+   */
+  pending: string[];
 }
 
 /** 読み取れなかった登録1箇所。 */
@@ -54,6 +90,11 @@ export interface SourceFile {
  */
 const REGISTRATIONS: { kind: RefKind; name: string; named?: boolean }[] = [
   { kind: "repositories", name: "RepositoryRegistry" },
+  // REST で組んだ形（`restRepositories(collections: {'orderRepository': 'orders'})`）。
+  // ここを読まないと、`wire --base` で組んだ配線は**全部「言えない」**になる
+  // （`restRepositories(…)` は関数呼び出しなので読めない）。名前は collections の
+  // キーに書いてあるので、そこは読める。
+  { kind: "repositories", name: "collections", named: true },
   { kind: "plugins", name: "ActionRegistry" },
   { kind: "validators", name: "ValidatorRegistry" },
   { kind: "formatters", name: "FormatterRegistry" },
@@ -115,17 +156,24 @@ export function scanRegistrations(files: SourceFile[]): RegistryScan {
           kind: registration.kind,
           file: file.path,
           line,
+          endLine: lineOf(source, endOf(source, at.argsFrom, registration.named === true)),
           names: read.names,
+          pending: read.pending ?? [],
         });
       }
     }
     for (const registration of PRESENCE_REGISTRATIONS) {
       for (const at of findCalls(source, registration.name, true)) {
+        // 出す口は名前と値の対応表ではなく関数1つ。値は次の一番外側のカンマまで。
+        const end = endOf(source, at.argsFrom, true);
+        const value = source.slice(at.argsFrom, end + 1);
         sites.push({
           kind: registration.kind,
           file: file.path,
           line: lineOf(source, at.start),
+          endLine: lineOf(source, end),
           names: [registration.name],
+          pending: looksUnfilled(value) ? [registration.name] : [],
         });
       }
     }
@@ -179,9 +227,32 @@ const skipSpace = (source: string, at: number): number => {
 const lineOf = (source: string, at: number): number =>
   source.slice(0, at).split("\n").length;
 
+/**
+ * その登録が終わる位置。
+ *
+ * 名前付き引数（`fieldBuilders: { … }` / `collections: { … }`）は**引数リストではない**
+ * ので、閉じ括弧を探す起点が違う。ここを間違えると終わりがファイル末尾まで伸びて、
+ * 「登録の外に残っている TODO」も「コードの中で使われている名前」も全部
+ * **登録の中**に見えてしまう（数えるものが静かに 0 件になる）。
+ */
+function endOf(source: string, argsFrom: number, named: boolean): number {
+  if (!named) return close(source, argsFrom - 1);
+  let at = skipSpace(source, argsFrom);
+  // Dart の型引数つき map リテラル（`<String, X>{ … }`）。
+  if (source[at] === "<") at = skipSpace(source, close(source, at) + 1);
+  if (source[at] === "{" || source[at] === "(" || source[at] === "[") {
+    return close(source, at);
+  }
+  // 値が式のとき（出す口の `(request) async => …`）は、一番外側のカンマまで。
+  const comma = topLevelIndexOf(source.slice(argsFrom), ",");
+  return comma < 0 ? source.length - 1 : argsFrom + comma;
+}
+
 /** 読み取り結果。`reason` があれば読めなかった。 */
 interface ReadResult {
   names: string[];
+  /** 中身が「まだ埋めていない」と読める名前。 */
+  pending?: string[];
   reason?: string;
   /** 登録ではなく素通し（`fieldBuilders: fieldBuilders`）なので、無かったことにする。 */
   skip?: boolean;
@@ -253,9 +324,10 @@ function looksLikeDeclaration(source: string, argsFrom: number): boolean {
   return /^[A-Za-z_$][\w$<>,.?\s[\]]*\s[A-Za-z_$][\w$]*$/.test(text);
 }
 
-/** `{ 'a': …, "b": … }` のキーを読む。 */
+/** `{ 'a': …, "b": … }` のキーを読む（値は「埋まっているか」だけ見る）。 */
 function readMapLiteral(source: string, at: number): ReadResult {
   const names: string[] = [];
+  const pending: string[] = [];
   for (const entry of splitTop(source, at)) {
     const text = entry.trim();
     if (text === "") continue;
@@ -274,8 +346,9 @@ function readMapLiteral(source: string, at: number): ReadResult {
       };
     }
     names.push(key);
+    if (looksUnfilled(text.slice(colon + 1))) pending.push(key);
   }
-  return { names };
+  return { names, pending };
 }
 
 /**
@@ -307,6 +380,7 @@ function readJavaMapOf(source: string, at: number): ReadResult {
     return { names: [], reason: "Map.of の引数が偶数ではありません" };
   }
   const names: string[] = [];
+  const pending: string[] = [];
   for (let i = 0; i < args.length; i += 2) {
     const key = literal(args[i].trim());
     if (key === null) {
@@ -316,13 +390,15 @@ function readJavaMapOf(source: string, at: number): ReadResult {
       };
     }
     names.push(key);
+    if (looksUnfilled(args[i + 1] ?? "")) pending.push(key);
   }
-  return { names };
+  return { names, pending };
 }
 
 /** `Map.ofEntries(Map.entry("a", x), …)` の第1引数を読む。 */
 function readJavaEntries(source: string, at: number): ReadResult {
   const names: string[] = [];
+  const pending: string[] = [];
   for (const raw of splitTop(source, at)) {
     const text = raw.trim();
     if (text === "") continue;
@@ -330,13 +406,15 @@ function readJavaEntries(source: string, at: number): ReadResult {
     if (open < 0 || !/(^|\.)entry$/.test(text.slice(0, open).trim())) {
       return { names: [], reason: `entry として読めません: ${short(text)}` };
     }
-    const key = literal(splitTop(text, open)[0]?.trim() ?? "");
+    const parts = splitTop(text, open);
+    const key = literal(parts[0]?.trim() ?? "");
     if (key === null) {
       return { names: [], reason: `キーが文字列リテラルではありません: ${short(text)}` };
     }
     names.push(key);
+    if (looksUnfilled(parts.slice(1).join(","))) pending.push(key);
   }
-  return { names };
+  return { names, pending };
 }
 
 /** 文字列リテラルなら中身、そうでなければ null（`r'…'` のような接頭辞も許す）。 */

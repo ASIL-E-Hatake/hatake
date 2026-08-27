@@ -19,8 +19,16 @@ export interface WireKind {
   registry?: string;
   /** どこに並ぶか。`renderer` は `MaterialRenderer(...)` の中。 */
   where: "scope" | "renderer";
-  /** 1件ぶんの値（埋めるまでは実行時に落ちる形）。 */
-  stub: (name: string) => string;
+  /** 1件ぶんの値の頭（引数の形。`(ctx) async =>`）。 */
+  head: string;
+  /**
+   * 埋める人が書くもの（1行）。
+   *
+   * **生成する TODO の文とこの言葉は同じ1か所から出す**（[wireStub]）。別に持つと、
+   * 出したコードには「検証の中身」と書いてあるのに、渡した一覧には別のことが
+   * 書いてある、が起きる。
+   */
+  todo: string;
   /** 無い所に足すときの見出し。`renderer` の中には付けない（既定が無いので）。 */
   comment: string[];
 }
@@ -37,7 +45,8 @@ export const WIRE_KINDS: WireKind[] = [
     field: "actions",
     registry: "ActionRegistry",
     where: "scope",
-    stub: (name) => `(ctx) async => throw UnimplementedError('${name}: 何をするか')`,
+    head: "(ctx) async =>",
+    todo: "何をするか",
     comment: ["// `type: plugin` のボタンの中身＝業務。定義には書けない所。"],
   },
   {
@@ -45,8 +54,8 @@ export const WIRE_KINDS: WireKind[] = [
     field: "validators",
     registry: "ValidatorRegistry",
     where: "scope",
-    stub: (name) =>
-      `(value, definition) => throw UnimplementedError('${name}: 検証の中身')`,
+    head: "(value, definition) =>",
+    todo: "検証の中身",
     comment: ["// 組み込みに無い検証。null を返せば OK、文字列を返せばそれがエラー。"],
   },
   {
@@ -54,8 +63,8 @@ export const WIRE_KINDS: WireKind[] = [
     field: "converters",
     registry: "ConverterRegistry",
     where: "scope",
-    stub: (name) =>
-      `(value, options) => throw UnimplementedError('${name}: 正規化の中身')`,
+    head: "(value, options) =>",
+    todo: "正規化の中身",
     comment: ["// 組み込みに無い正規化（保存の前に値を直す）。"],
   },
   {
@@ -63,8 +72,8 @@ export const WIRE_KINDS: WireKind[] = [
     field: "aggregates",
     registry: "AggregateRegistry",
     where: "scope",
-    stub: (name) =>
-      `(rows, field) => throw UnimplementedError('${name}: 集約の中身')`,
+    head: "(rows, field) =>",
+    todo: "集約の中身",
     comment: ["// 組み込みに無い集約（ダッシュボードと帳票の合計欄）。"],
   },
   {
@@ -72,8 +81,8 @@ export const WIRE_KINDS: WireKind[] = [
     field: "computeds",
     registry: "ComputedRegistry",
     where: "scope",
-    stub: (name) =>
-      `(computed, record) => throw UnimplementedError('${name}: 計算の中身')`,
+    head: "(computed, record) =>",
+    todo: "計算の中身",
     comment: ["// 組み込みに無い計算（入力から自動で埋める項目）。"],
   },
   {
@@ -81,29 +90,44 @@ export const WIRE_KINDS: WireKind[] = [
     field: "formatters",
     registry: "FormatterRegistry",
     where: "renderer",
-    stub: (name) =>
-      `(value, options) => throw UnimplementedError('${name}: 見せ方')`,
+    head: "(value, options) =>",
+    todo: "見せ方",
     comment: [],
   },
   {
     need: "fieldTypes",
     field: "fieldBuilders",
     where: "renderer",
-    stub: (name) => `(ctx) => throw UnimplementedError('${name}: 入力の見た目')`,
+    head: "(ctx) =>",
+    todo: "入力の見た目",
     comment: [],
   },
   {
     need: "dashboardItemTypes",
     field: "dashboardItemBuilders",
     where: "renderer",
-    stub: (name) => `(ctx) => throw UnimplementedError('${name}: カードの中身')`,
+    head: "(ctx) =>",
+    todo: "カードの中身",
     comment: [],
   },
 ];
 
+/**
+ * まだ繋いでいない Repository（`wire` が置く仮の実装）。
+ *
+ * Repository だけは値が「その場の式」ではなくクラスなので、TODO の目印が
+ * `UnimplementedError` ではなくこの名前になる。**埋まったかを数える側
+ * （[looksUnfilled]）も同じ名前を見る**＝名前を変えたときに片方だけ残らない。
+ */
+export const UNWIRED_REPOSITORY = "_UnwiredRepository";
+
 /** 出す口（`exportSink` / `printSink`）。map ではなく関数1つなので別扱い。 */
-export const WIRE_SINKS: Record<string, { comment: string[]; body: string[] }> = {
+export const WIRE_SINKS: Record<
+  string,
+  { comment: string[]; body: string[]; todo: string }
+> = {
   exportSink: {
+    todo: "作った CSV を書き出す先に繋ぐ（web ならダウンロード、デスクトップなら保存）",
     comment: [
       "// CSV は Framework が文字列まで作る。書くのはアプリ（web なら",
       "// ダウンロード、デスクトップなら保存ダイアログ）。",
@@ -114,6 +138,7 @@ export const WIRE_SINKS: Record<string, { comment: string[]; body: string[] }> =
     ],
   },
   printSink: {
+    todo: "刷る先に繋ぐ（PDF にするのは opt-in の hatake_print、送るのはアプリ）",
     comment: [
       "// 紙の中身までが Framework。PDF にするのは opt-in の hatake_print、",
       "// 送るのはアプリ。",
@@ -124,3 +149,12 @@ export const WIRE_SINKS: Record<string, { comment: string[]; body: string[] }> =
     ],
   },
 };
+
+/**
+ * 1件ぶんの値（埋めるまでは実行時に落ちる形）。
+ *
+ * 埋める人に渡す一覧（`wire --merge --todo`）も同じ [WireKind.todo] を読む＝出した
+ * コードの中の言葉と、渡した一覧の言葉が必ず揃う。
+ */
+export const wireStub = (kind: WireKind, name: string): string =>
+  `${kind.head} throw UnimplementedError('${name}: ${kind.todo}')`;

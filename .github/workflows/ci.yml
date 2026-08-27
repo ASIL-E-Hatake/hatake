@@ -1026,6 +1026,56 @@ jobs:
           node dist/cli.js wire "$TOOL/wire_everything.yaml"             --merge "$TOOL/merged_everything.dart" --out /tmp/twice.dart
           diff -u --strip-trailing-cr "$TOOL/merged_everything.dart" /tmp/twice.dart
 
+          # ── 足した所を渡す / 埋まったかを数える ──────────────────────
+          # 足した所は「誰が何を埋めるのか」の一覧にできる（足した直後は全部 TODO で、
+          # 埋め忘れは動かして初めて分かる）。
+          cp "$TOOL/wired_sales_app.dart" /tmp/hand.dart
+          node dist/cli.js wire "$TOOL/wire_everything.yaml" \
+            --merge /tmp/hand.dart --write --todo > /tmp/wire-todo.log
+          grep -q '書くもの:' /tmp/wire-todo.log
+          grep -q 'UnimplementedError で落ちます' /tmp/wire-todo.log
+          grep -q 'hatake refs --filled' /tmp/wire-todo.log
+          # 書くものの言葉は、出したコードの中の言葉と**同じ1か所**から出している。
+          grep -q "median: 集約の中身" /tmp/hand.dart
+          grep -q '書くもの: 集約の中身' /tmp/wire-todo.log
+
+          # 出したままの配線は、要求している登録が**全部 TODO のまま**。
+          mkdir -p /tmp/wiring && cp /tmp/wired_sales_app.dart /tmp/wiring/
+          node dist/cli.js refs ../flutter/packages/hatake_example/assets/sales_app.yaml \
+            --filled --source /tmp/wiring > /tmp/filled.log
+          grep -q 'TODO のまま' /tmp/filled.log
+          grep -q 'approveOrders' /tmp/filled.log
+          # 事実だけでは落とさない。落とす旗を立てたときだけ落ちる。
+          if ! node dist/cli.js refs ../flutter/packages/hatake_example/assets/sales_app.yaml \
+               --filled --source /tmp/wiring --pending-as-error > /dev/null; then
+            echo "（想定どおり）TODO のままなので落ちた"
+          else
+            echo "TODO のままなのに通ってしまった"; exit 1
+          fi
+          # 中身を埋めたら「埋まっている」に移る＝数え方が動いていることの確認。
+          sed -i "s/throw UnimplementedError('approveOrders: 何をするか')/api.approve(ctx)/" \
+            /tmp/wiring/wired_sales_app.dart
+          node dist/cli.js refs ../flutter/packages/hatake_example/assets/sales_app.yaml \
+            --filled --source /tmp/wiring --json > /tmp/filled.json
+          node -e '
+            const fs = require("fs");
+            const report = JSON.parse(fs.readFileSync("/tmp/filled.json", "utf8"));
+            const one = report.items.find((item) => item.name === "approveOrders");
+            if (one === undefined || one.state !== "filled") {
+              console.error("埋めたのに「埋まっている」に移らない:", one);
+              process.exit(1);
+            }
+          '
+
+          # 逆向き（消す候補）は、**実装を見ていないと落とす旗を置けない**
+          # ＝画面の外から直接呼んでいる登録を「使われていない」と言うのは嘘。
+          echo '{"repositories":["orderRepository","goneRepository"]}' > /tmp/reg.json
+          if node dist/cli.js refs ../flutter/packages/hatake_example/assets/sales_app.yaml \
+               --unused --registry /tmp/reg.json --unused-as-error > /tmp/unused.log 2>&1; then
+            echo "実装を見ずに落とす旗を置いてしまった"; exit 1
+          fi
+          grep -q -- '--source <実装のパス> が要ります' /tmp/unused.log
+
       - name: Asking before the action runs (prompt)
         working-directory: typescript
         run: |
@@ -1306,6 +1356,36 @@ jobs:
           node dist/cli.js wire /tmp/tutorial.yaml --base /api > /tmp/tutorial.dart 2>/dev/null
           grep -q "'customerRepository': 'customers'," /tmp/tutorial.dart
           grep -q "'consumptionTax': (computed, record) =>" /tmp/tutorial.dart
+          # 項目が1つ増えたとき、足した所を渡す形（手引きの 7 節の続き）。
+          node dist/cli.js wire /tmp/tutorial.yaml --base /api --out /tmp/tut-wiring.dart \
+            > /dev/null 2>&1
+          python3 - <<'PY'
+          import io
+          s = io.open("/tmp/tutorial.yaml", encoding="utf-8").read()
+          old = "          - { field: total, label: "
+          assert s.count(old) == 1, s.count(old)
+          add = (
+              "          - { field: discount, label: 割引, type: number, readOnly: true,\n"
+              "              computed: { op: discountRate, field: subtotal } }\n"
+          )
+          io.open("/tmp/tutorial2.yaml", "w", encoding="utf-8", newline="\n").write(
+              s.replace(old, add + old, 1)
+          )
+          PY
+          node dist/cli.js wire /tmp/tutorial2.yaml --merge /tmp/tut-wiring.dart \
+            --write --todo > /tmp/tut-todo.log
+          grep -q 'computeds/discountRate' /tmp/tut-todo.log
+          grep -q '書くもの: 計算の中身' /tmp/tut-todo.log
+          # 埋まったかを数える形（手引きが載せている数と状態が、実際にその通り出ること）。
+          node dist/cli.js refs /tmp/tutorial2.yaml --filled \
+            --source /tmp/tut-wiring.dart > /tmp/tut-filled.log
+          grep -qE '定義が要求している登録: 4 件' /tmp/tut-filled.log
+          grep -qE 'TODO のまま +2' /tmp/tut-filled.log
+          grep -qE '埋まっている +2' /tmp/tut-filled.log
+          # REST で組んだ配線は登録は済んでいるのに、実際に通信する所が空いている
+          # ＝登録だけ数えると「全部埋まっている」と出て、動かすと1件も取れない。
+          grep -q '配線そのものに残っている TODO' /tmp/tut-filled.log
+          grep -q 'HTTP クライアントを繋ぐ' /tmp/tut-filled.log
 
       - name: The PR-comment snippet in the guide actually runs
         working-directory: typescript

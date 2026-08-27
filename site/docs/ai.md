@@ -117,6 +117,7 @@ npx hatake minimize page.yaml          # 既定値と同じ指定を落として
 npx hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権限・アプリ構成）
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか
 npx hatake registry lib/main.dart              # アプリが登録しているものを実装から読む
+npx hatake refs page.yaml --filled --source lib/  # その登録が本当に埋まったか（TODO のままを数える）
 npx hatake attack app.yaml --all-roles --accounts accounts.json --base …  # 役割ぜんぶ＋誰でもない人で権限の穴を突く
 npx hatake attack app.yaml --all-roles --login login.json --since last.json --fail-on new
                                        # 毎晩回す形（資格は毎回取る・変わった所だけ出す）

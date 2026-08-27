@@ -22,7 +22,12 @@
 
 import { collectRefs, type RefKind, refsNeedingRegistration } from "./refs.js";
 import { collectionOf } from "./wire.js";
-import { WIRE_KINDS, WIRE_SINKS } from "./wireKinds.js";
+import {
+  UNWIRED_REPOSITORY,
+  WIRE_KINDS,
+  WIRE_SINKS,
+  wireStub,
+} from "./wireKinds.js";
 import { mapEntry, mapLiteral } from "./wireMap.js";
 
 type Dict = Record<string, unknown>;
@@ -303,6 +308,9 @@ export function mergeWiring(
         code = insertBeforeChild(code, lines);
       }
       created.push(spec.field);
+      // 丸ごと作ったときも**名前**を残す（引数名だけでは「誰が何を埋めるのか」の
+      // 一覧が作れない＝`--todo` が最初の1回で空になる）。
+      added[spec.field] = [...spec.wanted];
       return;
     }
     const range = mapAfter(code, at);
@@ -336,13 +344,14 @@ export function mergeWiring(
     merge({
       field: "repositories",
       wanted: repositories,
-      entry: (name) => `_UnwiredRepository('${name}')`,
+      entry: (name) => `${UNWIRED_REPOSITORY}('${name}')`,
       where: "scope",
       comment: ["// 定義が名前を挙げた Repository。中身はアプリが書く（5メソッド）。"],
       block: (missing) => [
         `repositories: const RepositoryRegistry(${mapLiteral(
           missing.map(
-            (name) => [name, `_UnwiredRepository('${name}')`] as [string, string],
+            (name) =>
+              [name, `${UNWIRED_REPOSITORY}('${name}')`] as [string, string],
           ),
           "        ",
         )}),`,
@@ -355,12 +364,12 @@ export function mergeWiring(
     merge({
       field: kind.field,
       wanted: named(kind.need),
-      entry: kind.stub,
+      entry: (name) => wireStub(kind, name),
       where: kind.where,
       comment: kind.comment,
       block: (missing) => {
         const body = mapLiteral(
-          missing.map((name) => [name, kind.stub(name)] as [string, string]),
+          missing.map((name) => [name, wireStub(kind, name)] as [string, string]),
           indent,
         );
         return [
@@ -388,10 +397,12 @@ export function mergeWiring(
 export function renderWireMerge(result: WireMergeResult): string {
   const lines: string[] = [];
   for (const [field, names] of Object.entries(result.added)) {
-    lines.push(`足した ${field}: ${names.join(" / ")}`);
+    const whole = result.created.includes(field) ? "（丸ごと）" : "";
+    lines.push(`足した ${field}${whole}: ${names.join(" / ")}`);
   }
   for (const field of result.created) {
-    lines.push(`足した ${field}（丸ごと）`);
+    // 名前を持たない登録（出す口）は引数名だけ。
+    if (result.added[field] === undefined) lines.push(`足した ${field}（丸ごと）`);
   }
   if (lines.length === 0) lines.push("足すものはありませんでした（1バイトも変えていません）。");
   for (const one of result.untouched) lines.push(`触っていない ${one}`);

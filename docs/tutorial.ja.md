@@ -334,6 +334,50 @@ npx hatake wire order_entry.yaml --merge lib/wiring.dart --write
 
 手で埋めた中身は1バイトも変わらない（消さない・並べ替えない・整形しない）。
 
+足した所は、**そのまま次の1往復に渡せる**。
+
+```bash
+npx hatake wire order_entry.yaml --merge lib/wiring.dart --write --todo
+```
+
+```
+機械が 1 か所を足しました（**場所はもう探さなくていい**）。残っているのは中身です。
+1 件、どれも**業務か環境**なので機械には決められません（何をするかは業務、どう繋ぐかは環境）。
+
+1. computeds/discountRate  lib/wiring.dart:56
+   書くもの: 計算の中身
+   埋めるまで: そこを通ると UnimplementedError で落ちます（黙って何もしない、にはなりません）
+```
+
+埋め忘れは**動かして初めて分かる**（押した人の所で落ちる）ので、出荷前に数える。
+
+```bash
+npx hatake refs order_entry.yaml --filled --source lib/
+```
+
+```
+定義が要求している登録: 4 件（実装 1 ファイルと突き合わせました）
+  TODO のまま   2
+  登録が無い   0
+  埋まっている   2
+
+TODO のまま（動かすと UnimplementedError で落ちます（hatake wire が足した所のまま））:
+  computedOps/consumptionTax   lib/wiring.dart:53
+  computedOps/discountRate   lib/wiring.dart:53
+
+配線そのものに残っている TODO（登録の外。ここが埋まらないと、登録が済んでいても動きません）:
+  lib/wiring.dart:72   throw UnimplementedError('HTTP クライアントを繋ぐ: ${request.method} '
+```
+
+- **「TODO のまま」は、道具が置いた目印（`UnimplementedError`）が残っているもの。**
+  登録が在ることと動くことは別
+- **登録の外も見る。** REST で組んだ配線は Repository の登録は済んでいるのに、実際に
+  通信する所（`_send`）が空いている＝登録だけ数えると「全部埋まっている」と出て、
+  動かすと1件も取れない
+- 変数や関数から組み立てている登録は読めないので、その種類は**「言えない」**と出る
+  （「登録が無い」とは言わない。登録してあるのに未登録と言うのが一番まずい嘘）
+- CI に置くなら `--pending-as-error`（TODO のまま・登録が無い が1件でもあれば落ちる）
+
 ## 8. サーバと突き合わせる
 
 API を繋いだら、**宣言どおり返っているか**を叩いて確かめる。
@@ -365,4 +409,4 @@ npx hatake probe order_entry.yaml --base http://localhost:8080/api --token "$JWT
 | 意図と違う画面になった | `npx hatake explain`（読み返す） |
 | どう書くのか分からない | `npx hatake examples <やりたいこと>` / `npx hatake reference <キー>` |
 | なぜか転ぶ | `npx hatake pitfalls` / `npx hatake failures`（実際に転んだ例） |
-| 押しても何も起きない | `npx hatake refs --needs-registration`（登録漏れ） |
+| 押しても何も起きない | `npx hatake refs --needs-registration`（登録漏れ）／`--filled --source lib/`（TODO のまま） |

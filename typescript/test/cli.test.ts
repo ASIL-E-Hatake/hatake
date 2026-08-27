@@ -1633,6 +1633,141 @@ app:
       unused: { repositories: ["gone"] },
     });
   });
+
+  // ── 実装も見る（消してよいかは、定義だけでは決まらない）───────────────
+  const WIRING = `
+    Widget build(BuildContext context) => HatakeScope(
+      repositories: RepositoryRegistry({
+        'orderRepository': OrderRepo(),
+        'oldStockRepository': StockRepo(),
+      }),
+      actions: ActionRegistry({'csvExport': (ctx) async => export(ctx)}),
+      child: const SizedBox(),
+    );
+    Future<void> nightly() => registry.run('csvExport');
+  `;
+
+  it("--source を渡すと、コードに名前が書いてあるものは消す候補にしない", () => {
+    const io = fakeIo({
+      "app.yaml": APP,
+      "reg.json": JSON.stringify({
+        repositories: ["orderRepository", "oldStockRepository"],
+        plugins: ["csvExport"],
+      }),
+      "lib/wiring.dart": WIRING,
+    });
+    expect(
+      runCli(
+        ["refs", "app.yaml", "--unused", "--registry", "reg.json", "--source", "lib/"],
+        io,
+      ),
+    ).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("csvExport   ← コードに名前が書かれています");
+    // 登録の中に書いてあるだけのものは、使われている証拠にならない。
+    expect(out).toMatch(/oldStockRepository$|oldStockRepository\n/);
+    expect(out).toContain("コードのどこにも名前が無いのは 1 件");
+  });
+
+  it("--unused-as-error は、コードのどこにも無いものが残っていれば落ちる", () => {
+    const io = fakeIo({
+      "app.yaml": APP,
+      "reg.json": JSON.stringify({ repositories: ["orderRepository", "oldStockRepository"] }),
+      "lib/wiring.dart": WIRING,
+    });
+    expect(
+      runCli(
+        [
+          "refs",
+          "app.yaml",
+          "--unused",
+          "--registry",
+          "reg.json",
+          "--source",
+          "lib/",
+          "--unused-as-error",
+        ],
+        io,
+      ),
+    ).toBe(1);
+  });
+
+  it("--unused-as-error は実装を見ないと置けない（嘘になるので断る）", () => {
+    const io = fakeIo({
+      "app.yaml": APP,
+      "reg.json": JSON.stringify({ repositories: ["gone"] }),
+    });
+    expect(
+      runCli(
+        ["refs", "app.yaml", "--unused", "--registry", "reg.json", "--unused-as-error"],
+        io,
+      ),
+    ).toBe(1);
+    expect(io.stderr.join("")).toContain("--source <実装のパス> が要ります");
+  });
+});
+
+describe("hatake refs --filled（埋まったかを数える）", () => {
+  const APP = `
+app:
+  id: sales
+  title: 受注
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      key: orderNo
+      table:
+        columns: [{ field: orderNo, label: 受注番号 }]
+      actions:
+        - { id: approve, type: plugin, plugin: approveOrders, label: 承認 }
+`;
+
+  /** `wire` が出したままの配線（全部 TODO）。 */
+  const draft = (io: ReturnType<typeof fakeIo>): string => {
+    runCli(["wire", "app.yaml", "--out", "lib/wiring.dart"], io);
+    return io.written["lib/wiring.dart"];
+  };
+
+  it("出したままなら「TODO のまま」と数え、落とす旗で落ちる", () => {
+    const seed = fakeIo({ "app.yaml": APP });
+    const io = fakeIo({ "app.yaml": APP, "lib/wiring.dart": draft(seed) });
+    expect(
+      runCli(["refs", "app.yaml", "--filled", "--source", "lib/"], io),
+    ).toBe(0);
+    const out = io.stdout.join("\n");
+    expect(out).toContain("定義が要求している登録:");
+    expect(out).toContain("TODO のまま");
+    expect(out).toContain("approveOrders");
+    // 場所つき（開く所が分かる）。
+    expect(out).toMatch(/lib\/wiring\.dart:\d+/);
+    // 事実だけでは落とさない。旗を立てたときだけ落ちる。
+    const io2 = fakeIo({ "app.yaml": APP, "lib/wiring.dart": draft(seed) });
+    expect(
+      runCli(
+        ["refs", "app.yaml", "--filled", "--source", "lib/", "--pending-as-error"],
+        io2,
+      ),
+    ).toBe(1);
+  });
+
+  it("--source が無ければ、なぜ要るかまで言う", () => {
+    const io = fakeIo({ "app.yaml": APP });
+    expect(runCli(["refs", "app.yaml", "--filled"], io)).toBe(1);
+    expect(io.stderr.join("")).toContain("実装を読まないと、埋まったかは言えません");
+  });
+
+  it("--json は機械が読める形（状態と場所つき）", () => {
+    const seed = fakeIo({ "app.yaml": APP });
+    const io = fakeIo({ "app.yaml": APP, "lib/wiring.dart": draft(seed) });
+    runCli(["refs", "app.yaml", "--filled", "--source", "lib/", "--json"], io);
+    const report = JSON.parse(io.stdout.join("\n"));
+    expect(report.scanned).toBe(1);
+    const one = report.items.find((item: { name: string }) => item.name === "approveOrders");
+    expect(one.state).toBe("pending");
+    expect(one.where).toMatch(/lib\/wiring\.dart:\d+/);
+  });
 });
 
 describe("hatake fix --todo（残りを次の1往復に渡す）", () => {
@@ -2507,6 +2642,44 @@ describe("hatake wire --merge", () => {
 
     expect(io.written["wiring.dart"]).toContain("'rejectOrders':");
     expect(io.stdout.join("")).toContain("書きました: wiring.dart");
+  });
+
+  it("--todo は、足した所を「次の1往復で渡す形」で出す", () => {
+    const io = fakeIo({ "app.yaml": APP, "wiring.dart": WIRING });
+    expect(
+      runCli(
+        ["wire", "app.yaml", "--merge", "wiring.dart", "--write", "--todo"],
+        io,
+      ),
+    ).toBe(0);
+
+    // 標準出力は**一覧**（コードはファイルに書く。混ぜるとどちらも使えない）。
+    const out = io.stdout.join("\n");
+    expect(out).not.toContain("HatakeScope(");
+    expect(out).toContain("actions/rejectOrders");
+    expect(out).toContain("書くもの: 何をするか");
+    expect(out).toContain("UnimplementedError で落ちます");
+    expect(out).toMatch(/wiring\.dart:\d+/);
+    expect(out).toContain("hatake refs --filled");
+    // 足したコードはちゃんと書いてある。
+    expect(io.written["wiring.dart"]).toContain("'rejectOrders':");
+  });
+
+  it("--todo --json は機械が読める形", () => {
+    const io = fakeIo({ "app.yaml": APP, "wiring.dart": WIRING });
+    runCli(
+      ["wire", "app.yaml", "--merge", "wiring.dart", "--write", "--todo", "--json"],
+      io,
+    );
+    const todo = JSON.parse(io.stdout.join("\n"));
+    expect(todo.added).toBe(1);
+    expect(todo.file).toBe("wiring.dart");
+    expect(todo.items[0]).toMatchObject({
+      field: "actions",
+      name: "rejectOrders",
+      todo: "何をするか",
+    });
+    expect(todo.items[0].line).toBeGreaterThan(0);
   });
 
   it("足すものが無ければ書かない（日付だけが変わるのを避ける）", () => {
