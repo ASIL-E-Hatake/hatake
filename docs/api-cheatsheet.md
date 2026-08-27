@@ -31,6 +31,15 @@ never printed) and `--since last.json` prints **only what changed** since the pr
 that was probed before was **not** probed this time (expired credentials), its holes are
 reported as "we did not look" rather than "fixed", and `--fail-on new` still fails.
 
+**Buttons that do nothing when pressed are reported before you press them** — the worst way
+to fall in this framework (the definition parses, the button shows, and you only find out by
+pressing): `create` on a page with no list (`create-action-unusable`), `export` with no table
+(`export-without-rows`), `print` with no `report` (`print-without-report`), `plugin` with no
+`plugin:` (`plugin-without-name`), `navigate` whose target is the page itself
+(`navigate-to-self`), `edit` / `delete` outside a row (`row-declaration-unused`), and a
+built-in row action outside `crud` / `master` (`builtin-rowaction-unsupported`). Each verdict
+needs one page only, so it runs in CI.
+
 `refs` lists the names the definition expects from outside (repositories, plugins, custom
 formatters). Pass that list to `validate --registry <file>` and a mismatched name is
 reported instead of failing silently at runtime.

@@ -3,6 +3,14 @@
 // 狙いは「白紙から書かせない」こと。どの種別も**そのまま動く最小形**で、strict
 // パースとスキーマ検証を通る（`scaffold.test.ts` が全種別で確認している）。
 // 埋める場所だけ TODO_ にしてある。
+//
+// **雛形は警告ゼロ・助言ゼロで通る**（`scaffold.test.ts` が全種別で確認している）。
+// AI は雛形を写すので、雛形に足りない所があると、写した時点から助言が出る定義が
+// 増える＝「書いたあとに直す」回数が雛形のぶんだけ増える。逆に言うと、雛形を直すのが
+// **一番効く直し方**（一番よく通る道なので）。
+//
+// 業務でしか決められない値は `TODO_` を付けた名前で置く（`roles: [TODO_role]`）。
+// 書き換えないと誰にも見えないので、埋め忘れが画面に出る側に倒してある。
 
 /** 雛形を出せるページ種別。 */
 export const scaffoldKinds = [
@@ -34,7 +42,12 @@ const searchBlock = (): string[] => [
 ];
 
 const tableBlock = (
-  options: { rowActions?: string; extraColumns?: string[] } = {},
+  options: {
+    rowActions?: string;
+    extraColumns?: string[];
+    /** 1件を指すキーの項目名（一覧に出す。無ければ出さない）。 */
+    keyField?: string;
+  } = {},
 ): string[] => [
   "  table:",
   "    pagination: { pageSize: 50 }",
@@ -42,10 +55,23 @@ const tableBlock = (
     ? []
     : [`    rowActions: [${options.rowActions}]`]),
   "    columns:",
+  // キーは一覧に出す。行を見てどのレコードか分からない一覧は、電話で話せない
+  // （現場は id を読む）。出していないと `hatake advise` が毎回そう言う。
+  ...(options.keyField === undefined
+    ? []
+    : [`      - { field: ${options.keyField}, label: ID, width: 80 }`]),
   "      - { field: code, label: コード, width: 140, sortable: true }",
   "      - { field: name, label: 名称 }",
   ...(options.extraColumns ?? []),
 ];
+
+/**
+ * 持ち出せるボタンには**押せる人**を書く（CSV・印刷）。
+ *
+ * 誰でも押せると、画面を開けた人は全件を持ち出せる。誰が押せるかは業務の決めごとなので
+ * 値は決められないが、**書く場所が空いている**のは雛形の落ち度なので、TODO_ で置く。
+ */
+const ROLES_TODO = "roles: [TODO_role]";
 
 const formBlock = (): string[] => [
   "  form:",
@@ -80,22 +106,22 @@ export function scaffold(kind: string, options: ScaffoldOptions): string {
         ...page,
         key,
         ...searchBlock(),
-        ...tableBlock({ rowActions: "edit, delete" }),
+        ...tableBlock({ rowActions: "edit, delete", keyField: "id" }),
         ...formBlock(),
         "  actions:",
         "    - { id: create, type: create, label: 新規登録 }",
-        "    - { id: csv, type: export, label: CSV出力 }",
+        `    - { id: csv, type: export, label: CSV出力, ${ROLES_TODO} }`,
       ]);
     case "search":
       return lines([
         ...page,
         key,
         ...searchBlock(),
-        ...tableBlock({ rowActions: "detail" }),
+        ...tableBlock({ rowActions: "detail", keyField: "id" }),
         "  actions:",
         "    # 行から詳細へ。遷移先は app: の pages に置く",
         '    - { id: detail, type: navigate, label: 詳細, page: TODO_detail_page, params: { id: "$row.id" } }',
-        "    - { id: csv, type: export, label: CSV出力 }",
+        `    - { id: csv, type: export, label: CSV出力, ${ROLES_TODO} }`,
       ]);
     case "detail":
       return lines([
@@ -164,9 +190,9 @@ export function scaffold(kind: string, options: ScaffoldOptions): string {
         "    totals:",
         "      - { field: amount, aggregate: sum }",
         "  actions:",
-        "    - { id: csv, type: export, label: CSV出力, config: { bom: true } }",
+        `    - { id: csv, type: export, label: CSV出力, config: { bom: true }, ${ROLES_TODO} }`,
         // 紙に刷る口。バイト列を作るのはアプリ側（HatakeScope の printSink）。
-        "    - { id: printPdf, type: print, label: 印刷 }",
+        `    - { id: printPdf, type: print, label: 印刷, ${ROLES_TODO} }`,
       ]);
     default:
       throw new Error(

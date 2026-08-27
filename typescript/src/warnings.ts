@@ -14,6 +14,7 @@
 // 見るのは素の document（strict と同じ）。解析後のモデルでは、落とされた情報や
 // 既定値で埋まった情報が見えなくなるものがあるので。
 
+import { deadActions, unsupportedRowActions } from "./actionNeeds.js";
 import { appAccess, describeAudience, nobodyCanOpen } from "./appAccess.js";
 import { ConditionOperators } from "./conditionEvaluator.js";
 import {
@@ -385,11 +386,10 @@ function checkPage(
   );
 
   checkActions(actions, `${path}.actions`, pageIds, found);
-  checkPrint(page, actions, path, found);
+  checkDeadActions(page, actions, `${path}.actions`, found);
   checkSelection(page, actions, path, found, appRoles);
   checkPlaceholders(actions, `${path}.actions`, found);
   checkPrompt(actions, `${path}.actions`, found);
-  checkCreateAction(page, actions, `${path}.actions`, found);
   checkTable(page, actionIds, path, found);
   checkSearch(page, path, found);
   checkForm(page, path, found);
@@ -608,43 +608,32 @@ function checkPrompt(
   });
 }
 
-/** `type: create` が効く画面（一覧＋フォームを両方持つ種別）。 */
-const CREATE_PAGE_KINDS = ["crud", "master"];
-
 /**
- * 押しても何も起きない `type: create`。
+ * 押しても何も起きないボタン。
  *
- * `create` がやることは**一覧から新規入力の枠を開く**ことなので、一覧とフォームを
- * 両方持つ画面（`crud` / `master`）にしか置けない。`form` の画面には保存ボタンが
- * 最初から出ているので、置く必要も無い。
+ * 「定義は通り、画面にもボタンが出て、押すまで気づけない」＝この枠組みで一番まずい
+ * 転び方なので、**7種類ぜんぶ**を1枚の表（[ACTION_NEEDS]）から見る。種別ごとに規則を
+ * 手で書くと、`type` 7 × 画面 8 の組み合わせのどこかが必ず抜ける。
  *
- * 定義としては通り、ボタンも出る。**押すと「このページでは使えません」と言われる**
- * ＝押すまで気づけない。1画面ぶんの情報で判定できるので、機械が先に言える。
+ * 見るのは「画面の側に無い」ことだけ。名前が登録されているかは外の話（`--registry` を
+ * 渡したときだけ言う）。
  */
-function checkCreateAction(
+function checkDeadActions(
   page: Dict,
   actions: Dict[],
   path: string,
   found: DefinitionWarning[],
 ): void {
-  const kind = str(page.type) ?? "";
-  if (CREATE_PAGE_KINDS.includes(kind)) return;
-  actions.forEach((action, i) => {
-    if (str(action.type) !== ActionTypes.create) return;
-    const label = str(action.label) ?? str(action.id) ?? "ボタン";
+  for (const dead of deadActions(page, actions)) {
     warn(
       found,
-      "create-action-unusable",
-      `${path}[${i}].type`,
-      `「${label}」は押しても何も起きません（\`type: create\` が開くのは` +
-        `**一覧からの新規入力**なので、置けるのは ${CREATE_PAGE_KINDS.join(" / ")} です）。`,
-      kind === "form" || kind === "wizard"
-        ? "この画面には保存ボタンが最初から出ています（新規登録のボタンは要りません）。" +
-          "保存のときに独自の処理が要るなら `type: plugin` で書いてください。"
-        : "新規入力は一覧のある画面（`crud` / `master`）に置くか、" +
-          "`type: navigate` で入力画面へ移ってください。",
+      dead.rule,
+      `${path}[${dead.index}].${dead.at}`,
+      dead.what,
+      dead.fix,
+      dead.pitfall,
     );
-  });
+  }
 }
 
 /**
@@ -795,38 +784,6 @@ function checkPlaceholders(
   });
 }
 
-/**
- * 紙の無い画面に置いた印刷ボタン。
- *
- * `type: print` が刷るのは**帳票**。紙の形（用紙・1枚の行数・グループ・小計）は
- * `report` が決めているので、`report` が無い画面には刷るものが無い。定義としては
- * 通る（アクションの型は開いた文字列＝プラグインで足せる）ので、**ボタンは出て、
- * 押すと「このページでは刷れません」と言われる**。押すまで分からないのは遅い。
- *
- * 一覧を持ち出したいだけなら `type: export`（CSV）で、そちらはどのページでも動く。
- */
-function checkPrint(
-  page: Dict,
-  actions: Dict[],
-  path: string,
-  found: DefinitionWarning[],
-): void {
-  if (isDict(page.report)) return;
-  actions.forEach((action, i) => {
-    if (str(action.type) !== ActionTypes.print) return;
-    const label = str(action.label) ?? str(action.id) ?? "印刷";
-    warn(
-      found,
-      "print-without-report",
-      `${path}.actions[${i}].type`,
-      `「${label}」は紙に刷るボタンですが、この画面には report がありません。` +
-        `刷る紙が無いので、押しても何も出ません。`,
-      "帳票の画面（`type: report` ＋ `report:`）に置いてください。" +
-        "一覧をファイルに持ち出すだけなら `type: export`（CSV）です。",
-      "print-without-report",
-    );
-  });
-}
 
 function checkTarget(
   page: string | undefined,
@@ -853,6 +810,15 @@ function checkTable(
 ): void {
   const table = isDict(page.table) ? page.table : undefined;
   if (table === undefined) return;
+  for (const one of unsupportedRowActions(page)) {
+    warn(
+      found,
+      "builtin-rowaction-unsupported",
+      `${path}.table.rowActions[${one.index}]`,
+      one.what,
+      one.fix,
+    );
+  }
   list(table.rowActions).forEach((raw, i) => {
     const at = `${path}.table.rowActions[${i}]`;
     const id = str(raw);

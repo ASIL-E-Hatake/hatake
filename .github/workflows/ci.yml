@@ -1719,6 +1719,78 @@ jobs:
             echo "読むだけの道具が $(cat /tmp/stub-write-attempt) を送った"; exit 1
           fi
 
+      - name: Buttons that do nothing when pressed
+        working-directory: typescript
+        run: |
+          set -e
+          # 「定義は通り、ボタンも出て、押すまで気づけない」を全部言えること。
+          # 表（actionNeeds.ts）から規則を作っているので、ここでは**7種類ぶんの
+          # 出口**が本当に出るかを1枚で確かめる。
+          cat > /tmp/dead.yaml <<'YAML'
+          app:
+            id: dead_check
+            title: 空振り
+            menu:
+              - { id: entry, label: 入力, page: order_entry }
+              - { id: search, label: 照会, page: order_search }
+            pages:
+              - type: form
+                id: order_entry
+                title: 受注入力
+                repository: orderRepository
+                form:
+                  sections: [{ fields: [{ field: name, label: 氏名 }] }]
+                actions:
+                  - { id: create, type: create, label: 新規登録 }
+                  - { id: csv, type: export, label: CSV出力 }
+                  - { id: print, type: print, label: 印刷 }
+                  - { id: delete, type: delete, label: 削除 }
+              - type: search
+                id: order_search
+                title: 受注照会
+                repository: orderRepository
+                key: orderNo
+                table:
+                  rowActions: [edit]
+                  columns: [{ field: orderNo, label: 受注番号 }]
+                actions:
+                  - { id: approve, type: plugin, label: 承認 }
+                  - { id: again, type: navigate, label: もう一度, page: order_search }
+          YAML
+          if node dist/cli.js validate --warn-as-error --json /tmp/dead.yaml                > /tmp/dead.json 2>&1; then
+            echo "空振りするボタンだらけなのに通ってしまった"; exit 1
+          fi
+          node dist/cli.js validate /tmp/dead.yaml > /tmp/dead.log 2>&1 || true
+          for rule in create-action-unusable export-without-rows print-without-report \
+              row-declaration-unused plugin-without-name navigate-to-self \
+              builtin-rowaction-unsupported; do
+            grep -q "$rule" /tmp/dead.json || {
+              echo "$rule が出ていない"; cat /tmp/dead.json; exit 1; }
+          done
+          # 押した人に何が起きるかまで書いてあること（規則名だけでは直せない）。
+          grep -q '押しても何も起きません' /tmp/dead.log
+          grep -q 'もう1枚開くだけ' /tmp/dead.log
+          # 効いている形（行の削除の言い方を業務の言葉にする書き方）では黙ること。
+          cat > /tmp/alive.yaml <<'YAML'
+          page:
+            type: crud
+            id: customer_master
+            title: 顧客マスタ
+            repository: customerRepository
+            key: id
+            table:
+              rowActions: [edit, delete]
+              columns: [{ field: id, label: ID }]
+            form:
+              sections: [{ fields: [{ field: name, label: 氏名 }] }]
+            actions:
+              - id: delete
+                type: delete
+                label: 削除
+                confirm: { message: 消しますか, danger: true }
+          YAML
+          node dist/cli.js validate --warn-as-error /tmp/alive.yaml
+
       - name: A definition compared with itself is compatible
         working-directory: typescript
         run: |
@@ -1769,7 +1841,18 @@ jobs:
             node dist/cli.js new "$kind" --id "demo_$kind" --title デモ \
               --out "/tmp/scaffold/$kind.yaml"
           done
-          node dist/cli.js validate /tmp/scaffold/*.yaml
+          # 警告ゼロで通ること（**警告として**落ちる形にする＝雛形が助言の出る定義を
+          # 増やさないように）。
+          node dist/cli.js validate --warn-as-error /tmp/scaffold/*.yaml
+          # 助言もゼロ。AI は雛形を写すので、雛形に足りない所があると写した時点から
+          # 「書いたあとに直す」が始まる（一番よく通る道なので、ここが一番効く）。
+          for f in /tmp/scaffold/*.yaml; do
+            node dist/cli.js advise "$f" > /tmp/scaffold-advise.log
+            grep -q '書き足したほうがいい所は見つかりませんでした' /tmp/scaffold-advise.log || {
+              echo "雛形に助言が出た: $f"; cat /tmp/scaffold-advise.log; exit 1; }
+          done
+          # 業務で決める値は TODO_ で置いてある（埋め忘れが画面に出る側に倒す）。
+          grep -q 'roles: \[TODO_role\]' /tmp/scaffold/crud.yaml
       - name: Scaffolds pass the JSON Schema too
         run: |
           pip install --quiet 'jsonschema[format]' pyyaml
