@@ -126,3 +126,32 @@ abstract final class ConditionModes {
 
 Map<String, Object?>? _asCond(Object? node) =>
     node is Map ? node.cast<String, Object?>() : null;
+
+/// その条件が見ている項目名を全部（並びは書いてある順、重複なし）。
+///
+/// 「いま押せない理由」を画面に出すのに使う（何の状態で決まるのかを言う）。判定その
+/// ものには要らないが、**灰色のボタンに理由が無いと、壊れているように見える**ので、
+/// 条件から言葉を作れる形にしておく。`{ mode: … }` のリーフは項目ではないので入らない。
+List<String> conditionFieldNames(Map<String, Object?>? condition) {
+  final found = <String>[];
+  void walk(Map<String, Object?>? node) {
+    if (node == null) return;
+    for (final key in const ['all', 'any']) {
+      final list = node[key];
+      if (list is List) {
+        for (final one in list) {
+          walk(_asCond(one));
+        }
+      }
+    }
+    final not = node['not'];
+    if (not is Map) walk(_asCond(not));
+    final field = node['field'];
+    if (field is String && field.isNotEmpty && !found.contains(field)) {
+      found.add(field);
+    }
+  }
+
+  walk(condition);
+  return found;
+}

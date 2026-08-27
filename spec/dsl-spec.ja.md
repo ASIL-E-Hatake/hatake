@@ -1131,8 +1131,47 @@ computed: { op: sum, field: lines, of: amount,
 | `onError` | [onError](#onerror) | | 失敗したときに出す文言。 |
 | `prompt` | [prompt](#prompt) | | 実行の前に聞くこと（小さなフォーム）。 |
 | `maxRows` | integer \| [maxRows](#maxrows) | | `scope: selection` のとき、**1回で動かせる行数の上限**（1以上）。超えて選んでいる間ボタンは押せない。無ければ上限は1ページの件数。 |
+| `enabledWhen` | [condition](#条件condition) | | **いま押せるか**（→ [enabledWhen](#enabledwhen押せるかどうか)）。判定する相手は置き場所で決まる（行アクションはその行、一括は選んだ行ぜんぶ、レコードを持つ画面はそのレコード）。 |
 | `config` | map | | 追加設定。 |
 | `roles` | string[] | | 実行を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
+
+### enabledWhen（押せるかどうか）
+
+「出荷済は却下できない」を**ボタンの活性**で言う。条件の書き方は `visibleWhen` と同じ
+（[条件](#条件condition)）。
+
+```yaml
+table:
+  rowActions: [openEntry]
+actions:
+  - id: openEntry
+    type: navigate
+    label: 明細編集
+    page: order_entry
+    params: { id: "$row.orderNo" }
+    enabledWhen: { field: status, operator: notEquals, value: 出荷済 }
+```
+
+**判定する相手は置き場所で決まる。**
+
+| 置き場所 | 判定する相手 |
+|---|---|
+| `table.rowActions` に並べた行アクション | その行のレコード |
+| `scope: selection`（一括） | 選んだ行**全部**（1件でも合わなければ押せない） |
+| レコードを持つ画面（`form` / `detail` / `wizard`）のボタン | いま開いているレコード |
+| 一覧の上のボタン（`search` / `crud` / `master` / `report` / `dashboard`） | **無い**（`validate` が `enabledwhen-without-record` で言う） |
+
+- **一括は「全部満たすときだけ」。** 選んだうちの一部だけが動いたことに、押した人は
+  気づけない（`maxRows` を超えたときと同じ考え方）。合わない行が混ざっている間は
+  ボタンに件数が出る（「一括承認（3 件：1 件は条件に合いません）」）
+- **押せないボタンは消えない。** 出たまま灰色になり、**何の状態で決まるのか**が出る
+  （文言は書かなくてよい＝条件から作る）。消してしまうと、その操作が在ること自体が
+  分からなくなる
+- **権限（`roles`）とは別の話。** `roles` は「見えるかどうか」、`enabledWhen` は
+  「いま押せるかどうか」。両方書ける
+- **判定する相手が無いときは押せるまま。** 出し分けられないので出し分けない
+  （書き間違いで業務が止まるほうが、出し分けが効かないより悪い）
+- レコードを持つ画面で見るのは**開いているレコード**（入力中の値は見ない）
 
 ### maxRows
 
@@ -1415,6 +1454,7 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `navigate-to-self` | `type: navigate` の行き先がその画面自身 → 同じ画面がもう1枚開くだけで、何も起きなかったように見える |
 | `row-declaration-unused` | 行の操作の宣言（`type: edit` / `type: delete`）が**どこにも効かない** → 行を直す/消す枠が無い画面に置いた・`table.rowActions` にその名前が無い・id が組み込みの名前（`edit` / `delete`）ではない |
 | `builtin-rowaction-unsupported` | 組み込みの行アクション（`edit` / `delete`）を `crud` / `master` 以外の `table.rowActions` に書いた → 行には何も出ない（`search` の `rowActions` が指すのは画面のアクションの id） |
+| `enabledwhen-without-record` | `enabledWhen` を**判定する相手が無い所**に書いた（一覧の上のボタン）→ ボタンは出て押せる＝出し分けが黙って効かない |
 | `placeholder-not-filled` | 文言に**埋まらない差し込み**を書いた（`onSuccess` / `onError` は件数が `scope: selection` だけ・`{error}` は失敗だけ、**押す前**（`confirm` / `prompt.title`）は `{count}` だけ＝まだ失敗も理由も無い、**それ以外の名前＝`{orderNo}` のような項目名は埋める口が無い**）→ 押すまで気づけず、文字のまま出る |
 | `maxrows-unknown-role` | `byRole` に書いた役割が、そのボタンを押せない（`roles` に無い）／定義のどこにも出てこない → 誰にも当てはまらないので、その上限は効かない |
 | `maxrows-without-selection` | `maxRows` を `scope: selection` でないボタンに書いた → 数える対象が無いので上限は効かない |

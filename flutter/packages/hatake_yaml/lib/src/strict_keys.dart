@@ -86,7 +86,8 @@ const Map<String, Set<String>> strictKeyTable = {
   'subTableSource': {'repository', 'parentKey', 'key', 'pageSize'},
   'action': {
     'id', 'type', 'label', 'scope', 'plugin', 'page', 'params', 'confirm',
-    'onSuccess', 'onError', 'prompt', 'maxRows', 'config', 'roles',
+    'onSuccess', 'onError', 'prompt', 'maxRows', 'enabledWhen', 'config',
+    'roles',
   },
   'maxRows': {'default', 'byRole'},
   'confirm': {'title', 'message', 'okLabel', 'cancelLabel', 'danger'},

@@ -134,8 +134,15 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
                           .length,
                       onPressed: () => _onAction(action),
                       roles: _roles,
+                      // 選んだ行が全部満たすときだけ押せる（合わない件数はラベルへ）。
+                      failing: _actionEnabled(
+                        action,
+                        rows: _selection.pick(_controller.items, _def.keyField),
+                      ).failing,
                     )
                   else
+                    // 一覧の上のボタンには判定する相手が無い（開いているレコードが
+                    // 無い）ので出し分けない。書いても効かないことは validate が言う。
                     FilledButton(
                       key: Key('hatake.action.${action.id}'),
                       onPressed: () => _onAction(action),
@@ -285,28 +292,59 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
     _afterActionSuccess(context, declared?.onSuccess, record: record);
   }
 
+  /// 行のボタン（組み込みの編集・削除）。
+  ///
+  /// 宣言（`actions` の `type: edit` / `type: delete`）に `enabledWhen` が書いてあれば、
+  /// **その行のレコード**で判定する（「出荷済は消せない」）。押せないときは灰色にして、
+  /// 何の状態で決まるのかを添える＝理由の無い灰色を出さない。
   Widget _buildRowActions(DataRecord record) {
     final key = record[_def.keyField];
     final rowActions = _def.table.rowActions;
+    final labels = {
+      for (final column in _def.table.columns) column.field: column.label,
+    };
+    Widget rowButton(String type, IconButton button) {
+      final declared = _declaredAction(_def.actions, type);
+      if (declared == null) return button;
+      final state = _actionEnabled(declared, record: record);
+      if (state.enabled) return button;
+      return _withReason(
+        IconButton(
+          key: button.key,
+          icon: button.icon,
+          tooltip: button.tooltip,
+          onPressed: null,
+        ),
+        state,
+        labels,
+      );
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (rowActions.contains(ActionTypes.edit))
-          IconButton(
-            key: Key('hatake.edit.$key'),
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: '編集',
-            onPressed: () {
-              _controller.startEdit(record);
-              _openForm();
-            },
+          rowButton(
+            ActionTypes.edit,
+            IconButton(
+              key: Key('hatake.edit.$key'),
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: '編集',
+              onPressed: () {
+                _controller.startEdit(record);
+                _openForm();
+              },
+            ),
           ),
         if (rowActions.contains(ActionTypes.delete))
-          IconButton(
-            key: Key('hatake.delete.$key'),
-            icon: const Icon(Icons.delete_outline),
-            tooltip: '削除',
-            onPressed: key == null ? null : () => _delete(key, record),
+          rowButton(
+            ActionTypes.delete,
+            IconButton(
+              key: Key('hatake.delete.$key'),
+              icon: const Icon(Icons.delete_outline),
+              tooltip: '削除',
+              onPressed: key == null ? null : () => _delete(key, record),
+            ),
           ),
       ],
     );

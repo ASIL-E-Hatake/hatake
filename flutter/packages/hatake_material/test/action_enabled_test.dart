@@ -1,0 +1,254 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hatake_material/hatake_material.dart';
+
+/// 押す前に**行の状態で出し分ける**（`enabledWhen`）。
+///
+/// ここで守るのは3つ。**判定する相手は置き場所で決まる**（行アクションはその行、
+/// 一括は選んだ行ぜんぶ、レコードを持つ画面はそのレコード）・**一部だけ動かさない**
+/// （1件でも合わなければ押せない）・**理由の無い灰色を出さない**（何の状態で決まるのかを
+/// 画面に出す。文言は書かせない＝定義から出す）。
+class _Orders implements Repository {
+  final List<DataRecord> rows;
+
+  _Orders(this.rows);
+
+  @override
+  Future<PageResult> search(RepositoryQuery query) async =>
+      PageResult(items: rows, totalCount: rows.length);
+  @override
+  Future<DataRecord?> findByKey(Object key) async =>
+      rows.firstWhere((r) => r['orderNo'] == key);
+  @override
+  Future<DataRecord> create(DataRecord data) async => data;
+  @override
+  Future<DataRecord> update(Object key, DataRecord data) async => data;
+  @override
+  Future<void> delete(Object key) async {}
+}
+
+List<DataRecord> _rows() => [
+      {'orderNo': 'SO-1', 'status': '未出荷'},
+      {'orderNo': 'SO-2', 'status': '出荷済'},
+    ];
+
+const _table = TableDefinition(
+  rowActions: ['openEntry'],
+  columns: [
+    ColumnDefinition(field: 'orderNo', label: '受注番号'),
+    ColumnDefinition(field: 'status', label: '状態'),
+  ],
+);
+
+/// 出荷済でない行だけ開ける行アクション。
+const _openEntry = ActionDefinition(
+  id: 'openEntry',
+  type: ActionTypes.navigate,
+  label: '明細編集',
+  enabledWhen: {'field': 'status', 'operator': 'notEquals', 'value': '出荷済'},
+);
+
+/// 出荷済でない行だけまとめて承認できる一括。
+const _approve = ActionDefinition(
+  id: 'approve',
+  type: ActionTypes.plugin,
+  plugin: 'approveOrders',
+  label: '一括承認',
+  scope: ActionScopes.selection,
+  enabledWhen: {'field': 'status', 'operator': 'notEquals', 'value': '出荷済'},
+);
+
+const _rowPage = SearchPageDefinition(
+  id: 'order_search',
+  title: '受注照会',
+  repository: 'orderRepository',
+  keyField: 'orderNo',
+  table: _table,
+  actions: [_openEntry],
+);
+
+const _bulkPage = SearchPageDefinition(
+  id: 'order_search',
+  title: '受注照会',
+  repository: 'orderRepository',
+  keyField: 'orderNo',
+  table: TableDefinition(
+    columns: [
+      ColumnDefinition(field: 'orderNo', label: '受注番号'),
+      ColumnDefinition(field: 'status', label: '状態'),
+    ],
+  ),
+  actions: [_approve],
+);
+
+/// 画面のボタンに条件を書いた一覧（判定する相手が無い＝出し分けられない）。
+const _pageButtonPage = SearchPageDefinition(
+  id: 'order_search',
+  title: '受注照会',
+  repository: 'orderRepository',
+  keyField: 'orderNo',
+  table: TableDefinition(
+    columns: [ColumnDefinition(field: 'orderNo', label: '受注番号')],
+  ),
+  actions: [
+    ActionDefinition(
+      id: 'csv',
+      type: ActionTypes.export,
+      label: 'CSV出力',
+      enabledWhen: {'field': 'status', 'operator': 'equals', 'value': '未出荷'},
+    ),
+  ],
+);
+
+/// レコードを持つ画面（入力中の値で出し分ける）。
+const _formPage = FormPageDefinition(
+  id: 'order_entry',
+  title: '受注入力',
+  repository: 'orderRepository',
+  keyField: 'orderNo',
+  form: FormDefinition(
+    sections: [
+      SectionDefinition(
+        fields: [
+          FieldDefinition(field: 'orderNo', label: '受注番号'),
+          FieldDefinition(field: 'status', label: '状態'),
+        ],
+      ),
+    ],
+  ),
+  actions: [
+    ActionDefinition(
+      id: 'send',
+      type: ActionTypes.plugin,
+      plugin: 'sendOrder',
+      label: '送信',
+      enabledWhen: {'field': 'status', 'operator': 'equals', 'value': '未出荷'},
+    ),
+  ],
+);
+
+Widget _harness(PageDefinition page, {Object? recordKey}) => MaterialApp(
+      home: Scaffold(
+        body: HatakeScope(
+          repositories: RepositoryRegistry({'orderRepository': _Orders(_rows())}),
+          renderer: const MaterialRenderer(),
+          actions: ActionRegistry({
+            'approveOrders': (ctx) async {},
+            'sendOrder': (ctx) async {},
+          }),
+          child: HatakePageView(definition: page, recordKey: recordKey),
+        ),
+      ),
+    );
+
+bool _pressable(WidgetTester tester, Finder finder) {
+  final widget = tester.widget(finder);
+  if (widget is TextButton) return widget.onPressed != null;
+  if (widget is FilledButton) return widget.onPressed != null;
+  if (widget is IconButton) return widget.onPressed != null;
+  throw StateError('ボタンではありません: $widget');
+}
+
+void main() {
+  testWidgets('行アクションは、その行の状態で押せるかが決まる', (tester) async {
+    await tester.pumpWidget(_harness(_rowPage));
+    await tester.pumpAndSettle();
+
+    final open = find.byKey(const Key('hatake.rowaction.openEntry.SO-1'));
+    final closed = find.byKey(const Key('hatake.rowaction.openEntry.SO-2'));
+    expect(_pressable(tester, open), isTrue);
+    // 出荷済の行は押せない（ボタンは出たまま＝その操作が在ることは分かる）。
+    expect(closed, findsOneWidget);
+    expect(_pressable(tester, closed), isFalse);
+  });
+
+  testWidgets('押せない理由を、定義から出す（文言は書かせない）', (tester) async {
+    await tester.pumpWidget(_harness(_rowPage));
+    await tester.pumpAndSettle();
+
+    // 何の状態で決まるのかまで言う（項目の業務名で）。
+    final tooltip = tester.widget<Tooltip>(
+      find.ancestor(
+        of: find.byKey(const Key('hatake.rowaction.openEntry.SO-2')),
+        matching: find.byType(Tooltip),
+      ).first,
+    );
+    expect(tooltip.message, 'いまは押せません（状態 によります）');
+    // 押せる行には理由を付けない。
+    expect(
+      find.ancestor(
+        of: find.byKey(const Key('hatake.rowaction.openEntry.SO-1')),
+        matching: find.byType(Tooltip),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('一括は、選んだ行が全部満たすときだけ押せる', (tester) async {
+    await tester.pumpWidget(_harness(_bulkPage));
+    await tester.pumpAndSettle();
+
+    final button = find.byKey(const Key('hatake.action.approve'));
+    // 満たす行だけ（SO-1）。
+    await tester.tap(find.byType(Checkbox).at(1));
+    await tester.pumpAndSettle();
+    expect(_pressable(tester, button), isTrue);
+    expect(find.text('一括承認（1 件）'), findsOneWidget);
+
+    // 出荷済（SO-2）も混ぜると押せない。**何件が合わないか**をラベルに出す
+    // ＝選び直せば押せることが、押す前に読める。
+    await tester.tap(find.byType(Checkbox).at(2));
+    await tester.pumpAndSettle();
+    expect(_pressable(tester, button), isFalse);
+    expect(find.text('一括承認（2 件：1 件は条件に合いません）'), findsOneWidget);
+  });
+
+  testWidgets('レコードを持つ画面は、開いているレコードで出し分ける（押せる側）',
+      (tester) async {
+    // 未出荷の受注を開いた＝送信できる。
+    await tester.pumpWidget(_harness(_formPage, recordKey: 'SO-1'));
+    await tester.pumpAndSettle();
+    expect(
+      _pressable(tester, find.byKey(const Key('hatake.action.send'))),
+      isTrue,
+    );
+  });
+
+  testWidgets('レコードを持つ画面は、開いているレコードで出し分ける（押せない側）',
+      (tester) async {
+    // 出荷済の受注を開いた＝送信できない。
+    await tester.pumpWidget(_harness(_formPage, recordKey: 'SO-2'));
+    await tester.pumpAndSettle();
+    expect(
+      _pressable(tester, find.byKey(const Key('hatake.action.send'))),
+      isFalse,
+    );
+  });
+
+  testWidgets('判定するのは開いたときのレコード（入力中の値は見ない）', (tester) async {
+    // いまの作りでは、画面のボタンが見るのは controller が持っているレコード。
+    // 入力中の値は項目の側（visibleWhen / enabledWhen / computed）だけが見ている。
+    // **入力しながら押せるようになる**のは別の話なので、ここでは事実を固定しておく
+    // （ロードマップの候補: 入力中の値でも出し分ける）。
+    await tester.pumpWidget(_harness(_formPage, recordKey: 'SO-2'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('hatake.form.status')), '未出荷');
+    await tester.pumpAndSettle();
+    expect(
+      _pressable(tester, find.byKey(const Key('hatake.action.send'))),
+      isFalse,
+    );
+  });
+
+  testWidgets('判定する相手が無い画面のボタンは、押せるまま', (tester) async {
+    // 出し分けられないので出し分けない（書いても効かないことは validate が言う）。
+    await tester.pumpWidget(_harness(_pageButtonPage));
+    await tester.pumpAndSettle();
+
+    expect(
+      _pressable(tester, find.byKey(const Key('hatake.action.csv'))),
+      isTrue,
+    );
+  });
+}

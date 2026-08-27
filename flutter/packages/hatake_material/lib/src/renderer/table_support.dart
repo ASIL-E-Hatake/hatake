@@ -98,20 +98,27 @@ bool _hasSelectionAction(List<ActionDefinition> actions, Set<String> roles) {
 /// ことに、押した人は気づけない）。
 ///
 /// 上限は役割で変わる（`byRole`）ので、[roles] を渡して**その人の上限**を出す。
+///
+/// 行の状態で出し分ける（`enabledWhen`）ときは、**選んだ行が全部満たすときだけ**
+/// 押せる。ラベルには「何件が条件に合わないか」を出す＝押す前に、選び直せば押せる
+/// ことが読める（上限と同じ作法）。
 Widget _bulkButton({
   required ActionDefinition action,
   required int count,
   required VoidCallback onPressed,
   Set<String> roles = const {},
+  int failing = 0,
 }) {
   final max = action.maxRows?.forRoles(roles);
   final tooMany = max != null && count > max;
   return FilledButton(
     key: Key('hatake.action.${action.id}'),
-    onPressed: count == 0 || tooMany ? null : onPressed,
+    onPressed: count == 0 || tooMany || failing > 0 ? null : onPressed,
     child: Text(switch (count) {
       0 => action.label,
       _ when tooMany => '${action.label}（$count 件：$max 件まで）',
+      _ when failing > 0 =>
+        '${action.label}（$count 件：$failing 件は条件に合いません）',
       _ => '${action.label}（$count 件）',
     }),
   );

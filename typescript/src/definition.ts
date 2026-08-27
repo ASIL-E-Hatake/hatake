@@ -246,6 +246,16 @@ export interface ActionDefinition {
    */
   maxRows?: RowLimit;
   config: Record<string, unknown>;
+  /**
+   * 押せるのは、この条件に合っているときだけ（条件の書き方は `visibleWhen` と同じ）。
+   *
+   * 判定する相手は**置き場所で決まる**: 行アクションはその行、`scope: selection` は
+   * 選んだ行**全部**（1件でも合わなければ押せない＝一部だけ動くのを作らない）、
+   * レコードを持つ画面（`form` / `detail` / `wizard`）はいま開いているレコード。
+   * 判定する相手が無い画面のボタンは**押せるまま**（出し分けられないので出し分けない。
+   * 書いても効かないことは `validate` が言う）。
+   */
+  enabledWhen?: Record<string, unknown>;
   /** Roles allowed to use this action (see isAllowed). Empty = everyone. */
   roles: string[];
 }

@@ -122,8 +122,15 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
                     count: _selection.pick(_controller.items, _def.keyField).length,
                     onPressed: () => _runAction(action),
                     roles: HatakeScope.of(context).roles,
+                    // 選んだ行が全部満たすときだけ押せる（合わない件数はラベルへ）。
+                    failing: _actionEnabled(
+                      action,
+                      rows: _selection.pick(_controller.items, _def.keyField),
+                    ).failing,
                   )
                 else
+                  // 一覧の上のボタンには判定する相手が無いので出し分けない
+                  // （書いても効かないことは validate が言う）。
                   FilledButton(
                     key: Key('hatake.action.${action.id}'),
                     onPressed: () => _runAction(action),
@@ -213,13 +220,24 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
                     DataCell(Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // 行のボタンは**その行のレコード**で判定する
+                        // （`enabledWhen`）。押せないときは理由を添える。
                         for (final action in rowActions)
-                          TextButton(
-                            key: Key(
-                                'hatake.rowaction.${action.id}.${record[_def.keyField]}'),
-                            onPressed: () =>
-                                _runAction(action, record: record),
-                            child: Text(action.label),
+                          _withReason(
+                            TextButton(
+                              key: Key(
+                                  'hatake.rowaction.${action.id}.${record[_def.keyField]}'),
+                              onPressed: _actionEnabled(action, record: record)
+                                      .enabled
+                                  ? () => _runAction(action, record: record)
+                                  : null,
+                              child: Text(action.label),
+                            ),
+                            _actionEnabled(action, record: record),
+                            {
+                              for (final column in columns)
+                                column.field: column.label,
+                            },
                           ),
                       ],
                     )),

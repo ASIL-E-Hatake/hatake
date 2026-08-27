@@ -302,6 +302,16 @@ const WORDS = {
     (roles: string[]) => `${list(roles)} だけに出る`,
     (roles: string[]) => `shown to ${list(roles)} only`,
   ),
+  // **押せるかどうか**は「見えるかどうか」（roles）とは別の話。出たまま灰色になる
+  // ので、読み返しで「いつ押せるのか」が分からないとレビューできない。
+  pressableWhen: pair(
+    (when: string) => `押せるのは ${when} だけ`,
+    (when: string) => `pressable only ${when}`,
+  ),
+  pressableWhenRows: pair(
+    (when: string) => `押せるのは、選んだ行が全部 ${when} のときだけ`,
+    (when: string) => `pressable only while every checked row is ${when}`,
+  ),
   openEdit: pair("編集を開く", "opens the editor"),
   deleteRow: pair("削除する", "deletes"),
   undeclaredRowAction: pair(

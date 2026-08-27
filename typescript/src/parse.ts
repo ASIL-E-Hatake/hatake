@@ -581,6 +581,7 @@ function parseAction(m: Dict): ActionDefinition {
     onSuccess: parseActionSuccess(optDict(m, "onSuccess")),
     onError: parseActionError(optDict(m, "onError")),
     prompt: parseActionPrompt(optDict(m, "prompt")),
+    enabledWhen: optDict(m, "enabledWhen"),
     config: optDict(m, "config") ?? {},
     roles: optList(m, "roles").map(String),
   };

@@ -72,6 +72,13 @@ npx hatake new crud --id customer_master --title 顧客マスタ   # 雛形（8�
 npx hatake types page.yaml --lang java --out gen/            # ネイティブ型
 ```
 
+**いま押せるかどうかも定義で言える**: `enabledWhen`（条件の書き方は `visibleWhen` と同じ）。
+判定する相手は置き場所で決まる＝行アクションはその行、一括（`scope: selection`）は**選んだ行
+全部**（1件でも合わなければ押せない）、レコードを持つ画面（`form` / `detail` / `wizard`）は
+いま開いているレコード。一覧の上のボタンには相手が無いので効かない（`validate` が
+`enabledwhen-without-record` で言う）。押せないボタンは**灰色で残り、何の状態で決まるのかが出る**
+（文言は書かない）。`roles`（見えるかどうか）とは別の話。
+
 **押しても何も起きないボタンは、押す前に言う**（この枠組みで一番まずい転び方＝定義は通り、
 ボタンも出て、押すまで気づけない）: `create` を一覧の無い画面に（`create-action-unusable`）／
 `export` を表の無い画面に（`export-without-rows`）／`print` を `report` の無い画面に

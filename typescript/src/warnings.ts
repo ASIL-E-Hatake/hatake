@@ -14,7 +14,11 @@
 // 見るのは素の document（strict と同じ）。解析後のモデルでは、落とされた情報や
 // 既定値で埋まった情報が見えなくなるものがあるので。
 
-import { deadActions, unsupportedRowActions } from "./actionNeeds.js";
+import {
+  deadActions,
+  unjudgeableEnabledWhen,
+  unsupportedRowActions,
+} from "./actionNeeds.js";
 import { appAccess, describeAudience, nobodyCanOpen } from "./appAccess.js";
 import { ConditionOperators } from "./conditionEvaluator.js";
 import {
@@ -632,6 +636,16 @@ function checkDeadActions(
       dead.what,
       dead.fix,
       dead.pitfall,
+    );
+  }
+  // 「押せるかどうか」を書いたのに、判定する相手が無い所（＝書いても効かない）。
+  for (const one of unjudgeableEnabledWhen(page, actions)) {
+    warn(
+      found,
+      "enabledwhen-without-record",
+      `${path}[${one.index}].enabledWhen`,
+      one.what,
+      one.fix,
     );
   }
 }
