@@ -23,6 +23,7 @@ import {
   ValidatorTypes,
 } from "./definition.js";
 import { builtinComputeds } from "./computed.js";
+import { roleSpots } from "./roles.js";
 import { builtinConverters } from "./converter.js";
 import { builtinFormatters } from "./formatter.js";
 
@@ -43,6 +44,15 @@ export const RefKinds = {
   aggregates: "aggregates",
   dashboardItemTypes: "dashboardItemTypes",
   chartKinds: "chartKinds",
+  /**
+   * 役割名（`roles`）。ほかの種類が「アプリが**登録する実装**」なのに対して、これは
+   * 「アプリが**配りうる名前**」＝語彙。
+   *
+   * 突き合わせる相手は「いま見ている人の役割」ではなく、**アプリが宣言した語彙**
+   * （`HatakeScope(knownRoles:)`）。いま配られている役割と比べると、staff で動かした
+   * ときに「manager はアプリに無い」と言い出す＝道具が嘘をつく。
+   */
+  roles: "roles",
 } as const;
 
 export type RefKind = (typeof RefKinds)[keyof typeof RefKinds];
@@ -88,6 +98,8 @@ export const builtInNames: Record<RefKind, string[]> = {
   aggregates: Object.values(AggregateOps),
   dashboardItemTypes: Object.values(DashboardItemTypes),
   chartKinds: Object.values(ChartKinds),
+  // 役割名に組み込みは無い（誰が居るかは業務が決める）。
+  roles: [],
 };
 
 type Dict = Record<string, unknown>;
@@ -126,6 +138,12 @@ export function collectRefs(document: Dict): DefinitionRef[] {
     // なので、外への要求ではない（在るかは既存の警告 unknown-home の担当）。
   }
   if (isDict(document.page)) collectPage(document.page, "page", ctx);
+  // 役割名は定義のあちこちに書ける（メニュー・ボタン・列・項目・カード）ので、
+  // **書いてある所を数える側**（[roleSpots]）から貰う。ここでもう1つ歩き方を書くと、
+  // 「棚卸しには出るのに突き合わせには出ない役割」が生まれる。
+  for (const spot of roleSpots(document)) {
+    for (const role of spot.roles) push(ctx, "roles", role, spot.where);
+  }
   return ctx.found;
 }
 
@@ -172,6 +190,9 @@ export function unusedRegistrations(
   const used = new Set(refs.map((ref) => `${ref.kind}/${ref.name}`));
   const unused: GroupedRefs = {};
   for (const kind of Object.values(RefKinds)) {
+    // 役割は**消す相手ではない**（誰に何を配るかは認可の話で、定義が使っていない
+    // からといってアプリから消す話にはならない）。逆向きの突き合わせから外す。
+    if (kind === RefKinds.roles) continue;
     const registered = registry[kind];
     if (registered === undefined) continue;
     const names = [...new Set(registered)]
@@ -296,6 +317,18 @@ function collectAction(action: Dict, path: string, ctx: Ctx): void {
   const success = isDict(action.onSuccess) ? action.onSuccess : undefined;
   const next = success === undefined ? undefined : str(success.page);
   if (next !== undefined) push(ctx, "pages", next, `${path}.onSuccess.page`);
+  // 役割ごとの件数（`maxRows` / `batchSize` の `byRole`）に書いた役割名も、アプリが
+  // 配ってくれないと**その数は誰にも効かない**。出し分け（`roles`）と同じ扱いで、
+  // アプリ側の語彙と突き合わせる相手に入れる。
+  for (const key of ["maxRows", "batchSize"]) {
+    const value = action[key];
+    if (!isDict(value)) continue;
+    const byRole = isDict(value.byRole) ? value.byRole : undefined;
+    if (byRole === undefined) continue;
+    for (const role of Object.keys(byRole)) {
+      push(ctx, "roles", role, `${path}.${key}.byRole.${role}`);
+    }
+  }
 }
 
 function collectColumns(columns: unknown[], path: string, ctx: Ctx): void {

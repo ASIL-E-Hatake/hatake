@@ -1618,13 +1618,26 @@ broken generator fails analysis.
 | `unknown-computed-op` / `unknown-aggregate` | nothing is computed; the value stays empty |
 | `unknown-field-type` / `unknown-column-type` / `unknown-action-type` / `unknown-dashboard-item-type` / `unknown-chart-kind` | neither built in nor registered — not handled as that type |
 | `unknown-page-ref` | a single-page definition cannot resolve its navigation target (`unknown-page` covers `app:`) |
+| `role-not-in-app` | a role name in the definition is **not among the roles the application hands out** — whatever it gates is **visible to nobody** (and a per-role count written for it applies to nobody) |
 
 The list passed to `--registry` has the same shape `refs --needs-registration
 --json` prints:
 
 ```json
-{ "repositories": ["orderRepository"], "plugins": ["csvExport"] }
+{ "repositories": ["orderRepository"], "plugins": ["csvExport"], "roles": ["manager"] }
 ```
+
+`roles` is the **vocabulary of roles the application can hand out**
+(`HatakeScope(knownRoles:)`) — names only, unlike the other kinds, which map a name
+to an implementation. Crucially it is **not** the roles currently handed out
+(`HatakeScope(roles:)`): those are login state, so a snapshot taken while signed in
+as staff would claim that `manager` does not exist in the application.
+
+A role is **not something to delete**, so it is left out of the reverse comparison
+(`refs --unused`): the definition not using it says nothing about the application's
+authorization. Conversely, a role the application declares **counts as part of the
+definition's vocabulary**, so a role written only under `maxRows.byRole` is not
+reported as matching nobody.
 
 Omit `--registry` and a `hatake-registry.json` next to the definition (or in the
 current directory) is picked up silently. A name referenced from many places is
@@ -1637,6 +1650,19 @@ The list does not have to be written by hand. There are two ways to produce it, 
 |---|---|---|
 | `hatake registry <path...>` — read the code | no need to run the app; regenerate in CI and diff | reads **only the strings written at the registration site** |
 | `registrySnapshot(scope)` — ask the running app | registrations built dynamically | the app has to run |
+
+Declaring the role vocabulary also buys one thing on screen: **a role handed out
+that is not in the vocabulary is caught during development** (`assert`). An
+application-side typo (`manger` for `manager`) cannot be spotted by looking at the
+screen, since not being visible is what the feature does.
+
+```dart
+HatakeScope(
+  knownRoles: const {'staff', 'manager'},   // what this app can ever hand out
+  roles: session.roles,                     // who is looking right now
+  ...
+)
+```
 
 The first carries no language parser, so a registry built from a variable or a
 function cannot be read. Those are **reported rather than dropped, and the command

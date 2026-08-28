@@ -20,6 +20,10 @@ abstract final class RegistryKinds {
   static const aggregates = 'aggregates';
   static const fieldTypes = 'fieldTypes';
   static const dashboardItemTypes = 'dashboardItemTypes';
+
+  /// このアプリが配りうる役割（`HatakeScope(knownRoles:)`）。ほかの種類が
+  /// 「名前 → 実装」なのに対して、これは**名前だけの語彙**。
+  static const roles = 'roles';
 }
 
 /// 自分が持っている登録を申告できる、という印。
@@ -63,6 +67,10 @@ Map<String, List<String>> registrySnapshot(HatakeScope scope) {
       ],
       RegistryKinds.validators: scope.validators.customKeys,
       RegistryKinds.converters: scope.converters.customKeys,
+      // 役割は**語彙**（`knownRoles`）を申告する。いま配られている役割（`roles`）を
+      // 出すと「staff で動かしたスナップショット」になり、突き合わせた側が
+      // 「manager はアプリに無い」と言い出す＝道具が嘘をつく。
+      RegistryKinds.roles: [...scope.knownRoles],
       // Renderer が独自に持っているもの（項目型・カードの型・フォーマッタ）。
       ...fromRenderer,
     }.entries)

@@ -33,8 +33,10 @@ HatakeScope _scope({
   Map<String, MaterialFieldBuilder> fieldBuilders = const {},
   Map<String, MaterialDashboardItemBuilder> dashboardItemBuilders = const {},
   FormatterRegistry? formatters,
+  Set<String> knownRoles = const {},
 }) =>
     HatakeScope(
+      knownRoles: knownRoles,
       repositories: RepositoryRegistry(repositories),
       actions: ActionRegistry(actions),
       validators: ValidatorRegistry(validators),
@@ -81,6 +83,7 @@ void main() {
           for (final name in names('dashboardItemTypes'))
             name: (ctx) => const SizedBox.shrink(),
         },
+        knownRoles: {...names('roles')},
       );
 
       expect(registrySnapshot(scope), sample['expected']);
@@ -99,6 +102,7 @@ void main() {
         RegistryKinds.aggregates,
         RegistryKinds.fieldTypes,
         RegistryKinds.dashboardItemTypes,
+        RegistryKinds.roles,
       };
       expect(declared, kinds);
     });

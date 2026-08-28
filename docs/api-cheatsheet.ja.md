@@ -9,7 +9,11 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
   書けたら `npx hatake validate <file>`
 - アプリに組み込むとき: `npx hatake refs <file> --needs-registration`（Repository・プラグイン・
   **出す口**（`exportSink` / `printSink`）＝何を登録すればいいか）／その一覧を
-  `validate --registry <file>` に渡すと**名前の食い違い**と**繋いでいない口**も見る／
+  `validate --registry <file>` に渡すと**名前の食い違い**と**繋いでいない口**も見る
+  （一覧に `roles`＝アプリが配りうる役割の語彙が在れば、**定義にしか無い役割**＝誰にも
+  見えない列やボタンも言う。Flutter 側は `HatakeScope(knownRoles: {...})` で宣言し、
+  `registrySnapshot` がそれを申告する。いま配られている `roles:` はログイン状態なので
+  突き合わせには使わない）／
   `npx hatake wire <file> --base /api` で**その配線の下書き**（Flutter）が出る（中身は TODO）／
   画面を増やしたあとは `npx hatake wire <file> --merge <配線.dart> --write`＝**足りない登録だけ**を足す
   （手で埋めた中身は消えない。要らなくなった登録は言うだけで消さない）／`--todo` を付けると

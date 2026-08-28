@@ -96,7 +96,14 @@ export function findWarnings(
   // このアプリに出てくる役割名（`roles` に書いてあるものの全部）。役割名の綴り違いは
   // 「誰にも当てはまらない」形で静かに効かなくなるので、突き合わせる相手が要る。
   // 役割名の一覧は棚卸しと同じ数え方（[roleNames]）＝2箇所で違うことを言わない。
-  const appRoles = new Set(roleNames(document));
+  // 「このアプリに出てくる役割」＝定義に書いてある役割ぜんぶ。**アプリが配ると
+  // 宣言している役割**（`--registry` の `roles`）も同じ語彙に入れる。入れないと、
+  // アプリが配っている役割を byRole に書いただけで「誰にも当てはまりません」と
+  // 言うことになり、こちらの言うことが嘘になる。
+  const appRoles = new Set([
+    ...roleNames(document),
+    ...(options.registry?.roles ?? []),
+  ]);
 
   if (app !== undefined) {
     const pages = list(app.pages).filter(isDict);
@@ -119,10 +126,15 @@ export function findWarnings(
   return found;
 }
 
-/** 参照の種類ごとの言い方（何が起きるかを、その種類の言葉で言う）。 */
+/**
+ * 参照の種類ごとの言い方（何が起きるかを、その種類の言葉で言う）。
+ *
+ * `missing` は「無い」の言い方（既定は「登録されていません」）。役割だけは登録では
+ * なく**配るもの**なので、そこだけ言い換える。
+ */
 const REF_KINDS: Record<
   RefKind,
-  { rule: string; what: string; happens: string; fix: string }
+  { rule: string; what: string; happens: string; fix: string; missing?: string }
 > = {
   repositories: {
     rule: "unknown-repository",
@@ -203,6 +215,18 @@ const REF_KINDS: Record<
     happens: "そのカードは出ません。",
     fix: "`dashboardItemBuilders` に登録するか、組み込みの型を使ってください。",
   },
+  roles: {
+    rule: "role-not-in-app",
+    what: "役割",
+    missing: "アプリが配る役割の中にありません",
+    happens:
+      "その役割で出し分けている所は**誰にも見えません**（列もボタンも出ません）。" +
+      "役割ごとの件数（`maxRows` / `batchSize` の `byRole`）に書いてあるなら、" +
+      "その数は誰にも効きません。",
+    fix:
+      "定義の役割名をアプリが配る名前に合わせるか、アプリ側の語彙に足してください" +
+      "（`HatakeScope(knownRoles:)`）。**アプリ側の綴り違い**のこともあります。",
+  },
   chartKinds: {
     rule: "unknown-chart-kind",
     what: "グラフの種類",
@@ -244,7 +268,8 @@ function checkRegistry(
       found,
       kind.rule,
       ref.path,
-      `${kind.what} "${ref.name}" は登録されていません。${kind.happens}` +
+      `${kind.what} "${ref.name}" は${kind.missing ?? "登録されていません"}。` +
+        kind.happens +
         (others > 0 ? `（他 ${others} 箇所から参照）` : ""),
       near === null ? kind.fix : `もしかして "${near}" ですか。${kind.fix}`,
     );

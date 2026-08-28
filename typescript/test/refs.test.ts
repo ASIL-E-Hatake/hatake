@@ -338,3 +338,99 @@ describe("使われていない登録（逆向きの突き合わせ）", () => {
     expect(unusedRegistrations(registry, refsOf(app))).toEqual({});
   });
 });
+
+/**
+ * 定義に書いた役割名と、アプリが配る役割名の突き合わせ。
+ *
+ * 定義の中で綴りが揃っていても、アプリが配る名前と違えば**その役割で出し分けている所は
+ * 誰にも見えない**。画面を見ても気づけない（「見えないのが正しい」機能なので）ので、
+ * 名前の一覧どうしを機械で突き合わせるしかない。
+ *
+ * 突き合わせる相手は「いま見ている人の役割」ではなく、**アプリが宣言した語彙**
+ * （`HatakeScope(knownRoles:)`）。
+ */
+describe("役割名をアプリ側と突き合わせる", () => {
+  const gated = `
+app:
+  id: sales
+  title: 販売管理
+  menu:
+    - { id: costs, label: 原価, page: cost_search, roles: [manager] }
+  pages:
+    - type: search
+      id: cost_search
+      title: 原価照会
+      repository: costRepository
+      table:
+        columns:
+          - { field: cost, label: 原価, roles: [hr] }
+      actions:
+        - id: approve
+          type: plugin
+          plugin: approveCosts
+          label: 一括承認
+          scope: selection
+          maxRows: { default: 20, byRole: { branch: 5 } }
+`;
+
+  it("役割は「定義が外に要求しているもの」に並ぶ（書いてある場所つき）", () => {
+    const roles = refsOf(gated).filter((ref) => ref.kind === "roles");
+    expect(roles.map((ref) => ref.name)).toEqual(["branch", "manager", "hr"]);
+    // 権限の出し分け（roles）だけでなく、**役割ごとの件数**（byRole）も要求に数える
+    // （その役割が居なければ、その数は誰にも効かない）。
+    expect(roles.map((ref) => ref.path)).toEqual([
+      "app.pages[0].actions[0].maxRows.byRole.branch",
+      "app.menu[0].roles",
+      "app.pages[0].table.columns[0].roles",
+    ]);
+    // 組み込みの役割は無い（誰が居るかは業務が決める）。
+    expect(roles.every((ref) => !ref.builtIn)).toBe(true);
+  });
+
+  it("アプリが配らない役割は、誰にも見えないと言う", () => {
+    const found = findWarnings(doc(gated), {
+      registry: { roles: ["manager", "hr", "branch"] },
+    });
+    expect(found.filter((w) => w.rule === "role-not-in-app")).toEqual([]);
+
+    const missing = findWarnings(doc(gated), {
+      registry: { roles: ["manager", "hr"] },
+    }).filter((w) => w.rule === "role-not-in-app");
+    expect(missing).toHaveLength(1);
+    expect(missing[0].path).toBe("app.pages[0].actions[0].maxRows.byRole.branch");
+    expect(missing[0].message).toContain("アプリが配る役割の中にありません");
+    expect(missing[0].message).toContain("誰にも見えません");
+  });
+
+  it("綴りが近ければ、それを言う（どちら側の間違いでも直せるように）", () => {
+    const found = findWarnings(doc(gated), {
+      registry: { roles: ["manager", "hr", "brunch"] },
+    }).find((w) => w.rule === "role-not-in-app");
+    expect(found?.fix).toContain("brunch");
+    expect(found?.fix).toContain("アプリ側の綴り違い");
+  });
+
+  it("役割の一覧を渡していなければ、アプリ側との突き合わせはしない", () => {
+    // 宣言していないアプリを責めない（渡された種類だけ見る、が全体の作法）。
+    // 定義の中だけで分かること（byRole の役割が定義のどこにも無い）は別の警告。
+    expect(
+      rulesOf(gated, { repositories: ["costRepository"], plugins: ["approveCosts"] }),
+    ).toEqual(["maxrows-unknown-role"]);
+  });
+
+  it("アプリが配ると言っている役割は、定義の語彙にも数える", () => {
+    // `branch` は定義の `roles:` には出てこないが、アプリが配ると言っているなら
+    // byRole の 5 件は**その人に効く**＝「誰にも当てはまりません」は嘘になる。
+    expect(rulesOf(gated, { roles: ["manager", "hr", "branch"] })).toEqual([]);
+  });
+
+  it("役割は「使われていない登録」には出さない（消す相手ではない）", () => {
+    // 定義がどこでも使っていない役割は、アプリの認可の話。消せとは言わない。
+    const unused = unusedRegistrations(
+      { roles: ["manager", "hr", "branch", "admin"], plugins: ["approveCosts", "old"] },
+      refsOf(gated),
+    );
+    expect(unused.roles).toBeUndefined();
+    expect(unused.plugins).toEqual(["old"]);
+  });
+});

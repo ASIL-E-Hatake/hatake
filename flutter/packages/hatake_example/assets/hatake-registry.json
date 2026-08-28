@@ -12,6 +12,9 @@
     "rejectOrders",
     "showDefinition"
   ],
+  "roles": [
+    "manager"
+  ],
   "sinks": [
     "exportSink",
     "printSink"

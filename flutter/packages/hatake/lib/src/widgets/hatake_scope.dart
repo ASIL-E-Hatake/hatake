@@ -67,6 +67,22 @@ class HatakeScope extends InheritedWidget {
   /// authorization stays outside the framework.
   final Set<String> roles;
 
+  /// このアプリが**配りうる役割の全部**（語彙）。空 = 宣言していない。
+  ///
+  /// [roles] との違いが要点。[roles] は**いま見ている人**の役割なので、staff で
+  /// ログインしている間は `{staff}` しか無い。定義に書いた役割名（`roles: [manager]`）と
+  /// 突き合わせる相手にそれを使うと、「manager はアプリに無い」と言い出す＝**嘘になる**。
+  /// だから語彙を別に宣言できるようにしてある。
+  ///
+  /// 宣言しておくと2つ効く:
+  ///   ・`registrySnapshot` がこれを申告する → `hatake validate --registry` が
+  ///     **定義にしか無い役割**（誰にも見えない列やボタン）を言える
+  ///   ・配られた役割がこの語彙に無ければ、開発中（assert）に気づける＝**アプリ側の
+  ///     綴り違い**（`manager` を `manger` で配っている）は画面を見ても分からない
+  ///
+  /// 認可そのものではない（誰に何を配るかはアプリの仕事）。ここに書くのは名前だけ。
+  final Set<String> knownRoles;
+
   HatakeScope({
     super.key,
     required this.repositories,
@@ -79,13 +95,26 @@ class HatakeScope extends InheritedWidget {
     this.exportSink,
     this.printSink,
     Set<String>? roles,
+    Set<String>? knownRoles,
     required super.child,
   })  : validators = validators ?? ValidatorRegistry(),
         converters = converters ?? ConverterRegistry(),
         aggregates = aggregates ?? AggregateRegistry(),
         computeds = computeds ?? ComputedRegistry(),
         actions = actions ?? ActionRegistry(),
-        roles = roles ?? const {};
+        roles = roles ?? const {},
+        knownRoles = knownRoles ?? const {} {
+    // 語彙を宣言したなら、配る役割はその中に在るはず。無いものが配られているのは
+    // **アプリ側の綴り違い**で、画面を見ても気づけない（多く見えるか、何も見えない）。
+    assert(
+      knownRoles == null ||
+          knownRoles.isEmpty ||
+          (roles ?? const {}).every(knownRoles.contains),
+      '配っている役割が knownRoles に在りません: '
+      '${(roles ?? const <String>{}).where((r) => !knownRoles.contains(r)).join(" / ")}'
+      '（knownRoles: ${knownRoles.join(" / ")}）',
+    );
+  }
 
   /// Runtime for a repository-backed `subTable` [field] under the parent record
   /// identified by [parentKey] (null while the parent is unsaved). The caller
@@ -119,6 +148,7 @@ class HatakeScope extends InheritedWidget {
         oldWidget.actions != actions ||
         oldWidget.exportSink != exportSink ||
         oldWidget.printSink != printSink ||
-        oldWidget.roles != roles;
+        oldWidget.roles != roles ||
+        oldWidget.knownRoles != knownRoles;
   }
 }
