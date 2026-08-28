@@ -107,6 +107,8 @@ void _showActionFailure(
   Object? error,
   ActionOutcome? outcome,
   void Function(List<Object?> keys)? onSelectRows,
+  _Leftover leftover = const _Leftover(),
+  _LeftoverExporter? onExportLeftover,
 }) {
   // 失敗が1件も無くて、送っていないぶんが在るだけ＝**止めた**（失敗ではない）。
   // そこに `onError` の文言（「承認できませんでした」）を出すのは嘘なので、枠組みの
@@ -120,18 +122,31 @@ void _showActionFailure(
   // 行を名指しできているなら、**どの行か**を開ける口を付ける。文言に入れるのは
   // アプリの選択（`{failedKeys}`）なので、入れていなくても行は追える。
   final named = outcome?.rows ?? const <FailedRow>[];
+  // 名指しできた行が在るなら「どの行か」を開ける。名指しは無いが**残った行**が在る
+  // （止めただけ）なら、その場で持ち出せる＝押した人が次にすることは同じ。
+  final canExport = onExportLeftover != null &&
+      !leftover.isEmpty &&
+      HatakeScope.of(context).exportSink != null;
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
     content: Text(message),
-    action: named.isEmpty
-        ? null
-        : SnackBarAction(
+    action: named.isNotEmpty
+        ? SnackBarAction(
             label: 'どの行か',
             onPressed: () {
               if (!context.mounted) return;
               _showFailedRows(context, action, outcome!,
-                  onSelectRows: onSelectRows);
+                  onSelectRows: onSelectRows,
+                  leftover: leftover,
+                  onExportLeftover: onExportLeftover);
             },
-          ),
+          )
+        : canExport
+            ? SnackBarAction(
+                key: const Key('hatake.leftover.export'),
+                label: 'CSV に出す',
+                onPressed: () => onExportLeftover(action, leftover),
+              )
+            : null,
   ));
 }
 
@@ -144,12 +159,21 @@ void _showActionFailure(
 /// [onSelectRows] を渡せる画面（表を持つ画面）では「この行だけ選ぶ」も出す＝もう一度
 /// 押す相手を、人が選び直さなくていい。**いま画面に無い行は選べない**（読み直しで
 /// 消えた行に対して実行できてしまうのを防ぐ）ので、選び直しは画面側が絞る。
+///
+/// 出す口（`exportSink`）が在るなら「CSV に出す」も出す＝**この画面を閉じたあと**の
+/// 作業（担当に配る・翌日やり直す）に繋がる。選び直しは「いま・ここ」の話なので、
+/// 画面を閉じたら消える。
 Future<void> _showFailedRows(
   BuildContext context,
   ActionDefinition action,
   ActionOutcome outcome, {
   void Function(List<Object?> keys)? onSelectRows,
+  _Leftover leftover = const _Leftover(),
+  _LeftoverExporter? onExportLeftover,
 }) {
+  final canExport = onExportLeftover != null &&
+      !leftover.isEmpty &&
+      HatakeScope.of(context).exportSink != null;
   return showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
@@ -181,6 +205,16 @@ Future<void> _showFailedRows(
         ),
       ),
       actions: [
+        if (canExport)
+          TextButton(
+            key: const Key('hatake.leftover.export'),
+            onPressed: () {
+              onExportLeftover(action, leftover);
+              Navigator.of(context).pop();
+            },
+            // 何が入っている CSV なのかを言う（失敗した行だけとは限らない）。
+            child: Text('CSV に出す（${_leftoverLabel(leftover)}）'),
+          ),
         if (onSelectRows != null && outcome.failedKeys.isNotEmpty)
           TextButton(
             key: const Key('hatake.failedRows.select'),

@@ -492,6 +492,9 @@ actions:
   ときも同じ）。件数は役割で変えられる（`batchSize: { default: 20, byRole: { branch: 5 } }`＝
   当てはまる役割が複数なら**一番小さい**方。`maxRows` は一番ゆるい方なので逆）
 * 一括の結果はハンドラが `ctx.report(ActionOutcome.rejected(succeeded: …, rows: [FailedRow(key, reason: …)]))` で返す（件数だけの `ActionOutcome(succeeded:, failed:)` でもよい）。**一部でも失敗したら `onSuccess` は動かない**（1件残っているのに画面を移さない）。**行を名指しすると**文言の `{failedKeys}` が埋まり、通知から「どの行か」を開けて、その行だけを選び直せる
+* 一括のあとに**残った行は画面の外へ持ち出せる**（`exportSink` を登録しているときだけ
+  「CSV に出す」が出る）。**1枚**に出して**理由の列**で分ける（失敗の理由／「実行して
+  いません」）。選び直しは同じ画面に居る間の話なので、翌日やり直すならこちら
 * **実行の前に聞く**なら `prompt`（「却下の理由を書いてから却下」）。項目は**普通の `field`**（型・`required`・`validators`・`computed`・`normalize` がフォームと同じに効く）で、ハンドラは `ctx.input` で受け取る。**確認ダイアログは増えない**（`prompt` の OK が確認そのもの＝`confirm` の文言とボタン名を引き取る）。受け取れるのは `type: plugin` だけ
 
 ```yaml

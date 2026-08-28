@@ -28,6 +28,7 @@ part 'renderer/wizard_page.dart';
 part 'renderer/dashboard_page.dart';
 part 'renderer/dashboard_chart.dart';
 part 'renderer/export_action.dart';
+part 'renderer/leftover_rows.dart';
 part 'renderer/print_action.dart';
 part 'renderer/report_page.dart';
 

@@ -16,6 +16,12 @@ npx hatake diagram app.yaml --format mermaid                 # the screen map, p
 npx hatake diagram page.yaml --computed                      # which field comes from which (red = declared out of order)
 ```
 
+After a bulk run, **what is left over can leave the screen**: the notification and the
+failed-rows dialog offer "CSV に出す" when an `exportSink` is registered — one file, with a
+**reason column** saying per row whether it failed (the handler's reason) or was never run.
+Re-selecting only helps while you stay on the screen; this is what you hand to someone or
+retry tomorrow.
+
 A bulk action may say **how many rows per call**: `batchSize: 20` (or
 `{ default: 20, byRole: { branch: 5 } }` — with several matching roles the **smallest**
 wins, the opposite of `maxRows`). The framework then owns the loop, so it shows progress

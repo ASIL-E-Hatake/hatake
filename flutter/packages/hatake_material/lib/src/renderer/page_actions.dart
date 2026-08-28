@@ -12,6 +12,16 @@ typedef _PageDataRunner = Future<bool> Function(
   ActionDefinition action,
 );
 
+/// 一括のあとに残った行を、画面の外へ持ち出す（表の列と整形を知っているのは画面側）。
+///
+/// `BuildContext` を渡さないのは、**押される場所がダイアログの中**だから（別のルート＝
+/// `HatakeScope` の外なので、そこから出す口を引くと落ちる）。画面側が自分の context で
+/// 引く。
+typedef _LeftoverExporter = Future<bool> Function(
+  ActionDefinition action,
+  _Leftover leftover,
+);
+
 /// そのボタンが**いま押せるか**（`enabledWhen`）。
 ///
 /// 判定する相手は置き場所で決まる（[ActionDefinition.enabledWhen] に書いてある）。
@@ -134,6 +144,7 @@ Future<bool> _runPageAction(
   Future<void> Function()? onCreate,
   void Function(List<Object?> keys)? onSelectRows,
   String? keyField,
+  _LeftoverExporter? onExportLeftover,
 }) async {
   // 選んだ行にまとめて実行するなら、押す前に**何件動くのか**が分かっている。
   // 確認の文の `{count}` はここで埋まる（1件ずつのボタンでは埋めない＝件数が無い）。
@@ -157,7 +168,8 @@ Future<bool> _runPageAction(
       onPrint: onPrint,
       onCreate: onCreate,
       onSelectRows: onSelectRows,
-      keyField: keyField);
+      keyField: keyField,
+      onExportLeftover: onExportLeftover);
   // null = 実行できなかった／失敗した。何が起きたかは dispatch が既に言っている
   // （言う場所を1つにしないと、失敗の文言が種類ごとに散る）。
   if (outcome == null) return false;
@@ -165,6 +177,34 @@ Future<bool> _runPageAction(
   _afterActionSuccess(context, action.onSuccess,
       record: record, outcome: outcome);
   return true;
+}
+
+/// 一括のあとに残った行（失敗した行＋終わっていない行）。
+///
+/// 失敗した行は**アプリが名指しできたぶん**だけ（件数しか報告していないなら、行は
+/// 分からない）。名指しは**キー**で来るので、押したときに渡した行から引き当てる
+/// ＝画面に無い行を勝手に作らない。
+_Leftover _leftoverOf(
+  ActionOutcome outcome,
+  List<DataRecord> records,
+  List<DataRecord> unfinished,
+  String? keyField,
+) {
+  if (keyField == null) return const _Leftover();
+  final keys = {for (final row in outcome.rows) row.key};
+  // 終わっていない行は「失敗した行」に含めない（同じ行を2回出さない）。
+  final left = {for (final row in unfinished) row[keyField]};
+  return _Leftover(
+    failed: [
+      for (final row in records)
+        if (keys.contains(row[keyField]) && !left.contains(row[keyField])) row,
+    ],
+    unfinished: unfinished,
+    reasons: {
+      for (final row in outcome.rows)
+        if (row.key != null && row.reason != null) row.key: row.reason!,
+    },
+  );
 }
 
 /// 区切って実行したあと、**終わっていない行だけを選んだ状態にする**。
@@ -207,6 +247,7 @@ Future<ActionOutcome?> _dispatchAction(
   Future<void> Function()? onCreate,
   void Function(List<Object?> keys)? onSelectRows,
   String? keyField,
+  _LeftoverExporter? onExportLeftover,
 }) async {
   try {
     return await _dispatch(context, action, controller,
@@ -217,7 +258,8 @@ Future<ActionOutcome?> _dispatchAction(
         onPrint: onPrint,
         onCreate: onCreate,
         onSelectRows: onSelectRows,
-        keyField: keyField);
+        keyField: keyField,
+        onExportLeftover: onExportLeftover);
   } catch (error) {
     // 例外を外に投げると、押しても何も起きない（Flutter のログにだけ出る）。
     if (context.mounted) _showActionFailure(context, action, error: error);
@@ -237,6 +279,7 @@ Future<ActionOutcome?> _dispatch(
   Future<void> Function()? onCreate,
   void Function(List<Object?> keys)? onSelectRows,
   String? keyField,
+  _LeftoverExporter? onExportLeftover,
 }) async {
   // 選んだ行に対して実行できるのは、いまはアプリ側の処理（plugin）だけ。
   // 「消す」を複数まとめるのは、取り消せない操作の事故を大きくするので入れていない。
@@ -303,6 +346,9 @@ Future<ActionOutcome?> _dispatch(
         batchSize != null &&
         records.length > batchSize;
     final ActionOutcome outcome;
+    // 終わっていない行は、選び直す（画面の中）だけでなく**持ち出せる**ようにする
+    // ＝画面を閉じたら消えるのは「明日やり直す」に繋がらない。
+    var unfinished = const <DataRecord>[];
     if (batched) {
       final runner = _BulkRunner(
         context: context,
@@ -313,10 +359,25 @@ Future<ActionOutcome?> _dispatch(
       );
       try {
         outcome = await runner.run();
+      } catch (error) {
+        // 区切りが投げた＝**残りは送っていない**。その残りを持ち出せるようにしたいので、
+        // 失敗の言い方もここで出す（外側の catch は「終わっていない行」を知らない）。
+        // 名指しは**そこまでの報告**から採る（投げた区切りより前の失敗も紙に載る）。
+        // 選び直しは finally が1回だけやる（ここでやると二重になる）。
+        if (context.mounted) {
+          _showActionFailure(context, action,
+              error: error,
+              onSelectRows: onSelectRows,
+              leftover: _leftoverOf(
+                  runner.reported, records, runner.unfinished, keyField),
+              onExportLeftover: onExportLeftover);
+        }
+        return null;
       } finally {
         // **終わっていない行は選んだままにする**＝もう一度押せば続きから動く
         // （中断したときも、区切りが失敗したときも）。選択が全部残っていると、
         // 既に動いた行にもう一度実行することになる。
+        unfinished = runner.unfinished;
         _keepUnfinished(runner, keyField, onSelectRows);
       }
     } else {
@@ -327,7 +388,10 @@ Future<ActionOutcome?> _dispatch(
     // 画面を移すと、直すべき行が視界から消える）。
     if (context.mounted) {
       _showActionFailure(context, action,
-          outcome: outcome, onSelectRows: onSelectRows);
+          outcome: outcome,
+          onSelectRows: onSelectRows,
+          leftover: _leftoverOf(outcome, records, unfinished, keyField),
+          onExportLeftover: onExportLeftover);
     }
     return null;
   }
