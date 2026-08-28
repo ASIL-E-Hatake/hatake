@@ -39,6 +39,14 @@ class _BulkRunner {
 
   /// 終わった区切りまでの件数。
   final ValueNotifier<int> _done = ValueNotifier<int>(0);
+
+  /// ここまでの報告（区切りごとの合算）。
+  ///
+  /// **投げて終わったときにも残る**ようにしてある。区切りが投げると合算した報告は
+  /// 呼んだ側に返らないので、ここに持っていないと「3区切り目で落ちたら、2区切り目が
+  /// 名指しした失敗も消える」＝残りを持ち出す紙から行が抜ける。
+  ActionOutcome get reported => _reported;
+  ActionOutcome _reported = const ActionOutcome();
   bool _cancelled = false;
 
   /// 走り始めてからの秒数（**見当を出すためだけ**に数える）。
@@ -68,20 +76,19 @@ class _BulkRunner {
   Future<ActionOutcome> run() async {
     final dialog = _show();
     _clock = Timer.periodic(const Duration(seconds: 1), (_) => _seconds++);
-    var outcome = const ActionOutcome();
     try {
       for (final batch in _batches) {
         if (_cancelled) break;
         // 区切りが投げたら、この for を抜けて外に出る＝**残りは送らない**
         // （同じ理由で失敗し続ける方が悪い）。文言は呼んだ側が出す。
-        outcome = outcome.merge(await runBatch(batch));
+        _reported = _reported.merge(await runBatch(batch));
         _done.value += batch.length;
       }
     } finally {
       _clock?.cancel();
       _close(dialog);
     }
-    return outcome.withSkipped(records.length - _done.value);
+    return _reported.withSkipped(records.length - _done.value);
   }
 
   /// 進み具合のダイアログ。**閉じるボタンは出さない**（終わるか、止めるか）。

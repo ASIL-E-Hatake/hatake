@@ -1230,6 +1230,19 @@ still selected, press again to continue)". The rows of a failed batch count as u
 too, since the framework cannot know whether they ran; rows that did finish are never
 re-selected (running the same row twice is an accident, not a retry).
 
+**What is left over can leave the screen.** Re-selecting only helps here and now — a
+re-query, a page change or closing the screen loses it, while a bulk failure or a stop is
+usually followed by real work (hand it to someone, retry tomorrow). So the notification and
+the failed-rows dialog offer **"CSV に出す"**, shown only when an `exportSink` is registered
+(a button that does nothing is worse than no button).
+
+- **One file**, not one per kind: what happens next is the same for both, so instead of
+  splitting, a **reason column** says per row whether it failed (with the handler's reason)
+  or was never run.
+- The columns are the table's (**only the ones this user can see**, as with `type: export`)
+  plus that reason.
+- When a batch threw, the failures **named before it** are still in the file.
+
 **The batch size can be written per role.** How much to push through at once depends on
 where the user sits (a thin line at a branch office wants small batches, the head office
 does not), so it takes the same shape as `maxRows`.

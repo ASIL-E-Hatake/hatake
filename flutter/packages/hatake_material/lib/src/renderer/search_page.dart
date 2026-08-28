@@ -69,6 +69,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
       onExport: _export,
       onSelectRows: _selectRows,
       keyField: _def.keyField,
+      onExportLeftover: _exportLeftoverRows,
     );
     // 実行できたら選択を解く（同じ行に二度実行するのは、まず事故）。
     if (ran && selected.isNotEmpty && mounted) {
@@ -88,6 +89,27 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
   }
 
   /// Re-query so the CSV holds the whole result, not just the page on screen.
+
+  /// 一括のあとに残った行を**画面の外へ持ち出す**（表の列と整形はこの画面が知っている）。
+  ///
+  /// 出す口と役割は**この画面の context**から引く（押されるのはダイアログの中＝
+  /// `HatakeScope` の外なので、そこから引くと落ちる）。
+  Future<bool> _exportLeftoverRows(
+    ActionDefinition action,
+    _Leftover leftover,
+  ) {
+    final scope = HatakeScope.of(context);
+    return _exportLeftover(
+      action,
+      leftover,
+      sink: scope.exportSink,
+      roles: scope.roles,
+      columns: _def.table.columns,
+      keyField: _def.keyField,
+      formatters: _formatters,
+    );
+  }
+
   Future<bool> _export(BuildContext context, ActionDefinition action) {
     return _runExportAction(
       context,
