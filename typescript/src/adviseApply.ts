@@ -273,6 +273,14 @@ function planFor(one: Advice, raw: Dict, given: unknown): Plan[] | string {
       return plans.length === 0 ? "上限の無い一括がもうありません。" : plans;
     }
 
+    case "bulk-without-batchsize":
+      return given === undefined
+        ? need(
+            "何件ずつハンドラに渡すか",
+            "20（役割で変えるなら { default: 20, byRole: { branch: 5 } }）",
+          )
+        : key(at, given);
+
     case "bulk-confirm-without-count":
       return (
         "確認の文の書き換えは機械にはできません（どこに件数を入れるかで文が変わる）。" +

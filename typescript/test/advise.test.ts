@@ -9,14 +9,17 @@ import {
   findWarnings,
   renderAdvice,
   unwritableAdvice,
+  withDrafts,
 } from "../src/index.js";
 
 const reference = buildReference(
   JSON.parse(readFileSync("../spec/hatake-page.schema.json", "utf8")),
 );
 
-const advise = (source: string): Advice[] =>
-  findAdvice(parseYaml(source) as Record<string, unknown>);
+const parseRaw = (source: string): Record<string, unknown> =>
+  parseYaml(source) as Record<string, unknown>;
+
+const advise = (source: string): Advice[] => findAdvice(parseRaw(source));
 
 const rules = (source: string): string[] => advise(source).map((one) => one.rule);
 
@@ -600,9 +603,13 @@ describe("上限が誰にも効いていなければ、助言は言う", () => {
 ${maxRows}
 `;
 
-  it("役割ごとに数を書いてあれば言わない", () => {
+  it("役割ごとに数を書いてあれば、上限の助言は言わない", () => {
     const source = bulk("      maxRows: { default: all, byRole: { manager: 20 } }");
-    expect(rules(source).filter((one) => one.startsWith("bulk-"))).toEqual([]);
+    // 上限は書いてある（`bulk-on-many-rows` は黙る）。ただし `default: all` ＋
+    // ページ送り無しなので、manager 以外には**全件が1回で動く**＝区切りの話は残る。
+    expect(rules(source).filter((one) => one.startsWith("bulk-"))).toEqual([
+      "bulk-without-batchsize",
+    ]);
   });
 
   it("全部 all なら「上限が無い」と同じ＝言う", () => {
@@ -610,5 +617,114 @@ ${maxRows}
     const source = bulk("      maxRows: { default: all, byRole: { manager: all } }");
     const found = advise(source).find((one) => one.rule === "bulk-on-many-rows");
     expect(found?.key).toBe("maxRows");
+  });
+});
+
+describe("待たせるのに区切りが無ければ言う", () => {
+  /** 一覧1枚＋一括ボタン1つ（[extra] はボタンに足す行、[pagination] は表の設定）。 */
+  const bulk = (extra: string, pagination = "") => `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  search:
+    filters:
+      - { field: orderNo, label: 受注番号 }
+  table:
+${pagination}    columns:
+      - { field: orderNo, label: 受注番号, sortable: true }
+  actions:
+    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+      roles: [manager]
+      confirm: { message: '{count} 件を承認します' }
+      onError: { message: x }
+${extra}
+`;
+
+  /** 1画面に 500 件出る表（選べる件数が上限より大きい＝上限がそのまま効く）。 */
+  const WIDE = "    pagination: { pageSize: 500 }\n";
+
+  const batchRules = (source: string): string[] =>
+    rules(source).filter((one) => one === "bulk-without-batchsize");
+
+  it("1回で 100 件以上動くのに区切りが無ければ言う", () => {
+    const one = advise(bulk("      maxRows: 200", WIDE)).find(
+      (x) => x.rule === "bulk-without-batchsize",
+    );
+    expect(one?.where).toBe("page.actions[0].batchSize");
+    expect(one?.says).toContain("1回で最大 200 件動きます");
+    expect(one?.says).toContain("途中で止める");
+    expect(one?.add).toContain("batchSize");
+    expect(one?.key).toBe("batchSize");
+  });
+
+  it("ページ送りを切ってあれば「全件」と言う（件数が決まらない）", () => {
+    const one = advise(bulk("", "    pagination: { enabled: false }\n")).find(
+      (x) => x.rule === "bulk-without-batchsize",
+    );
+    expect(one?.says).toContain("全件");
+  });
+
+  it("1回で動く件数が少なければ言わない（待たされないので）", () => {
+    expect(batchRules(bulk("      maxRows: 20", WIDE))).toEqual([]);
+    // 1ページ 50 件の表＝上限を 200 件と書いても 50 件しか選べない（選べるのは
+    // 画面に出ている行だけ）。**書いた数ではなく、動く数**で見る。
+    expect(batchRules(bulk("      maxRows: 200"))).toEqual([]);
+  });
+
+  it("区切りを書いてあれば言わない（役割ごとの形でも）", () => {
+    expect(batchRules(bulk("      maxRows: 200\n      batchSize: 20", WIDE))).toEqual([]);
+    expect(
+      batchRules(
+        bulk(
+          "      maxRows: 200\n      batchSize: { default: 20, byRole: { manager: 5 } }",
+          WIDE,
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  it("目盛りは変えられる（何件から言うか）", () => {
+    const source = bulk("      maxRows: 60", WIDE);
+    expect(batchRules(source)).toEqual([]);
+    expect(
+      findAdvice(parseRaw(source), {
+        off: [],
+        options: { "bulk-without-batchsize": { rows: 50 } },
+        require: [],
+      }).map((one) => one.rule),
+    ).toContain("bulk-without-batchsize");
+  });
+
+  it("切れる（好みなので）", () => {
+    const source = bulk("      maxRows: 200", WIDE);
+    expect(
+      findAdvice(parseRaw(source), {
+        off: ["bulk-without-batchsize"],
+        options: {},
+        require: [],
+      }).map((one) => one.rule),
+    ).not.toContain("bulk-without-batchsize");
+  });
+
+  it("下書きは「1回で動く件数を5回に分ける件数」から作る", () => {
+    const source = bulk("      maxRows: 200", WIDE);
+    const found = withDrafts(parseRaw(source), advise(source)).find(
+      (one) => one.rule === "bulk-without-batchsize",
+    );
+    expect(found?.draft).toBe(40);
+    expect(found?.draftFrom).toContain("200 件");
+  });
+
+  it("件数が決まらないときは下書きを作らない（根拠が無い数を出さない）", () => {
+    const source = bulk("", "    pagination: { enabled: false }\n");
+    const found = withDrafts(parseRaw(source), advise(source)).find(
+      (one) => one.rule === "bulk-without-batchsize",
+    );
+    expect(found?.draft).toBeUndefined();
   });
 });

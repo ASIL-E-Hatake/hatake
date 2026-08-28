@@ -14,6 +14,7 @@ import { diffDefinitions } from "./defDiff.js";
 import { renderExplain } from "./explain.js";
 import { appAccess, opensByRole } from "./appAccess.js";
 import { renderRoles, roleTitleOf } from "./explainRoles.js";
+import { bulkByRole } from "./roleBulk.js";
 import { PLACEHOLDER_CONTEXTS } from "./placeholders.js";
 import { roleInventory } from "./roles.js";
 import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
@@ -700,10 +701,12 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             throw new Error("定義（map）として読めません。");
           }
           const raw = document as Record<string, unknown>;
+          const inventory = roleInventory(raw);
           return renderRoles(
-            roleInventory(raw),
+            inventory,
             roleTitleOf(raw),
             opensByRole(appAccess(raw)),
+            bulkByRole(raw, inventory.map((use) => use.role)),
           );
         }
         const page = str(args, "page");

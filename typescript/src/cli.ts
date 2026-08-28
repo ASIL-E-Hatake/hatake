@@ -84,6 +84,7 @@ import {
 import { withDrafts } from "./adviseDraft.js";
 import { appAccess, opensByRole } from "./appAccess.js";
 import { renderRoles, roleTitleOf } from "./explainRoles.js";
+import { bulkByRole } from "./roleBulk.js";
 import {
   PLACEHOLDER_CONTEXTS,
   renderPlaceholders,
@@ -1128,7 +1129,14 @@ function explainRoles(source: string, flags: Args["flags"], io: CliIo): number {
     return 0;
   }
   const access = appAccess(raw);
-  io.out(renderRoles(inventory, roleTitleOf(raw), opensByRole(access)));
+  io.out(
+    renderRoles(
+      inventory,
+      roleTitleOf(raw),
+      opensByRole(access),
+      bulkByRole(raw, inventory.map((use) => use.role)),
+    ),
+  );
   return 0;
 }
 

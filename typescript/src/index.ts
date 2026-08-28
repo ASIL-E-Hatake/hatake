@@ -61,6 +61,7 @@ export * from "./bulkLimit.js";
 export * from "./adviseApply.js";
 export * from "./adviseDraft.js";
 export * from "./pageParts.js";
+export * from "./roleBulk.js";
 export * from "./roles.js";
 export * from "./adviseCompare.js";
 export * from "./adviseRules.js";

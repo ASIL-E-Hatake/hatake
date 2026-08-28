@@ -225,6 +225,52 @@ describe("読み返し（いつ止められるのか）", () => {
     expect(text).toContain("区切りは役割で変わる（branch は 5 件）");
   });
 
+  it("上限まで選んだときに何回に分かれるかまで言う", () => {
+    const actions = explainSource(
+      page(`    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+      maxRows: 100
+      batchSize: 20
+`),
+    ).sections.find((one) => one.title === "できる操作");
+    expect(actions?.lines.join("\n")).toContain("上限まで選ぶと 5 回に分かれる");
+  });
+
+  it("1回で終わるなら回数は言わない（区切りが効いていない形は validate の担当）", () => {
+    const actions = explainSource(
+      page(`    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+      maxRows: 20
+      batchSize: 20
+`),
+    ).sections.find((one) => one.title === "できる操作");
+    expect(actions?.lines.join("\n")).not.toContain("回に分かれる");
+  });
+
+  it("1回で動く件数が決まらなければ回数は言わない（ページ送りを切ってある）", () => {
+    const actions = explainSource(`page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    pagination: { enabled: false }
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - { id: approve, type: plugin, plugin: p, label: 一括承認, scope: selection, batchSize: 20 }
+`).sections.find((one) => one.title === "できる操作");
+    const text = actions?.lines.join("\n") ?? "";
+    expect(text).toContain("20 件ずつ実行する");
+    expect(text).not.toContain("回に分かれる");
+  });
+
   it("1回で渡すなら言わない（そこには進み具合が無い）", () => {
     const actions = explainSource(
       page(`    - { id: approve, type: plugin, plugin: approveOrders, label: 承認, scope: selection }\n`),

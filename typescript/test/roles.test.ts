@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import {
+  bulkByRole,
+  bulkLine,
   findWarnings,
   renderRoles,
   roleInventory,
@@ -135,5 +137,84 @@ describe("定義に出てくる役割を数える", () => {
     const text = renderRoles([], "受注照会（order_search）");
     expect(text).toContain("出てくる役割 0");
     expect(text).toContain("全部の人に全部見えます");
+  });
+});
+
+/**
+ * 一括は「1回で何件動くか」が危険度そのもので、上限も区切りも**役割で変わる**。
+ * 書ける場所はボタンなので定義のあちこちに散る＝役割から引ける口が要る。
+ */
+describe("役割ごとの一括の件数", () => {
+  const BULK = `app:
+  id: sales
+  title: 販売管理
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      table:
+        pagination: { pageSize: 200 }
+        columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+      actions:
+        - id: approve
+          type: plugin
+          plugin: approveOrders
+          label: 一括承認
+          scope: selection
+          roles: [staff, manager]
+          maxRows: { default: 20, byRole: { manager: 100 } }
+          batchSize: { default: 10, byRole: { branch: 5 } }
+        - id: close
+          type: plugin
+          plugin: closeOrders
+          label: 一括締め
+          scope: selection
+          roles: [manager]
+          maxRows: 500
+    - type: search
+      id: cost_search
+      title: 原価照会
+      repository: costRepository
+      table:
+        columns: [{ field: itemCode, label: 品目コード, roles: [branch] }]
+`;
+
+  const bulks = () => bulkByRole(raw(BULK), roleNames(raw(BULK)));
+
+  it("その役割が押せるボタンだけ・その役割の件数で数える", () => {
+    const found = bulks();
+    // staff は既定の上限（20 件）と既定の区切り（10 件）。
+    expect(found.get("staff")).toEqual([
+      { page: "order_search", label: "一括承認", rows: 20, batch: 10 },
+    ]);
+    // manager は上限が広く（100 件）、締めも押せる（500 件だが1画面 200 件までしか
+    // 選べない＝**動く件数は 200**）。締めには区切りが無い。
+    expect(found.get("manager")).toEqual([
+      { page: "order_search", label: "一括承認", rows: 100, batch: 10 },
+      { page: "order_search", label: "一括締め", rows: 200, batch: undefined },
+    ]);
+    // branch は押せる一括が無い（列にしか出てこない役割）。
+    expect(found.has("branch")).toBe(false);
+  });
+
+  it("言い方は「1回 何件まで・何件ずつ（何回に分かれる）」", () => {
+    const lines = (bulks().get("manager") ?? []).map(bulkLine);
+    expect(lines[0]).toBe("1回 100 件まで・10 件ずつ（上限まで選ぶと 10 回に分かれる）");
+    // 区切りが無いことは**そう言う**（進み具合も中断も無い状態が読める）。
+    expect(lines[1]).toBe("1回 200 件まで・区切りなし（1回で 200 件を渡す）");
+  });
+
+  it("棚卸しの1枚に出る（役割から引ける）", () => {
+    const text = renderRoles(
+      roleInventory(raw(BULK)),
+      roleTitleOf(raw(BULK)),
+      undefined,
+      bulks(),
+    );
+    expect(text).toContain("一括「一括承認」（order_search） … 1回 20 件まで・10 件ずつ");
+    expect(text).toContain("区切りなし");
+    // 区切りが無いものが在るときだけ、その意味を添える。
+    expect(text).toContain("進み具合も残り時間も出ず");
   });
 });

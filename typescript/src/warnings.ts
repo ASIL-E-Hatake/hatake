@@ -25,6 +25,7 @@ import {
   ActionScopes,
   ActionTypes,
   AggregateOps,
+  DEFAULT_PAGE_SIZE,
   FieldTypes,
   ValidatorTypes,
 } from "./definition.js";
@@ -759,14 +760,6 @@ function checkBatchSize(
     }
   });
 }
-
-/**
- * 1ページの既定の件数（`table.pagination.pageSize` を書かなかったとき）。
- *
- * スキーマの既定・3エディションの解析の既定と同じ値。ここだけ違うと「効かない上限」の
- * 判定が嘘になる。
- */
-const DEFAULT_PAGE_SIZE = 50;
 
 /**
  * 差し込みの規則は**一覧から作る**（[spec/placeholders.json] の転記）。

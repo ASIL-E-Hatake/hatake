@@ -1734,8 +1734,9 @@ npx hatake advise page.yaml
 
 Reports a list with no sortable column, a list with no filters, a key that is not in the list, a
 form with nothing required, a delete/export/bulk button with no roles, **a bulk action with no
-confirmation**, a money-looking column with no formatting, a child table with no parent key, and a
-report with no totals.
+confirmation**, **a bulk action that moves 100 rows per press with no `batchSize`**, a
+money-looking column with no formatting, a child table with no parent key, and a report with no
+totals.
 
 This is **advice, not a warning**, so it never changes the exit code: a warning states a fact
 ("you wrote it and it does not work"), advice states a preference ("not writing this may hurt").
