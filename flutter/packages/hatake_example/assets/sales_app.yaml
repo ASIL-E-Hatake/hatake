@@ -6,6 +6,11 @@ app:
   id: sales_admin
   title: 販売管理
   home: dashboard
+  # 画面をどう開くか。業務システムによって作法が違うので定義に書ける（`single` は
+  # 1画面ずつ＝既定、`tabs` は並べて開く）。デモは並べて開く側にしてある＝受注を
+  # 見ながらマスタを直す、が試せる。アプリ側（HatakeApp(navigation:)）で上書きできる
+  # ので、同じ定義を PC ではタブ・タブレットでは遷移で出せる。
+  navigation: tabs
   # 見た目も定義から。畠なので緑。業務画面は密度が高い方が使いやすい。
   theme:
     primaryColor: "#1B5E20"
@@ -173,7 +178,10 @@ app:
           params: { id: "$row.orderNo" }
           enabledWhen: { field: status, operator: notEquals, value: 出荷済 }
         # 明細を別テーブルに持つ版へ。子行は親キーが要るので、行から開くのが本来の入口。
-        - { id: openEntryPaged, type: navigate, label: 明細（別テーブル）, page: order_entry_paged, params: { id: "$row.orderNo" } }
+        # 遷移の既定は「いまの画面の続き」（一覧 → 明細は同じ仕事なので、押すたびに
+        # タブが増えるのは邪魔）。`open: tab` と書いたものだけ別のタブで開く＝
+        # 一覧を残したまま個別を開くのが業務の意図なら、それは定義に書ける。
+        - { id: openEntryPaged, type: navigate, label: 明細（別テーブル）, page: order_entry_paged, params: { id: "$row.orderNo" }, open: tab }
         # 一覧の CSV。表示中のページではなく検索結果全体を出す。
         - { id: csv, type: export, label: CSV出力, config: { filename: 受注一覧, bom: true } }
         # 選んだ行に対して実行する。scope: selection を書くと表にチェックボックスが

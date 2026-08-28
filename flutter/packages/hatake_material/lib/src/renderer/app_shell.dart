@@ -43,27 +43,11 @@ class _MaterialAppShell extends StatelessWidget {
         final hasMenu = _visibleLeaves(app.menu, roles).length >= 2;
         final wide = MediaQuery.sizeOf(context).width >= _wideBreakpoint;
 
-        final content = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (router.canPop) _AppBreadcrumb(app: app, router: router),
-            Expanded(
-              child: page == null
-                  ? Center(
-                      child: Text(
-                        'ページ "${route.pageId}" が見つかりません',
-                        key: const Key('hatake.app.notfound'),
-                      ),
-                    )
-                  : HatakePageView(
-                      // Fresh state per route so controllers re-init.
-                      key: ValueKey('${route.pageId}#${router.depth}'),
-                      definition: page,
-                      recordKey: route.params['id'],
-                    ),
-            ),
-          ],
-        );
+        // 並べて開くなら、**開いているタブを全部作って前面だけ見せる**（作り直さない
+        // ＝検索結果も入力もタブに付いて回る。それがタブの値打ち）。
+        final content = router.tabsOpen
+            ? _tabbedContent()
+            : _singleContent(route, page);
 
         return Scaffold(
           appBar: AppBar(
@@ -84,6 +68,7 @@ class _MaterialAppShell extends StatelessWidget {
                     // close itself on selection.
                     child: Builder(
                       builder: (inner) => _buildMenu(
+                        inner,
                         roles,
                         route.pageId,
                         onSelected: () => Scaffold.of(inner).closeDrawer(),
@@ -97,7 +82,7 @@ class _MaterialAppShell extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: 220,
-                      child: _buildMenu(roles, route.pageId),
+                      child: _buildMenu(context, roles, route.pageId),
                     ),
                     const VerticalDivider(width: 1),
                     Expanded(child: content),
@@ -109,7 +94,75 @@ class _MaterialAppShell extends StatelessWidget {
     );
   }
 
+  /// 1画面ぶん（`single`）。
+  Widget _singleContent(AppRoute route, PageDefinition? page) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (router.canPop) _AppBreadcrumb(app: app, router: router),
+        // Fresh state per route so controllers re-init.
+        Expanded(
+          child: _pageOrMissing(
+            route,
+            page,
+            key: ValueKey('${route.pageId}#${router.depth}'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 並べて開いた全部（前面だけ見せる）。
+  ///
+  /// 鍵はタブの**安定した id**（閉じても番号を詰めない）＋そのタブの深さ。これで
+  /// 「他のタブを閉じたら残ったタブが作り直される」が起きない。
+  Widget _tabbedContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _AppTabBar(app: app, router: router),
+        if (router.canPop) _AppBreadcrumb(app: app, router: router),
+        Expanded(
+          child: IndexedStack(
+            index: router.frontTab,
+            sizing: StackFit.expand,
+            children: [
+              for (final tab in router.tabs)
+                _pageOrMissing(
+                  tab.current,
+                  app.pageById(tab.current.pageId),
+                  key: ValueKey(
+                      'tab${tab.id}#${tab.depth}#${tab.current.pageId}'),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _pageOrMissing(
+    AppRoute route,
+    PageDefinition? page, {
+    required Key key,
+  }) {
+    if (page == null) {
+      return Center(
+        child: Text(
+          'ページ "${route.pageId}" が見つかりません',
+          key: const Key('hatake.app.notfound'),
+        ),
+      );
+    }
+    return HatakePageView(
+      key: key,
+      definition: page,
+      recordKey: route.params['id'],
+    );
+  }
+
   Widget _buildMenu(
+    BuildContext context,
     Set<String> roles,
     String currentPageId, {
     VoidCallback? onSelected,
@@ -120,7 +173,8 @@ class _MaterialAppShell extends StatelessWidget {
       currentPageId: currentPageId,
       onSelect: (pageId) {
         onSelected?.call();
-        router.go(pageId);
+        // タブなら「開いていればそれを前に出す」。上限に達していたら**開かずに言う**。
+        if (!router.select(pageId)) _tooManyTabs(context);
       },
     );
   }
@@ -145,5 +199,12 @@ void _navigateAction(
     (action.config['params'] as Map?)?.cast<String, Object?>(),
     record,
   );
-  router.push(page, params: params);
+  // 既定は「いまの画面の続き」。`open: tab` と書いたものだけ別のタブで開く（並べる
+  // 場所が無いアプリでは無視される＝書いても壊れない）。
+  final opened = router.navigate(
+    page,
+    params: params,
+    newTab: action.open == ActionOpen.tab,
+  );
+  if (!opened) _tooManyTabs(context);
 }

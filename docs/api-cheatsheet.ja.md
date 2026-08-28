@@ -76,6 +76,15 @@ npx hatake new crud --id customer_master --title 顧客マスタ   # 雛形（8�
 npx hatake types page.yaml --lang java --out gen/            # ネイティブ型
 ```
 
+**画面をどう開くかも定義で言える**: `app.navigation`（`single`＝1画面ずつ／`tabs`＝並べて
+開く）。既定は `single`（いままでの動き）。**アプリ側で上書きできる**
+（`HatakeApp(navigation: AppNavigation.single)`）＝同じ定義を PC ではタブ・タブレットでは
+遷移で出せる。並べて開くときは、同じ画面は2枚開かない（`params` が違えば別物）・上限 10 枚で
+**超えたら開かずに言う**・最後の1枚は閉じない・入力する画面は閉じる前に聞く・URL に出るのは
+**前面のタブだけ**。遷移のボタンは `open: tab` と書いたものだけ別のタブで開く（既定は
+`same`＝いまの画面の続き。並べないアプリでは無視され、`validate` が `open-without-tabs` と
+言う）。
+
 **いま押せるかどうかも定義で言える**: `enabledWhen`（条件の書き方は `visibleWhen` と同じ）。
 判定する相手は置き場所で決まる＝行アクションはその行、一括（`scope: selection`）は**選んだ行
 全部**（1件でも合わなければ押せない）、入力する画面（`form` / `wizard`）は**いま入力されている

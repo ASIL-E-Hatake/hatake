@@ -227,6 +227,29 @@ const WORDS = {
       `compared with ${shown} (${operator} cannot be used to compare)`,
   ),
 
+  // ── 画面の開き方 ──────────────────────────────────────────────
+  /** 節の見出し。 */
+  openingTitle: pair("画面の開き方", "How screens open"),
+  /** 1画面ずつ（既定）。 */
+  openingSingle: pair(
+    "1画面ずつ開く（メニューで選ぶと入れ替わり、遷移すると戻れる）",
+    "one screen at a time (a menu pick swaps it; navigating goes deeper and back returns)",
+  ),
+  /** 並べて開く。 */
+  openingTabs: pair(
+    (maxTabs: number) =>
+      `並べて開く（メニューで選ぶと新しいタブ・同じ画面は2枚開かない・最大 ${maxTabs} 枚）`,
+    (maxTabs: number) =>
+      `side by side (a menu pick opens a tab, the same screen is never opened twice, up to ${maxTabs})`,
+  ),
+  /** アプリ側で上書きできる、と毎回言う（定義だけでは決まらない）。 */
+  openingOverride: pair(
+    "※ アプリ側で上書きできます（同じ定義を、PC ではタブ・タブレットでは遷移で出せる）",
+    "Note: the application may override this, so the same definition can be tabs on a desktop and single on a tablet.",
+  ),
+  /** 遷移のボタンが別のタブで開く。 */
+  opensInTab: pair("別のタブで開く", "opens in a tab of its own"),
+
   // ── ボタン ────────────────────────────────────────────────────
   goesTo: pair(
     (target: string) => `（${target} へ）`,

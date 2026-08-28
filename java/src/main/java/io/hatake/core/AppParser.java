@@ -77,6 +77,7 @@ public final class AppParser {
                 reqStr(app, "title"),
                 dslVersion,
                 app.get("home") instanceof String h ? h : null,
+                app.get("navigation") instanceof String n ? n : "single",
                 menu,
                 pages);
     }

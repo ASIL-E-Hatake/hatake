@@ -31,6 +31,15 @@ rest", so what was sent has run and the report counts it separately (`{skipped}`
 stopped run is not a success, so `onSuccess` does not run, and the **unfinished rows stay
 checked** so pressing again continues where it stopped.
 
+An app may say **how screens open**: `app.navigation` (`single`, the default, swaps the
+screen; `tabs` opens them side by side). The application may override it
+(`HatakeApp(navigation:)`), so one definition can be tabs on a desktop and single on a
+tablet. With tabs the same screen is never opened twice (different `params` are a different
+screen), the cap is 10 and going over it **says so instead of opening**, the last tab cannot
+be closed, closing a screen that takes input asks first, and the URL carries **only the
+front tab**. A navigate action opens in a tab of its own only where the definition says
+`open: tab` (default `same`).
+
 An action may say **when it can be pressed**: `enabledWhen` (the `visibleWhen` condition
 language). Where it sits decides what is judged — a row action judges its row, `scope:
 selection` needs **every** checked row to match, a page being filled in (`form` / `wizard`)

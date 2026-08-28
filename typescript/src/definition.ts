@@ -235,6 +235,30 @@ export function batchSizeFor(
 }
 
 /**
+ * 画面をどう開くか（`app.navigation`）。**閉じた集合**。
+ *
+ * 1画面ずつ遷移して使う業務システムと、並べて開いて行き来するものの両方が現場に在る
+ * ので、どちらかに決め打ちしない。
+ */
+export const AppNavigations = {
+  /** 1画面ずつ。メニューで選ぶと入れ替わり、遷移すると戻れる（既定）。 */
+  single: "single",
+  /** 並べて開く。メニューで選ぶと新しいタブになり、開いたままにできる。 */
+  tabs: "tabs",
+} as const;
+
+/**
+ * 遷移のボタンが**どこに開くか**（`action.open`）。**閉じた集合**。
+ *
+ * 既定は `same`＝いまの画面の続きとして進む（一覧 → 明細は同じ仕事なので、押すたびに
+ * タブが増えるのは邪魔）。
+ */
+export const ActionOpens = {
+  same: "same",
+  tab: "tab",
+} as const;
+
+/**
  * What the user is told when the action failed.
  *
  * A failure never moves the screen (unlike `onSuccess`): leaving the screen that
@@ -302,6 +326,13 @@ export interface ActionDefinition {
    * 書いても効かないことは `validate` が言う）。
    */
   enabledWhen?: Record<string, unknown>;
+  /**
+   * 遷移のボタンが**どこに開くか**（[ActionOpens]。`type: navigate` のとき）。
+   *
+   * 既定は `same`。`tab` は「一覧を残したまま個別を開く」＝業務の意図なので定義に
+   * 書ける。並べる場所が無いアプリ（`navigation: single`）では効かない。
+   */
+  open: string;
   /** Roles allowed to use this action (see isAllowed). Empty = everyone. */
   roles: string[];
 }
@@ -629,6 +660,13 @@ export interface AppDefinition {
   dslVersion: string;
   /** Initial route (menu item id or page id). Undefined = the first leaf. */
   home?: string;
+  /**
+   * 画面をどう開くか（[AppNavigations]）。既定は `single`＝1画面ずつ。
+   *
+   * 定義が言うのは**その業務システムの既定**で、アプリ側は上書きできる（同じ定義を
+   * PC ではタブ、タブレットでは遷移で出す）。
+   */
+  navigation: string;
   /** Look and feel. Undefined = the renderer's default. */
   theme?: ThemeDefinition;
   menu: MenuItem[];

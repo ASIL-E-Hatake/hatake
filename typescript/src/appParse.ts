@@ -1,5 +1,6 @@
 import { parse as parseYamlText } from "yaml";
 import {
+  AppNavigations,
   Brightnesses,
   Densities,
   kDslVersion,
@@ -98,6 +99,7 @@ export function parseAppMap(root: Dict): AppDefinition {
     title: reqString(app, "title", "app.title"),
     dslVersion,
     home: optString(app, "home"),
+    navigation: optString(app, "navigation") ?? AppNavigations.single,
     theme: parseTheme(optDict(app, "theme")),
     menu: optList(app, "menu").map((m, i) =>
       parseMenu(asDict(m, `app.menu[${i}]`)),

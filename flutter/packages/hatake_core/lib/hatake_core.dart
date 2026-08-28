@@ -59,6 +59,7 @@ export 'src/definition/page_definition.dart';
 export 'src/definition/menu_item.dart';
 export 'src/definition/theme_definition.dart';
 export 'src/definition/app_definition.dart';
+export 'src/definition/app_navigation.dart';
 
 // Tooling (reading definitions back: kinds, wording, one-line summary, index).
 export 'src/tooling/page_kinds.dart';

@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import 'app_navigation.dart';
 import 'menu_item.dart';
 import 'page_definition.dart';
 import 'theme_definition.dart';
@@ -32,12 +33,19 @@ class AppDefinition extends Equatable {
   /// `navigate` actions.
   final List<PageDefinition> pages;
 
+  /// 画面をどう開くか（[AppNavigation]）。既定は `single`＝1画面ずつ。
+  ///
+  /// 定義が言うのは**その業務システムの既定**で、アプリ側（`HatakeApp(navigation:)`）で
+  /// 上書きできる（同じ定義を PC ではタブ、タブレットでは遷移で出す）。
+  final String navigation;
+
   const AppDefinition({
     required this.id,
     required this.title,
     this.dslVersion = kDslVersion,
     this.home,
     this.theme,
+    this.navigation = AppNavigation.single,
     this.menu = const [],
     this.pages = const [],
   });
@@ -51,5 +59,6 @@ class AppDefinition extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, title, dslVersion, home, theme, menu, pages];
+  List<Object?> get props =>
+      [id, title, dslVersion, home, theme, navigation, menu, pages];
 }
