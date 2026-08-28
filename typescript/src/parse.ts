@@ -27,6 +27,7 @@ import {
   type TableDefinition,
   type WizardStepDefinition,
   type ValidatorDefinition,
+  DEFAULT_PAGE_SIZE,
   type BatchSize,
   type RowLimit,
 } from "./definition.js";
@@ -407,7 +408,13 @@ function parseFilter(m: Dict): FilterDefinition {
 }
 
 function parseTable(m: Dict | undefined): TableDefinition {
-  if (!m) return { columns: [], pagination: { pageSize: 50, enabled: true }, rowActions: [] };
+  if (!m) {
+    return {
+      columns: [],
+      pagination: { pageSize: DEFAULT_PAGE_SIZE, enabled: true },
+      rowActions: [],
+    };
+  }
   return {
     pagination: parsePagination(optDict(m, "pagination")),
     rowActions: optList(m, "rowActions").map(String),
@@ -432,7 +439,7 @@ function parseColumn(m: Dict): ColumnDefinition {
 
 function parsePagination(m: Dict | undefined): PaginationDefinition {
   return {
-    pageSize: m ? (optNumber(m, "pageSize") ?? 50) : 50,
+    pageSize: m ? (optNumber(m, "pageSize") ?? DEFAULT_PAGE_SIZE) : DEFAULT_PAGE_SIZE,
     enabled: m ? optBool(m, "enabled", true) : true,
   };
 }

@@ -14,7 +14,8 @@
 // 下書きは [findAdvice] とは分けてある（呼ぶ側が欲しいときだけ足す）。助言そのものは
 // 「書いていない所」の話で、下書きは「書くならこう」の話なので、混ぜない。
 
-import { type Advice, MONEY_WORDS } from "./advise.js";
+import { type Advice, MONEY_WORDS, rowsPerPress } from "./advise.js";
+import { DEFAULT_PAGE_SIZE } from "./definition.js";
 import { rawFormFields, tableColumns } from "./pageParts.js";
 import { roleNames } from "./roles.js";
 import { type Path, parsePath, valueAt } from "./shrink.js";
@@ -77,12 +78,18 @@ function actionAt(page: Dict, rest: Path): Dict | undefined {
   return isDict(found) ? found : undefined;
 }
 
-/** 1ページに出る件数（書いていなければ既定の 50。ページ送りを切ってあれば無し）。 */
+/** その画面の表（無ければ undefined）。 */
+const tableOf = (page: Dict): Dict | undefined =>
+  isDict(page.table) ? page.table : undefined;
+
+/** 1ページに出る件数（書いていなければ既定。ページ送りを切ってあれば無し）。 */
 function pageSizeOf(page: Dict): number | undefined {
   const table = isDict(page.table) ? page.table : undefined;
   const pagination = isDict(table?.pagination) ? table.pagination : undefined;
   if (pagination?.enabled === false) return undefined; // 全件出る＝件数が決まらない
-  return typeof pagination?.pageSize === "number" ? pagination.pageSize : 50;
+  return typeof pagination?.pageSize === "number"
+    ? pagination.pageSize
+    : DEFAULT_PAGE_SIZE;
 }
 
 /**
@@ -184,6 +191,21 @@ function draftOf(one: Advice, document: Dict, roles: string[]): AdviceDraft | un
       return size === undefined
         ? undefined
         : { value: size, from: `いま1回で動く件数（1ページ ${size} 件）から` };
+    }
+
+    case "bulk-without-batchsize": {
+      // 区切りは「何回に分かれるか」で決まる。1回で動く件数を**5回**に割った件数を
+      // 下書きにする（1〜2回では進み具合が出た意味が薄く、20回では止める前に終わる）。
+      // 1回で動く件数が決まらないとき（ページ送りを切ってあって上限も無い）は作らない
+      // ＝根拠が無い数を出さない。
+      const action = actionAt(page, rest);
+      const rows = action === undefined ? undefined : rowsPerPress(action, tableOf(page));
+      return rows === undefined
+        ? undefined
+        : {
+            value: Math.max(1, Math.ceil(rows / 5)),
+            from: `1回で動く件数（${rows} 件）を5回に分ける件数から`,
+          };
     }
 
     case "report-without-totals": {

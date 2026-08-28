@@ -311,6 +311,11 @@ const WORDS = {
     (rows: number) =>
       `runs in batches of ${rows} (progress is shown and it can be stopped between batches)`,
   ),
+  /** 上限まで選んだときに何回に分かれるか（「上限まで選ぶと 5 回に分かれる」）。 */
+  inBatchesTimes: pair(
+    (times: number) => `上限まで選ぶと ${times} 回に分かれる`,
+    (times: number) => `at the limit that is ${times} calls`,
+  ),
   /** 区切りが役割で変わる（「branch は 5 件」）。 */
   batchesByRole: pair(
     (parts: string[]) => `区切りは役割で変わる（${parts.join("・")}）`,

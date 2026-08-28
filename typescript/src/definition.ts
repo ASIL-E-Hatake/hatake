@@ -700,6 +700,14 @@ export const ActionTypes = {
 } as const;
 
 /**
+ * 1ページに出る件数の既定（`table.pagination.pageSize` を書かなかったとき）。
+ *
+ * スキーマの既定・3エディションの解析の既定と同じ値。**ここだけ違うと、上限や区切りに
+ * ついて機械が言うことが嘘になる**（「効かない上限」「1回で何件動くか」はこの数から出る）。
+ */
+export const DEFAULT_PAGE_SIZE = 50;
+
+/**
  * 1回で動かせる行数の上限（`action.maxRows`）。
  *
  * `default` は役割で決まらないときの上限、`byRole` は役割ごと。値 `"all"` は上限なし。

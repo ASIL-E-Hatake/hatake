@@ -79,6 +79,7 @@ describe("助言に値の下書きを添える", () => {
     expect([...drafted].sort()).toEqual(
       [
         "bulk-on-many-rows",
+        "bulk-without-batchsize",
         "bulk-without-confirm",
         "bulk-without-error-message",
         "no-required-field",

@@ -607,6 +607,30 @@ function describeRowLimit(limit: RowLimit, lang: Lang): string {
   );
 }
 
+/**
+ * 上限まで選んだときに何回に分かれるか。**undefined = 言えない／言う意味が無い**。
+ *
+ * 上限は「定義に書いた `maxRows`」＞「1ページの件数」の順（`describeAction` が読み上げる
+ * のと同じ順番＝2つの言い方をしない）。ページ送りを切っていて上限も無いときは件数が
+ * 決まらないので言わない。1回で終わるとき（区切り ≧ 上限）も言わない。
+ */
+function batchTimes(
+  action: ActionDefinition,
+  limit: SelectionLimit,
+): number | undefined {
+  const batch = action.batchSize?.default;
+  if (batch === undefined) return undefined;
+  const cap =
+    typeof action.maxRows?.default === "number"
+      ? action.maxRows.default
+      : limit === undefined || limit === "all"
+        ? undefined
+        : limit.rows;
+  if (cap === undefined) return undefined;
+  const times = Math.ceil(cap / batch);
+  return times < 2 ? undefined : times;
+}
+
 function describeAction(
   action: ActionDefinition,
   target: string | undefined,
@@ -642,10 +666,15 @@ function describeAction(
   const batchSize =
     action.scope === ActionScopes.selection ? action.batchSize : undefined;
   const byRole = Object.entries(batchSize?.byRole ?? {});
+  // 何回に分かれるかは、上限（`maxRows`）と区切りから決まる。**サーバを何回叩くか**
+  // なので、1回で動く件数と同じくらい読む人に効く（1回で終わるなら言わない＝
+  // 区切りが効いていない形は `validate` の担当）。
+  const times = batchTimes(action, limit);
   const batches =
     batchSize === undefined
       ? ""
       : v.clause(v.inBatchesOf(batchSize.default)) +
+        (times === undefined ? "" : v.clause(v.inBatchesTimes(times))) +
         (byRole.length === 0
           ? ""
           : v.clause(

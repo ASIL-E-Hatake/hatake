@@ -38,6 +38,8 @@ export const BUILTIN_RULES: Record<string, Record<string, "number" | "strings">>
   "bulk-destructive-without-danger": {"words": "strings"},
   // 一括があるのに、1回で動く件数が決まっていない（または多い）。maxRows = 上限。
   "bulk-on-many-rows": {"maxRows": "number"},
+  // 待たせるのに区切り（batchSize）が無い。rows = 何件動くなら言うか。
+  "bulk-without-batchsize": {"rows": "number"},
   // 金額らしい名前なのに見せ方が無い。words = 金額らしいと見なす語。
   "money-without-format": { words: "strings" },
   // 明細を別テーブルに持つのに親を指すキーが無い。

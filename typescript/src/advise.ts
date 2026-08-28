@@ -16,7 +16,7 @@
 // 何を言うかは**外から変えられる**（[AdviceRules]）。好みなので、案件ごとの決めごとを
 // 渡せないと「合わないから使わない」になる。渡せるのは「切る・目盛りを変える・足す」の3つ。
 
-import { ActionScopes } from "./definition.js";
+import { ActionScopes, DEFAULT_PAGE_SIZE } from "./definition.js";
 import { checkCompare } from "./adviseCompare.js";
 import { checkRequired } from "./adviseRequire.js";
 import { type AdviceRules, DEFAULT_RULES, enabled, knob } from "./adviseRules.js";
@@ -113,6 +113,42 @@ const DESTRUCTIVE_WORDS = [
  * 数を書いてあれば効いている。役割ごとの形は、既定も役割も全部 `all` なら誰にも
  * 効いていない＝書いていないのと同じなので、助言する側では「無い」と数える。
  */
+/**
+ * その一括ボタンが**1回で動かせる最大の件数**。`undefined` = 全件（決まらない）。
+ *
+ * 選べるのは画面に出ている行だけなので、上限（`maxRows`）と1ページの件数の**小さい方**。
+ * 上限に役割ごとの数が書いてあるときは**一番ゆるい数**を採る（誰かにとっての最悪の件数が
+ * 「1回で動く件数」だから）。1ページの件数を書いていなければ既定
+ * （[DEFAULT_PAGE_SIZE]。ここが実装とずれると、機械の言うことが嘘になる）。
+ */
+export function rowsPerPress(
+  action: Dict,
+  table: Dict | undefined,
+): number | undefined {
+  const pagination = isDict(table?.pagination) ? table.pagination : undefined;
+  const onScreen =
+    table === undefined || pagination?.enabled === false
+      ? undefined // 全件出る／表が無い＝件数が決まらない
+      : typeof pagination?.pageSize === "number"
+        ? pagination.pageSize
+        : DEFAULT_PAGE_SIZE;
+  const cap = widestRowLimit(action.maxRows);
+  if (cap === undefined) return onScreen;
+  return onScreen === undefined ? cap : Math.min(cap, onScreen);
+}
+
+/** 書いてある上限のうち**一番ゆるい数**（`all` や未記入は undefined＝上限なし）。 */
+function widestRowLimit(raw: unknown): number | undefined {
+  const numbers: number[] = [];
+  if (typeof raw === "number") numbers.push(raw);
+  else if (isDict(raw)) {
+    const values = [raw.default, ...Object.values(isDict(raw.byRole) ? raw.byRole : {})];
+    if (values.some((one) => one === "all")) return undefined; // 上限なしの役割が居る
+    for (const one of values) if (typeof one === "number") numbers.push(one);
+  }
+  return numbers.length === 0 ? undefined : Math.max(...numbers);
+}
+
 function hasRowLimit(raw: unknown): boolean {
   if (typeof raw === "number") return true;
   if (!isDict(raw)) return false;
@@ -430,6 +466,46 @@ function checkBuiltins(
         node: "action",
       });
     }
+  }
+
+
+  // 待たせるのに**区切り（`batchSize`）が無い**。
+  //
+  // 1回で 100 件動く一括は、押した人には**何も出ない待ち時間**になる（どこまで進んだ
+  // のか・あと何分か・途中で止められるか、が全部無い）。区切りを書くと枠組みが回す側に
+  // なるので、そこが**ハンドラの手間ゼロ**で付いてくる。
+  //
+  // 目盛りは「1回で動く件数が多い」と同じ 100 件（同じ数を2つ持たない）。**上限
+  // （`maxRows`）を書いてあっても言う**＝上限は「何件まで」の話で、区切りは「何件ずつ」
+  // の話。上限 200 件は、待つ人には「200 件を1回で渡す」と同じ。
+  const wait: number = knob(
+    rules,
+    "bulk-without-batchsize",
+    "rows",
+    knob(rules, "bulk-on-many-rows", "maxRows", 100),
+  );
+  for (const { action, index } of bulkActions) {
+    if (!enabled(rules, "bulk-without-batchsize")) break;
+    if (action.batchSize !== undefined && action.batchSize !== null) continue;
+    const rows = rowsPerPress(action, table);
+    if (rows !== undefined && rows < wait) continue;
+    const how =
+      rows === undefined
+        ? "ページ送りを切ってあるので**全件**動きます"
+        : `1回で最大 ${rows} 件動きます`;
+    found.push({
+      rule: "bulk-without-batchsize",
+      where: `${path}.actions[${index}].batchSize`,
+      says:
+        `「${labelOf(action)}」は${how}が、**区切り（\`batchSize\`）がありません**。` +
+        `押した人には、どこまで進んだのか・あと何分かかるのかが出ず、途中で止める` +
+        `こともできません（終わるまで待つしかありません）。`,
+      add:
+        "`batchSize: 20`（何件ずつハンドラに渡すか）。書くと進み具合と残り時間が出て、" +
+        "区切りで止められます（止めたぶんは報告に出ます）。",
+      key: "batchSize",
+      node: "action",
+    });
   }
 
   // 金額らしい列・項目に見せ方が無い（桁区切りが無いと読めない）。

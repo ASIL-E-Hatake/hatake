@@ -11,6 +11,7 @@
 // こちらは**書いてある場所**。混ぜると、書いていない画面が「役割が無い」と読めてしまう。
 
 import { type RoleOpen } from "./appAccess.js";
+import { bulkLine, type RoleBulk } from "./roleBulk.js";
 import { type RoleUse } from "./roles.js";
 
 /** 節の見出し。 */
@@ -50,6 +51,7 @@ export function renderRoles(
   inventory: RoleUse[],
   title: string,
   opens?: Map<string, RoleOpen>,
+  bulks?: Map<string, RoleBulk[]>,
 ): string {
   const out = [`${title} — ${ROLES_TITLE} ${inventory.length}`];
   if (inventory.length === 0) {
@@ -68,12 +70,25 @@ export function renderRoles(
     use.spots.forEach((_, index) => out.push(spotLine(use, index)));
     const open = opens?.get(use.role);
     if (open !== undefined) out.push(`  ${opensLine(open)}`);
+    // 一括は「1回で何件動くか」が危険度そのもの。上限も区切りも役割で変わるので、
+    // **役割から引ける**形で並べる（ボタンごとに定義を開いて役割の枝を追わない）。
+    for (const one of bulks?.get(use.role) ?? []) {
+      const page = one.page === undefined ? "" : `（${one.page}）`;
+      out.push(`  一括「${one.label}」${page} … ${bulkLine(one)}`);
+    }
   }
   out.push("");
   if (opens !== undefined) {
     out.push(
       "※ 「か所」は**書いてある場所**、「開ける画面」は**入口を辿った結果**です" +
         "（列にしか書いていない役割は、画面を開ける役割ではありません）。",
+    );
+  }
+  if ([...(bulks?.values() ?? [])].some((list) => list.some((one) => one.batch === undefined))) {
+    out.push(
+      "※ 「区切りなし」は、選んだ行を**1回でまとめて**ハンドラに渡す状態です" +
+        "（進み具合も残り時間も出ず、途中で止められません）。`batchSize` を書くと" +
+        "枠組みが区切って回します。",
     );
   }
   if (inventory.some((use) => use.spots.length === 1)) {

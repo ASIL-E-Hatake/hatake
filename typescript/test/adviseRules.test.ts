@@ -57,13 +57,15 @@ const EVERYTHING = `app:
         - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
             scope: selection, roles: [admin] }
         # 確認はあるが件数が無い（他の一括の規則は満たしている）。
+        # 区切り（batchSize）は書いてある＝「待たせるのに区切りが無い」は
+        # 上の一括（approve）だけで出る（1つの規則が2回出ないようにしてある）。
         - { id: notify, type: plugin, plugin: notifyOrders, label: 通知,
-            scope: selection, roles: [admin],
+            scope: selection, roles: [admin], batchSize: 20,
             confirm: { message: 選んだ受注に通知します },
             onError: { message: '{failed} 件は通知できませんでした' } }
         # 戻せない名前なのに確認の OK が赤くない（他の一括の規則は満たしている）。
         - { id: discardSelected, type: plugin, plugin: discardOrders, label: 破棄,
-            scope: selection, roles: [admin],
+            scope: selection, roles: [admin], batchSize: 20,
             confirm: { message: '{count} 件を破棄します' },
             onError: { message: '{failed} 件は破棄できませんでした' } }
     - type: report

@@ -1953,6 +1953,83 @@ jobs:
             echo "batchSize: all が通ってしまった"; exit 1
           fi
 
+      - name: A bulk that makes people wait says so (advice, inventory, read-back)
+        working-directory: typescript
+        run: |
+          set -e
+          cat > /tmp/wait.yaml <<'YAML'
+          app:
+            id: sales
+            title: 販売管理
+            pages:
+              - type: search
+                id: order_search
+                title: 受注照会
+                repository: orderRepository
+                key: orderNo
+                search:
+                  filters: [{ field: orderNo, label: 受注番号 }]
+                table:
+                  pagination: { pageSize: 500 }
+                  columns: [{ field: orderNo, label: 受注番号, sortable: true }]
+                actions:
+                  - id: approve
+                    type: plugin
+                    plugin: approveOrders
+                    label: 一括承認
+                    scope: selection
+                    roles: [staff, manager]
+                    maxRows: { default: 200, byRole: { manager: 400 } }
+                    confirm: { message: '{count} 件を承認します' }
+                    onError: { message: '{failed} 件は承認できませんでした' }
+          YAML
+          # 1. 棚卸しには**役割ごとの件数**が出る。区切りが無いことも、そう言う
+          #    （上限も区切りも役割で変わるので、役割から引けないとボタンごとに定義を開く）。
+          node dist/cli.js explain /tmp/wait.yaml --roles > /tmp/wait-roles.log
+          grep -q '一括「一括承認」（order_search） … 1回 400 件まで・区切りなし（1回で 400 件を渡す）' \
+            /tmp/wait-roles.log
+          grep -q '1回 200 件まで・区切りなし' /tmp/wait-roles.log
+          grep -q '進み具合も残り時間も出ず' /tmp/wait-roles.log
+          # 2. 待たせるのに区切りが無い＝**助言**（好みなので終了コードは 0 のまま）。
+          node dist/cli.js advise /tmp/wait.yaml > /tmp/wait-advice.log
+          grep -q 'bulk-without-batchsize' /tmp/wait-advice.log
+          grep -q '1回で最大 400 件動きます' /tmp/wait-advice.log
+          grep -q '途中で止めることもできません' /tmp/wait-advice.log
+          # 書く件数の下書きは、1回で動く件数から出す（根拠も添える）。
+          grep -q '値の下書き: 80' /tmp/wait-advice.log
+          grep -q '400 件）を5回に分ける件数から' /tmp/wait-advice.log
+          # 3. 下書きは**そのまま当てられる**。
+          node dist/cli.js advise /tmp/wait.yaml --json > /tmp/wait-advice.json
+          node -e '
+            const fs = require("fs");
+            const advice = JSON.parse(fs.readFileSync("/tmp/wait-advice.json", "utf8"));
+            const picks = advice
+              .filter((one) => one.rule === "bulk-without-batchsize")
+              .map((one) => ({ rule: one.rule, where: one.where, value: one.draft }));
+            if (picks.length !== 1) {
+              console.error("区切りの助言が1件ではない: " + picks.length);
+              process.exit(1);
+            }
+            fs.writeFileSync("/tmp/wait-picks.json", JSON.stringify(picks));
+          '
+          node dist/cli.js advise /tmp/wait.yaml --apply /tmp/wait-picks.json --write \
+            > /tmp/wait-applied.log
+          grep -q 'batchSize: 80' /tmp/wait.yaml
+          node dist/cli.js validate --strict --warn-as-error /tmp/wait.yaml
+          # 当てたら、その助言は消える（言うだけ言って直せない助言を残さない）。
+          node dist/cli.js advise /tmp/wait.yaml --json > /tmp/wait-advice2.json
+          if grep -q 'bulk-without-batchsize' /tmp/wait-advice2.json; then
+            echo "当てたのに助言が残っている"; exit 1
+          fi
+          # 4. 読み返しは「**何回に分かれるか**」まで言う（サーバを何回叩くか）。
+          node dist/cli.js explain /tmp/wait.yaml --page order_search > /tmp/wait-explain.log
+          grep -q '80 件ずつ実行する（進み具合が出て、区切りで止められる）' /tmp/wait-explain.log
+          grep -q '上限まで選ぶと 3 回に分かれる' /tmp/wait-explain.log
+          # 棚卸しも、当てたあとは件数と回数で出る（役割ごとに違う）。
+          node dist/cli.js explain /tmp/wait.yaml --roles > /tmp/wait-roles2.log
+          grep -q '1回 400 件まで・80 件ずつ（上限まで選ぶと 5 回に分かれる）' /tmp/wait-roles2.log
+          grep -q '1回 200 件まで・80 件ずつ（上限まで選ぶと 3 回に分かれる）' /tmp/wait-roles2.log
+
       - name: When a button may be pressed (enabledWhen)
         working-directory: typescript
         run: |
