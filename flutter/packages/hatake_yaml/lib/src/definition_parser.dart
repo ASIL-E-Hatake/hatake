@@ -535,6 +535,7 @@ ActionDefinition _parseAction(Map<String, Object?> m) {
     maxRows: _parseRowLimit(m['maxRows']),
     batchSize: _parseBatchSize(m['batchSize']),
     enabledWhen: m.optMap('enabledWhen'),
+    open: m.optString('open') ?? ActionOpen.same,
     // Lift top-level `page` / `params` (navigate actions) into config so the
     // ActionDefinition model stays unchanged.
     config: {

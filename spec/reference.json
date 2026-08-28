@@ -241,6 +241,18 @@
           ]
         },
         {
+          "key": "open",
+          "type": "string",
+          "required": false,
+          "description": "For `type: navigate`: where the target opens. `same` (default) goes deeper in the current screen — a list to its detail is the same job, so tabs should not pile up. `tab` opens it beside the current screen, which is a business intent (\"keep the list, open one row\"). Only meaningful when the app runs with `navigation: tabs`; validate says so otherwise.",
+          "default": "same",
+          "values": [
+            "same",
+            "tab"
+          ],
+          "open": false
+        },
+        {
           "key": "enabledWhen",
           "type": "object",
           "required": false,
@@ -462,6 +474,18 @@
           "type": "string",
           "required": false,
           "description": "Initial route: a menu item id (or page id)."
+        },
+        {
+          "key": "navigation",
+          "type": "string",
+          "required": false,
+          "description": "How screens open. `single` (default) swaps the screen and a navigate action goes deeper (back returns). `tabs` opens screens side by side: a menu pick becomes a tab and stays open. The definition states the intent for this system; the application may override it (`HatakeApp(navigation:)`) so the same definition can be tabs on a desktop and single on a tablet.",
+          "default": "single",
+          "values": [
+            "single",
+            "tabs"
+          ],
+          "open": false
         },
         {
           "key": "theme",
@@ -3111,6 +3135,9 @@
     "mode": [
       "condition"
     ],
+    "navigation": [
+      "app"
+    ],
     "normalize": [
       "field"
     ],
@@ -3132,6 +3159,9 @@
     ],
     "op": [
       "field.computed"
+    ],
+    "open": [
+      "action"
     ],
     "operator": [
       "condition",

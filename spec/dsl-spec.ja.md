@@ -123,9 +123,42 @@ app:
 | `id` | string | ✅ | — | アプリ識別子。 |
 | `title` | string | ✅ | — | アプリタイトル（シェル表示）。 |
 | `home` | string | | 先頭の葉 | 初期ルート（[menu-item](#menu-item) の id）。 |
+| `navigation` | `single` \| `tabs` | | `single` | 画面をどう開くか。`single` は1画面ずつ（メニューで入れ替わり、遷移すると戻れる）、`tabs` は並べて開く（メニューで選ぶと新しいタブ）。**アプリ側で上書きできる**（`HatakeApp(navigation:)`）＝同じ定義を PC ではタブ・タブレットでは遷移で出せる。 |
 | `theme` | [theme](#theme) | | — | 見た目（色・明暗・密度・角丸）。省略時は Renderer の既定。 |
 | `menu` | [menu-item](#menu-item)[] | | `[]` | ナビゲーションメニュー（葉とグループの木）。 |
 | `pages` | page[] | | `[]` | このアプリを構成するページ定義。id で `menu` / `navigate` から参照。 |
+
+### navigation（1画面ずつか、並べて開くか）
+
+業務システムによって作法が違う。伝票を1件ずつ片付ける仕事は1画面ずつが速く、「受注を見な
+がらマスタを直す」が毎日来る仕事では、行き来のたびに検索条件と入力が消えるのが苦痛になる。
+**どちらかに決め打ちしない**ので、定義に書ける。
+
+```yaml
+app:
+  id: sales
+  title: 販売管理
+  navigation: tabs        # 既定は single
+```
+
+定義が言うのは**その業務システムの既定**で、アプリ側が上書きできる
+（`HatakeApp(navigation: AppNavigation.single)`）。読み返し（`explain`）にも「アプリ側で
+上書きできます」と毎回出る＝定義だけを読んで決めつけないため。
+
+並べて開くときの決めごと（Renderer の担当）:
+
+- **同じ画面は2枚開かない**（開いているタブが前に出る）。ただし `params` が違えば別物
+  ＝受注 SO-1 と SO-2 は別のタブ。同じレコードを2枚開いて別々に編集できると、どちらが
+  正か分からない
+- **上限は 10 枚。超えたら開かずにそう言う**（古いタブを勝手に閉じない＝入力中かもしれない）
+- **最後の1枚は閉じられない**（画面が無くなるので、閉じる口も出さない）
+- **入力する画面を閉じるときは聞く**（何を入力したかはタブの列からは見えないので、
+  消えるかもしれない側に倒す）
+- **URL に出るのは前面のタブだけ**（タブ列ごと URL に載せると、共有リンクが他人の作業
+  状態になる）。共有先では1枚で開く
+- **タブの中身は作り直さない**（検索結果も入力もタブに付いて回る＝それがタブの値打ち）
+
+遷移のボタンを別のタブで開くかどうかは、ボタンごとに書ける（[open](#openどこに開くか)）。
 
 ### theme
 
@@ -1137,6 +1170,7 @@ computed: { op: sum, field: lines, of: amount,
 | `prompt` | [prompt](#prompt) | | 実行の前に聞くこと（小さなフォーム）。 |
 | `maxRows` | integer \| [maxRows](#maxrows) | | `scope: selection` のとき、**1回で動かせる行数の上限**（1以上）。超えて選んでいる間ボタンは押せない。無ければ上限は1ページの件数。 |
 | `batchSize` | integer \| `{ default, byRole }` | | `scope: selection` のとき、**1回のハンドラ呼び出しに渡す件数**（1以上）。書かなければ全部まとめて1回。書くと枠組みが回すので**進み具合と残り時間が出て、区切りで止められる**（→ [batchSize](#batchsize区切って実行する)）。役割ごとに変えられる。 |
+| `open` | `same` \| `tab` | `same` | `type: navigate` のとき、**どこに開くか**（→ [open](#openどこに開くか)）。`tab` は並べて開くアプリでだけ効く。 |
 | `enabledWhen` | [condition](#条件condition) | | **いま押せるか**（→ [enabledWhen](#enabledwhen押せるかどうか)）。判定する相手は置き場所で決まる（行アクションはその行、一括は選んだ行ぜんぶ、レコードを持つ画面はそのレコード）。 |
 | `config` | map | | 追加設定。 |
 | `roles` | string[] | | 実行を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
@@ -1222,6 +1256,22 @@ computed: { op: sum, field: lines, of: amount,
 `all`（区切らない）は無い。区切らない＝進み具合も中断も無い、というのは `batchSize` を
 書かないことで既に言える。押せない役割・定義のどこにも出てこない役割名に書いた区切りは
 効かないので `validate` が言う（`batchsize-unknown-role`）。
+
+### open（どこに開くか）
+
+`type: navigate` のボタンが、**別のタブで開くか、いまの画面の続きとして進むか**。
+
+```yaml
+- { id: openTab, type: navigate, label: 明細（別タブ）, page: order_entry, open: tab }
+```
+
+- 既定は `same`＝いまの画面の続き（一覧 → 明細は同じ仕事なので、押すたびにタブが増える
+  のは邪魔）
+- `tab` は「一覧を残したまま個別を開く」＝**業務の意図**なので定義に書ける。同じレコードを
+  もう一度開いたら、開いているタブが前に出る
+- 並べないアプリ（`navigation: single`）では**無視される**（書いても壊れない）。効いて
+  いないことは `validate` が言う（`open-without-tabs`）。アプリ側で `tabs` に上書きして
+  いる場合は、そのままで意図どおり
 
 ### enabledWhen（押せるかどうか）
 
@@ -1612,6 +1662,10 @@ TODO にならない（collection の名前は複数形を**推測**して埋め
 | `unknown-computed-op` / `unknown-aggregate` | 計算・集計されず値が空になる |
 | `unknown-field-type` / `unknown-column-type` / `unknown-action-type` / `unknown-dashboard-item-type` / `unknown-chart-kind` | 組み込みでも登録済みでもない → その型として扱われない |
 | `unknown-page-ref` | 単票の定義から遷移先が引けない（`app:` の中は `unknown-page` の担当） |
+| `unknown-navigation` | `app.navigation` が `single` / `tabs` 以外 → 黙って `single` になる（並べたつもりで並ばない） |
+| `unknown-open` | `action.open` が `same` / `tab` 以外 → 黙って `same` になる |
+| `open-without-navigate` | `open` を遷移ではないボタンに書いた → 開く先が無いので何も起きない |
+| `open-without-tabs` | `open: tab` を書いたが、この定義は画面を並べない（`app.navigation: tabs` ではない）→ いままで通り同じ画面の続きとして開く |
 | `role-not-in-app` | 定義に書いた役割名が、**アプリが配る役割の中に無い** → その役割で出し分けている列・ボタンは**誰にも見えない**（役割ごとの件数に書いてあれば、その数は誰にも効かない） |
 
 一覧（`--registry` に渡す JSON）は `refs --needs-registration --json` の出力と同じ形。

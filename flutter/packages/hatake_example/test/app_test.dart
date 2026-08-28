@@ -25,7 +25,10 @@ void main() {
 
     // The shell shows the app title and lands on the dashboard.
     expect(find.text('販売管理'), findsOneWidget);
-    expect(find.text('売上ダッシュボード'), findsOneWidget);
+    // デモは並べて開く（`app.navigation: tabs`）ので、画面の名前は見出しと**タブの札**
+    // の2か所に出る。
+    expect(find.text('売上ダッシュボード'), findsWidgets);
+    expect(find.byType(InputChip), findsOneWidget);
     // Cards are aggregated from the seeded orders (4 of them, ¥598,000).
     expect(_metric('orderCount'), '4');
     expect(_metric('totalAmount'), '¥598,000');
@@ -41,7 +44,10 @@ void main() {
     // The menu offers the other pages (by key: 顧客 is also a column header).
     await tester.tap(find.byKey(const Key('hatake.menu.customers')));
     await tester.pumpAndSettle();
-    expect(find.text('顧客マスタ'), findsOneWidget);
+    expect(find.text('顧客マスタ'), findsWidgets);
+    // タブは2枚。ダッシュボードから受注照会へはカードの遷移（既定＝**同じタブの
+    // 続き**）なので増えず、メニューで選んだ顧客マスタが2枚目になる。
+    expect(find.byType(InputChip), findsNWidgets(2));
     // Seeded customer data proves the page is wired to its repository.
     expect(find.text('C001'), findsOneWidget);
 

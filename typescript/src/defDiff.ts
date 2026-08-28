@@ -12,6 +12,7 @@
 // caution を breaking と混ぜないのが要点。「列を消した」は普通にやることなので、
 // 止める話ではなく**気づかせる話**。混ぜると全部無視されるようになる。
 
+import { ActionOpens, AppNavigations } from "./definition.js";
 import { deriveDto } from "./dto.js";
 import { diffDto, type DtoChange } from "./dtoDiff.js";
 import { parsePageMap } from "./parse.js";
@@ -143,6 +144,29 @@ function diffAppDocuments(before: Dict, after: Dict): DefinitionChange[] {
         `最初に開く画面が ${home[0] ?? "(先頭のページ)"} から ${home[1] ?? "(先頭のページ)"} に変わりました。`,
         home[0],
         home[1],
+      ),
+    );
+  }
+
+  // 画面の開き方が変わるのは、**使い方そのもの**が変わること（戻るを押すのか、
+  // タブを閉じるのか）。見た目の話ではないので caution。
+  const navigation = [
+    str(before.navigation) ?? AppNavigations.single,
+    str(after.navigation) ?? AppNavigations.single,
+  ];
+  if (navigation[0] !== navigation[1]) {
+    const word = (one: string): string =>
+      one === AppNavigations.tabs ? "並べて開く" : "1画面ずつ開く";
+    changes.push(
+      change(
+        "app",
+        "navigation-changed",
+        "app.navigation",
+        "caution",
+        `画面の開き方が「${word(navigation[0])}」から「${word(navigation[1])}」に` +
+          `変わりました。${navigation[1] === AppNavigations.tabs ? "メニューで選ぶと開いたままになります（同じ画面は2枚開きません）。" : "メニューで選ぶと入れ替わります（開いていたものは閉じます）。"}`,
+        navigation[0],
+        navigation[1],
       ),
     );
   }
@@ -459,6 +483,28 @@ function diffActions(before: Dict, after: Dict, path: string): DefinitionChange[
               : `${label}の「押せる条件」が変わりました。押せる状態が変わります。`,
           wasWhen,
           nowWhen,
+        ),
+      );
+    }
+    // 遷移の開き方（同じ画面の続き / 別のタブ）。押した人にとっては「戻るを押すのか、
+    // タブを閉じるのか」が変わる。
+    const opens = [
+      str(action.open) ?? ActionOpens.same,
+      str(next.open) ?? ActionOpens.same,
+    ];
+    if (opens[0] !== opens[1]) {
+      const label = `ボタン「${str(action.label) ?? id}」`;
+      changes.push(
+        change(
+          "ui",
+          "open-changed",
+          `${at}.open`,
+          "safe",
+          opens[1] === ActionOpens.tab
+            ? `${label}は別のタブで開くようになりました（いまの画面は残ります）。`
+            : `${label}は同じ画面の続きとして開くようになりました（タブは増えません）。`,
+          opens[0],
+          opens[1],
         ),
       );
     }

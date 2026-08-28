@@ -110,7 +110,8 @@
       "blurb": "遷移先の指定と、渡す値。",
       "keys": [
         "page",
-        "home"
+        "home",
+        "open"
       ],
       "demo": "order_detail"
     },
@@ -308,7 +309,8 @@
         "pages",
         "menu",
         "group",
-        "icon"
+        "icon",
+        "navigation"
       ],
       "demo": "sales_dashboard"
     },

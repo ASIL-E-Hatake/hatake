@@ -22,7 +22,7 @@ export interface UnknownKey {
  */
 export const strictKeyTable: Record<string, string[]> = {
   "": ["dsl_version", "page", "app"],
-  app: ["id", "title", "home", "theme", "menu", "pages"],
+  app: ["id", "title", "home", "navigation", "theme", "menu", "pages"],
   theme: [
     "primaryColor", "secondaryColor", "brightness", "density", "fontFamily",
     "radius", "config",
@@ -71,7 +71,7 @@ export const strictKeyTable: Record<string, string[]> = {
   action: [
     "id", "type", "label", "scope", "plugin", "page", "params", "confirm",
     "onSuccess", "onError", "prompt", "maxRows", "batchSize", "enabledWhen",
-    "config", "roles",
+    "open", "config", "roles",
   ],
   maxRows: ["default", "byRole"],
   batchSize: ["default", "byRole"],

@@ -47,7 +47,8 @@ public final class StrictKeys {
      */
     public static final Map<String, Set<String>> TABLE = Map.ofEntries(
             Map.entry("", keys("dsl_version", "page", "app")),
-            Map.entry("app", keys("id", "title", "home", "theme", "menu", "pages")),
+            Map.entry("app", keys("id", "title", "home", "navigation", "theme", "menu",
+                    "pages")),
             Map.entry("theme", keys("primaryColor", "secondaryColor", "brightness",
                     "density", "fontFamily", "radius", "config")),
             Map.entry("menuItem", keys("id", "label", "group", "icon", "page", "items", "roles")),
@@ -97,7 +98,7 @@ public final class StrictKeys {
             Map.entry("subTableSource", keys("repository", "parentKey", "key", "pageSize")),
             Map.entry("action", keys("id", "type", "label", "scope", "plugin", "page", "params",
                     "confirm", "onSuccess", "onError", "prompt", "maxRows", "batchSize",
-                    "enabledWhen", "config", "roles")),
+                    "enabledWhen", "open", "config", "roles")),
             Map.entry("maxRows", keys("default", "byRole")),
             Map.entry("batchSize", keys("default", "byRole")),
             Map.entry("confirm", keys("title", "message", "okLabel", "cancelLabel", "danger")),

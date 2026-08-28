@@ -1,6 +1,7 @@
 import { parse as parseYamlText } from "yaml";
 import { findUnknownKeys, type UnknownKey } from "./strictKeys.js";
 import {
+  ActionOpens,
   ActionScopes,
   kDslVersion,
   type ActionDefinition,
@@ -621,6 +622,7 @@ function parseAction(m: Dict): ActionDefinition {
     prompt: parseActionPrompt(optDict(m, "prompt")),
     batchSize: parseBatchSize(m.batchSize),
     enabledWhen: optDict(m, "enabledWhen"),
+    open: optString(m, "open") ?? ActionOpens.same,
     config: optDict(m, "config") ?? {},
     roles: optList(m, "roles").map(String),
   };

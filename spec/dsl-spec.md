@@ -138,6 +138,7 @@ app:
 | `id` | string | ✅ | — | Application identifier. |
 | `title` | string | ✅ | — | Application title (shown by the shell). |
 | `home` | string | | first leaf | Initial route (a [menu-item](#menu-item) id). |
+| `navigation` | `single` \| `tabs` | | `single` | How screens open. `single` swaps the screen (navigating goes deeper, back returns); `tabs` opens them side by side (a menu pick becomes a tab that stays open). **The application may override it** (`HatakeApp(navigation:)`), so the same definition can be tabs on a desktop and single on a tablet. |
 | `theme` | [theme](#theme) | | — | Look and feel. Omitted = the renderer's default. |
 | `menu` | [menu-item](#menu-item)[] | | `[]` | Navigation menu (a tree of leaves and groups). |
 | `pages` | page[] | | `[]` | Page definitions making up this app, referenced by id from `menu` / `navigate`. |
@@ -1631,6 +1632,10 @@ broken generator fails analysis.
 | `unknown-computed-op` / `unknown-aggregate` | nothing is computed; the value stays empty |
 | `unknown-field-type` / `unknown-column-type` / `unknown-action-type` / `unknown-dashboard-item-type` / `unknown-chart-kind` | neither built in nor registered — not handled as that type |
 | `unknown-page-ref` | a single-page definition cannot resolve its navigation target (`unknown-page` covers `app:`) |
+| `unknown-navigation` | `app.navigation` is neither `single` nor `tabs` — it silently falls back to `single` |
+| `unknown-open` | `action.open` is neither `same` nor `tab` — it silently falls back to `same` |
+| `open-without-navigate` | `open` on an action that does not navigate — there is nothing to open |
+| `open-without-tabs` | `open: tab` while the definition does not open screens side by side (`app.navigation: tabs`) — it goes deeper in the current screen instead |
 | `role-not-in-app` | a role name in the definition is **not among the roles the application hands out** — whatever it gates is **visible to nobody** (and a per-role count written for it applies to nobody) |
 
 The list passed to `--registry` has the same shape `refs --needs-registration

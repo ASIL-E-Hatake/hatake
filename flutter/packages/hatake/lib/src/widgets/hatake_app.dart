@@ -25,11 +25,19 @@ class HatakeApp extends StatefulWidget {
   /// its own so the sync can be exercised without one.
   final RouteUrl url;
 
+  /// 画面をどう開くか（[AppNavigation]）を**定義より優先する**。
+  ///
+  /// null なら定義の `app.navigation`（書いていなければ `single`）。同じ定義を
+  /// 端末で出し分けるための口＝PC ではタブ、タブレットでは遷移、が同じ定義でできる。
+  /// 業務としての既定は定義に書き、アプリの都合はここで上書きする。
+  final String? navigation;
+
   const HatakeApp({
     super.key,
     required this.app,
     this.syncUrl = true,
     this.url = const SystemRouteUrl(),
+    this.navigation,
   });
 
   @override
@@ -37,7 +45,10 @@ class HatakeApp extends StatefulWidget {
 }
 
 class _HatakeAppState extends State<HatakeApp> with WidgetsBindingObserver {
-  late final HatakeRouter _router = HatakeRouter(_initialRoute());
+  late final HatakeRouter _router = HatakeRouter(
+    _initialRoute(),
+    navigation: widget.navigation ?? widget.app.navigation,
+  );
 
   /// True while the router is being moved *by* the platform (the back button),
   /// so the answer is not written straight back into the history as a new entry.

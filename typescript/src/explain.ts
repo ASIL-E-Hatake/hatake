@@ -36,7 +36,9 @@ import {
 import { voice, type Voice } from "./explainVoice.js";
 import {
   type ActionDefinition,
+  ActionOpens,
   ActionScopes,
+  AppNavigations,
   type RowLimit,
   ActionTypes,
   type AppDefinition,
@@ -640,6 +642,12 @@ function describeAction(
 ): string {
   const v = voice(lang);
   const what = wordOf(ACTION_TYPES, action.type, lang) ?? action.type;
+  // 別のタブで開くなら、そう言う（一覧を残したまま開くかどうかは、押す人にとって
+  // 「戻るを押すのか、タブを閉じるのか」の違い）。
+  const opens =
+    action.type === ActionTypes.navigate && action.open === ActionOpens.tab
+      ? v.clause(v.opensInTab)
+      : "";
   const to =
     action.type === ActionTypes.navigate && target !== undefined
       ? v.goesTo(target)
@@ -725,7 +733,7 @@ function describeAction(
         );
   return v.subject(
     action.label,
-    `${what}${to}${on}${batches}${asks}${confirm}${after}${onError}${pressable}${roles}`,
+    `${what}${to}${opens}${on}${batches}${asks}${confirm}${after}${onError}${pressable}${roles}`,
   );
 }
 
@@ -862,6 +870,15 @@ function impliedLimits(page: PageDefinition, lang: Lang): string[] {
   return limits;
 }
 
+/**
+ * 並べて開ける枚数の上限（Renderer と同じ数）。
+ *
+ * ここと Renderer（`HatakeRouter.maxTabs`）がずれると、読み返しが嘘になる（「最大 10 枚」
+ * と言っておいて 8 枚で開かなくなる）。**同じ数を2か所に書かない**ための唯一の逃げ道が
+ * 無いので（Dart と TypeScript は別の実装）、CI で突き合わせている。
+ */
+export const MAX_TABS = 10;
+
 /** アプリ全体（`app:`）の説明。ページは1行ずつで、詳しくは1枚ずつ引く。 */
 export function explainApp(
   app: AppDefinition,
@@ -905,6 +922,17 @@ export function explainApp(
       {
         title: v.firstScreen,
         lines: [app.home ?? v.homeUnset],
+      },
+      {
+        // 「どう開くか」は使い勝手そのものなので、読み返しに出す。**アプリ側で
+        // 上書きできる**ことも毎回言う（定義だけを読んで決めつけないように）。
+        title: v.openingTitle,
+        lines: [
+          app.navigation === AppNavigations.tabs
+            ? v.openingTabs(MAX_TABS)
+            : v.openingSingle,
+          v.openingOverride,
+        ],
       },
       {
         title: v.accessOverviewTitle,

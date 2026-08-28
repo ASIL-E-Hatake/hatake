@@ -5,6 +5,7 @@ import 'action_prompt_definition.dart';
 import 'action_scopes.dart';
 import 'action_success_definition.dart';
 import 'action_types.dart';
+import 'app_navigation.dart';
 import 'batch_size.dart';
 import 'confirm_definition.dart';
 import 'row_limit.dart';
@@ -89,6 +90,13 @@ class ActionDefinition extends Equatable {
   /// Plugin / renderer specific extra configuration.
   final Map<String, Object?> config;
 
+  /// 遷移のボタンが**どこに開くか**（[ActionOpen]。`type: navigate` のとき）。
+  ///
+  /// 既定は `same`＝いまの画面の続きとして進む。`tab` は「一覧を残したまま個別を開く」
+  /// ＝業務の意図なので定義に書ける。並べる場所が無いアプリ（`navigation: single`）では
+  /// 効かない（`validate` が言う）。
+  final String open;
+
   /// Roles allowed to use this action (see `isAllowed`). Empty = everyone.
   final List<String> roles;
 
@@ -106,6 +114,7 @@ class ActionDefinition extends Equatable {
     this.batchSize,
     this.enabledWhen,
     this.config = const {},
+    this.open = ActionOpen.same,
     this.roles = const [],
   });
 
@@ -124,6 +133,7 @@ class ActionDefinition extends Equatable {
         batchSize,
         enabledWhen,
         config,
+        open,
         roles,
       ];
 }

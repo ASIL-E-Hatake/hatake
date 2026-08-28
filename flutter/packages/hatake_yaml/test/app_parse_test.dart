@@ -292,4 +292,41 @@ $theme
       );
     });
   });
+
+  group('画面の開き方（navigation / open）', () {
+    /// 業務システムによって作法が違うので、定義に書ける（既定はいままでの遷移）。
+    /// アプリ側で上書きできるので、定義が言うのは「その業務システムの既定」。
+    const source = '''
+app:
+  id: shop
+  title: 店
+  navigation: tabs
+  menu:
+    - { id: c, label: 顧客, page: customers }
+  pages:
+    - type: search
+      id: customers
+      title: 顧客一覧
+      repository: repo
+      table:
+        columns: [{ field: code, label: コード }]
+      actions:
+        - { id: a, type: navigate, label: 詳細, page: d }
+        - { id: b, type: navigate, label: 別タブ, page: d, open: tab }
+''';
+
+    test('並べて開くと書ける。遷移の開き方はボタンごと（既定は同じ画面の続き）', () {
+      final app = parseAppYaml(source, strict: true);
+      expect(app.navigation, AppNavigation.tabs);
+      final page = app.pages.first as SearchPageDefinition;
+      expect(page.actions[0].open, ActionOpen.same);
+      expect(page.actions[1].open, ActionOpen.tab);
+    });
+
+    test('書かなければ 1画面ずつ（後方互換）', () {
+      final app = parseAppYaml(source.replaceAll('  navigation: tabs\n', ''),
+          strict: true);
+      expect(app.navigation, AppNavigation.single);
+    });
+  });
 }

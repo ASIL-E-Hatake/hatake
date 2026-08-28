@@ -2139,6 +2139,79 @@ jobs:
           grep -q '1回 400 件まで・80 件ずつ（上限まで選ぶと 5 回に分かれる）' /tmp/wait-roles2.log
           grep -q '1回 200 件まで・80 件ずつ（上限まで選ぶと 3 回に分かれる）' /tmp/wait-roles2.log
 
+      - name: How screens open (single or side by side)
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          cat > /tmp/tabs.yaml <<'YAML'
+          app:
+            id: shop
+            title: 店
+            navigation: tabs
+            menu:
+              - { id: c, label: 顧客, page: customers }
+            pages:
+              - type: search
+                id: customers
+                title: 顧客一覧
+                repository: repo
+                table:
+                  columns: [{ field: code, label: コード }]
+                  rowActions: [open, openTab]
+                actions:
+                  - { id: open, type: navigate, label: 詳細, page: customer_detail }
+                  - { id: openTab, type: navigate, label: 別タブ, page: customer_detail, open: tab }
+              - type: detail
+                id: customer_detail
+                title: 顧客詳細
+                repository: repo
+                form: { sections: [{ fields: [{ field: code, label: コード }] }] }
+          YAML
+          # 1. 並べて開く定義は警告ゼロで通る（strict でも）。
+          node dist/cli.js validate --strict --warn-as-error /tmp/tabs.yaml
+          # 2. どう開くかを読み返す（上限も、アプリ側で上書きできることも言う）。
+          node dist/cli.js explain /tmp/tabs.yaml > /tmp/tabs.log
+          grep -q '## 画面の開き方' /tmp/tabs.log
+          grep -q '並べて開く（メニューで選ぶと新しいタブ・同じ画面は2枚開かない・最大 10 枚）' /tmp/tabs.log
+          grep -q 'アプリ側で上書きできます' /tmp/tabs.log
+          # 別のタブで開くボタンは、そう読み返す（既定のボタンには何も足さない）。
+          node dist/cli.js explain /tmp/tabs.yaml --page customers > /tmp/tabs-page.log
+          grep -q '別タブ … 別の画面へ移る（customer_detail へ）。別のタブで開く' /tmp/tabs-page.log
+          # 3. 並べない定義に `open: tab` を書いたら、効かないと言う。
+          sed '/  navigation: tabs/d' /tmp/tabs.yaml > /tmp/single.yaml
+          if node dist/cli.js validate --warn-as-error --json /tmp/single.yaml \
+               > /tmp/single.json 2>&1; then
+            echo "効かない open: tab で通ってしまった"; exit 1
+          fi
+          grep -q 'open-without-tabs' /tmp/single.json
+          # 知らない値は黙って既定になるので、そう言う。
+          sed 's/  navigation: tabs/  navigation: split/' /tmp/tabs.yaml > /tmp/bad.yaml
+          if node dist/cli.js validate --warn-as-error --json /tmp/bad.yaml \
+               > /tmp/bad.json 2>&1; then
+            echo "知らない開き方で通ってしまった"; exit 1
+          fi
+          grep -q 'unknown-navigation' /tmp/bad.json
+          # 4. 開き方が変わったら、そう言う（使い方が変わるので caution）。
+          node dist/cli.js diff /tmp/single.yaml /tmp/tabs.yaml --json > /tmp/tabs-diff.json
+          grep -q 'navigation-changed' /tmp/tabs-diff.json
+          # 5. 読み返しの「最大 N 枚」と Renderer の上限は**同じ数**（ずれたら嘘になる）。
+          node -e '
+            const fs = require("fs");
+            const dart = fs.readFileSync(
+              "../flutter/packages/hatake/lib/src/runtime/hatake_router.dart", "utf8");
+            const ts = fs.readFileSync("src/explain.ts", "utf8");
+            const a = /maxTabs = (\d+)/.exec(dart);
+            const b = /MAX_TABS = (\d+)/.exec(ts);
+            if (a === null || b === null || a[1] !== b[1]) {
+              console.error("タブの上限がずれています: " + (a && a[1]) + " / " + (b && b[1]));
+              process.exit(1);
+            }
+          '
+          # デモも並べて開く（動かすと試せる）。行からの遷移は既定＝同じタブの続き。
+          grep -q 'navigation: tabs' "$DEMO"
+          grep -q 'open: tab' "$DEMO"
+
       - name: When a button may be pressed (enabledWhen)
         working-directory: typescript
         run: |

@@ -18,6 +18,7 @@ AppDefinition parseAppMap(Map<String, Object?> root) {
     title: app.reqString('title', at: 'app.title'),
     dslVersion: dslVersion ?? kDslVersion,
     home: app.optString('home'),
+    navigation: app.optString('navigation') ?? AppNavigation.single,
     theme: _parseTheme(app.optMap('theme')),
     menu: [
       for (var i = 0; i < menu.length; i++)

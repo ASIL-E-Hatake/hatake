@@ -24,7 +24,9 @@ import { ConditionOperators } from "./conditionEvaluator.js";
 import {
   ActionScopes,
   ActionTypes,
+  ActionOpens,
   AggregateOps,
+  AppNavigations,
   DEFAULT_PAGE_SIZE,
   FieldTypes,
   ValidatorTypes,
@@ -100,6 +102,9 @@ export function findWarnings(
   // 宣言している役割**（`--registry` の `roles`）も同じ語彙に入れる。入れないと、
   // アプリが配っている役割を byRole に書いただけで「誰にも当てはまりません」と
   // 言うことになり、こちらの言うことが嘘になる。
+  // 並べて開くアプリか（`open: tab` が効くかどうかの判定に使う）。単票の定義には
+  // `app` が無いので、そこでは常に「並べない」＝タブは在り得ない。
+  const tabsOpen = str(app?.navigation) === AppNavigations.tabs;
   const appRoles = new Set([
     ...roleNames(document),
     ...(options.registry?.roles ?? []),
@@ -113,12 +118,12 @@ export function findWarnings(
     checkApp(app, pages, pageIds, found);
     checkAccess(document, pages, found);
     pages.forEach((p, i) =>
-      checkPage(p, `app.pages[${i}]`, pageIds, found, appRoles),
+      checkPage(p, `app.pages[${i}]`, pageIds, found, appRoles, tabsOpen),
     );
   }
   if (page !== undefined) {
     // 単票の定義では他のページを知らないので、遷移先の存在は確かめられない。
-    checkPage(page, "page", null, found, appRoles);
+    checkPage(page, "page", null, found, appRoles, tabsOpen);
   }
   if (options.registry !== undefined) {
     checkRegistry(document, options.registry, found);
@@ -354,6 +359,23 @@ function checkApp(
     seen.add(id);
   });
 
+  // 画面をどう開くか。**閉じた集合**なので、知らない値は黙って既定（1画面ずつ）に
+  // なる＝「タブにしたつもり」で通ってしまう。
+  const navigation = app.navigation;
+  if (
+    navigation !== undefined &&
+    !(Object.values(AppNavigations) as string[]).includes(str(navigation) ?? "")
+  ) {
+    warn(
+      found,
+      "unknown-navigation",
+      "app.navigation",
+      `画面の開き方 "${str(navigation) ?? String(navigation)}" は知らない書き方です。` +
+        `黙って ${AppNavigations.single}（1画面ずつ）になります。`,
+      `書けるのは ${Object.values(AppNavigations).join(" / ")} です。`,
+    );
+  }
+
   const home = str(app.home);
   if (home !== undefined) {
     const menuIds = new Set<string>();
@@ -411,6 +433,7 @@ function checkPage(
   pageIds: Set<string> | null,
   found: DefinitionWarning[],
   appRoles: Set<string> = new Set(),
+  tabsOpen: boolean = false,
 ): void {
   const actions = list(page.actions).filter(isDict);
   const actionIds = new Set(
@@ -418,7 +441,7 @@ function checkPage(
   );
 
   checkActions(actions, `${path}.actions`, pageIds, found);
-  checkDeadActions(page, actions, `${path}.actions`, found);
+  checkDeadActions(page, actions, `${path}.actions`, found, tabsOpen);
   checkSelection(page, actions, path, found, appRoles);
   checkPlaceholders(actions, `${path}.actions`, found);
   checkPrompt(actions, `${path}.actions`, found);
@@ -656,6 +679,7 @@ function checkDeadActions(
   actions: Dict[],
   path: string,
   found: DefinitionWarning[],
+  tabsOpen: boolean = false,
 ): void {
   for (const dead of deadActions(page, actions)) {
     warn(
@@ -667,6 +691,52 @@ function checkDeadActions(
       dead.pitfall,
     );
   }
+  // 遷移の開き方（`open`）が効かない所。
+  //
+  // 効くのは**遷移のボタン**（`type: navigate`）で、かつ**並べて開くアプリ**
+  // （`app.navigation: tabs`）のときだけ。どちらでもない所に書くと、書いた人は
+  // 「別のタブで開く」と思ったまま、いままで通り重なる。
+  actions.forEach((action, i) => {
+    const open = str(action.open);
+    if (open === undefined) return;
+    const at = `${path}[${i}].open`;
+    const label = str(action.label) ?? str(action.id) ?? "ボタン";
+    if (!(Object.values(ActionOpens) as string[]).includes(open)) {
+      warn(
+        found,
+        "unknown-open",
+        at,
+        `「${label}」の開き方 "${open}" は知らない書き方です。黙って ` +
+          `${ActionOpens.same}（いまの画面の続き）になります。`,
+        `書けるのは ${Object.values(ActionOpens).join(" / ")} です。`,
+      );
+      return;
+    }
+    if (str(action.type) !== ActionTypes.navigate) {
+      warn(
+        found,
+        "open-without-navigate",
+        at,
+        `「${label}」に開き方（\`open\`）が書いてありますが、遷移のボタンでは` +
+          `ありません（\`type: navigate\` ではない）。開く先が無いので、何も起きません。`,
+        "`type: navigate`（＋`page`）にするか、`open` を消してください。",
+      );
+      return;
+    }
+    if (open === ActionOpens.tab && !tabsOpen) {
+      warn(
+        found,
+        "open-without-tabs",
+        at,
+        `「${label}」は別のタブで開くと書いてありますが、この定義は画面を並べません` +
+          `（\`app.navigation: ${AppNavigations.tabs}\` ではない）。並べる場所が無いので、` +
+          `いままで通り**同じ画面の続き**として開きます。`,
+        `並べて開くなら \`app.navigation: ${AppNavigations.tabs}\` を書いてください` +
+          "（アプリ側で上書きしているなら、そのままで意図どおりです）。",
+      );
+    }
+  });
+
   // 「押せるかどうか」を書いたのに、判定する相手が無い所（＝書いても効かない）。
   for (const one of unjudgeableEnabledWhen(page, actions)) {
     warn(
