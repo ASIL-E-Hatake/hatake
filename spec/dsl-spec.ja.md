@@ -1600,12 +1600,23 @@ TODO にならない（collection の名前は複数形を**推測**して埋め
 | `unknown-computed-op` / `unknown-aggregate` | 計算・集計されず値が空になる |
 | `unknown-field-type` / `unknown-column-type` / `unknown-action-type` / `unknown-dashboard-item-type` / `unknown-chart-kind` | 組み込みでも登録済みでもない → その型として扱われない |
 | `unknown-page-ref` | 単票の定義から遷移先が引けない（`app:` の中は `unknown-page` の担当） |
+| `role-not-in-app` | 定義に書いた役割名が、**アプリが配る役割の中に無い** → その役割で出し分けている列・ボタンは**誰にも見えない**（役割ごとの件数に書いてあれば、その数は誰にも効かない） |
 
 一覧（`--registry` に渡す JSON）は `refs --needs-registration --json` の出力と同じ形。
 
 ```json
-{ "repositories": ["orderRepository"], "plugins": ["csvExport"] }
+{ "repositories": ["orderRepository"], "plugins": ["csvExport"], "roles": ["manager"] }
 ```
+
+`roles` は**アプリが配りうる役割の語彙**（`HatakeScope(knownRoles:)`）。ほかの種類が
+「名前 → 実装」なのに対して、これは名前だけが並ぶ。**いま配られている役割
+（`HatakeScope(roles:)`）ではない**のが要点で、あれはログイン状態なので、staff で
+動かしたスナップショットを突き合わせに使うと「manager はアプリに無い」と言い出す。
+
+役割は**消す相手ではない**ので、逆向きの突き合わせ（`refs --unused`）には出さない
+（定義が使っていないからといって、アプリの認可から消す話にはならない）。逆に、アプリが
+配ると宣言している役割は**定義の語彙にも数える**（`maxRows.byRole` にだけ書いた役割を
+「誰にも当てはまりません」と言わないため）。
 
 `--registry` を省いても、定義の隣（無ければカレント）の `hatake-registry.json` があれば
 黙って拾う。同じ名前が何箇所から参照されていても**警告は1件**（直す所は登録する側の1つなので、
@@ -1617,6 +1628,18 @@ TODO にならない（collection の名前は複数形を**推測**して埋め
 |---|---|---|
 | `hatake registry <path...>` … ソースを読む | アプリを動かさずに作りたい。CI で再生成して差分を見たい | **その場に書いてある文字列しか読めない** |
 | `registrySnapshot(scope)` … 動いているアプリに聞く | 登録を動的に組み立てている | アプリを動かす必要がある |
+
+役割の語彙を宣言しておくと、画面の側でも1つ効く。**配られた役割がその語彙に無ければ、
+開発中に気づける**（`assert`）＝`manager` を `manger` で配っているようなアプリ側の綴り
+違いは、画面を見ても分からない（見えないのが正しい機能なので）。
+
+```dart
+HatakeScope(
+  knownRoles: const {'staff', 'manager'},   // このアプリが配りうる役割（語彙）
+  roles: session.roles,                     // いま見ている人の役割
+  ...
+)
+```
 
 前者は言語のパーサを持たないので、変数や関数から組み立てている登録は読めない。読めないものは
 **黙って落とさずに報告して終了コード 1**（落とすと「登録してあるのに未登録」という嘘の警告に

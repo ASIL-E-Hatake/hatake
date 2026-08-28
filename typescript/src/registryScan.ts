@@ -107,6 +107,18 @@ const REGISTRATIONS: { kind: RefKind; name: string; named?: boolean }[] = [
 ];
 
 /**
+ * 名前の**集まり**をその場で読むもの（役割の語彙）。
+ *
+ * ほかの登録が「名前 → 実装」の対応表なのに対して、これは名前だけが並ぶ
+ * （`knownRoles: {'staff', 'manager'}`）。読む相手を `roles:`（いま見ている人の役割）に
+ * しないのが要点で、あれは**その時のログイン状態**なので、突き合わせに使うと
+ * 「staff で動かしたら manager はアプリに無い」と言い出す。
+ */
+const NAME_SET_REGISTRATIONS: { kind: RefKind; name: string }[] = [
+  { kind: "roles", name: "knownRoles" },
+];
+
+/**
  * 「書いてあれば在る」だけの登録。
  *
  * 出力先（sink）は名前と値の対応表ではなく**関数を1つ渡す**書き方なので、
@@ -159,6 +171,31 @@ export function scanRegistrations(files: SourceFile[]): RegistryScan {
           endLine: lineOf(source, endOf(source, at.argsFrom, registration.named === true)),
           names: read.names,
           pending: read.pending ?? [],
+        });
+      }
+    }
+    for (const registration of NAME_SET_REGISTRATIONS) {
+      for (const at of findCalls(source, registration.name, true)) {
+        const line = lineOf(source, at.start);
+        const read = readNameSet(source, at.argsFrom, registration.name);
+        if (read.skip === true) continue;
+        if (read.reason === undefined && read.names.length === 0) continue;
+        if (read.reason !== undefined) {
+          unreadable.push({
+            kind: registration.kind,
+            file: file.path,
+            line,
+            reason: read.reason,
+          });
+          continue;
+        }
+        sites.push({
+          kind: registration.kind,
+          file: file.path,
+          line,
+          endLine: lineOf(source, endOf(source, at.argsFrom, true)),
+          names: read.names,
+          pending: [],
         });
       }
     }
@@ -307,6 +344,85 @@ function readNames(
     names: [],
     reason: "引数が map リテラルではありません（変数や関数の戻り値は読めません）",
   };
+}
+
+/**
+ * 名前だけが並ぶ値を読む（`{'a', 'b'}` / `['a', 'b']` / `Set.of("a", "b")`）。
+ *
+ * **同じファイルの中の変数なら1回だけ辿る**（`static const _roles = {…};` に書いて
+ * `knownRoles: _roles` と渡すのが Dart では普通の形）。それ以上は辿らない＝辿るほど
+ * 「読めたつもりで違うものを読む」危険が増えるので、読めないなら読めないと言う。
+ */
+function readNameSet(source: string, from: number, name: string): ReadResult {
+  const at = skipSpace(source, from);
+  if (new RegExp(`${SELF_PASS.source}${name}\\b`).test(source.slice(at))) {
+    return { names: [], skip: true }; // 受け取ったものを渡しているだけ
+  }
+  return readCollection(source, at, true);
+}
+
+/** 集まりの中身を読む。[hop] のときだけ、同じファイルの変数を1回辿る。 */
+function readCollection(source: string, from: number, hop: boolean): ReadResult {
+  let at = skipSpace(source, from);
+  // Dart / Java の飾り（`const {…}` / `<String>{…}` / `new HashSet<>(…)`）。
+  for (const word of ["const", "final", "new"]) {
+    if (new RegExp(`^${word}\\b`).test(source.slice(at))) {
+      at = skipSpace(source, at + word.length);
+    }
+  }
+  if (source[at] === "<") at = skipSpace(source, close(source, at) + 1);
+  if (source[at] === "{" || source[at] === "[" || source[at] === "(") {
+    return readStrings(source, at);
+  }
+  // 集まりを作る呼び出しだけ読む（`Set.of("a")` / `new Set([…])`）。**それ以外の
+  // 呼び出しは読めない**＝`session.allRoles()` を空の集まりとして読むと、「アプリは
+  // 役割を1つも配っていない」という嘘になる。
+  const call = /^([A-Za-z_$][\w$.]*)\s*(?:<[^>]*>)?\s*\(/.exec(source.slice(at));
+  if (call !== null && COLLECTION_CALLS.test(call[1])) {
+    const open = at + call[0].length - 1;
+    // `new Set(['a'])` は括弧の中がさらに配列。中の1つだけを見る。
+    const inner = splitTop(source, open);
+    if (inner.length === 1 && /^\s*[[{]/.test(inner[0])) {
+      return readCollection(source, at + call[0].length, false);
+    }
+    return readStrings(source, open);
+  }
+  const word = /^[A-Za-z_$][\w$]*/.exec(source.slice(at));
+  if (hop && word !== null) {
+    const found = declaredCollection(source, word[0]);
+    if (found !== null) return readCollection(source, found, false);
+  }
+  return {
+    names: [],
+    reason: "その場に名前が並んでいません（変数や関数の戻り値は読めません）",
+  };
+}
+
+/** 集まりをその場で作る呼び出しの名前（3言語ぶんの定番だけ）。 */
+const COLLECTION_CALLS = /(^|\.)(Set|HashSet|LinkedHashSet|List|ArrayList|asList|of)$/;
+
+/** 同じファイルの `… <name> = ` の右辺の位置（無ければ null）。 */
+function declaredCollection(source: string, name: string): number | null {
+  const match = new RegExp(`\\b${name}\\s*=\\s*`).exec(source);
+  return match === null ? null : match.index + match[0].length;
+}
+
+/** 括弧の中に並んでいる文字列リテラルを読む。 */
+function readStrings(source: string, at: number): ReadResult {
+  const names: string[] = [];
+  for (const raw of splitTop(source, at)) {
+    const text = raw.trim();
+    if (text === "") continue;
+    const value = literal(text);
+    if (value === null) {
+      return {
+        names: [],
+        reason: `文字列リテラルではありません: ${short(text)}`,
+      };
+    }
+    names.push(value);
+  }
+  return { names };
 }
 
 /** `widget.` のような受け手の前置き（素通しの判定に使う）。 */

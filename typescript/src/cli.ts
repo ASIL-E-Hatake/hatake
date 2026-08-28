@@ -119,6 +119,7 @@ import {
   type DefinitionRef,
   type DefinitionRegistry,
   groupRefs,
+  RefKinds,
   refsNeedingRegistration,
   unusedRegistrations,
 } from "./refs.js";
@@ -166,6 +167,8 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --registry に「アプリ側で登録済みのもの」の一覧を渡すと、画面の外との
       辻褄（Repository / プラグイン / 独自の型の名前）も見る。省略しても
       定義の隣の hatake-registry.json があれば拾う。
+      一覧に roles（アプリが配りうる役割）が在れば、**定義にしか無い役割**も言う
+      ＝その役割で出し分けている列やボタンは誰にも見えない。
 
   hatake explain <file> [--page <id>] [--brief] [--json] [--markdown] [--lang ja|en]
       定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人が、AI に
@@ -261,6 +264,8 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       渡す形）。path はファイルでもディレクトリでもよい。**その場に書いてある
       文字列しか読めない**ので、変数や関数から組み立てている登録は読めなかったもの
       として報告し、終了コード 1 にする（黙って落とすと一覧が嘘になるため）。
+      役割は HatakeScope(knownRoles:) に書いた**語彙**を読む（いま配られている
+      roles: は読まない＝ログイン状態なので突き合わせに使えない）。
 
   hatake refs <file...> [--json] [--needs-registration] [--unused]
               [--filled] [--source <実装のパス>] [--pending-as-error]
@@ -1636,7 +1641,9 @@ function refs(files: string[], flags: Args["flags"], io: CliIo): number {
       const needs = collected.some(
         (r) => r.kind === kind && r.name === name && !r.builtIn,
       );
-      io.out(`  ${name}${needs ? "   ← 登録が要る" : ""}`);
+      // 役割は登録するものではなく、アプリが**配る**もの（認可の側の話）。
+      const note = kind === RefKinds.roles ? "アプリが配る必要がある" : "登録が要る";
+      io.out(`  ${name}${needs ? `   ← ${note}` : ""}`);
     }
   }
   return 0;

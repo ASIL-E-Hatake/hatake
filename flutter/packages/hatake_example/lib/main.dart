@@ -89,6 +89,11 @@ class HatakeExampleApp extends StatelessWidget {
           'orderLineRepository': OrderLineRepository.seeded(),
         }),
         renderer: const MaterialRenderer(),
+        // このアプリが配りうる役割の全部（語彙）。いま見ている人の役割（roles:）とは
+        // 別で、こちらは**名前の一覧**。宣言しておくと `hatake validate --registry` が
+        // 「定義にしか無い役割」＝誰にも見えない列やボタンを言える（定義側は
+        // sales_app.yaml の maxRows.byRole が manager を見ている）。
+        knownRoles: const {'manager'},
         // Where `type: export` actions send their document. The framework builds
         // the CSV; getting it to the user is the application's job.
         exportSink: (request) async {

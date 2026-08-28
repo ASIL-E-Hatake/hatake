@@ -14,7 +14,8 @@
     "computedOps",
     "aggregates",
     "dashboardItemTypes",
-    "chartKinds"
+    "chartKinds",
+    "roles"
   ],
   "runtimeKinds": [
     "repositories",
@@ -26,23 +27,53 @@
     "computedOps",
     "aggregates",
     "fieldTypes",
-    "dashboardItemTypes"
+    "dashboardItemTypes",
+    "roles"
   ],
   "sample": {
-    "_comment": "registered は「アプリが registry に渡したもの」。maxLength / trim は組み込みと同じ名前（＝上書き）なので、一覧には出ない。",
+    "_comment": "registered は「アプリが registry に渡したもの」。maxLength / trim は組み込みと同じ名前（＝上書き）なので、一覧には出ない。 roles は「アプリが配りうる役割の語彙」（HatakeScope(knownRoles:)）。いま配られている役割（roles:）ではない＝staff でログインしている間だけの一覧を申告すると、突き合わせた側が「manager はアプリに無い」と言い出す。",
     "registered": {
-      "repositories": ["orderRepository", "customerRepository"],
-      "plugins": ["csvExport"],
-      "validators": ["even", "maxLength"],
-      "converters": ["trim"],
-      "fieldTypes": ["color"],
-      "dashboardItemTypes": []
+      "repositories": [
+        "orderRepository",
+        "customerRepository"
+      ],
+      "plugins": [
+        "csvExport"
+      ],
+      "validators": [
+        "even",
+        "maxLength"
+      ],
+      "converters": [
+        "trim"
+      ],
+      "fieldTypes": [
+        "color"
+      ],
+      "dashboardItemTypes": [],
+      "roles": [
+        "manager",
+        "staff"
+      ]
     },
     "expected": {
-      "repositories": ["customerRepository", "orderRepository"],
-      "plugins": ["csvExport"],
-      "validators": ["even"],
-      "fieldTypes": ["color"]
+      "repositories": [
+        "customerRepository",
+        "orderRepository"
+      ],
+      "plugins": [
+        "csvExport"
+      ],
+      "validators": [
+        "even"
+      ],
+      "fieldTypes": [
+        "color"
+      ],
+      "roles": [
+        "manager",
+        "staff"
+      ]
     }
   }
 }

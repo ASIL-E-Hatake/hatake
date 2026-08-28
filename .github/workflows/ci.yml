@@ -136,8 +136,13 @@ jobs:
           node dist/cli.js refs ../spec/examples/sales_app.yaml --needs-registration
           # 実装から作る「登録済みのもの」の一覧が、コミットしてあるものと一致すること
           # （デモの登録を変えたら再生成が要る＝一覧が古くならない）。
-          node dist/cli.js registry ../flutter/packages/hatake_example/lib/main.dart --out /tmp/hatake-registry.json
-          diff -u --strip-trailing-cr ../flutter/packages/hatake_example/assets/hatake-registry.json /tmp/hatake-registry.json
+          # **/tmp に直接置かない。** `hatake-registry.json` は「定義の隣に在れば黙って
+          # 拾う」ものなので、/tmp に置くと後のステップが /tmp に書いた定義を検証する
+          # ときに**この一覧を勝手に使う**（役割名が違えば警告が出て、そのステップが
+          # 落ちる）。この確認のための一覧は、この確認だけの場所に置く。
+          mkdir -p /tmp/regcheck
+          node dist/cli.js registry ../flutter/packages/hatake_example/lib/main.dart             --out /tmp/regcheck/hatake-registry.json
+          diff -u --strip-trailing-cr ../flutter/packages/hatake_example/assets/hatake-registry.json /tmp/regcheck/hatake-registry.json
           # 同じ定義どうしの diff は「変わりません」で終了コード 0。
           node dist/cli.js diff ../spec/examples/sales_app.yaml ../spec/examples/sales_app.yaml --caution-as-error
           # コミットしてある生成物と一致すること（vitest でも見ているが、CLI 経由でも）。
@@ -808,6 +813,110 @@ jobs:
           YAML
           node dist/cli.js diagram /tmp/bulk-open.yaml --json > /tmp/bulk-roles.json
           grep -q 'まとめて実行ができる画面' /tmp/bulk-roles.json
+
+      - name: Role names in the definition are matched against the application
+        working-directory: typescript
+        run: |
+          set -e
+          # 定義の中で綴りが揃っていても、アプリが配る名前と違えば**その役割で
+          # 出し分けている所は誰にも見えない**。画面を見ても気づけないので、
+          # 名前の一覧どうしを突き合わせる。
+          mkdir -p /tmp/roles-app
+          cat > /tmp/roles-app/app.yaml <<'YAML'
+          app:
+            id: sales
+            title: 販売管理
+            menu:
+              - { id: costs, label: 原価, page: cost_search, roles: [manager] }
+            pages:
+              - type: search
+                id: cost_search
+                title: 原価照会
+                repository: costRepository
+                search:
+                  filters: [{ field: itemCode, label: 品目コード }]
+                table:
+                  columns:
+                    - { field: itemCode, label: 品目コード, sortable: true }
+                    - { field: cost, label: 原価, roles: [hr] }
+                actions:
+                  - id: approve
+                    type: plugin
+                    plugin: approveCosts
+                    label: 一括承認
+                    scope: selection
+                    maxRows: { default: 20, byRole: { branch: 5 } }
+                    confirm: { message: '{count} 件を承認します' }
+                    onError: { message: '{failed} 件はだめでした' }
+                    batchSize: 5
+          YAML
+          # アプリ側は「配りうる役割」を宣言する（いま配られている roles: ではない）。
+          cat > /tmp/roles-app/main.dart <<'DART'
+          void main() {
+            runApp(HatakeScope(
+              repositories: RepositoryRegistry({'costRepository': CostRepository()}),
+              actions: ActionRegistry({'approveCosts': (ctx) async {}}),
+              renderer: const MaterialRenderer(),
+              // このアプリが配りうる役割の全部。hr は書き忘れている。
+              knownRoles: const {'manager', 'branch'},
+              roles: session.roles,
+              child: const App(),
+            ));
+          }
+          DART
+          # 1. 実装から一覧を作る（役割は knownRoles を読む）。
+          node dist/cli.js registry /tmp/roles-app/main.dart --json > /tmp/roles-reg.json
+          node -e '
+            const fs = require("fs");
+            const reg = JSON.parse(fs.readFileSync("/tmp/roles-reg.json", "utf8"));
+            const roles = (reg.roles ?? []).join(",");
+            if (roles !== "branch,manager") {
+              console.error("役割を読めていない: " + roles);
+              process.exit(1);
+            }
+            delete reg.unreadable;
+            fs.writeFileSync("/tmp/roles-app/hatake-registry.json", JSON.stringify(reg));
+          '
+          # 2. 定義にしか無い役割は「誰にも見えない」と言う（近い名前も出す）。
+          if node dist/cli.js validate --warn-as-error --json /tmp/roles-app/app.yaml \
+               > /tmp/roles-warn.json 2>&1; then
+            echo "配られていない役割で通ってしまった"; exit 1
+          fi
+          grep -q 'role-not-in-app' /tmp/roles-warn.json
+          grep -q 'アプリが配る役割の中にありません' /tmp/roles-warn.json
+          # 役割ごとの件数（byRole）に書いた役割は、アプリが配っているので黙る。
+          if grep -q 'byRole.branch' /tmp/roles-warn.json; then
+            echo "アプリが配っている役割を指摘してしまった"; exit 1
+          fi
+          # 3. アプリ側に足せば黙る（どちら側を直しても直る）。
+          node -e '
+            const fs = require("fs");
+            const path = "/tmp/roles-app/hatake-registry.json";
+            const reg = JSON.parse(fs.readFileSync(path, "utf8"));
+            reg.roles = [...reg.roles, "hr"].sort();
+            fs.writeFileSync(path, JSON.stringify(reg));
+          '
+          node dist/cli.js validate --warn-as-error /tmp/roles-app/app.yaml
+          # 4. 役割は「定義が外に要求しているもの」に並ぶ（配る必要がある、と言う）。
+          node dist/cli.js refs /tmp/roles-app/app.yaml > /tmp/roles-refs.log
+          grep -q 'roles:' /tmp/roles-refs.log
+          grep -q 'アプリが配る必要がある' /tmp/roles-refs.log
+          # 5. 逆向きの棚卸しには出さない（消す相手ではない）。
+          node dist/cli.js refs /tmp/roles-app/app.yaml --unused --json > /tmp/roles-unused.json
+          if grep -q '"roles"' /tmp/roles-unused.json; then
+            echo "役割を「使われていない登録」に出してしまった"; exit 1
+          fi
+          # 6. 読めないものは黙って落とさない（空の一覧＝「役割が無い」の嘘を作らない）。
+          cat > /tmp/roles-app/dyn.dart <<'DART'
+          final scope = HatakeScope(knownRoles: session.allRoles(), child: child);
+          DART
+          if node dist/cli.js registry /tmp/roles-app/dyn.dart > /tmp/roles-dyn.log 2>&1; then
+            echo "読めない語彙で成功してしまった"; exit 1
+          fi
+          grep -q '変数や関数の戻り値は読めません' /tmp/roles-dyn.log
+          # デモも語彙を宣言している（同梱の一覧と実装が一致することは vitest が見る）。
+          grep -q 'knownRoles' ../flutter/packages/hatake_example/lib/main.dart
+          grep -q '"roles"' ../flutter/packages/hatake_example/assets/hatake-registry.json
 
       - name: Roles are counted, and every drafted value can be applied
         working-directory: typescript

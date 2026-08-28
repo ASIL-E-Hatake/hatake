@@ -313,3 +313,60 @@ describe("デモアプリとの辻褄", () => {
     expect(lists).toEqual(scan.registry);
   });
 });
+
+/**
+ * 役割の語彙（`HatakeScope(knownRoles:)`）を読む。
+ *
+ * 読む相手を `roles:`（いま見ている人の役割）にしないのが要点。あれはログイン状態
+ * なので、突き合わせに使うと「staff で動かしたら manager はアプリに無い」と言い出す。
+ */
+describe("アプリが配りうる役割を読む", () => {
+  const scanOf = (source: string, path = "main.dart") =>
+    scanRegistrations([{ path, source }]);
+
+  it("その場に並んでいれば読む（Dart の集合・型つき・const も）", () => {
+    expect(
+      scanOf(`HatakeScope(knownRoles: {'staff', 'manager'}, roles: session.roles)`)
+        .registry.roles,
+    ).toEqual(["manager", "staff"]);
+    expect(
+      scanOf(`HatakeScope(knownRoles: const <String>{'admin', 'hr'})`).registry.roles,
+    ).toEqual(["admin", "hr"]);
+    expect(
+      scanOf(`const scope = { knownRoles: ["viewer", "editor"] };`, "app.ts").registry
+        .roles,
+    ).toEqual(["editor", "viewer"]);
+    expect(
+      scanOf(`HatakeScope(knownRoles: Set.of("a", "b"))`).registry.roles,
+    ).toEqual(["a", "b"]);
+  });
+
+  it("同じファイルの変数なら1回だけ辿る（Dart で普通の書き方）", () => {
+    const scan = scanOf(`class App {
+  static const _roles = {'staff', 'manager'};
+  Widget build(context) => HatakeScope(knownRoles: _roles, child: child);
+}`);
+    expect(scan.registry.roles).toEqual(["manager", "staff"]);
+    expect(scan.unreadable).toEqual([]);
+  });
+
+  it("その場に無ければ**読めないと言う**（空の一覧として扱わない）", () => {
+    const scan = scanOf(`HatakeScope(knownRoles: session.allRoles(), child: child)`);
+    expect(scan.registry.roles).toBeUndefined();
+    expect(scan.unreadable).toHaveLength(1);
+    expect(scan.unreadable[0].kind).toBe("roles");
+    expect(scan.unreadable[0].reason).toContain("変数や関数の戻り値は読めません");
+  });
+
+  it("いま配られている役割（roles:）は読まない（ログイン状態なので）", () => {
+    const scan = scanOf(`HatakeScope(roles: {'staff'}, child: child)`);
+    expect(scan.registry.roles).toBeUndefined();
+    expect(scan.unreadable).toEqual([]);
+  });
+
+  it("受け取ったものを渡しているだけなら、読めない扱いにもしない", () => {
+    const scan = scanOf(`HatakeScope(knownRoles: knownRoles, child: child)`);
+    expect(scan.registry.roles).toBeUndefined();
+    expect(scan.unreadable).toEqual([]);
+  });
+});

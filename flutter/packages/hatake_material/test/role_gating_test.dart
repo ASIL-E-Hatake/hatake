@@ -84,4 +84,35 @@ void main() {
     expect(find.byKey(const Key('hatake.action.export')), findsOneWidget);
     expect(find.text('極秘'), findsOneWidget);
   });
+
+  /// 役割の**語彙**（`knownRoles`）は、いま配られている役割（`roles`）とは別のもの。
+  ///
+  /// 語彙を宣言しておくと2つ効く。道具の側は「定義にしか無い役割」＝誰にも見えない
+  /// 列やボタンを言えるようになり（`registrySnapshot` → `validate --registry`）、
+  /// 画面の側は**アプリ側の綴り違い**を開発中に言える（`manager` を `manger` で
+  /// 配っていても、画面を見ても分からない＝見えないのが正しい機能なので）。
+  testWidgets('宣言した語彙に無い役割を配ったら、開発中に気づける', (tester) async {
+    expect(
+      () => HatakeScope(
+        repositories: RepositoryRegistry({'repo': _Repo()}),
+        renderer: const MaterialRenderer(),
+        knownRoles: const {'admin', 'staff'},
+        roles: const {'admn'},
+        child: const SizedBox.shrink(),
+      ),
+      throwsA(isA<AssertionError>()),
+    );
+  });
+
+  testWidgets('語彙を宣言していなければ、何も言わない（宣言は任意）', (tester) async {
+    expect(
+      () => HatakeScope(
+        repositories: RepositoryRegistry({'repo': _Repo()}),
+        renderer: const MaterialRenderer(),
+        roles: const {'admn'},
+        child: const SizedBox.shrink(),
+      ),
+      returnsNormally,
+    );
+  });
 }
