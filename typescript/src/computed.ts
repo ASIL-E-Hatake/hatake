@@ -16,7 +16,8 @@
 // `field` を使う側の前提: 行が**親のレコードと一緒に来ている**こと。`source` を持つ
 // subTable はページ送りで別に持つので、ここには行が無い（`hatake validate` が言う）。
 
-import { builtinAggregates, rowsMatching } from "./aggregate.js";
+import { builtinAggregates, rowsMatching, rowsSorted, rowsTop } from "./aggregate.js";
+import { MessageResolver } from "./messageResolver.js";
 
 export type ComputedFn = (
   computed: Record<string, unknown>,
@@ -44,9 +45,11 @@ const foldsRows = (c: Record<string, unknown>): boolean =>
   typeof c.field === "string" && c.field !== "";
 
 /**
- * `field` が指す明細の行。`where` があれば、**畳む前に**絞る。
+ * `field` が指す明細の行。**畳む前に** `where` で絞り、`sort` で並べる。
  *
  * 条件は行1件に対して評価する（`{ mode: create }` は行では分からないので渡さない）。
+ * 上位だけ採る（`limit`）のは**並べたあと**なので、ここではまだ採らない（`join` は
+ * 「隠れた行が何件あるか」を言うために、採る前の数も要る）。
  */
 function rowsOf(
   c: Record<string, unknown>,
@@ -59,7 +62,7 @@ function rowsOf(
           typeof row === "object" && row !== null && !Array.isArray(row),
       )
     : [];
-  return rowsMatching(rows, c.where);
+  return rowsSorted(rowsMatching(rows, c.where), c.sort);
 }
 
 /**
@@ -76,10 +79,22 @@ function fold(
   const aggregate = builtinAggregates[op];
   if (aggregate === undefined) return null;
   const of = typeof c.of === "string" ? c.of : undefined;
-  return aggregate(rowsOf(c, record), of);
+  // `limit` は数を畳むときにも効く（「金額の大きい順に3件の合計」）。
+  return aggregate(rowsTop(rowsOf(c, record), c.limit), of);
 }
 
-export const builtinComputeds: Record<string, ComputedFn> = {
+/**
+ * 組込み計算オペレーション。名前は各言語版で共通。
+ *
+ * `messages` を受け取るのは `join` だけ（上位だけ並べたときに「ほか N 件」と言う）。
+ * 枠組みが書く文は1か所（MessageResolver）に置く＝差し替えとロケール切替の口を
+ * 2つ持たない。バリデータ（builtinValidators）と同じ形。
+ */
+export const builtinComputeds = (
+  messages?: MessageResolver,
+): Record<string, ComputedFn> => {
+  const m = messages ?? new MessageResolver();
+  return {
   concat: (c, r) => {
     const sep = c.separator != null ? String(c.separator) : "";
     return fieldsOf(c)
@@ -114,19 +129,28 @@ export const builtinComputeds: Record<string, ComputedFn> = {
     const of = typeof c.of === "string" ? c.of : undefined;
     if (of === undefined) return null;
     const sep = c.separator != null ? String(c.separator) : ", ";
-    return rowsOf(c, r)
-      .map((row) => str(row[of]))
-      .filter((s) => s !== "")
-      .join(sep);
+    const rows = rowsOf(c, r);
+    const shown = rowsTop(rows, c.limit);
+    const values = shown.map((row) => str(row[of])).filter((s) => s !== "");
+    // 上位だけ並べたときは**黙って切らない**。3件だけ出して終わると、読む人は
+    // 「明細は3行」と読む。何件隠れているかを添える（文言は定義で変えられる。
+    // `overflow: ""` と書けば何も足さない＝黙って切ると決めたことが読める）。
+    const hidden = rows.length - shown.length;
+    if (hidden <= 0 || values.length === 0) return values.join(sep);
+    const template =
+      c.overflow != null ? String(c.overflow) : m.resolve("computed.more");
+    if (template === "") return values.join(sep);
+    return [...values, template.replace(/\{count\}/g, String(hidden))].join(sep);
   },
+  };
 };
 
 /** 計算オペレーションを名前で解決する。register で拡張可能。 */
 export class ComputedRegistry {
   private readonly ops: Record<string, ComputedFn>;
 
-  constructor(custom?: Record<string, ComputedFn>) {
-    this.ops = { ...builtinComputeds, ...custom };
+  constructor(custom?: Record<string, ComputedFn>, messages?: MessageResolver) {
+    this.ops = { ...builtinComputeds(messages), ...custom };
   }
 
   compute(

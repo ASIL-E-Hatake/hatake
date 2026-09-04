@@ -94,7 +94,7 @@ export const builtInNames: Record<RefKind, string[]> = {
   validators: Object.values(ValidatorTypes),
   formatters: Object.keys(builtinFormatters),
   converters: Object.keys(builtinConverters),
-  computedOps: Object.keys(builtinComputeds),
+  computedOps: Object.keys(builtinComputeds()),
   aggregates: Object.values(AggregateOps),
   dashboardItemTypes: Object.values(DashboardItemTypes),
   chartKinds: Object.values(ChartKinds),

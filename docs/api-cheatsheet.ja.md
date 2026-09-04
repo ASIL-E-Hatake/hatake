@@ -85,6 +85,19 @@ npx hatake types page.yaml --lang java --out gen/            # ネイティブ�
 `same`＝いまの画面の続き。並べないアプリでは無視され、`validate` が `open-without-tabs` と
 言う）。
 
+**1項目で複数落ちても出るのは1件**。順は「**自分の形が先、他の項目に依るものが後**」（`compare` だけ後ろ）＝「開始日以上に」より先に「形式が正しくありません」と言う（形が読めない値を比べた結果は当てにならない）。自分の形どうしは書いた順。
+
+**明細の行どうしの規則**は `unique`（行の中の検証は1行ずつしか見ないので、「同じ品名が2行にある」は誰も気づけない）。
+
+```yaml
+- field: lines
+  label: 明細
+  type: subTable
+  validators: [{ type: unique, of: item }]   # 同じ品名の行を2つ書けない
+```
+
+比べるのは文字にした値（前後の空白は無視）・空の値は飛ばす（入れかけの行が「重複」にならない）・エラーは**明細の項目**に付いて「品名 が同じ行があります（3 行目）」と何行目かを言う（1から数える）。`source` を持つ明細では判定しない（行が揃っていないので、重なっていないとは言えない）。
+
 **いま押せるかどうかも定義で言える**: `enabledWhen`（条件の書き方は `visibleWhen` と同じ）。
 判定する相手は置き場所で決まる＝行アクションはその行、一括（`scope: selection`）は**選んだ行
 全部**（1件でも合わなければ押せない）、入力する画面（`form` / `wizard`）は**いま入力されている
@@ -383,6 +396,8 @@ sections:
                 where: { field: cancelled, operator: notEquals, value: true } } }
 ```
 
+* **上位だけ**畳む・並べるのは `sort` ＋ `limit`（「金額の大きい順に3件」）。順番は `where`（絞る）→ `sort`（並べる）→ `limit`（採る）。並べ方は `sort: { field, ascending }`＝**ダッシュボードのカードと帳票と同じ語彙**。値が無い行は向きに関わらず後ろ・同じ値なら元の順（3版で同じ答えにするため）
+* `join` を `limit` で切ったときは**黙って切らない**＝「ほか N 件」が付く（`overflow: "他 {count} 品目"` で言い換え、`overflow: ""` で「黙って切る」と決めたことが定義から読める）。`limit` は数を畳むときにも効く（「上位3件の合計」）
 * `of` は `count` 以外で必須（無いと空欄になる）。行が1件も無いとき `sum`/`count` は 0、`avg`/`min`/`max` は空、`join` は空文字
 * `where` は**行を絞る**指定（行1件に対して判定する）。`{ mode: … }` は行では常に false ＝1件も残らない
 * 同じ `where` が**項目間の検証**でも使える（`compare` の `aggregate` + `of` + `where`）。計算が取消行を外すなら、検証も同じ条件で外す（片方だけだと必ず食い違う）
@@ -443,6 +458,9 @@ actions:
 | `email` | — | メール形式 |
 | `postalCode` | — | 郵便番号形式 |
 | `compare` | `operator` / `field`（＋`aggregate` / `of`） | **他の項目と比べる**（`{ type: compare, operator: gte, field: startDate }` ＝開始日以上。`aggregate: sum, of: amount` で明細の和と比べる） |
+| `unique` | `of`（行の項目名） | 明細（`subTable`）の**行どうし**が重ならない（`{ type: unique, of: item }`。書くのは**明細の項目**＝判定する相手は行の集合） |
+
+**出るのは1項目1件で、順は「自分の形が先・他の項目に依るものが後」**（`compare` だけ後ろ）。自分の形どうしは書いた順。
 
 `message` を足すと既定（日本語）メッセージを上書き。全体のロケール切替・文言差し替えは `MessageResolver`（既定 `ja`）を `ValidatorRegistry(custom, messages)` に注入する（Dart/TS/Java の3言語で同名・同挙動）。
 

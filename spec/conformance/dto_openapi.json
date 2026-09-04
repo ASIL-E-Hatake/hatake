@@ -1,5 +1,5 @@
 {
-  "_comment": "OpenAPI emitter: each language parses `page`, calls deriveDto(page) then toOpenApi(spec, options), and must produce exactly `expected`. Scalars are compared as strings to absorb numeric type differences. Rules pinned here: OpenAPI 3.1 (its Schema Object IS JSON Schema 2020-12, so the Phase 2 output drops in unchanged); schemas live under components.schemas so $ref points there; `basePath` comes from the caller because the DSL knows nothing about URLs, and omitting it emits components.schemas with no `paths` at all; an operation is emitted only when the shapes it needs exist, so a read-only search page yields just the list operation; the list operation's query parameters are the page's filters plus the fixed RepositoryQuery contract (page/pageSize/sortField/sortAscending); ValidationErrorResponse mirrors ValidationResult and is only added when the page accepts a request.",
+  "_comment": "OpenAPI emitter: each language parses `page`, calls deriveDto(page) then toOpenApi(spec, options), and must produce exactly `expected`. Scalars are compared as strings to absorb numeric type differences. Rules pinned here: OpenAPI 3.1 (its Schema Object IS JSON Schema 2020-12, so the Phase 2 output drops in unchanged); schemas live under components.schemas so $ref points there; `basePath` comes from the caller because the DSL knows nothing about URLs, and omitting it emits components.schemas with no `paths` at all; an operation is emitted only when the shapes it needs exist, so a read-only search page yields just the list operation; the list operation's query parameters are the page's filters plus the fixed RepositoryQuery contract (page/pageSize/sortField/sortAscending); ValidationErrorResponse mirrors ValidationResult and is only added when the page accepts a request; a member the server decides (`readOnly`) or the screen computes (`computed`) carries `readOnly: true`, which reads as 「the server may ignore the value it receives and derive it from the definition instead」.",
   "cases": [
     {
       "name": "crud page with a basePath yields the full CRUD surface",
@@ -295,7 +295,8 @@
                   "type": "string"
                 },
                 "id": {
-                  "type": "string"
+                  "type": "string",
+                  "readOnly": true
                 }
               }
             },
@@ -314,7 +315,8 @@
                   "type": "string"
                 },
                 "id": {
-                  "type": "string"
+                  "type": "string",
+                  "readOnly": true
                 }
               }
             },

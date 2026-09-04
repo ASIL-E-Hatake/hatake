@@ -37,6 +37,8 @@ function runFixture(name: string, file: string): void {
 
 runFixture("subTable validation", "subtable_validation.json");
 runFixture("subTable with source is skipped", "subtable_source_validation.json");
+// 行の中ではなく**行どうし**の規則（同じ品名が2行にある）。
+runFixture("cross-row rules (unique)", "row_rules_validation.json");
 
 describe("subTable field parsing", () => {
   const page = parsePageJson(

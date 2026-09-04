@@ -1069,7 +1069,8 @@ computed: { op: sum, fields: [price, tax] }
 
 Two modes, chosen by which key is written: `fields` folds values of the **same record**
 (①), while `field` + `of` folds the **rows of a subTable** (②, the vertical total).
-Mode ② also takes `where`, which keeps only some of the rows.
+Mode ② also takes `where` to keep only some rows, `sort` to order them and `limit` to fold
+just the first ones.
 
 ```yaml
 computed: { op: sum, fields: [subtotal, tax] }              # ①
@@ -1078,7 +1079,24 @@ computed: { op: count, field: lines }                       # ②
 computed: { op: join, field: lines, of: item }              # ② text, not a number
 computed: { op: sum, field: lines, of: amount,              # ② fold only some rows
             where: { field: cancelled, operator: notEquals, value: true } }
+computed: { op: join, field: lines, of: item, separator: "、",   # ② the three largest
+            sort: { field: amount, ascending: false }, limit: 3 }
 ```
+
+| Key | Type | Meaning |
+|---|---|---|
+| `sort` | `{ field, ascending }` | ② Order the rows before folding, so `limit` takes the top ones. Same vocabulary as a dashboard card and a report. |
+| `limit` | integer (≥ 1) | ② Fold / list only the first rows, after `where` and `sort`. |
+| `overflow` | string | ② What `join` appends when `limit` left rows out. `{count}` is the number of **hidden** rows. Defaults to the framework's wording; `""` appends nothing. |
+
+The order is fixed: `where` (keep) → `sort` (order) → `limit` (take). Any other order would
+make 「the three largest」 a different three. Values compare the way `compare` compares them
+(as numbers when both read as numbers, as text otherwise); **rows with no value go last**
+either way, and equal values keep their original order, so the answer does not depend on
+whether a language's sort is stable. `limit` also applies to the numeric folds (「the total
+of the three largest」). When `join` does cut rows it **does not cut them silently**: it
+appends 「ほか N 件」 (「N more」), which `overflow` can reword — and `overflow: ""` puts the
+decision to truncate silently in the definition, where it can be read.
 
 Mode ② borrows both the vocabulary and the implementation of the dashboard `aggregate`
 (this framework has one aggregate, not two). `join` is not an aggregate — it produces text
@@ -1120,10 +1138,19 @@ parameter.
 | `email` | — | Must be a valid email address. |
 | `postalCode` | — | Japanese postal code (`1234567` or `123-4567`). |
 | `compare` | `operator` / `field` (+ `aggregate` / `of`) | **Compares with another field** (below). |
+| `unique` | `of` (a row field) | No two **rows** of a `subTable` may repeat that value (below). |
 
 `message` overrides the default (Japanese) message. To replace the defaults
 wholesale — including for another locale — inject a `MessageResolver` into the
 `ValidatorRegistry`.
+
+**One error per field, whatever the count.** The order is **the field's own shape first,
+anything that depends on another field last** (only `compare` is deferred): being told
+「開始日以上にしてください」 before 「形式が正しくありません」 hides which one to fix first, and
+comparing a value whose shape is unreadable proves nothing anyway. Among the own-shape
+rules the order stays **as written** — that part is the author's call. That all three
+editions report the same one is pinned by
+[`spec/conformance/validation_order.json`](conformance/validation_order.json).
 
 ### Cross-field validation (`compare`)
 
@@ -1169,6 +1196,44 @@ Decisions:
 * That all three editions answer the same is pinned by
   [`spec/conformance/cross_field_validation.json`](conformance/cross_field_validation.json) —
   the file is itself a runnable example
+
+### Cross-row validation (`unique`)
+
+A rule that one row cannot express (「the same item is on two rows」) is written with
+`unique`. What it judges is the **set of rows**, so it goes on the **subTable field
+itself**, not inside the row (`fields[].validators`).
+
+```yaml
+- field: lines
+  label: 明細
+  type: subTable
+  validators:
+    - { type: unique, of: item }      # no two rows with the same item
+  fields:
+    - { field: item, label: 品名, required: true }
+    - { field: qty, label: 数量, type: number }
+```
+
+| Parameter | Meaning |
+|---|---|
+| `of` | The **row field** that must not repeat. Required (without it nothing is judged) |
+
+Decisions:
+
+* Values are compared **as text, ignoring surrounding spaces** (what the screen shows is
+  what counts, so `1` and `"1"` are the same — and a row that forgot `normalize: [trim]`
+  is still caught)
+* **Empty values are skipped** (a half-typed row must not count as a duplicate)
+* The error lands on the **subTable field** — the rule is about the set of rows, so it does
+  not pick a guilty row; which rows repeat is named in the message (「品名 が同じ行が
+  あります（3 行目）」, counted **from 1**)
+* A subTable with `source` is not judged: its rows are paged, so they are not all here —
+  the rows on screen cannot prove that nothing repeats (`validate` says so)
+* Writing mistakes (no `of`, a row field that does not exist, a field that is not a
+  subTable) would pass **silently**, so `hatake validate` warns (`unique-without-of`,
+  `unique-unknown-field`, `unique-without-subtable`, `unique-on-paged-subtable`)
+* That all three editions answer the same is pinned by
+  [`spec/conformance/row_rules_validation.json`](conformance/row_rules_validation.json)
 
 ## action
 
@@ -1643,6 +1708,14 @@ broken generator fails analysis.
 | `unknown-open` | `action.open` is neither `same` nor `tab` — it silently falls back to `same` |
 | `open-without-navigate` | `open` on an action that does not navigate — there is nothing to open |
 | `open-without-tabs` | `open: tab` while the definition does not open screens side by side (`app.navigation: tabs`) — it goes deeper in the current screen instead |
+| `computed-sort-without-rows` | `sort` / `limit` / `overflow` on a same-record fold (`fields`) — there are no rows to order, so they do nothing |
+| `computed-sort-without-field` | `sort` with no `field` — no ordering happens and the **first rows in row order** are taken as the top ones (the values look plausible, so the screen cannot show it) |
+| `computed-sort-unknown-field` | `sort.field` is not a row field — every row counts as "no value", so no ordering happens |
+| `computed-overflow-unused` | `overflow` without a `limit`, or on a numeric fold — that sentence never appears |
+| `unique-without-of` | `unique` with no `of` — nothing is judged |
+| `unique-unknown-field` | the `of` of a `unique` is not a row field — no row yields a value, so it **passes silently** |
+| `unique-without-subtable` | `unique` on a field that is not a `subTable` — there are no rows to look at, so it **passes silently** |
+| `unique-on-paged-subtable` | `unique` on a subTable with `source` — the rows are not all here, so it **passes silently** |
 | `role-not-in-app` | a role name in the definition is **not among the roles the application hands out** — whatever it gates is **visible to nobody** (and a per-role count written for it applies to nobody) |
 
 The list passed to `--registry` has the same shape `refs --needs-registration

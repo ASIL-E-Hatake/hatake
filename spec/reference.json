@@ -1535,7 +1535,7 @@
           "key": "computed",
           "type": "object",
           "required": false,
-          "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max — the same aggregate vocabulary as dashboards and `compare` — plus `join`, which lists the rows as one string). Row-folding accepts `where` to keep only some rows. Derived once, in declaration order. Extensible via ComputedRegistry.",
+          "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max — the same aggregate vocabulary as dashboards and `compare` — plus `join`, which lists the rows as one string). Row-folding accepts `where` to keep only some rows, `sort` to order them and `limit` to fold just the first ones (in that order). Derived once, in declaration order. Extensible via ComputedRegistry.",
           "nodes": [
             "field.computed"
           ]
@@ -1577,7 +1577,7 @@
       ]
     },
     "field.computed": {
-      "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max — the same aggregate vocabulary as dashboards and `compare` — plus `join`, which lists the rows as one string). Row-folding accepts `where` to keep only some rows. Derived once, in declaration order. Extensible via ComputedRegistry.",
+      "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max — the same aggregate vocabulary as dashboards and `compare` — plus `join`, which lists the rows as one string). Row-folding accepts `where` to keep only some rows, `sort` to order them and `limit` to fold just the first ones (in that order). Derived once, in declaration order. Extensible via ComputedRegistry.",
       "closed": false,
       "pageKinds": [
         "crud",
@@ -1652,6 +1652,66 @@
           "type": "string",
           "required": false,
           "description": "What goes between the joined values. Default: empty for `concat` (it packs values of one record, like a name), \", \" for `join` (it lists rows, which are unreadable packed together)."
+        },
+        {
+          "key": "sort",
+          "type": "object",
+          "required": false,
+          "description": "Row-folding mode only: order the rows before folding, so `limit` takes the top ones (the three largest amounts). Same shape as the sort of a dashboard card and a report. Values compare as numbers when both read as numbers and as text otherwise (the rule `compare` uses); rows with no value go last either way, and equal values keep their original order.",
+          "nodes": [
+            "field.computed.sort"
+          ]
+        },
+        {
+          "key": "limit",
+          "type": "integer",
+          "required": false,
+          "description": "Row-folding mode only: fold just the first rows, after `where` and `sort`. A summary field has a fixed width, so listing every row overflows it. `join` says how many rows it left out (see `overflow`).",
+          "minimum": 1,
+          "values": [
+            "3"
+          ],
+          "open": true
+        },
+        {
+          "key": "overflow",
+          "type": "string",
+          "required": false,
+          "description": "`join` with a `limit` only: what to append when rows were left out. `{count}` is the number of hidden rows, not the total. Defaults to the framework's wording (Japanese, via MessageResolver); an empty string appends nothing, which reads as a decision to truncate silently.",
+          "values": [
+            "他 {count} 品目"
+          ],
+          "open": true
+        }
+      ]
+    },
+    "field.computed.sort": {
+      "description": "Row-folding mode only: order the rows before folding, so `limit` takes the top ones (the three largest amounts). Same shape as the sort of a dashboard card and a report. Values compare as numbers when both read as numbers and as text otherwise (the rule `compare` uses); rows with no value go last either way, and equal values keep their original order.",
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "field.computed"
+      ],
+      "keys": [
+        {
+          "key": "field",
+          "type": "string",
+          "required": false
+        },
+        {
+          "key": "ascending",
+          "type": "boolean",
+          "required": false,
+          "default": true
         }
       ]
     },
@@ -2771,7 +2831,7 @@
       ]
     },
     "validator": {
-      "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters: maxLength / minLength / min / max take 'value', pattern takes 'pattern', and compare takes 'operator' (equals / notEquals / gt / gte / lt / lte) plus 'field' (the field to compare with), optionally 'aggregate' + 'of' to fold a subTable into a number, and 'where' to fold only some of its rows (the same row filter as `computed`).",
+      "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters: maxLength / minLength / min / max take 'value', pattern takes 'pattern', compare takes 'operator' (equals / notEquals / gt / gte / lt / lte) plus 'field' (the field to compare with), optionally 'aggregate' + 'of' to fold a subTable into a number, and 'where' to fold only some of its rows (the same row filter as `computed`), and unique takes 'of' (a row field that must not repeat). compare and unique are the ones that look beyond the value itself: compare reads another field of the same record, unique reads every row of a subTable.",
       "closed": false,
       "pageKinds": [
         "crud",
@@ -2791,7 +2851,7 @@
           "key": "type",
           "type": "string",
           "required": true,
-          "description": "Validator type (open string). Built-ins: required, maxLength, minLength, pattern, min, max, email, postalCode, compare. compare is the cross-field one: it reads another field of the same record (see the node description for its parameters).",
+          "description": "Validator type (open string). Built-ins: required, maxLength, minLength, pattern, min, max, email, postalCode, compare, unique. compare is the cross-field one (it reads another field of the same record) and unique is the cross-row one (it reads every row of a subTable, so it belongs on the subTable field itself); see the node description for their parameters.",
           "values": [
             "required",
             "maxLength",
@@ -2801,7 +2861,8 @@
             "max",
             "email",
             "postalCode",
-            "compare"
+            "compare",
+            "unique"
           ],
           "open": true
         },
@@ -2951,6 +3012,7 @@
     ],
     "ascending": [
       "dashboardItem.sort",
+      "field.computed.sort",
       "report.sort"
     ],
     "batchSize": [
@@ -3023,6 +3085,7 @@
       "dashboardValue",
       "field",
       "field.computed",
+      "field.computed.sort",
       "filter",
       "report.sort",
       "reportGroup",
@@ -3117,6 +3180,7 @@
     ],
     "limit": [
       "dashboardItem",
+      "field.computed",
       "optionsSource",
       "report"
     ],
@@ -3181,6 +3245,9 @@
     ],
     "orientation": [
       "paper"
+    ],
+    "overflow": [
+      "field.computed"
     ],
     "page": [
       "action",
@@ -3289,6 +3356,7 @@
     ],
     "sort": [
       "dashboardItem",
+      "field.computed",
       "report"
     ],
     "sortable": [

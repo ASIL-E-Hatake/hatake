@@ -23,6 +23,9 @@ public final class MessageResolver {
                     Map.entry("pattern", "形式が正しくありません"),
                     Map.entry("email", "メールアドレスの形式が正しくありません"),
                     Map.entry("postalCode", "郵便番号の形式が正しくありません"),
+                    // 明細の行どうしの検証（unique）。{label} は行の項目の<b>ラベル</b>、
+                    // {rows} は重なっている行の番号（1から数える）。
+                    Map.entry("unique", "{label} が同じ行があります（{rows} 行目）"),
                     // 項目間の検証（compare）。{target} には比べる相手の<b>ラベル</b>が入る。
                     Map.entry("compare.equals", "{target}と同じ値にしてください"),
                     Map.entry("compare.notEquals", "{target}と違う値にしてください"),
@@ -30,6 +33,9 @@ public final class MessageResolver {
                     Map.entry("compare.gte", "{target}以上にしてください"),
                     Map.entry("compare.lt", "{target}より小さい値にしてください"),
                     Map.entry("compare.lte", "{target}以下にしてください"),
+                    // 上位だけ並べた計算項目（computed の limit）で、出さなかった行の数。
+                    // {count} は<b>隠れた行数</b>（全体ではない）。定義の overflow で上書き可。
+                    Map.entry("computed.more", "ほか {count} 件"),
                     // 1回で動かせる件数の上限（action.maxRows）を超えて届いたとき。
                     // 画面は押させないので、これが出るのは API を直接叩かれたとき。
                     Map.entry("bulk.tooMany", "1回に実行できるのは {value} 件までです（{count} 件届きました）")));

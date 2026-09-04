@@ -95,6 +95,84 @@ public final class Aggregates {
         return kept;
     }
 
+    /** 値が無いとみなすもの（並べるときに<b>後ろ</b>へ回す）。 */
+    private static boolean isBlank(Object v) {
+        return v == null || (v instanceof String str && str.trim().isEmpty());
+    }
+
+    /**
+     * 2つの値の大小。比べ方は compare の検証と同じ＝<b>両方が数として読めれば数、
+     * そうでなければ文字</b>（ISO の日付は文字の大小が日付の前後になる）。
+     *
+     * <p>値が無い行（null / 空文字）は、向きに関わらず<b>後ろ</b>。「金額の大きい順に
+     * 3件」で金額の無い行が上に来ると、読む人は「これが上位」と読み違える。
+     */
+    private static int compareValues(Object a, Object b, boolean ascending) {
+        boolean aBlank = isBlank(a);
+        boolean bBlank = isBlank(b);
+        if (aBlank || bBlank) {
+            if (aBlank && bBlank) {
+                return 0;
+            }
+            return aBlank ? 1 : -1;
+        }
+        Double x = toNum(a);
+        Double y = toNum(b);
+        int order = x != null && y != null
+                ? Double.compare(x, y)
+                : String.valueOf(a).compareTo(String.valueOf(b));
+        return ascending ? order : -order;
+    }
+
+    /**
+     * {@code sort: { field, ascending }} で並べた写し。sort が無ければそのまま。
+     *
+     * <p>並べ方の語彙は<b>ダッシュボードのカードと帳票と同じ</b>
+     * （{@code sort: { field, ascending }}）＝同じことを2つの言い方で持たない。
+     *
+     * <p>同じ値のときは<b>元の順</b>（比べる側で決めている＝並べ替えの実装が言語ごとに
+     * 安定でも不安定でも、答えが変わらない）。
+     */
+    @SuppressWarnings("unchecked")
+    public static List<Map<String, Object>> rowsSorted(
+            List<Map<String, Object>> rows, Object sort) {
+        if (!(sort instanceof Map<?, ?> spec)
+                || !(((Map<String, Object>) spec).get("field") instanceof String field)
+                || field.isEmpty()) {
+            return rows;
+        }
+        boolean ascending = !Boolean.FALSE.equals(((Map<String, Object>) spec).get("ascending"));
+        List<Map<String, Object>> sorted = new ArrayList<>(rows);
+        List<Integer> order = new ArrayList<>();
+        for (int i = 0; i < rows.size(); i++) {
+            order.add(i);
+        }
+        order.sort((x, y) -> {
+            int result = compareValues(rows.get(x).get(field), rows.get(y).get(field), ascending);
+            return result != 0 ? result : Integer.compare(x, y);
+        });
+        for (int i = 0; i < order.size(); i++) {
+            sorted.set(i, rows.get(order.get(i)));
+        }
+        return sorted;
+    }
+
+    /**
+     * limit があれば先頭だけ採る（無ければそのまま）。
+     *
+     * <p><b>並べたあとに採る</b>（順番が逆だと「上位3件」が別の3件になる）。1未満・数として
+     * 読めない値は「上限なし」として扱う（スキーマが 1 以上を求めるので、そこを通れば
+     * ここには来ない）。
+     */
+    public static List<Map<String, Object>> rowsTop(
+            List<Map<String, Object>> rows, Object limit) {
+        Double take = toNum(limit);
+        if (take == null || take < 1 || take >= rows.size()) {
+            return rows;
+        }
+        return new ArrayList<>(rows.subList(0, take.intValue()));
+    }
+
     public static Double toNum(Object v) {
         if (v instanceof Boolean) {
             return null;

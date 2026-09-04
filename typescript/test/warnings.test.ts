@@ -670,6 +670,160 @@ ${validators}
   });
 });
 
+describe("上位だけ畳む・並べる（sort / limit / overflow）", () => {
+  /** 明細つきのフォーム1枚。[totals] がそのまま「金額」の枠になる。 */
+  const form = (totals: string) => `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            fields:
+              - { field: item, label: 品名 }
+              - { field: amount, label: 金額, type: number }
+      - title: 金額
+        fields:
+${totals}
+`;
+
+  it("正しく書けば何も言わない", () => {
+    expect(
+      rulesOf(
+        form(`          - { field: itemNames, label: 主な品名,
+              computed: { op: join, field: lines, of: item, separator: "、",
+                          sort: { field: amount, ascending: false }, limit: 3 } }
+          - { field: top3, label: 上位3件の合計,
+              computed: { op: sum, field: lines, of: amount,
+                          sort: { field: amount, ascending: false }, limit: 3 } }`),
+      ),
+    ).toEqual([]);
+  });
+
+  it("並べる項目が無ければ、並べ替えが効かないと言う", () => {
+    const found = warningsOf(
+      form(`          - { field: itemNames, label: 主な品名,
+              computed: { op: join, field: lines, of: item, sort: { ascending: false }, limit: 3 } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-sort-without-field");
+    expect(w?.path).toBe("page.form.sections[1].fields[0].computed.sort.field");
+    expect(w?.message).toContain("並べ替えは効きません");
+  });
+
+  it("並べる項目が行に無ければ、綴り違いを疑う", () => {
+    const found = warningsOf(
+      form(`          - { field: itemNames, label: 主な品名,
+              computed: { op: join, field: lines, of: item,
+                          sort: { field: amont, ascending: false }, limit: 3 } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-sort-unknown-field");
+    expect(w?.message).toContain("amont");
+    expect(w?.fix).toContain("amount");
+  });
+
+  it("切っていないのに「ほか N 件」を書いても出ない", () => {
+    const found = warningsOf(
+      form(`          - { field: itemNames, label: 主な品名,
+              computed: { op: join, field: lines, of: item, overflow: "他 {count} 件" } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-overflow-unused");
+    expect(w?.message).toContain("行は切りません");
+    expect(w?.fix).toContain("limit: 3");
+  });
+
+  it("数を畳む計算に「ほか N 件」を書いても出ない", () => {
+    const found = warningsOf(
+      form(`          - { field: subtotal, label: 小計,
+              computed: { op: sum, field: lines, of: amount, limit: 3,
+                          overflow: "他 {count} 件" } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-overflow-unused");
+    expect(w?.message).toContain("数を1つにする");
+  });
+
+  it("同じレコードの項目を畳むのに、行を並べる指定を書いた", () => {
+    const found = warningsOf(
+      form(`          - { field: total, label: 合計,
+              computed: { op: sum, fields: [subtotal, tax],
+                          sort: { field: amount }, limit: 2 } }`),
+    );
+    const w = found.find((x) => x.rule === "computed-sort-without-rows");
+    expect(w?.message).toContain("効きません");
+    expect(w?.fix).toContain("field: <明細の項目名>");
+  });
+});
+
+describe("明細の行どうしの検証（unique）", () => {
+  const form = (validators: string, extra = "") => `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            validators: ${validators}
+${extra}            fields:
+              - { field: item, label: 品名 }
+              - { field: qty, label: 数量, type: number }
+`;
+
+  it("正しく書けば何も言わない", () => {
+    expect(rulesOf(form("[{ type: unique, of: item }]"))).toEqual([]);
+  });
+
+  it("見る項目が無ければ、何も判定しないと言う", () => {
+    const found = warningsOf(form("[{ type: unique }]"));
+    const w = found.find((x) => x.rule === "unique-without-of");
+    expect(w?.message).toContain("何も判定しません");
+    expect(w?.fix).toContain("of: <行の項目名>");
+  });
+
+  it("見る項目が行に無ければ、綴り違いを疑う", () => {
+    const found = warningsOf(form("[{ type: unique, of: itme }]"));
+    const w = found.find((x) => x.rule === "unique-unknown-field");
+    expect(w?.message).toContain("黙って通ります");
+    expect(w?.fix).toContain("item");
+  });
+
+  it("明細ではない項目に書いたら、見る行が無いと言う", () => {
+    const found = warningsOf(`
+page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号, validators: [{ type: unique, of: item }] }
+`);
+    const w = found.find((x) => x.rule === "unique-without-subtable");
+    expect(w?.message).toContain("明細（`type: subTable`）ではありません");
+  });
+
+  it("別テーブルに持つ明細では、行が揃っていないと言う", () => {
+    const found = warningsOf(
+      form(
+        "[{ type: unique, of: item }]",
+        "            source: { repository: orderLineRepository, parentKey: orderNo }\n",
+      ),
+    );
+    const w = found.find((x) => x.rule === "unique-on-paged-subtable");
+    expect(w?.message).toContain("ページ");
+    expect(w?.fix).toContain("サーバ側");
+  });
+});
+
 describe("開ける人が居ない画面", () => {
   /** admin だけの画面から manager だけのボタンで繋ぐ＝両方持っている人が居ない。 */
   const app = (roles: string) => `app:

@@ -86,12 +86,12 @@ export class FormValidator {
       field.required ||
       (field.requiredWhen !== undefined &&
         evaluateCondition(field.requiredWhen, record, mode));
-    const rules: ValidatorDefinition[] = [
+    const rules = inOrder([
       ...(requiredNow
         ? [{ type: ValidatorTypes.required, params: {} } as ValidatorDefinition]
         : []),
       ...field.validators,
-    ];
+    ]);
     for (const rule of rules) {
       const message = this.registry.run(value, rule, { record, labels, mode });
       if (message !== null) {
@@ -120,6 +120,25 @@ export class FormValidator {
     }
   }
 }
+
+/** 他の項目の値を見る検証か（組み込みでは `compare` だけ）。 */
+const dependsOnOthers = (rule: ValidatorDefinition): boolean =>
+  rule.type === ValidatorTypes.compare;
+
+/**
+ * 出す順（1項目で複数落ちたとき、どれを出すか）。
+ *
+ * **自分の形の検証が先、他の項目に依る検証（`compare`）は後**。「開始日以上にして
+ * ください」より先に「日付の形が正しくありません」と言われないと、直す順番が分からない
+ * （形が読めない値を比べた結果は、そもそも当てにならない）。
+ *
+ * 同じ組の中では**書いた順**＝そこは書く人が決める。プラグインの検証は自分の形の側に
+ * 置く（他の項目を見るかどうかを枠組みは知らないので、書いた場所を動かさない）。
+ */
+const inOrder = (rules: ValidatorDefinition[]): ValidatorDefinition[] => [
+  ...rules.filter((rule) => !dependsOnOthers(rule)),
+  ...rules.filter(dependsOnOthers),
+];
 
 /**
  * 項目名 → ラベル。

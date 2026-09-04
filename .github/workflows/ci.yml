@@ -1427,6 +1427,110 @@ jobs:
           YAML
           node dist/cli.js validate --warn-as-error /tmp/fold-hidden.yaml
 
+      - name: Only the top rows, and rows checked against each other
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          # 1. デモが**上位だけ並べる**形と**行どうしの規則**を持っていて、警告ゼロで通る。
+          node dist/cli.js validate --warn-as-error "$DEMO"
+          grep -q 'sort: { field: amount, ascending: false }, limit: 3' "$DEMO"
+          grep -q 'type: unique, of: item' "$DEMO"
+          # 2. 読み返しが「上位だけ」と言う（数からは読めない＝全部の合計と見分けが付かない）。
+          node dist/cli.js explain "$DEMO" --page order_entry > /tmp/top.log
+          grep -q '金額が大きい順に3 件だけ' /tmp/top.log
+          grep -q '切ったぶんは件数で言う' /tmp/top.log
+          # 行どうしの規則も、行の項目の言葉で読み返す。
+          grep -q '品名 が同じ行は書けない' /tmp/top.log
+          # 3. 効かない書き方を言う（画面を見ても気づけないものばかり）。
+          cat > /tmp/top-bad.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - field: lines
+                      label: 明細
+                      type: subTable
+                      validators:
+                        - { type: unique, of: itme }
+                      fields:
+                        - { field: item, label: 品名 }
+                        - { field: amount, label: 金額, type: number }
+                    - { field: names, label: 主な品名, computed: { op: join, field: lines, of: item, sort: { field: amont, ascending: false }, limit: 2 } }
+                    - { field: total, label: 合計, computed: { op: sum, fields: [a, b], limit: 2 } }
+                    - { field: rows, label: 行数, computed: { op: count, field: lines, overflow: "他 {count} 件" } }
+          YAML
+          if node dist/cli.js validate --warn-as-error --json /tmp/top-bad.yaml \
+               > /tmp/top-bad.json 2>&1; then
+            echo "効かない書き方で通ってしまった"; exit 1
+          fi
+          for rule in unique-unknown-field computed-sort-unknown-field \
+              computed-sort-without-rows computed-overflow-unused; do
+            grep -q "\"rule\": \"$rule\"" /tmp/top-bad.json || {
+              echo "$rule が出ていない"; cat /tmp/top-bad.json; exit 1; }
+          done
+          # 綴りを直せば通る（言っているのは「効かない」ことだけ）。
+          sed -e 's/of: itme/of: item/' -e 's/field: amont/field: amount/' \
+              -e 's/, limit: 2 } }$/ } }/' /tmp/top-bad.yaml > /tmp/top-ok.yaml
+          grep -v 'overflow' /tmp/top-ok.yaml | grep -v 'fields: \[a, b\]' > /tmp/top-ok2.yaml
+          node dist/cli.js validate --warn-as-error /tmp/top-ok2.yaml
+          # 4. サーバが決める値・画面が計算する値は、契約にそう書く（readOnly）。
+          #    契約を出すのは1ページ単位なので、1枚の定義で見る。
+          cat > /tmp/top-page.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - { field: orderNo, label: 受注番号, required: true }
+                    - { field: customer, label: 顧客, required: true }
+                    - { field: id, label: 伝票ID, readOnly: true }
+                    - field: lines
+                      label: 明細
+                      type: subTable
+                      fields:
+                        - { field: item, label: 品名 }
+                        - { field: amount, label: 金額, type: number }
+                    - { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amount } }
+          YAML
+          node dist/cli.js schema /tmp/top-page.yaml > /tmp/top-schema.json
+          node -e '
+            const doc = JSON.parse(require("fs").readFileSync("/tmp/top-schema.json", "utf8"));
+            const request = doc["$defs"].OrderEntryRequest.properties;
+            // 画面が計算する値（小計）とサーバが決める値（伝票ID）には readOnly の
+            // 印が付く＝サーバは受け取った値を無視して定義から計算し直してよい、が読める。
+            for (const name of ["subtotal", "id"]) {
+              if (request[name].readOnly !== true) {
+                console.error(name + " に readOnly の印が無い");
+                process.exit(1);
+              }
+            }
+            // 手で入れる項目には付かない（付けたら「送るな」と読まれてしまう）。
+            if ("readOnly" in request.customer) {
+              console.error("手で入れる項目に readOnly が付いている");
+              process.exit(1);
+            }
+          '
+          node dist/cli.js openapi /tmp/top-page.yaml --base-path /api/orders \
+            > /tmp/top-openapi.json
+          node -e '
+            const doc = JSON.parse(require("fs").readFileSync("/tmp/top-openapi.json", "utf8"));
+            const shape = doc.components.schemas.OrderEntryResponse.properties;
+            if (shape.subtotal.readOnly !== true) {
+              console.error("OpenAPI 側に readOnly の印が無い");
+              process.exit(1);
+            }
+          '
+
       - name: The tutorial's definition and its output are real
         working-directory: typescript
         run: |

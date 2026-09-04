@@ -1,0 +1,103 @@
+{
+  "_comment": "明細の**行どうし**の検証（unique）。各エディションが `page` を解析し、case ごとに `record` をフォームで検証して、エラーを {field,message} の順不同の集合で比べる。固定したいのは5つ: (1) 同じ値の行が2つあれば言う（行の中の検証は1行ずつしか見ないので、これは誰も気づけない転び方）、(2) 何行目かは**1から数えて**言う、(3) 空の値は飛ばす（入れかけの行が「重複」にならない）、(4) 比べるのは文字にした値で前後の空白は無視する（表に出ている字が同じなら同じ）、(5) エラーは**明細の項目**に付く（行の集合に対する規則なので、どの行が悪いとは決めない。何行目かは文で言う）。",
+  "page": {
+    "dsl_version": "1.0",
+    "page": {
+      "type": "form",
+      "id": "order_entry",
+      "title": "受注入力",
+      "repository": "orderRepository",
+      "key": "orderNo",
+      "form": {
+        "sections": [
+          {
+            "fields": [
+              { "field": "orderNo", "label": "受注番号", "required": true },
+              {
+                "field": "lines",
+                "label": "明細",
+                "type": "subTable",
+                "validators": [{ "type": "unique", "of": "item" }],
+                "fields": [
+                  { "field": "item", "label": "品名" },
+                  { "field": "qty", "label": "数量", "type": "number" }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "品名が重なっていなければ何も言わない",
+      "record": {
+        "orderNo": "SO-1",
+        "lines": [{ "item": "鉛筆", "qty": 2 }, { "item": "ノート", "qty": 1 }]
+      },
+      "expected": []
+    },
+    {
+      "name": "同じ品名が2行にあれば、何行目かを言う（1から数える）",
+      "record": {
+        "orderNo": "SO-1",
+        "lines": [
+          { "item": "鉛筆", "qty": 2 },
+          { "item": "ノート", "qty": 1 },
+          { "item": "鉛筆", "qty": 5 }
+        ]
+      },
+      "expected": [{ "field": "lines", "message": "品名 が同じ行があります（3 行目）" }]
+    },
+    {
+      "name": "3行以上重なれば、後から出た行を全部言う",
+      "record": {
+        "orderNo": "SO-1",
+        "lines": [
+          { "item": "鉛筆" },
+          { "item": "鉛筆" },
+          { "item": "ノート" },
+          { "item": "鉛筆" }
+        ]
+      },
+      "expected": [
+        { "field": "lines", "message": "品名 が同じ行があります（2・4 行目）" }
+      ]
+    },
+    {
+      "name": "空の値は飛ばす（入れかけの行が「重複」にならない）",
+      "record": {
+        "orderNo": "SO-1",
+        "lines": [{ "item": "鉛筆" }, { "item": "" }, { "qty": 3 }, { "item": null }]
+      },
+      "expected": []
+    },
+    {
+      "name": "前後の空白は無視する（表に出ている字が同じなら同じ）",
+      "record": {
+        "orderNo": "SO-1",
+        "lines": [{ "item": "鉛筆" }, { "item": " 鉛筆 " }]
+      },
+      "expected": [{ "field": "lines", "message": "品名 が同じ行があります（2 行目）" }]
+    },
+    {
+      "name": "数と文字は同じものとして扱う（表に出ている字で比べる）",
+      "record": {
+        "orderNo": "SO-1",
+        "lines": [{ "item": 1 }, { "item": "1" }]
+      },
+      "expected": [{ "field": "lines", "message": "品名 が同じ行があります（2 行目）" }]
+    },
+    {
+      "name": "行が無ければ何も言わない",
+      "record": { "orderNo": "SO-1", "lines": [] },
+      "expected": []
+    },
+    {
+      "name": "明細そのものが無ければ何も言わない（required の担当）",
+      "record": { "orderNo": "SO-1" },
+      "expected": []
+    }
+  ]
+}

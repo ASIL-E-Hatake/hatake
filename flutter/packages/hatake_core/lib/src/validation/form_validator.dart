@@ -67,11 +67,11 @@ class FormValidator {
     if (!_matches(field.visibleWhen, record, mode)) return;
 
     final value = record[field.field];
-    final rules = <ValidatorDefinition>[
+    final rules = _inOrder(<ValidatorDefinition>[
       if (field.required || _isRequiredByCondition(field, record, mode))
         const ValidatorDefinition(type: ValidatorTypes.required),
       ...field.validators,
-    ];
+    ]);
     for (final rule in rules) {
       final message = registry.run(
         value,
@@ -88,14 +88,15 @@ class FormValidator {
 
     // Child rows (master-detail): validate each row against rowFields.
     if (field.type == FieldTypes.subTable && field.rowFields.isNotEmpty) {
-      final rowForm =
-          FormDefinition(sections: [SectionDefinition(fields: field.rowFields)]);
+      final rowForm = FormDefinition(
+          sections: [SectionDefinition(fields: field.rowFields)]);
       var index = 0;
       for (final row in (value is Iterable ? value : const [])) {
         if (row is Map) {
           // 行の条件は行のレコードで判定する（親の値は見えない）。行の追加/編集は
           // 親のモードとは別物なので、mode は行には渡さない。
-          final rowErrors = validate(rowForm, row.cast<String, Object?>()).errors;
+          final rowErrors =
+              validate(rowForm, row.cast<String, Object?>()).errors;
           for (final error in rowErrors) {
             errors.add(ValidationError(
               field: '${field.field}[$index].${error.field}',
@@ -107,6 +108,27 @@ class FormValidator {
       }
     }
   }
+
+  /// 出す順（1項目で複数落ちたとき、どれを出すか）。
+  ///
+  /// **自分の形の検証が先、他の項目に依る検証（`compare`）は後**。「開始日以上に
+  /// してください」より先に「日付の形が正しくありません」と言われないと、直す順番が
+  /// 分からない（形が読めない値を比べた結果は、そもそも当てにならない）。
+  ///
+  /// 同じ組の中では**書いた順**＝そこは書く人が決める（`required` は組み立ての時点で
+  /// 先頭に居る）。プラグインの検証は自分の形の側に置く（他の項目を見るかどうかを
+  /// 枠組みは知らないので、書いた場所を動かさない）。
+  static List<ValidatorDefinition> _inOrder(List<ValidatorDefinition> rules) =>
+      [
+        for (final rule in rules)
+          if (!_dependsOnOthers(rule)) rule,
+        for (final rule in rules)
+          if (_dependsOnOthers(rule)) rule,
+      ];
+
+  /// 他の項目の値を見る検証か（組み込みでは `compare` だけ）。
+  static bool _dependsOnOthers(ValidatorDefinition rule) =>
+      rule.type == ValidatorTypes.compare;
 
   bool _isRequiredByCondition(
     FieldDefinition field,

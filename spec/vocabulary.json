@@ -131,7 +131,11 @@
     "pattern": { "ja": "決まった書式", "en": "a fixed format" },
     "email": { "ja": "メールアドレスの形", "en": "an email address" },
     "postalCode": { "ja": "郵便番号の形", "en": "a postal code" },
-    "compare": { "ja": "{value}", "en": "{value}" }
+    "compare": { "ja": "{value}", "en": "{value}" },
+    "unique": {
+      "ja": "{value} が同じ行は書けない",
+      "en": "no two rows with the same {value}"
+    }
   },
   "compareOperators": {
     "equals": { "ja": "{value} と同じ値", "en": "the same value as {value}" },

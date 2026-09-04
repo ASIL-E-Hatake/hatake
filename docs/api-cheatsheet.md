@@ -329,6 +329,9 @@ Note the difference: `between` / `startsWith` / `endsWith` are search-only, whil
 | `email` | — | email shape |
 | `postalCode` | — | Japanese postal code (`1234567` / `123-4567`) |
 | `compare` | `operator` / `field` (+ `aggregate` / `of`) | **Compares with another field** (`{ type: compare, operator: gte, field: startDate }`; `aggregate: sum, of: amount` compares with a child table's sum) |
+| `unique` | `of` (a row field) | **No two rows of a `subTable` repeat that value** (`{ type: unique, of: item }`). Written on the subTable field itself, because judging repeats needs the whole set of rows |
+
+**One error per field**, and the order is the field's own shape first, anything that reads another field (`compare`) last; among own-shape rules the written order stands.
 
 `message` overrides the default (Japanese) text for that rule. To change the defaults wholesale, inject a `MessageResolver` (default locale `ja`) into `ValidatorRegistry`.
 
@@ -439,6 +442,12 @@ No date is written by default, so the same report yields the same bytes.
 Computed `op`:
 <!-- vocab: field.computed.op -->
 `concat` `sum` `subtract` `product` `count` `avg` `min` `max` `join`
+
+Row folds also take `sort: { field, ascending }` and `limit` — 「the three largest amounts」 —
+applied as `where` → `sort` → `limit`; `join` appends 「ほか N 件」 when `limit` cut rows
+(`overflow` rewords it, `overflow: ""` drops it) and `limit` works for the numeric folds too.
+`unique` (`{ type: unique, of: item }`) is the cross-row validator: it belongs on the
+subTable field, because judging repeats needs the whole set of rows.
 
 Two modes: `fields: [a, b]` folds values of the **same record** (`concat` / `sum` /
 `subtract` / `product`), while `field: <subTable field>` + `of: <row field>` folds the

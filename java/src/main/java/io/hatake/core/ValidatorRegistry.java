@@ -180,7 +180,63 @@ public final class ValidatorRegistry {
                     : msg.resolve("postalCode");
         });
         m.put("compare", (v, d, c) -> compare(v, d, c, msg));
+        m.put("unique", (v, d, c) -> unique(v, d, c, msg));
         return m;
+    }
+
+    /**
+     * 明細の<b>行どうし</b>の規則（unique）。
+     *
+     * <p>判定する相手は明細（subTable）の値＝<b>行の配列</b>。行の中の検証（rowFields の
+     * validators）は1行ずつしか見ないので、「同じ品名が2行にある」は誰も気づけない。
+     * 行の集合に対する規則なので、明細の項目そのものに書く。
+     *
+     * <p>決めごと:
+     *
+     * <ul>
+     *   <li>比べるのは<b>文字にした値</b>（表に出ている字が同じなら同じ＝1 と "1" は同じ）。
+     *       前後の空白は無視する（normalize: [trim] を書き忘れた行で見逃さないため）
+     *   <li><b>空の値は飛ばす</b>（入れかけの行が「重複」になると、入力の途中で怒られる）
+     *   <li>何行目かは<b>1から数えて</b>言う（画面で数える番号と合わせる）
+     *   <li>判定できないときは通す（of が無い・値が行の配列ではない）。書き間違いは
+     *       hatake validate が言う
+     * </ul>
+     */
+    private static String unique(
+            Object value,
+            ValidatorDefinition def,
+            ValidationContext context,
+            MessageResolver msg) {
+        if (!(def.params().get("of") instanceof String of)
+                || !(value instanceof Iterable<?> rows)) {
+            return null;
+        }
+        Map<String, Integer> firstSeen = new HashMap<>();
+        List<String> duplicates = new ArrayList<>();
+        int row = 0;
+        for (Object raw : rows) {
+            row++;
+            if (!(raw instanceof Map<?, ?> map)) {
+                continue;
+            }
+            Object cell = map.get(of);
+            String key = cell == null ? "" : cell.toString().trim();
+            if (key.isEmpty()) {
+                continue;
+            }
+            if (firstSeen.containsKey(key)) {
+                duplicates.add(String.valueOf(row));
+            } else {
+                firstSeen.put(key, row);
+            }
+        }
+        if (duplicates.isEmpty()) {
+            return null;
+        }
+        Map<String, String> labels = context.labels() == null ? Map.of() : context.labels();
+        return msg.resolve("unique", Map.of(
+                "label", labels.getOrDefault(of, of),
+                "rows", String.join("・", duplicates)));
     }
 
     /** compare で使える突合（大小を比べられるものだけ）。 */

@@ -26,16 +26,25 @@ import org.yaml.snakeyaml.Yaml;
 class CrossFieldConformanceTest {
 
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> fixture() throws IOException {
-        String content =
-                Files.readString(Path.of("../spec/conformance/cross_field_validation.json"));
+    private static Map<String, Object> fixture(String file) throws IOException {
+        String content = Files.readString(Path.of("../spec/conformance/" + file));
         return (Map<String, Object>) new Yaml().load(content);
     }
 
-    @SuppressWarnings("unchecked")
     @TestFactory
     Stream<DynamicTest> crossFieldValidation() throws IOException {
-        Map<String, Object> fixture = fixture();
+        return run("cross_field_validation.json");
+    }
+
+    /** 1項目で複数落ちたとき、自分の形が先・他の項目に依るものが後。 */
+    @TestFactory
+    Stream<DynamicTest> whichErrorIsReportedFirst() throws IOException {
+        return run("validation_order.json");
+    }
+
+    @SuppressWarnings("unchecked")
+    private Stream<DynamicTest> run(String file) throws IOException {
+        Map<String, Object> fixture = fixture(file);
         PageDefinition page =
                 DefinitionParser.parsePageMap((Map<String, Object>) fixture.get("page"));
         FormValidator validator = new FormValidator();
