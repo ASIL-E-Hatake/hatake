@@ -336,9 +336,11 @@ Note the difference: `between` / `startsWith` / `endsWith` are search-only, whil
 <!-- vocab: action.type -->
 `create` `edit` `delete` `navigate` `plugin` `export` `print`
 
-`scope: selection` (default `page`) runs the action over **the rows the user checked**: the table becomes selectable, the button stays disabled until something is selected (the count shows in the label), the handler gets the records in `ctx.records` and is called **once**. The selection is dropped when the rows change and cleared once it ran. Only `type: plugin` can do this, and **there is no bulk delete** (an irreversible action scales its accidents with the row count).
+`scope: selection` (default `page`) runs the action over **the rows the user checked**: the table becomes selectable, the button stays disabled until something is selected (the label says why — nothing checked, or no rows to check — and then shows the count), the handler gets the records in `ctx.records` and is called **once**. The selection is dropped when the rows change and cleared once it ran. Only `type: plugin` can do this, and **there is no bulk delete** (an irreversible action scales its accidents with the row count).
 
 `table.rowActions` is an array of action **ids** (strings), not objects. `edit` and `delete` are built in.
+
+**Row buttons appear in the same place on every page kind** — at the end of the row, in the order listed (`search` / `crud` / `master`); on `crud` / `master` the built-in `edit` / `delete` mix into that same cell. The pressed row arrives as `ctx.record`. **A bulk button cannot be listed there**: it would run on the checked rows rather than the pressed one, so it stays above the list and `validate` reports `selection-as-rowaction`.
 
 ### Confirming and reacting (`confirm` / `prompt` / `onSuccess` / `onError`)
 

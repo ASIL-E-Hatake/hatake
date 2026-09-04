@@ -16,6 +16,7 @@
 
 import {
   deadActions,
+  rowActionsOf,
   unjudgeableEnabledWhen,
   unsupportedRowActions,
 } from "./actionNeeds.js";
@@ -489,6 +490,10 @@ function checkActions(
  * 選ぶのは**表の行**なので、表が無い画面（フォーム・ウィザード・ダッシュボード）に
  * 置くと選ぶ手段が無い＝**押せないボタン**が出たままになる。
  *
+ * 表が在っても、**行には並べられない**（`table.rowActions`）。行のボタンは押した行に
+ * 実行するものなので、選んだ行に実行するボタンを並べると、押した行ではなく
+ * **チェックした行**に実行することになる（何も選んでいなければ何も起きない）。
+ *
  * 実行できるのは `type: plugin` だけ。一括の中身は業務（承認・締め・出荷確定）で、
  * Framework は業務を持たない。**消すのを複数まとめる口は用意していない**
  * （取り消せない操作は、事故が件数ぶん大きくなる）。
@@ -516,6 +521,19 @@ function checkSelection(
           "画面全体に対する操作にしてください。",
       );
       return;
+    }
+    if (rowActionsOf(page).includes(str(action.id) ?? "")) {
+      warn(
+        found,
+        "selection-as-rowaction",
+        `${path}.table.rowActions`,
+        `「${label}」は行には出ません（選んだ行に対して実行するボタンなので、押した行` +
+          `ではなくチェックした行に実行することになります）。一覧の上の一括ボタンとして` +
+          `出ます。`,
+        "`table.rowActions` からこの id を外してください（一覧の上に出ます）。" +
+          "押した行1件に実行するボタンにするなら `scope: selection` を外してください" +
+          "（行のボタンはその行のレコードを受け取ります）。",
+      );
     }
     const type = str(action.type) ?? "";
     if (type !== ActionTypes.plugin) {

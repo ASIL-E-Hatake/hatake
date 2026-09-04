@@ -106,9 +106,14 @@ languages; a second test proves each edition's key table matches the schema).
 | `report` | Report (帳票) | — | the printable counterpart of a list: groups, subtotals, paper (→ [report](#report-type-report)) |
 
 A `search` page has the same `search`, `table`, and `actions` as `crud` but no
-`form`, and its `rowActions` reference page-level `plugin` actions (e.g. a
-`detail` action) dispatched with the row as context. Example:
+`form`, and its `rowActions` reference page-level actions (e.g. a `detail`
+action) dispatched with the row as context. Example:
 [`examples/product_search.yaml`](examples/product_search.yaml).
+
+**Row buttons appear in the same place on every page kind** (at the end of the
+row) and are written the same way (ids in `table.rowActions`). On `crud` /
+`master` the built-in `edit` / `delete` mix into that same cell, in the order
+they are listed.
 
 ## app (navigation)
 
@@ -648,6 +653,7 @@ actions:
 | Only `type: plugin` can run over a selection | What a bulk operation *does* (approve, close, confirm shipment) is business logic, and the framework holds none |
 | **There is no bulk delete** | An irreversible action scales its accidents with the row count. Delete one row at a time (the `delete` row action) |
 | The handler gets **records**, not keys | A bulk decision needs a status or an amount; keys alone would force the handler to read every row back |
+| **It cannot be listed in `table.rowActions`** | A row button runs on the row that was pressed; a bulk button listed there would run on the **checked** rows instead (on nothing at all when none are checked). It stays off the row and appears as the bulk button above the list — `validate` says so (`selection-as-rowaction`) |
 
 In Flutter the registered handler reads `ActionContext.records`. It is called
 **once**, so the API can be called once too.
@@ -730,7 +736,7 @@ so a blank condition never narrows the result set.
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `pagination` | [pagination](#pagination) | `{pageSize: 50}` | Paging config. |
-| `rowActions` | string[] | `[]` | Per-row action ids. Built-ins: `edit`, `delete`. |
+| `rowActions` | string[] | `[]` | Per-row action ids (shown at the end of the row, in the order listed). Built-ins: `edit`, `delete` (on `crud` / `master` only). **A bulk button cannot be listed here** (→ [running over a selection](#running-over-a-selection-scope-selection)). |
 | `columns` | [column](#column)[] | `[]` | Table columns. |
 
 ### column
@@ -1572,6 +1578,7 @@ npx hatake validate page.yaml --no-warn --json
 | `maxrows-above-page-size` | `maxRows` is larger than the page size — only the rows on screen can be picked, so the limit can never bind |
 | `selection-without-table` | a `scope: selection` button on a page with **no table** — there is no way to choose rows, so the button stays unpressable |
 | `selection-unsupported-type` | `scope: selection` on a type other than `plugin` — pressing it does nothing (what a bulk operation *does* is business logic, so it belongs to the application) |
+| `selection-as-rowaction` | the id of a `scope: selection` button listed in `table.rowActions` — it **does not appear on the row** (a row button runs on the row that was pressed); it appears as the bulk button above the list |
 | `print-without-report` | a `type: print` button on a page with **no `report`** — there is no paper to print, so the button appears and pressing it only reports that this page cannot print |
 | `columns-wider-than-paper` / `rows-per-page-too-many` | the report does not fit its paper (declared column widths exceed the sheet, or a sheet holds so many rows that a line has no readable height) — the printer shrinks everything instead of failing, so you get an unreadable sheet rather than an error. Paper sizes live in [`spec/papers.json`](papers.json) |
 

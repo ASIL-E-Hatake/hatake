@@ -67,7 +67,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
 
   /// One dispatcher for every page kind (see `_runPageAction`), so `confirm` /
   /// `onSuccess` behave the same wherever the action sits.
-  Future<void> _onAction(ActionDefinition action) async {
+  Future<void> _onAction(ActionDefinition action, {DataRecord? record}) async {
     final selected = action.scope == ActionScopes.selection
         ? _selection.pick(_controller.items, _def.keyField)
         : const <DataRecord>[];
@@ -75,6 +75,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
       context,
       action,
       _controller,
+      record: record,
       records: selected,
       onExport: _export,
       onCreate: () {
@@ -143,39 +144,36 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(_def.title, style: theme.textTheme.headlineSmall),
-              ),
-              for (final action in _pageOnlyActions(_def.actions))
-                if (isAllowed(action.roles, _roles)) ...[
-                  if (action.scope == ActionScopes.selection)
-                    _bulkButton(
-                      action: action,
-                      count: _selection
-                          .pick(_controller.items, _def.keyField)
-                          .length,
-                      onPressed: () => _onAction(action),
-                      roles: _roles,
-                      // 選んだ行が全部満たすときだけ押せる（合わない件数はラベルへ）。
-                      failing: _actionEnabled(
-                        action,
-                        rows: _selection.pick(_controller.items, _def.keyField),
-                      ).failing,
-                    )
-                  else
-                    // 一覧の上のボタンには判定する相手が無い（開いているレコードが
-                    // 無い）ので出し分けない。書いても効かないことは validate が言う。
-                    FilledButton(
-                      key: Key('hatake.action.${action.id}'),
-                      onPressed: () => _onAction(action),
-                      child: Text(action.label),
-                    ),
-                  const SizedBox(width: 8),
-                ],
-            ],
-          ),
+          _listHeader(_def.title, theme, [
+            for (final action in _pageOnlyActions(_def.actions))
+              if (isAllowed(action.roles, _roles))
+                if (action.scope == ActionScopes.selection)
+                  _bulkButton(
+                    action: action,
+                    count: _selection
+                        .pick(_controller.items, _def.keyField)
+                        .length,
+                    onPressed: () => _onAction(action),
+                    roles: _roles,
+                    // 読み込み中は「行が無い」と決めつけない（待っている間だけ嘘になる）。
+                    hasRows: _controller.loading
+                        ? null
+                        : _controller.items.isNotEmpty,
+                    // 選んだ行が全部満たすときだけ押せる（合わない件数はラベルへ）。
+                    failing: _actionEnabled(
+                      action,
+                      rows: _selection.pick(_controller.items, _def.keyField),
+                    ).failing,
+                  )
+                else
+                  // 一覧の上のボタンには判定する相手が無い（開いているレコードが
+                  // 無い）ので出し分けない。書いても効かないことは validate が言う。
+                  FilledButton(
+                    key: Key('hatake.action.${action.id}'),
+                    onPressed: () => _onAction(action),
+                    child: Text(action.label),
+                  ),
+          ]),
           const SizedBox(height: 12),
           if (_def.search != null) ...[
             _SearchArea(search: _def.search!, onSearch: _controller.search),
@@ -213,9 +211,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
   Widget _buildTable() {
     final columns =
         _def.table.columns.where((c) => isAllowed(c.roles, _roles)).toList();
-    final rowActions = _def.table.rowActions;
-    final hasRowActions = rowActions.contains(ActionTypes.edit) ||
-        rowActions.contains(ActionTypes.delete);
+    final hasRowActions = _rowSlots().isNotEmpty;
     final selectable = _hasSelectionAction(_def.actions, _roles);
 
     return SingleChildScrollView(
@@ -284,10 +280,14 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
   /// 押す口ではないので、並べると**押しても「未実装です」と言うだけのボタン**が出る
   /// ＝この枠組みで一番まずい転び方（押すまで気づけない）。
   ///
-  /// 行に出す口は [_buildRowActions]（`table.rowActions` が決める）。
-  static List<ActionDefinition> _pageOnlyActions(List<ActionDefinition> actions) => [
+  /// 行に出す口は [_buildRowActions]（`table.rowActions` が決める）。**行に出した
+  /// ボタンは上に出さない**（同じボタンが2か所に出ると、どちらを押すのが正しいのか
+  /// 分からない）。判定は `search` と同じ規則（[_onPageTop]）を通す。
+  List<ActionDefinition> _pageOnlyActions(List<ActionDefinition> actions) => [
         for (final action in actions)
-          if (action.type != ActionTypes.edit && action.type != ActionTypes.delete)
+          if (action.type != ActionTypes.edit &&
+              action.type != ActionTypes.delete &&
+              _onPageTop(action, _def.table.rowActions))
             action,
       ];
 
@@ -316,21 +316,49 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
     _afterActionSuccess(context, declared?.onSuccess, record: record);
   }
 
-  /// 行のボタン（組み込みの編集・削除）。
+  /// 行の右端に**何か出る** id（`table.rowActions` の並び順）。
+  ///
+  /// 組み込み（`edit` / `delete`）はこの画面の機能なので、宣言が無くても出る。それ以外は
+  /// 同じ id の宣言を引けたものだけ（引けないことは `validate` が言う
+  /// ＝`rowaction-not-declared`）。1つも無ければ列そのものを出さない。
+  List<String> _rowSlots() {
+    final declared = {
+      for (final action
+          in _rowActions(_def.table.rowActions, _def.actions, _roles))
+        action.id,
+    };
+    return [
+      for (final id in _def.table.rowActions)
+        if (id == ActionTypes.edit ||
+            id == ActionTypes.delete ||
+            declared.contains(id))
+          id,
+    ];
+  }
+
+  /// 行のボタン（組み込みの編集・削除＋定義した行アクション）。
   ///
   /// 宣言（`actions` の `type: edit` / `type: delete`）に `enabledWhen` が書いてあれば、
   /// **その行のレコード**で判定する（「出荷済は消せない」）。押せないときは灰色にして、
   /// 何の状態で決まるのかを添える＝理由の無い灰色を出さない。
+  ///
+  /// 組み込み以外（`rowActions: [detail]` のような独自のボタン）も**同じ行に出す**。
+  /// 同じ書き方が画面の種別で違う所に出ると覚えられないので、`search` と揃えてある
+  /// （引き当ても判定も [_rowActions] / [_rowActionButton] を通る）。出る順は定義のまま。
   Widget _buildRowActions(DataRecord record) {
     final key = record[_def.keyField];
-    final rowActions = _def.table.rowActions;
     final labels = {
       for (final column in _def.table.columns) column.field: column.label,
     };
+    final declared = {
+      for (final action
+          in _rowActions(_def.table.rowActions, _def.actions, _roles))
+        action.id: action,
+    };
     Widget rowButton(String type, IconButton button) {
-      final declared = _declaredAction(_def.actions, type);
-      if (declared == null) return button;
-      final state = _actionEnabled(declared, record: record);
+      final declaration = _declaredAction(_def.actions, type);
+      if (declaration == null) return button;
+      final state = _actionEnabled(declaration, record: record);
       if (state.enabled) return button;
       return _withReason(
         IconButton(
@@ -347,29 +375,38 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (rowActions.contains(ActionTypes.edit))
-          rowButton(
-            ActionTypes.edit,
-            IconButton(
-              key: Key('hatake.edit.$key'),
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: '編集',
-              onPressed: () {
-                _controller.startEdit(record);
-                _openForm();
-              },
+        for (final id in _rowSlots())
+          if (id == ActionTypes.edit)
+            rowButton(
+              ActionTypes.edit,
+              IconButton(
+                key: Key('hatake.edit.$key'),
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: '編集',
+                onPressed: () {
+                  _controller.startEdit(record);
+                  _openForm();
+                },
+              ),
+            )
+          else if (id == ActionTypes.delete)
+            rowButton(
+              ActionTypes.delete,
+              IconButton(
+                key: Key('hatake.delete.$key'),
+                icon: const Icon(Icons.delete_outline),
+                tooltip: '削除',
+                onPressed: key == null ? null : () => _delete(key, record),
+              ),
+            )
+          else
+            _rowActionButton(
+              action: declared[id]!,
+              record: record,
+              rowKey: key,
+              labels: labels,
+              onPressed: () => _onAction(declared[id]!, record: record),
             ),
-          ),
-        if (rowActions.contains(ActionTypes.delete))
-          rowButton(
-            ActionTypes.delete,
-            IconButton(
-              key: Key('hatake.delete.$key'),
-              icon: const Icon(Icons.delete_outline),
-              tooltip: '削除',
-              onPressed: key == null ? null : () => _delete(key, record),
-            ),
-          ),
       ],
     );
   }
