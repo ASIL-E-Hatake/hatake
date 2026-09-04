@@ -61,7 +61,8 @@ export interface ActionCase {
 
 const kindOf = (page: Dict): string => str(page.type) ?? "";
 
-const rowActionsOf = (page: Dict): string[] => {
+/** その画面が行に並べている id（`table.rowActions`）。 */
+export const rowActionsOf = (page: Dict): string[] => {
   const table = isDict(page.table) ? page.table : undefined;
   if (table === undefined) return [];
   return list(table.rowActions)

@@ -1074,6 +1074,26 @@ page:
     expect(w?.fix).toContain("type: plugin");
   });
 
+  it("行に並べたら、行には出ないと言う（押した行ではなくチェックした行に実行される）", () => {
+    const found = warningsOf(`
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    rowActions: [approve]
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認, scope: selection }
+`);
+    const w = found.find((x) => x.rule === "selection-as-rowaction");
+    expect(w?.path).toBe("page.table.rowActions");
+    expect(w?.message).toContain("行には出ません");
+    expect(w?.fix).toContain("rowActions");
+  });
+
   it("一覧に置いた plugin なら黙る", () => {
     expect(
       rulesOf(`

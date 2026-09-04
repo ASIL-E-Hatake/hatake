@@ -267,12 +267,21 @@ export function explainPage(
   const rowActions = "table" in page ? page.table.rowActions : [];
   if (rowActions.length > 0) {
     const labels = new Map(page.actions.map((a) => [a.id, a.label]));
+    const bulk = new Set(
+      page.actions
+        .filter((a) => a.scope === ActionScopes.selection)
+        .map((a) => a.id),
+    );
     sections.push({
       title: v.rowActions,
       lines: rowActions.map((id) => {
         const builtin =
           id === "edit" ? v.openEdit : id === "delete" ? v.deleteRow : undefined;
-        return labels.get(id) ?? builtin ?? v.undeclaredRowAction(id);
+        const label = labels.get(id);
+        if (label === undefined) return builtin ?? v.undeclaredRowAction(id);
+        // 選んだ行に実行するボタンは**行には出ない**（一覧の上の一括ボタンになる）。
+        // 並べてあるからと「行に出る」と読み上げると、読み返しが嘘をつく。
+        return bulk.has(id) ? v.notOnRow(label) : label;
       }),
     });
   }

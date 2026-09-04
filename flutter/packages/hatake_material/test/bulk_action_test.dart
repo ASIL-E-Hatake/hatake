@@ -157,7 +157,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_enabled(tester), isFalse);
-    expect(find.text('一括承認'), findsOneWidget);
+    // 灰色のボタンには**なぜ押せないのか**を出す（行は在るが選んでいない）。
+    expect(find.text('一括承認（行を選んでください）'), findsOneWidget);
 
     await tester.tap(find.byType(Checkbox).at(1)); // 1行目
     await tester.pumpAndSettle();
@@ -198,7 +199,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_enabled(tester), isFalse);
-    expect(find.text('一括承認'), findsOneWidget);
+    expect(find.text('一括承認（行を選んでください）'), findsOneWidget);
   });
 
   testWidgets('行が入れ替わったら選択は消える（画面に無い行に実行させない）',

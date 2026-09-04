@@ -47,13 +47,6 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
   ListController get _controller => widget.controller;
   Set<String> get _roles => HatakeScope.of(context).roles;
 
-  ActionDefinition? _actionById(String id) {
-    for (final action in _def.actions) {
-      if (action.id == id) return action;
-    }
-    return null;
-  }
-
   /// One dispatcher for every page kind (see `_runPageAction`), so `confirm` /
   /// `onSuccess` behave the same wherever the action sits.
   Future<void> _runAction(ActionDefinition action, {DataRecord? record}) async {
@@ -126,7 +119,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
     final theme = Theme.of(context);
     final rowActionIds = _def.table.rowActions;
     final pageActions = _def.actions
-        .where((a) => !rowActionIds.contains(a.id) && isAllowed(a.roles, _roles))
+        .where((a) => _onPageTop(a, rowActionIds) && isAllowed(a.roles, _roles))
         .toList();
 
     return Padding(
@@ -134,36 +127,33 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(_def.title, style: theme.textTheme.headlineSmall),
-              ),
-              for (final action in pageActions) ...[
-                if (action.scope == ActionScopes.selection)
-                  _bulkButton(
-                    action: action,
-                    count: _selection.pick(_controller.items, _def.keyField).length,
-                    onPressed: () => _runAction(action),
-                    roles: HatakeScope.of(context).roles,
-                    // 選んだ行が全部満たすときだけ押せる（合わない件数はラベルへ）。
-                    failing: _actionEnabled(
-                      action,
-                      rows: _selection.pick(_controller.items, _def.keyField),
-                    ).failing,
-                  )
-                else
-                  // 一覧の上のボタンには判定する相手が無いので出し分けない
-                  // （書いても効かないことは validate が言う）。
-                  FilledButton(
-                    key: Key('hatake.action.${action.id}'),
-                    onPressed: () => _runAction(action),
-                    child: Text(action.label),
-                  ),
-                const SizedBox(width: 8),
-              ],
-            ],
-          ),
+          _listHeader(_def.title, theme, [
+            for (final action in pageActions)
+              if (action.scope == ActionScopes.selection)
+                _bulkButton(
+                  action: action,
+                  count:
+                      _selection.pick(_controller.items, _def.keyField).length,
+                  onPressed: () => _runAction(action),
+                  roles: HatakeScope.of(context).roles,
+                  // 読み込み中は「行が無い」と決めつけない（待っている間だけ嘘になる）。
+                  hasRows:
+                      _controller.loading ? null : _controller.items.isNotEmpty,
+                  // 選んだ行が全部満たすときだけ押せる（合わない件数はラベルへ）。
+                  failing: _actionEnabled(
+                    action,
+                    rows: _selection.pick(_controller.items, _def.keyField),
+                  ).failing,
+                )
+              else
+                // 一覧の上のボタンには判定する相手が無いので出し分けない
+                // （書いても効かないことは validate が言う）。
+                FilledButton(
+                  key: Key('hatake.action.${action.id}'),
+                  onPressed: () => _runAction(action),
+                  child: Text(action.label),
+                ),
+          ]),
           const SizedBox(height: 12),
           if (_def.search != null) ...[
             _SearchArea(search: _def.search!, onSearch: _controller.search),
@@ -198,11 +188,8 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
 
     final columns =
         _def.table.columns.where((c) => isAllowed(c.roles, _roles)).toList();
-    final rowActions = rowActionIds
-        .map(_actionById)
-        .whereType<ActionDefinition>()
-        .where((a) => isAllowed(a.roles, _roles))
-        .toList();
+    final rowActions = _rowActions(rowActionIds, _def.actions, _roles);
+    final labels = {for (final column in columns) column.field: column.label};
 
     // 表が選択可能になるのは、選んだ行に対して実行するボタンが在るときだけ。
     final selectable = _hasSelectionAction(_def.actions, _roles);
@@ -227,8 +214,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
           rows: [
             for (final record in _controller.items)
               DataRow(
-                selected: selectable &&
-                    _selection.has(record[_def.keyField]),
+                selected: selectable && _selection.has(record[_def.keyField]),
                 onSelectChanged: !selectable
                     ? null
                     : (value) => setState(() => _selection.toggle(
@@ -244,24 +230,13 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
                     DataCell(Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // 行のボタンは**その行のレコード**で判定する
-                        // （`enabledWhen`）。押せないときは理由を添える。
                         for (final action in rowActions)
-                          _withReason(
-                            TextButton(
-                              key: Key(
-                                  'hatake.rowaction.${action.id}.${record[_def.keyField]}'),
-                              onPressed: _actionEnabled(action, record: record)
-                                      .enabled
-                                  ? () => _runAction(action, record: record)
-                                  : null,
-                              child: Text(action.label),
-                            ),
-                            _actionEnabled(action, record: record),
-                            {
-                              for (final column in columns)
-                                column.field: column.label,
-                            },
+                          _rowActionButton(
+                            action: action,
+                            record: record,
+                            rowKey: record[_def.keyField],
+                            labels: labels,
+                            onPressed: () => _runAction(action, record: record),
                           ),
                       ],
                     )),

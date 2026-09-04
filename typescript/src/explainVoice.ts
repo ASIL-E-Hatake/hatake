@@ -352,6 +352,11 @@ const WORDS = {
     (when: string) => `押せるのは、選んだ行が全部 ${when} のときだけ`,
     (when: string) => `pressable only while every checked row is ${when}`,
   ),
+  /** 並べてあるが行には出ないもの（選んだ行に実行するボタン）。 */
+  notOnRow: pair(
+    (label: string) => `${label}（行には出ない：選んだ行に実行するボタン）`,
+    (label: string) => `${label} (not on the row: it runs on the checked rows)`,
+  ),
   openEdit: pair("編集を開く", "opens the editor"),
   deleteRow: pair("削除する", "deletes"),
   undeclaredRowAction: pair(

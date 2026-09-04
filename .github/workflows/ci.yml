@@ -2345,6 +2345,43 @@ jobs:
                 confirm: { message: 消しますか, danger: true }
           YAML
           node dist/cli.js validate --warn-as-error /tmp/alive.yaml
+          # 一括のボタンを行に並べた形。行のボタンは**押した行**に実行するので、
+          # 並べると押した行ではなくチェックした行に実行することになる（何も選んで
+          # いなければ何も起きない）。
+          cat > /tmp/rowbulk.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              rowActions: [approve]
+              columns: [{ field: orderNo, label: 受注番号 }]
+            actions:
+              - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認, scope: selection }
+          YAML
+          if node dist/cli.js validate --warn-as-error --json /tmp/rowbulk.yaml \
+               > /tmp/rowbulk.json 2>&1; then
+            echo "行に並べた一括で通ってしまった"; exit 1
+          fi
+          grep -q 'selection-as-rowaction' /tmp/rowbulk.json
+          # 読み返しも同じことを言う（並べてあるからと「行に出る」とは書かない）。
+          node dist/cli.js explain /tmp/rowbulk.yaml > /tmp/rowbulk.log
+          grep -q '一括承認（行には出ない：選んだ行に実行するボタン）' /tmp/rowbulk.log
+          # 行から外せば通る（一覧の上の一括ボタンとして出る）。
+          grep -v 'rowActions: \[approve\]' /tmp/rowbulk.yaml > /tmp/rowfix.yaml
+          node dist/cli.js validate --warn-as-error /tmp/rowfix.yaml
+          # 空振りは**直し方の実例**からも引ける（規則名で引いて、直した形まで出る）。
+          for rule in export-without-rows plugin-without-name navigate-to-self \
+              row-declaration-unused builtin-rowaction-unsupported \
+              selection-as-rowaction; do
+            node dist/cli.js failures "$rule" > /tmp/failure.log
+            grep -q 'なぜそう書くか' /tmp/failure.log || {
+              echo "$rule の実例が引けない"; cat /tmp/failure.log; exit 1; }
+            grep -q '直したもの' /tmp/failure.log || {
+              echo "$rule の実例に直した形が無い"; exit 1; }
+          done
 
       - name: A definition compared with itself is compatible
         working-directory: typescript
