@@ -31,7 +31,10 @@ import { buildReport } from "./report.js";
 import { layoutReport } from "./reportLayout.js";
 import { renderPaperText } from "./paperText.js";
 import { sampleRows } from "./sampleRows.js";
-import { type ReportPageDefinition } from "./definition.js";
+import {
+  type PageDefinition,
+  type ReportPageDefinition,
+} from "./definition.js";
 import { fixSource, fixTodo } from "./fix.js";
 import {
   collectRefs,
@@ -47,6 +50,14 @@ import { withDrafts } from "./adviseDraft.js";
 import { DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
 import { type ExampleCatalog, filterExamples } from "./examples.js";
 import { toJsonSchema } from "./jsonSchema.js";
+import {
+  formOf,
+  runScenario,
+  type ScenarioCase,
+  type ScenarioFile,
+} from "./scenario.js";
+import { draftScenario } from "./scenarioDraft.js";
+import { coverScenario } from "./scenarioCover.js";
 import { toOpenApi } from "./openApi.js";
 import { parseAppYaml } from "./appParse.js";
 import {
@@ -108,15 +119,19 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
    roles や maxRows.byRole を書くときは先に hatake_explain の roles: true で
    **定義に出てくる役割**を引く
    （役割名を想像で書くと、画面は出るのに誰にも見えない）
-5. **帳票（type: report）を書いたら hatake_print_preview**（刷ったらどう見えるかを文字で返す。
+5. **書けたら hatake_run で動かす**（draft: true で下書きのシナリオを作り、そのまま
+   回す）。validate は「書ける」ことしか言わず、explain は「そう書いてある」ことしか
+   言わない＝**その値でいくらになるか・何が必須になるか・押せるか**は動かさないと
+   分からない。cover: true で「まだ試していない分岐」も出る（次に書くシナリオが決まる）
+6. **帳票（type: report）を書いたら hatake_print_preview**（刷ったらどう見えるかを文字で返す。
    列の並び・小計の位置・切れた文字は、explain では分からない）
-6. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
-7. バックエンドの形が要るなら hatake_api_shape
-8. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
+7. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
+8. バックエンドの形が要るなら hatake_api_shape
+9. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
    直した内容を人に伝えるときは hatake_explain に before を渡す（変更を画面の言葉で言い直す）
-9. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグイン / 出す口の一覧）
+10. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグイン / 出す口の一覧）
    → そのまま繋ぐコードの下書きが要るなら hatake_wire（Flutter の HatakeScope を組む）
-10. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
+11. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
 
 原則: Flutter の Widget や API のコードを手で書かず、定義を書く。定義に無い機能は
 DSL の拡張（プラグイン）で足す。`;
@@ -134,6 +149,37 @@ function required(args: Record<string, unknown>, key: string): string {
 }
 
 const pretty = (value: unknown): string => JSON.stringify(value, null, 2);
+
+/**
+ * 動かす画面を1枚選ぶ（`hatake_run`）。
+ *
+ * `app:` なら id で選ぶが、**入力の枠を持つ画面が1枚しか無ければ選ばせない**
+ * （そこで往復を1回増やす意味がない）。CLI と同じ判断。
+ */
+function scenarioPage(source: string, wanted: string | undefined): PageDefinition {
+  const pages = isAppSource(source)
+    ? parseAppSource(source).pages
+    : [parsePageYaml(source, { strict: true })];
+  if (wanted !== undefined) {
+    const found = pages.find((one) => one.id === wanted);
+    if (found === undefined) {
+      throw new Error(
+        `画面 "${wanted}" はありません（${pages.map((one) => one.id).join(" / ")}）。`,
+      );
+    }
+    return found;
+  }
+  if (pages.length === 1) return pages[0];
+  const withForm = pages.filter((one) => formOf(one) !== undefined);
+  if (withForm.length === 1) return withForm[0];
+  if (withForm.length === 0) {
+    throw new Error("入力の枠（form）を持つ画面がありません（入れる値がありません）。");
+  }
+  throw new Error(
+    `入力の枠を持つ画面が ${withForm.length} 枚あります。page で選んでください` +
+      `（${withForm.map((one) => one.id).join(" / ")}）。`,
+  );
+}
 
 /**
  * `lang` 引数（既定は日本語）。知らない言語は黙って日本語にしない。
@@ -763,6 +809,97 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             : `${found.fix}（実際に同じ書き方で転んだ例がある: ${found.id}）`;
         };
         return pretty({ ...result, todo: fixTodo(result, hint) });
+      },
+    },
+    {
+      name: "hatake_run",
+      title: "定義を動かして答えを見る",
+      description:
+        "定義を**動かす**。hatake_validate が言うのは「書ける」ことだけ、" +
+        "hatake_explain が言うのは「そう書いてある」ことだけで、**その値でいくらになるか・" +
+        "その状態で何が必須になるか・そのボタンが押せるか**は動かさないと分からない。" +
+        "1件（シナリオ）は「この値を入れたら、こうなる」で、返るのは" +
+        "**検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン**。" +
+        "答えの作り方は画面と同じ順（normalize → computed → 状態 → 検証）。" +
+        "**draft: true で下書きを作れる**（必須を空に・文字数の境界・同じ値の行を2つ・" +
+        "条件が成立した形）。期待は**いまの答えを写す**ので、業務として正しいかは人が見る。" +
+        "**cover: true で「まだ試していない分岐」**が出る＝次に書くシナリオが決まる。" +
+        "期待（expect）は**書いた欄だけ**見る（全部書かなくてよい）。" +
+        "プラグインの計算・検証はここには無いので、値を作らずに cannot でそう言う" +
+        "（アプリ側の試験で ScenarioRunner に登録を渡して回す）。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description: "定義の中身そのもの（ファイルパスではない）。page: でも app: でも。",
+          },
+          page: {
+            type: "string",
+            description:
+              "app のとき、動かす画面の id（入力の枠を持つ画面が1枚なら省略できる）。",
+          },
+          scenario: {
+            type: "object",
+            description:
+              "シナリオ（`{ cases: [{ name, record, mode?, expect? }] }`）。" +
+              "expect の欄は errors（順不同で完全一致）/ computed・enabled（書いたキーだけ）/ " +
+              "hidden・required（含む）。省略するときは draft: true を渡す。",
+          },
+          draft: {
+            type: "boolean",
+            description:
+              "定義の制約から下書きのシナリオを作って返す（scenario は渡さなくてよい）。",
+          },
+          cover: {
+            type: "boolean",
+            description:
+              "「まだ試していない分岐」も返す（条件の片側しか通っていない・落ちる側を" +
+              "試していない検証など）。",
+          },
+        },
+        required: ["source"],
+      },
+      run(args) {
+        const source = required(args, "source");
+        const page = scenarioPage(source, str(args, "page"));
+        if (args.draft === true) {
+          const drafted = draftScenario(page);
+          return pretty({
+            ok: true,
+            note:
+              "下書きの期待は**いまの答えを写したもの**。業務としてこれが正しいかは" +
+              "人が見てから使う（定義が間違っていれば、間違ったまま写る）。",
+            scenario: drafted.file,
+            todo: drafted.todo,
+          });
+        }
+        const file = args.scenario;
+        if (typeof file !== "object" || file === null || Array.isArray(file)) {
+          throw new Error(
+            "scenario（{ cases: [...] }）か draft: true を渡してください。",
+          );
+        }
+        const cases = (file as { cases?: unknown }).cases;
+        if (!Array.isArray(cases)) {
+          throw new Error("scenario に cases（配列）がありません。");
+        }
+        const results = runScenario(page, file as ScenarioFile);
+        const answers = results.map((one) => one.answer);
+        const failed = results.filter((one) => one.mismatches.length > 0);
+        const cannot = [...new Set(answers.flatMap((one) => one.cannot))];
+        const cover =
+          args.cover === true
+            ? coverScenario(page, cases as ScenarioCase[], answers)
+            : undefined;
+        return pretty({
+          ok: failed.length === 0,
+          page: page.id,
+          results,
+          failed: failed.length,
+          ...(cannot.length === 0 ? {} : { cannot }),
+          ...(cover === undefined ? {} : { pending: cover.pending }),
+        });
       },
     },
     {

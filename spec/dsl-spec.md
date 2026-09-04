@@ -1795,6 +1795,74 @@ npx hatake validate page.yaml           # unknown keys pull the matching fix in 
 Every entry is verified in CI: the wrong form really fails strict parsing and the
 correct form really passes, so the table cannot lie.
 
+## Running a definition (scenarios)
+
+`validate` only says the definition **can be written**; `explain` only says **what it says**.
+What a value adds up to, which fields become required in that state, whether a button can be
+pressed — none of that is knowable **without running it**.
+
+```bash
+npx hatake run order_entry.yaml --draft --out order.scenario.json
+npx hatake run order_entry.yaml --scenario order.scenario.json --cover
+```
+
+One case is "put these values in, and this is what happens".
+
+```json
+{
+  "page": "order_entry",
+  "cases": [
+    {
+      "name": "a cancelled row stays out of the subtotal",
+      "record": {
+        "orderNo": "SO-1",
+        "lines": [
+          { "item": "鉛筆", "qty": 2, "price": 100 },
+          { "item": "ノート", "qty": 1, "price": 800, "cancelled": true }
+        ]
+      },
+      "expect": { "computed": { "subtotal": 200 }, "errors": [] }
+    }
+  ]
+}
+```
+
+Five things come back, built **in the order the screen uses** (`normalize` → `computed` →
+state → validate) — if that order drifts, the tool's answer becomes a lie.
+
+| Field | What comes back | How the expectation is matched |
+|---|---|---|
+| `errors` | validation errors (child rows keep the `<field>[<index>].<rowField>` path) | written = **exact, unordered** (`[]` means "no errors") |
+| `computed` | derived values (row-level computeds are applied first) | **only the keys you wrote** |
+| `enabled` | whether a button can be pressed (`enabledWhen`) | **only the keys you wrote** |
+| `hidden` | fields hidden by `visibleWhen` (a section's too) | the ones you wrote must **be there** |
+| `required` | fields required now (`required` plus a matching `requiredWhen`; **hidden fields do not count**) | the ones you wrote must **be there** |
+
+Each field is matched the way its shape calls for: a list of errors means "these and no
+others", while a derived value is usually checked one at a time. **Fields you leave out are
+not checked**, so a case can assert just the one thing it is about.
+
+Decisions:
+
+- **What cannot be answered is not answered.** Plugin computeds and validators live in the
+  application, not in the CLI, so no value is invented — they are listed under `cannot`
+  (returning 0 or null would read as "the calculation produced 0"). A `subTable` with
+  `source` is not folded for the same reason
+- **Pressability is only answered for pages that hold a record** (a button above a list has
+  nothing to judge — `validate` says so as `enabledwhen-without-record`). A bulk button
+  judges the *checked rows*, which a scenario does not have
+- `--draft` copies **the current answers** into the expectations: instantly runnable, but a
+  wrong definition is copied just as faithfully — **a human still has to read it** (each case
+  records what it was made from). Fields with a fixed shape (`pattern`) get `TODO_<field>`
+  rather than an invented value
+- `--cover` counts **the definition's own branches** (each condition needs both the matching
+  and the non-matching case; each validated field needs both a pass and a failure), never
+  lines of code. It is **not a gate** — its value is telling you which case to write next
+- **The same file replays inside the app's tests.** On the Flutter side `ScenarioRunner`
+  takes the application's own registries, so plugin computeds and validators are covered
+  too. That the CLI and Dart answer identically is pinned by
+  [`spec/conformance/scenario.json`](conformance/scenario.json)
+
 ## Real failures
 
 The table above is a curated set of mistakes **a human thought of**, which is not

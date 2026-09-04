@@ -93,6 +93,7 @@ describe("MCP プロトコル", () => {
       "hatake_diff",
       "hatake_explain",
       "hatake_fix",
+      "hatake_run",
       "hatake_print_preview",
       "hatake_minimize",
       "hatake_refs",

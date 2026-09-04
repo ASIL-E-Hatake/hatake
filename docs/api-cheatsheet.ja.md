@@ -76,6 +76,8 @@ npx hatake new crud --id customer_master --title 顧客マスタ   # 雛形（8�
 npx hatake types page.yaml --lang java --out gen/            # ネイティブ型
 ```
 
+**書いた定義は動かして確かめられる**: `npx hatake run <定義> --scenario s.json`。1件は「この値を入れたら、こうなる」で、返るのは**検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン**（答えの作り方は画面と同じ順＝`normalize` → `computed` → 状態 → 検証）。期待は**書いた欄だけ**見る（全部書かなくてよい）。`--draft` で下書きを起こし、`--cover` で「まだ試していない分岐」を出す。プラグインの計算・検証は CLI には無いので、値を作らずにそう言う（アプリ側は `ScenarioRunner` に登録を渡して同じシナリオを回す）。
+
 **画面をどう開くかも定義で言える**: `app.navigation`（`single`＝1画面ずつ／`tabs`＝並べて
 開く）。既定は `single`（いままでの動き）。**アプリ側で上書きできる**
 （`HatakeApp(navigation: AppNavigation.single)`）＝同じ定義を PC ではタブ・タブレットでは
