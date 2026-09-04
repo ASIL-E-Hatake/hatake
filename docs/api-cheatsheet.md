@@ -31,6 +31,15 @@ rest", so what was sent has run and the report counts it separately (`{skipped}`
 stopped run is not a success, so `onSuccess` does not run, and the **unfinished rows stay
 checked** so pressing again continues where it stopped.
 
+A definition can be **run**: `npx hatake run <def> --scenario s.json` answers, as text, what
+the screen would do — validation errors, computed values, hidden fields, currently required
+fields, which buttons are pressable — in the same order the screen uses (`normalize` →
+`computed` → state → validate). Expectations are matched **only for the keys you wrote**.
+`--draft` seeds a scenario from the definition's own constraints, `--cover` lists the
+branches no case has reached yet. Plugin computeds/validators are not in the CLI, so it
+says so instead of inventing a value (the app replays the same file through
+`ScenarioRunner` with its real registries).
+
 An app may say **how screens open**: `app.navigation` (`single`, the default, swaps the
 screen; `tabs` opens them side by side). The application may override it
 (`HatakeApp(navigation:)`), so one definition can be tabs on a desktop and single on a

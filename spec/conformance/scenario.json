@@ -1,0 +1,456 @@
+{
+  "_comment": "シナリオ（定義を動かして答えを見る）。各エディションが `page` を解析し、case ごとに `record` を動かして、答えを `expect` と比べる。固定したいのは6つ: (1) 答えの作り方の順番（normalize → computed → 状態 → 検証）、(2) 行の中の計算が親より先に当たること、(3) 隠れている項目は検証しないこと、(4) いま必須の項目は隠れているものを数えないこと、(5) 押せるボタンはレコードを持つ画面だけ答えること、(6) 期待は**書いた欄だけ**見ること（errors は順不同で完全一致、computed / enabled は書いたキーだけ、hidden / required は含む）。",
+  "page": {
+    "dsl_version": "1.0",
+    "page": {
+      "type": "form",
+      "id": "order_entry",
+      "title": "受注入力",
+      "repository": "orderRepository",
+      "key": "orderNo",
+      "form": {
+        "sections": [
+          {
+            "title": "受注情報",
+            "fields": [
+              {
+                "field": "orderNo",
+                "label": "受注番号",
+                "required": true,
+                "normalize": [
+                  "toHankaku",
+                  "trim"
+                ],
+                "validators": [
+                  {
+                    "type": "maxLength",
+                    "value": 8
+                  }
+                ]
+              },
+              {
+                "field": "customer",
+                "label": "顧客",
+                "required": true
+              },
+              {
+                "field": "kind",
+                "label": "区分",
+                "type": "select",
+                "options": [
+                  {
+                    "value": "personal",
+                    "label": "個人"
+                  },
+                  {
+                    "value": "corporate",
+                    "label": "法人"
+                  }
+                ]
+              },
+              {
+                "field": "companyNo",
+                "label": "法人番号",
+                "visibleWhen": {
+                  "field": "kind",
+                  "operator": "equals",
+                  "value": "corporate"
+                },
+                "requiredWhen": {
+                  "field": "kind",
+                  "operator": "equals",
+                  "value": "corporate"
+                }
+              }
+            ]
+          },
+          {
+            "fields": [
+              {
+                "field": "lines",
+                "label": "明細",
+                "type": "subTable",
+                "required": true,
+                "validators": [
+                  {
+                    "type": "unique",
+                    "of": "item"
+                  }
+                ],
+                "fields": [
+                  {
+                    "field": "item",
+                    "label": "品名",
+                    "required": true
+                  },
+                  {
+                    "field": "qty",
+                    "label": "数量",
+                    "type": "number",
+                    "validators": [
+                      {
+                        "type": "min",
+                        "value": 1
+                      }
+                    ]
+                  },
+                  {
+                    "field": "price",
+                    "label": "単価",
+                    "type": "number"
+                  },
+                  {
+                    "field": "amount",
+                    "label": "金額",
+                    "computed": {
+                      "op": "product",
+                      "fields": [
+                        "qty",
+                        "price"
+                      ]
+                    }
+                  },
+                  {
+                    "field": "cancelled",
+                    "label": "取消",
+                    "type": "checkbox"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "title": "金額",
+            "fields": [
+              {
+                "field": "subtotal",
+                "label": "小計",
+                "computed": {
+                  "op": "sum",
+                  "field": "lines",
+                  "of": "amount",
+                  "where": {
+                    "field": "cancelled",
+                    "operator": "notEquals",
+                    "value": true
+                  }
+                }
+              },
+              {
+                "field": "itemNames",
+                "label": "主な品名",
+                "computed": {
+                  "op": "join",
+                  "field": "lines",
+                  "of": "item",
+                  "separator": "、",
+                  "sort": {
+                    "field": "amount",
+                    "ascending": false
+                  },
+                  "limit": 2
+                }
+              },
+              {
+                "field": "total",
+                "label": "合計",
+                "type": "number",
+                "validators": [
+                  {
+                    "type": "compare",
+                    "operator": "equals",
+                    "field": "lines",
+                    "aggregate": "sum",
+                    "of": "amount",
+                    "where": {
+                      "field": "cancelled",
+                      "operator": "notEquals",
+                      "value": true
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "actions": [
+        {
+          "id": "save",
+          "type": "plugin",
+          "plugin": "saveOrder",
+          "label": "登録"
+        },
+        {
+          "id": "reject",
+          "type": "plugin",
+          "plugin": "rejectOrder",
+          "label": "却下",
+          "enabledWhen": {
+            "field": "kind",
+            "operator": "equals",
+            "value": "corporate"
+          }
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "全部埋めた（行の計算・縦計・上位だけ並べる）",
+      "record": {
+        "orderNo": "ＳＯ－１ ",
+        "customer": "山田商事",
+        "kind": "personal",
+        "lines": [
+          {
+            "item": "鉛筆",
+            "qty": 2,
+            "price": 100
+          },
+          {
+            "item": "ノート",
+            "qty": 1,
+            "price": 800
+          },
+          {
+            "item": "消しゴム",
+            "qty": 3,
+            "price": 50
+          }
+        ],
+        "total": 1150
+      },
+      "expect": {
+        "errors": [],
+        "computed": {
+          "subtotal": 1150,
+          "itemNames": "ノート、鉛筆、ほか 1 件"
+        },
+        "enabled": {
+          "save": true,
+          "reject": false
+        },
+        "hidden": [
+          "companyNo"
+        ],
+        "required": [
+          "orderNo",
+          "customer",
+          "lines"
+        ]
+      }
+    },
+    {
+      "name": "取消の行は小計に入らない（畳む前に絞る）",
+      "record": {
+        "orderNo": "SO-2",
+        "customer": "山田商事",
+        "kind": "personal",
+        "lines": [
+          {
+            "item": "鉛筆",
+            "qty": 2,
+            "price": 100
+          },
+          {
+            "item": "ノート",
+            "qty": 1,
+            "price": 800,
+            "cancelled": true
+          }
+        ],
+        "total": 200
+      },
+      "expect": {
+        "errors": [],
+        "computed": {
+          "subtotal": 200,
+          "itemNames": "ノート、鉛筆"
+        },
+        "enabled": {
+          "save": true,
+          "reject": false
+        },
+        "hidden": [
+          "companyNo"
+        ],
+        "required": [
+          "orderNo",
+          "customer",
+          "lines"
+        ]
+      }
+    },
+    {
+      "name": "法人にすると法人番号が出て、必須になる（却下も押せる）",
+      "record": {
+        "orderNo": "SO-3",
+        "customer": "山田商事",
+        "kind": "corporate",
+        "lines": [
+          {
+            "item": "鉛筆",
+            "qty": 1,
+            "price": 100
+          }
+        ],
+        "total": 100
+      },
+      "expect": {
+        "errors": [
+          {
+            "field": "companyNo",
+            "message": "必須項目です"
+          }
+        ],
+        "computed": {
+          "subtotal": 100,
+          "itemNames": "鉛筆"
+        },
+        "enabled": {
+          "save": true,
+          "reject": true
+        },
+        "hidden": [],
+        "required": [
+          "orderNo",
+          "customer",
+          "companyNo",
+          "lines"
+        ]
+      }
+    },
+    {
+      "name": "個人なら法人番号は隠れている（隠れている項目は検証しない）",
+      "record": {
+        "orderNo": "SO-4",
+        "customer": "山田商事",
+        "kind": "personal",
+        "lines": [
+          {
+            "item": "鉛筆",
+            "qty": 1,
+            "price": 100
+          }
+        ],
+        "total": 100
+      },
+      "expect": {
+        "errors": [],
+        "computed": {
+          "subtotal": 100,
+          "itemNames": "鉛筆"
+        },
+        "enabled": {
+          "save": true,
+          "reject": false
+        },
+        "hidden": [
+          "companyNo"
+        ],
+        "required": [
+          "orderNo",
+          "customer",
+          "lines"
+        ]
+      }
+    },
+    {
+      "name": "必須と行の中の検証と行どうしの規則が、いちどに出る",
+      "record": {
+        "orderNo": "SO-5",
+        "kind": "personal",
+        "lines": [
+          {
+            "item": "鉛筆",
+            "qty": 0,
+            "price": 100
+          },
+          {
+            "item": "鉛筆",
+            "qty": 1,
+            "price": 100
+          }
+        ],
+        "total": 0
+      },
+      "expect": {
+        "errors": [
+          {
+            "field": "customer",
+            "message": "必須項目です"
+          },
+          {
+            "field": "lines",
+            "message": "品名 が同じ行があります（2 行目）"
+          },
+          {
+            "field": "lines[0].qty",
+            "message": "1以上で入力してください"
+          },
+          {
+            "field": "total",
+            "message": "明細 の sumと同じ値にしてください"
+          }
+        ],
+        "computed": {
+          "subtotal": 100,
+          "itemNames": "鉛筆、鉛筆"
+        },
+        "enabled": {
+          "save": true,
+          "reject": false
+        },
+        "hidden": [
+          "companyNo"
+        ],
+        "required": [
+          "orderNo",
+          "customer",
+          "lines"
+        ]
+      }
+    },
+    {
+      "name": "受注番号が長すぎる（形の検証は自分の値だけを見る）",
+      "record": {
+        "orderNo": "SO-123456789",
+        "customer": "山田商事",
+        "kind": "personal",
+        "lines": [
+          {
+            "item": "鉛筆",
+            "qty": 1,
+            "price": 100
+          }
+        ],
+        "total": 100
+      },
+      "expect": {
+        "errors": [
+          {
+            "field": "orderNo",
+            "message": "8文字以内で入力してください"
+          }
+        ],
+        "computed": {
+          "subtotal": 100,
+          "itemNames": "鉛筆"
+        },
+        "enabled": {
+          "save": true,
+          "reject": false
+        },
+        "hidden": [
+          "companyNo"
+        ],
+        "required": [
+          "orderNo",
+          "customer",
+          "lines"
+        ]
+      }
+    }
+  ]
+}

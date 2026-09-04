@@ -1531,6 +1531,95 @@ jobs:
             }
           '
 
+      - name: Running a definition (scenarios, draft, coverage)
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          # 1. 下書きは**そのまま回せる**（作った期待が、その場の答えと合っている）。
+          node dist/cli.js run "$DEMO" --page order_entry --draft \
+            --out /tmp/order.scenario.json
+          node dist/cli.js run "$DEMO" --page order_entry \
+            --scenario /tmp/order.scenario.json > /tmp/run.log
+          grep -q '件すべて期待どおり' /tmp/run.log
+          # 2. 期待を1つ壊したら**落ちる**（通ることしか確かめないと、道具が寝ていても気づけない）。
+          node -e '
+            const fs = require("fs");
+            const file = JSON.parse(fs.readFileSync("/tmp/order.scenario.json", "utf8"));
+            const one = file.cases.find((c) => c.expect && c.expect.computed
+              && Object.keys(c.expect.computed).length > 0);
+            if (one === undefined) { console.error("計算を確かめる件が無い"); process.exit(1); }
+            const key = Object.keys(one.expect.computed)[0];
+            one.expect.computed[key] = "わざと違う値";
+            fs.writeFileSync("/tmp/broken.scenario.json", JSON.stringify(file), "utf8");
+          '
+          if node dist/cli.js run "$DEMO" --page order_entry \
+               --scenario /tmp/broken.scenario.json > /tmp/broken.log 2>&1; then
+            echo "壊した期待で通ってしまった"; cat /tmp/broken.log; exit 1
+          fi
+          grep -q 'NG' /tmp/broken.log
+          # 3. まだ試していない分岐を挙げる（次に書くシナリオが決まる）。
+          cat > /tmp/one.scenario.json <<'JSON'
+          { "cases": [ { "name": "個人", "record": { "kind": "personal" } } ] }
+          JSON
+          cat > /tmp/cover.yaml <<'YAML'
+          page:
+            type: form
+            id: member
+            title: 会員
+            repository: memberRepository
+            form:
+              sections:
+                - fields:
+                    - { field: kind, label: 区分, type: select,
+                        options: [{ value: personal, label: 個人 }, { value: corporate, label: 法人 }] }
+                    - { field: companyNo, label: 法人番号,
+                        visibleWhen: { field: kind, operator: equals, value: corporate } }
+            actions:
+              - { id: save, type: plugin, plugin: saveMember, label: 登録 }
+          YAML
+          node dist/cli.js run /tmp/cover.yaml --scenario /tmp/one.scenario.json --cover \
+            > /tmp/cover.log
+          grep -q 'まだ試していない所' /tmp/cover.log
+          grep -q '「法人番号」が出る条件' /tmp/cover.log
+          # 4. **答えられないことは答えない**（登録が要る計算は値を作らない）。
+          cat > /tmp/plugin.yaml <<'YAML'
+          page:
+            type: form
+            id: tax
+            title: 税
+            repository: repo
+            form:
+              sections:
+                - fields:
+                    - { field: price, label: 価格, type: number }
+                    - { field: tax, label: 消費税, computed: { op: consumptionTax, field: price } }
+          YAML
+          cat > /tmp/plugin.scenario.json <<'JSON'
+          { "cases": [ { "name": "1000 円", "record": { "price": 1000 } } ] }
+          JSON
+          node dist/cli.js run /tmp/plugin.yaml --scenario /tmp/plugin.scenario.json \
+            > /tmp/plugin.log
+          grep -q 'consumptionTax' /tmp/plugin.log
+          grep -q '登録が要ります' /tmp/plugin.log
+          # 5. 道具の答えと**共有フィクスチャ**が一致していること（Dart 版も同じ表を食べる）。
+          node -e '
+            const fs = require("fs");
+            const { parsePageJson } = require("./dist/parse.js");
+            const { runCase, compareAnswer } = require("./dist/scenario.js");
+            const fixture = JSON.parse(
+              fs.readFileSync("../spec/conformance/scenario.json", "utf8"));
+            const page = parsePageJson(JSON.stringify(fixture.page), { strict: true });
+            for (const one of fixture.cases) {
+              const bad = compareAnswer(one.expect, runCase(page, one));
+              if (bad.length > 0) {
+                console.error(one.name + ": " + JSON.stringify(bad));
+                process.exit(1);
+              }
+            }
+            console.log("scenario fixture: " + fixture.cases.length + " 件一致");
+          '
+
       - name: The tutorial's definition and its output are real
         working-directory: typescript
         run: |

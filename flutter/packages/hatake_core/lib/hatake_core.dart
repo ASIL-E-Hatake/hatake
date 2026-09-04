@@ -65,6 +65,7 @@ export 'src/definition/app_navigation.dart';
 export 'src/tooling/page_kinds.dart';
 export 'src/tooling/page_kind_words.dart';
 export 'src/tooling/page_parts.dart';
+export 'src/tooling/scenario_runner.dart';
 export 'src/tooling/screen_brief.dart';
 export 'src/tooling/screen_index.dart';
 

@@ -36,6 +36,13 @@ import {
   filterFailures,
 } from "./failures.js";
 import { deriveDto } from "./dto.js";
+import {
+  formOf,
+  runScenario,
+  type ScenarioFile,
+} from "./scenario.js";
+import { draftScenario } from "./scenarioDraft.js";
+import { coverScenario } from "./scenarioCover.js";
 import { renderExplain } from "./explain.js";
 import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
 import {
@@ -169,6 +176,21 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       定義の隣の hatake-registry.json があれば拾う。
       一覧に roles（アプリが配りうる役割）が在れば、**定義にしか無い役割**も言う
       ＝その役割で出し分けている列やボタンは誰にも見えない。
+
+  hatake run <file> [--page <id>] --scenario s.json [--cover] [--json]
+  hatake run <file> [--page <id>] --draft [--out s.json] [--json]
+      定義を**動かして**答えを見る。画面もブラウザも要らない。
+      1件（シナリオ）は「この値を入れたら、こうなる」。返すのは
+      **検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン**。
+      答えの作り方は画面と同じ順（normalize → computed → 状態 → 検証）。
+      期待（expect）は**書いた欄だけ**見る（全部書かなくてよい）。合わなければ
+      終了コード 1。
+      --draft は定義の制約から下書きを起こす（必須を空に・文字数の境界・同じ値の
+      行を2つ・条件が成立した形）。**期待はいまの答えを写す**ので、業務として
+      正しいかは人が見る。
+      --cover は「まだ試していない所」を定義の分岐から挙げる（落とさない）。
+      プラグインの計算・検証は**この道具には無い**ので、値を作らずにそう言う
+      （アプリの試験で回す）。
 
   hatake explain <file> [--page <id>] [--brief] [--json] [--markdown] [--lang ja|en]
       定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人が、AI に
@@ -440,6 +462,8 @@ const BOOLEAN_FLAGS = new Set([
   "filled",
   "pending-as-error",
   "todo",
+  "draft",
+  "cover",
   "dry-run",
   "if-changed",
   "help",
@@ -500,6 +524,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
     switch (command) {
       case "validate":
         return validate(positional, flags, io);
+      case "run":
+        return run(positional, flags, io);
       case "dto":
         return emit(positional, io, (page) =>
           JSON.stringify(deriveDto(page), null, 2),
@@ -711,6 +737,155 @@ function loadRegistry(
  * つもりの機能まで説明してしまう）。読み方そのものは explainSource に置いてある
  * （CLI と MCP で結論が違うことが無いように）。
  */
+/**
+ * 定義を動かして答えを見る（シナリオ）。
+ *
+ * 書く道具と読む道具は揃っているのに、**動かす道具**が無かった＝「書いたものが
+ * 本当にそう動くか」を確かめるには画面の試験を手で書くしかなかった。ここが AI に
+ * とって一番遠い所なので、**文字で答える**。
+ *
+ * 終了コードは「期待と合わなければ 1」。`--cover` は挙げるだけ（好みではなく
+ * 「まだ見ていない」を数えるものなので、落とす筋ではない）。
+ */
+function run(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("動かす定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const page = scenarioPageOf(io.readFile(files[0]), str(flags, "page"), io);
+  if (page === null) return 1;
+
+  if (flags.draft === true) {
+    const { file, todo } = draftScenario(page);
+    const text = `${JSON.stringify(file, null, 2)}\n`;
+    const out = str(flags, "out");
+    if (out !== undefined) {
+      io.writeFile(out, text);
+      io.out(`書きました: ${out}（${file.cases.length} 件）`);
+    } else if (flags.json === true) {
+      io.out(JSON.stringify({ file, todo }, null, 2));
+      return 0;
+    } else {
+      io.out(text);
+    }
+    for (const line of todo) io.err(`・${line}`);
+    return 0;
+  }
+
+  const scenarioFile = str(flags, "scenario");
+  if (scenarioFile === undefined) {
+    io.err(
+      "--scenario <file> か --draft を指定してください" +
+        "（--draft は定義から下書きを起こします）。",
+    );
+    return 1;
+  }
+  let file: ScenarioFile;
+  try {
+    file = JSON.parse(io.readFile(scenarioFile)) as ScenarioFile;
+  } catch (error) {
+    io.err(`シナリオが読めません: ${message(error)}`);
+    return 1;
+  }
+  if (!Array.isArray(file.cases)) {
+    io.err("シナリオに cases（配列）がありません。");
+    return 1;
+  }
+
+  const results = runScenario(page, file);
+  const answers = results.map((one) => one.answer);
+  const cover =
+    flags.cover === true ? coverScenario(page, file.cases, answers) : undefined;
+  const failed = results.filter((one) => one.mismatches.length > 0);
+
+  if (flags.json === true) {
+    io.out(
+      JSON.stringify(
+        {
+          page: page.id,
+          results,
+          ...(cover === undefined ? {} : { cover }),
+          failed: failed.length,
+        },
+        null,
+        2,
+      ),
+    );
+    return failed.length === 0 ? 0 : 1;
+  }
+
+  for (const one of results) {
+    if (one.mismatches.length === 0) {
+      io.out(`OK   ${one.name}`);
+    } else {
+      io.out(`NG   ${one.name}`);
+      for (const bad of one.mismatches) {
+        io.out(
+          `       ${bad.at}: 期待 ${JSON.stringify(bad.expected)} / ` +
+            `実際 ${JSON.stringify(bad.actual)}`,
+        );
+      }
+    }
+  }
+  // 答えられなかったことは、まとめて1回だけ言う（件ごとに繰り返すと読めない）。
+  const cannot = [...new Set(answers.flatMap((one) => one.cannot))];
+  for (const line of cannot) io.out(`※ ${line}`);
+  if (cover !== undefined) {
+    if (cover.pending.length === 0) {
+      io.out("まだ試していない分岐はありません。");
+    } else {
+      io.out(`まだ試していない所（${cover.pending.length} 件）:`);
+      for (const one of cover.pending) {
+        io.out(`  ・${one.what}: ${one.missing.join(" / ")}`);
+      }
+    }
+  }
+  io.out(
+    failed.length === 0
+      ? `${results.length} 件すべて期待どおり。`
+      : `${failed.length} / ${results.length} 件が期待と違います。`,
+  );
+  return failed.length === 0 ? 0 : 1;
+}
+
+/**
+ * 動かす画面を1枚取り出す。
+ *
+ * `app:` なら `--page` で選ぶ。**入力の枠を持つ画面が1枚しか無ければ選ばなくてよい**
+ * （そこで手間を取らせる意味がない）。何が在るかまで言って落ちる。
+ */
+function scenarioPageOf(
+  source: string,
+  wanted: string | undefined,
+  io: CliIo,
+): PageDefinition | null {
+  const pages: PageDefinition[] = isAppSource(source)
+    ? parseAppSource(source).pages
+    : [parsePageYaml(source, { strict: true })];
+  if (wanted !== undefined) {
+    const found = pages.find((one) => one.id === wanted);
+    if (found === undefined) {
+      io.err(
+        `画面 "${wanted}" はありません（${pages.map((one) => one.id).join(" / ")}）。`,
+      );
+      return null;
+    }
+    return found;
+  }
+  if (pages.length === 1) return pages[0];
+  const withForm = pages.filter((one) => formOf(one) !== undefined);
+  if (withForm.length === 1) return withForm[0];
+  if (withForm.length === 0) {
+    io.err("入力の枠（form）を持つ画面がありません（入れる値がありません）。");
+    return null;
+  }
+  io.err(
+    `入力の枠を持つ画面が ${withForm.length} 枚あります。--page で選んでください` +
+      `（${withForm.map((one) => one.id).join(" / ")}）。`,
+  );
+  return null;
+}
+
 function explain(files: string[], flags: Args["flags"], io: CliIo): number {
   if (bothFormats(flags, io)) return 1;
   if (flags.diff === true) return explainChanges(files, flags, io);
