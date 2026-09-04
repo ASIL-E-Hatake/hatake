@@ -853,7 +853,7 @@
         },
         "computed": {
           "type": "object",
-          "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max — the same aggregate vocabulary as dashboards and `compare` — plus `join`, which lists the rows as one string). Row-folding accepts `where` to keep only some rows. Derived once, in declaration order. Extensible via ComputedRegistry.",
+          "description": "Derive the field value from the record. Two modes: `fields` folds values of the same record (concat / sum / subtract / product), while `field` folds the rows of a subTable (count / sum / avg / min / max — the same aggregate vocabulary as dashboards and `compare` — plus `join`, which lists the rows as one string). Row-folding accepts `where` to keep only some rows, `sort` to order them and `limit` to fold just the first ones (in that order). Derived once, in declaration order. Extensible via ComputedRegistry.",
           "required": [
             "op"
           ],
@@ -901,6 +901,34 @@
             "separator": {
               "type": "string",
               "description": "What goes between the joined values. Default: empty for `concat` (it packs values of one record, like a name), \", \" for `join` (it lists rows, which are unreadable packed together)."
+            },
+            "sort": {
+              "type": "object",
+              "description": "Row-folding mode only: order the rows before folding, so `limit` takes the top ones (the three largest amounts). Same shape as the sort of a dashboard card and a report. Values compare as numbers when both read as numbers and as text otherwise (the rule `compare` uses); rows with no value go last either way, and equal values keep their original order.",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "ascending": {
+                  "type": "boolean",
+                  "default": true
+                }
+              }
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Row-folding mode only: fold just the first rows, after `where` and `sort`. A summary field has a fixed width, so listing every row overflows it. `join` says how many rows it left out (see `overflow`).",
+              "examples": [
+                3
+              ]
+            },
+            "overflow": {
+              "type": "string",
+              "description": "`join` with a `limit` only: what to append when rows were left out. `{count}` is the number of hidden rows, not the total. Defaults to the framework's wording (Japanese, via MessageResolver); an empty string appends nothing, which reads as a decision to truncate silently.",
+              "examples": [
+                "他 {count} 品目"
+              ]
             }
           }
         },
@@ -1014,7 +1042,7 @@
     },
     "validator": {
       "type": "object",
-      "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters: maxLength / minLength / min / max take 'value', pattern takes 'pattern', and compare takes 'operator' (equals / notEquals / gt / gte / lt / lte) plus 'field' (the field to compare with), optionally 'aggregate' + 'of' to fold a subTable into a number, and 'where' to fold only some of its rows (the same row filter as `computed`).",
+      "description": "A validation rule. 'type' selects the validator; remaining keys (except 'message') are passed as parameters: maxLength / minLength / min / max take 'value', pattern takes 'pattern', compare takes 'operator' (equals / notEquals / gt / gte / lt / lte) plus 'field' (the field to compare with), optionally 'aggregate' + 'of' to fold a subTable into a number, and 'where' to fold only some of its rows (the same row filter as `computed`), and unique takes 'of' (a row field that must not repeat). compare and unique are the ones that look beyond the value itself: compare reads another field of the same record, unique reads every row of a subTable.",
       "required": [
         "type"
       ],
@@ -1022,7 +1050,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "description": "Validator type (open string). Built-ins: required, maxLength, minLength, pattern, min, max, email, postalCode, compare. compare is the cross-field one: it reads another field of the same record (see the node description for its parameters).",
+          "description": "Validator type (open string). Built-ins: required, maxLength, minLength, pattern, min, max, email, postalCode, compare, unique. compare is the cross-field one (it reads another field of the same record) and unique is the cross-row one (it reads every row of a subTable, so it belongs on the subTable field itself); see the node description for their parameters.",
           "examples": [
             "required",
             "maxLength",
@@ -1032,7 +1060,8 @@
             "max",
             "email",
             "postalCode",
-            "compare"
+            "compare",
+            "unique"
           ]
         },
         "message": {

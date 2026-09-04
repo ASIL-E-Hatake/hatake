@@ -514,7 +514,58 @@ function describeComputed(
     !Array.isArray(computed.where)
       ? describeCondition(computed.where as Record<string, unknown>, vocabulary, lang)
       : "";
-  return where === "" ? main : [main, v.onlyRows(where)].join(v.noteSeparator);
+  const notes = [main];
+  if (where !== "") notes.push(v.onlyRows(where));
+  // **全部を畳んでいるのか、上位だけなのか**は数から読めない（「上位3件の合計」と
+  // 「全部の合計」は、どちらも1つの数）。定義に書いてあるのだから、そう読み上げる。
+  notes.push(...describeTopRows(computed, op, vocabulary, lang));
+  return notes.join(v.noteSeparator);
+}
+
+/**
+ * 上位だけ畳む／並べるときの言い方（`sort` + `limit` + `overflow`）。
+ *
+ * 何も書いていなければ何も言わない（既定は「全部」なので、言うことが無い）。
+ */
+function describeTopRows(
+  computed: Record<string, unknown>,
+  op: string,
+  vocabulary: Vocabulary,
+  lang: Lang,
+): string[] {
+  const v = voice(lang);
+  const limit = typeof computed.limit === "number" ? computed.limit : undefined;
+  const sort =
+    typeof computed.sort === "object" &&
+    computed.sort !== null &&
+    !Array.isArray(computed.sort)
+      ? (computed.sort as Record<string, unknown>)
+      : undefined;
+  const sortField = typeof sort?.field === "string" ? sort.field : undefined;
+  const notes: string[] = [];
+  if (limit !== undefined) {
+    if (sortField === undefined) {
+      notes.push(v.firstRows(limit));
+    } else {
+      const order = sort?.ascending === false ? v.orderDescending : v.orderAscending;
+      notes.push(
+        v.topRows(limit, vocabulary.labels.get(sortField) ?? sortField, order),
+      );
+    }
+    // 切ったのに何も言わないなら、それも読めるようにする（そう決めたということ）。
+    if (op === "join") {
+      notes.push(computed.overflow === "" ? v.hidesRest : v.saysRest);
+    }
+  } else if (sortField !== undefined) {
+    // 並べても全部畳むなら、数は変わらない（`join` の並び順だけが変わる）。
+    if (op === "join") {
+      const order = sort?.ascending === false ? v.orderDescending : v.orderAscending;
+      notes.push(
+        v.rowsInOrder(vocabulary.labels.get(sortField) ?? sortField, order),
+      );
+    }
+  }
+  return notes;
 }
 
 const describeValidator = (
@@ -528,6 +579,12 @@ const describeValidator = (
   // DSL を知らない人には読めない）。
   if (rule.type === ValidatorTypes.compare) {
     return say(phrase, lang, compareTarget(rule, vocabulary, lang));
+  }
+  // 行どうしの規則は「どの項目が重ならないか」で文にする（`value` は持たない）。
+  if (rule.type === ValidatorTypes.unique) {
+    const of = typeof rule.params.of === "string" ? rule.params.of : "";
+    if (of === "") return voice(lang).uniqueNoField;
+    return say(phrase, lang, vocabulary.labels.get(of) ?? of);
   }
   return say(phrase, lang, rule.params.value);
 };

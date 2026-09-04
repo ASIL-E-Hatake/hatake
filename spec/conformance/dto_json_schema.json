@@ -1,5 +1,5 @@
 {
-  "_comment": "JSON Schema emitter: each language parses `page`, calls deriveDto(page) then toJsonSchema(spec), and must produce exactly `expected`. Scalars are compared as strings to absorb numeric type differences. Rules pinned here: one document with every shape under $defs so shapes can $ref each other; `required` lists members with optional=false and is omitted when empty; input-ish roles (request / queryParams / pathParams / child) get additionalProperties:false while output-ish roles (row / listResponse) stay lenient; for an array member the constraints apply to `items`.",
+  "_comment": "JSON Schema emitter: each language parses `page`, calls deriveDto(page) then toJsonSchema(spec), and must produce exactly `expected`. Scalars are compared as strings to absorb numeric type differences. Rules pinned here: one document with every shape under $defs so shapes can $ref each other; `required` lists members with optional=false and is omitted when empty; input-ish roles (request / queryParams / pathParams / child) get additionalProperties:false while output-ish roles (row / listResponse) stay lenient; for an array member the constraints apply to `items`; a member the server decides (`readOnly`) or the screen computes (`computed`) carries `readOnly: true` — an annotation, so it does not change what validates: it says the server may ignore the value it receives and derive it from the definition instead.",
   "cases": [
     {
       "name": "crud page: strict request, lenient response, array query param",
@@ -156,10 +156,12 @@
                 "format": "email"
               },
               "id": {
-                "type": "string"
+                "type": "string",
+                "readOnly": true
               },
               "label": {
-                "type": "string"
+                "type": "string",
+                "readOnly": true
               }
             }
           },
@@ -194,10 +196,12 @@
                 "format": "email"
               },
               "id": {
-                "type": "string"
+                "type": "string",
+                "readOnly": true
               },
               "label": {
-                "type": "string"
+                "type": "string",
+                "readOnly": true
               }
             }
           },

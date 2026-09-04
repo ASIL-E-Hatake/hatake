@@ -193,7 +193,10 @@
         "op",
         "separator",
         "of",
-        "where"
+        "where",
+        "sort",
+        "limit",
+        "overflow"
       ],
       "demo": "order_entry"
     },

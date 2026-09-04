@@ -845,4 +845,9 @@ export const ValidatorTypes = {
   postalCode: "postalCode",
   /** 他の項目と比べる（項目間の検証）。`operator` と `field` を取る。 */
   compare: "compare",
+  /**
+   * 明細（`subTable`）の**行どうし**の規則: `of` に書いた行の項目が重ならないこと。
+   * 行の中だけを見ていては分からない転び方（「同じ品名が2行にある」）を見る。
+   */
+  unique: "unique",
 } as const;

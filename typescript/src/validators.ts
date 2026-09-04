@@ -97,7 +97,49 @@ export function builtinValidators(
       return /^\d{3}-?\d{4}$/.test(String(v)) ? null : m.resolve("postalCode");
     },
     [ValidatorTypes.compare]: (v, d, context) => compare(v, d, context ?? {}, m),
+    [ValidatorTypes.unique]: (v, d, context) => unique(v, d, context ?? {}, m),
   };
+}
+
+/**
+ * 明細の**行どうし**の規則（`unique`）。
+ *
+ * 判定する相手は明細（`subTable`）の値＝**行の配列**。行の中の検証（`rowFields` の
+ * `validators`）は1行ずつしか見ないので、「同じ品名が2行にある」は誰も気づけない。
+ * 行の集合に対する規則なので、明細の項目そのものに書く。
+ *
+ * 決めごと:
+ *
+ * - 比べるのは**文字にした値**（表に出ている字が同じなら同じ＝`1` と `"1"` は同じ）。
+ *   前後の空白は無視する（`normalize: [trim]` を書き忘れた行で見逃さないため）
+ * - **空の値は飛ばす**（入れかけの行が「重複」になると、入力の途中で怒られる）
+ * - 何行目かは**1から数えて**言う（画面で数える番号と合わせる）
+ * - 判定できないときは通す（`of` が無い・値が行の配列ではない）。書き間違いは
+ *   `hatake validate` が言う
+ */
+function unique(
+  value: unknown,
+  def: ValidatorDefinition,
+  context: ValidatorContext,
+  m: MessageResolver,
+): string | null {
+  const of = def.params.of;
+  if (typeof of !== "string" || !Array.isArray(value)) return null;
+  const firstSeen = new Map<string, number>();
+  const duplicates: number[] = [];
+  value.forEach((raw, index) => {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return;
+    const cell = (raw as Record<string, unknown>)[of];
+    const key = cell == null ? "" : String(cell).trim();
+    if (key === "") return;
+    if (firstSeen.has(key)) duplicates.push(index + 1);
+    else firstSeen.set(key, index + 1);
+  });
+  if (duplicates.length === 0) return null;
+  return m.resolve("unique", {
+    label: context.labels?.[of] ?? of,
+    rows: duplicates.join("・"),
+  });
 }
 
 /** `compare` で使える突合（大小を比べられるものだけ）。 */

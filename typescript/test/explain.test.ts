@@ -499,6 +499,106 @@ describe("行を絞ってから畳む・並べて1行にする", () => {
   });
 });
 
+describe("上位だけ畳む・並べるときの読み返し", () => {
+  const source = (extra: string) => `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            fields:
+              - { field: item, label: 品名 }
+              - { field: amount, label: 金額, type: number }
+      - title: 金額
+        fields:
+${extra}
+`;
+
+  it("上位だけなら「何件のうちの上位か」を言う（数からは読めない）", () => {
+    const text = renderExplain(
+      explainSource(
+        source(`          - { field: itemNames, label: 主な品名,
+              computed: { op: join, field: lines, of: item, separator: "、",
+                          sort: { field: amount, ascending: false }, limit: 3 } }`),
+      ),
+    );
+    expect(text).toContain("金額が大きい順に3 件だけ");
+    // 切ったぶんを言うかどうかも読めるようにする（そう決めたということ）。
+    expect(text).toContain("切ったぶんは件数で言う");
+  });
+
+  it("黙って切ると決めたなら、そう読み返す", () => {
+    const text = renderExplain(
+      explainSource(
+        source(`          - { field: itemNames, label: 主な品名,
+              computed: { op: join, field: lines, of: item, limit: 3, overflow: "" } }`),
+      ),
+    );
+    expect(text).toContain("先頭の 3 件だけ（並べ替えなし）");
+    expect(text).toContain("切ったぶんは出さない");
+  });
+
+  it("数を畳むときも「上位だけ」と言う（全部の合計と見分けが付かないので）", () => {
+    const text = renderExplain(
+      explainSource(
+        source(`          - { field: top3, label: 上位3件,
+              computed: { op: sum, field: lines, of: amount,
+                          sort: { field: amount, ascending: false }, limit: 3 } }`),
+      ),
+    );
+    expect(text).toContain("上位3件 … 明細 の 金額 の合計（手では入れない）、金額が大きい順に3 件だけ");
+  });
+
+  it("英語も同じことを言う", () => {
+    const text = renderExplain(
+      explainSource(
+        source(`          - { field: itemNames, label: 主な品名,
+              computed: { op: join, field: lines, of: item,
+                          sort: { field: amount, ascending: false }, limit: 3 } }`),
+        { lang: "en" },
+      ),
+    );
+    expect(text).toContain("only the 3 rows with the largest 金額");
+    expect(text).toContain("the rest is named as a count");
+  });
+});
+
+describe("行どうしの規則の読み返し", () => {
+  const source = `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            validators: [{ type: unique, of: item }]
+            fields:
+              - { field: item, label: 品名 }
+              - { field: qty, label: 数量, type: number }
+`;
+
+  it("何が重ならないのかを、行の項目の言葉で言う", () => {
+    expect(renderExplain(explainSource(source))).toContain("品名 が同じ行は書けない");
+  });
+
+  it("英語も同じことを言う", () => {
+    expect(renderExplain(explainSource(source, { lang: "en" }))).toContain(
+      "no two rows with the same 品名",
+    );
+  });
+});
+
 describe("突き合わせも「何で絞ったか」を言う", () => {
   const source = `page:
   type: form

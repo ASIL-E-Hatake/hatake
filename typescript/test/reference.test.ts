@@ -243,7 +243,7 @@ describe("組み込みの一覧が実装と一致する", () => {
       sorted(Object.keys(builtinValidators())),
     );
     expect(values("field.computed", "op")).toEqual(
-      sorted(Object.keys(builtinComputeds)),
+      sorted(Object.keys(builtinComputeds())),
     );
     const aggregates = sorted(Object.keys(builtinAggregates));
     expect(aggregates).toEqual(sorted(Object.values(AggregateOps)));

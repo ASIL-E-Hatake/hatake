@@ -10,6 +10,9 @@ const Map<String, Map<String, String>> defaultValidationMessages = {
     'pattern': '形式が正しくありません',
     'email': 'メールアドレスの形式が正しくありません',
     'postalCode': '郵便番号の形式が正しくありません',
+    // 明細の行どうしの検証（unique）。{label} は行の項目の**ラベル**、
+    // {rows} は重なっている行の番号（1から数える）。
+    'unique': '{label} が同じ行があります（{rows} 行目）',
     // 項目間の検証（compare）。{target} には比べる相手の**ラベル**が入る。
     'compare.equals': '{target}と同じ値にしてください',
     'compare.notEquals': '{target}と違う値にしてください',
@@ -17,6 +20,9 @@ const Map<String, Map<String, String>> defaultValidationMessages = {
     'compare.gte': '{target}以上にしてください',
     'compare.lt': '{target}より小さい値にしてください',
     'compare.lte': '{target}以下にしてください',
+    // 上位だけ並べた計算項目（`computed` の `limit`）で、出さなかった行の数。
+    // `{count}` は**隠れた行数**（全体ではない）。定義の `overflow` で上書きできる。
+    'computed.more': 'ほか {count} 件',
     // 1回で動かせる件数の上限（`action.maxRows`）を超えて届いたとき。
     // 画面は押させないので、これが出るのは API を直接叩かれたとき。
     'bulk.tooMany': '1回に実行できるのは {value} 件までです（{count} 件届きました）',

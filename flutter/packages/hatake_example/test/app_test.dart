@@ -133,14 +133,22 @@ void main() {
       'of': 'amount',
       'where': {'field': 'cancelled', 'operator': 'notEquals', 'value': true},
     });
-    // 品名は行を並べて1行にする（数ではなく文字が出る）。
+    // 品名は行を並べて1行にする（数ではなく文字が出る）。伝票の欄は幅が決まって
+    // いるので、金額の大きい順に3件だけ＝切ったぶんは「ほか N 件」と出る。
     expect(entry.form.fields.firstWhere((f) => f.field == 'itemNames').computed, {
       'op': 'join',
       'field': 'lines',
       'of': 'item',
       'separator': '、',
       'where': {'field': 'cancelled', 'operator': 'notEquals', 'value': true},
+      'sort': {'field': 'amount', 'ascending': false},
+      'limit': 3,
     });
+    // 行**どうし**の規則（同じ品名を2行に書けない）は明細の項目に付く。
+    expect(
+      lines.validators.map((v) => [v.type, v.params['of']]),
+      [['unique', 'item']],
+    );
     // Reachable from the menu and from the order list.
     expect(app.menu.any((m) => m.page == 'order_entry'), isTrue);
   });

@@ -39,6 +39,72 @@ List<Map<String, Object?>> rowsMatching(
   ];
 }
 
+/// 値が無いとみなすもの（並べるときに**後ろ**へ回す）。
+bool _isBlank(Object? v) => v == null || (v is String && v.trim().isEmpty);
+
+/// 2つの値の大小。比べ方は `compare` の検証と同じ＝**両方が数として読めれば数、
+/// そうでなければ文字**（ISO の日付は文字の大小が日付の前後になる）。
+///
+/// 値が無い行（null / 空文字）は、向きに関わらず**後ろ**。「金額の大きい順に3件」で
+/// 金額の無い行が上に来ると、読む人は「これが上位」と読み違える。
+int _compareValues(Object? a, Object? b, {required bool ascending}) {
+  final aBlank = _isBlank(a);
+  final bBlank = _isBlank(b);
+  if (aBlank || bBlank) {
+    if (aBlank && bBlank) return 0;
+    return aBlank ? 1 : -1;
+  }
+  final x = _toNum(a);
+  final y = _toNum(b);
+  final order = x != null && y != null
+      ? x.compareTo(y)
+      : a.toString().compareTo(b.toString());
+  return ascending ? order : -order;
+}
+
+/// `sort: { field, ascending }` で並べた写し。`sort` が無ければそのまま。
+///
+/// 並べ方の語彙は**ダッシュボードのカードと帳票と同じ**（`sort: { field, ascending }`）
+/// ＝同じことを2つの言い方で持たない。
+///
+/// 同じ値のときは**元の順**（比べる側で決めている＝並べ替えの実装が言語ごとに
+/// 安定でも不安定でも、答えが変わらない）。
+List<Map<String, Object?>> rowsSorted(
+  List<Map<String, Object?>> rows,
+  Object? sort,
+) {
+  if (sort is! Map) return rows;
+  final field = sort['field'];
+  if (field is! String || field.isEmpty) return rows;
+  final ascending = sort['ascending'] != false;
+  final indexed = [
+    for (var i = 0; i < rows.length; i++) (i, rows[i]),
+  ];
+  indexed.sort((x, y) {
+    final order = _compareValues(
+      x.$2[field],
+      y.$2[field],
+      ascending: ascending,
+    );
+    return order != 0 ? order : x.$1.compareTo(y.$1);
+  });
+  return [for (final one in indexed) one.$2];
+}
+
+/// `limit` があれば先頭だけ採る（無ければそのまま）。
+///
+/// **並べたあとに採る**（順番が逆だと「上位3件」が別の3件になる）。1未満・数として
+/// 読めない値は「上限なし」として扱う（スキーマが 1 以上を求めるので、そこを通れば
+/// ここには来ない）。
+List<Map<String, Object?>> rowsTop(
+  List<Map<String, Object?>> rows,
+  Object? limit,
+) {
+  final take = _toNum(limit)?.toInt();
+  if (take == null || take < 1 || take >= rows.length) return rows;
+  return rows.sublist(0, take);
+}
+
 num? _toNum(Object? v) {
   if (v is bool) return null;
   if (v is num) return v.isFinite ? v : null;
@@ -146,7 +212,8 @@ class AggregateRegistry {
     }
     return [
       for (final entry in groups.entries)
-        AggregateBucket(entry.key, aggregate(op, entry.value, field: valueField)),
+        AggregateBucket(
+            entry.key, aggregate(op, entry.value, field: valueField)),
     ];
   }
 

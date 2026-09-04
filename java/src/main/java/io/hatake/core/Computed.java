@@ -30,12 +30,24 @@ public final class Computed {
     private final Map<String, ComputedFn> ops = new HashMap<>();
 
     public Computed() {
-        ops.putAll(builtins());
+        ops.putAll(builtins(new MessageResolver()));
     }
 
     public Computed(Map<String, ComputedFn> custom) {
-        ops.putAll(builtins());
-        ops.putAll(custom);
+        this(custom, new MessageResolver());
+    }
+
+    /**
+     * 文言を差し替えて構築する。
+     *
+     * <p>枠組みが書く文を使うのは join だけ（上位だけ並べたときに「ほか N 件」と言う）。
+     * その1文も MessageResolver に置く＝差し替えとロケール切替の口を2つ持たない。
+     */
+    public Computed(Map<String, ComputedFn> custom, MessageResolver messages) {
+        ops.putAll(builtins(messages));
+        if (custom != null) {
+            ops.putAll(custom);
+        }
     }
 
     /** computed を record から計算する。op が未登録なら null。 */
@@ -98,7 +110,10 @@ public final class Computed {
                 }
             }
         }
-        return Aggregates.rowsMatching(rows, c.get("where"));
+        // 上位だけ採る（limit）のは<b>並べたあと</b>なので、ここではまだ採らない
+        // （join は「隠れた行が何件あるか」を言うために、採る前の数も要る）。
+        return Aggregates.rowsSorted(
+                Aggregates.rowsMatching(rows, c.get("where")), c.get("sort"));
     }
 
     /**
@@ -113,7 +128,8 @@ public final class Computed {
             return null;
         }
         String of = c.get("of") instanceof String s ? s : null;
-        return fn.apply(rowsOf(c, record), of);
+        // limit は数を畳むときにも効く（「金額の大きい順に3件の合計」）。
+        return fn.apply(Aggregates.rowsTop(rowsOf(c, record), c.get("limit")), of);
     }
 
     @SuppressWarnings("unchecked")
@@ -127,7 +143,7 @@ public final class Computed {
         return result;
     }
 
-    private static Map<String, ComputedFn> builtins() {
+    private static Map<String, ComputedFn> builtins(MessageResolver messages) {
         Map<String, ComputedFn> m = new HashMap<>();
         m.put("concat", (c, r) -> {
             String sep = c.get("separator") != null ? c.get("separator").toString() : "";
@@ -188,18 +204,28 @@ public final class Computed {
                 return null;
             }
             String sep = c.get("separator") != null ? c.get("separator").toString() : ", ";
-            StringBuilder sb = new StringBuilder();
-            for (Map<String, Object> row : rowsOf(c, r)) {
+            List<Map<String, Object>> rows = rowsOf(c, r);
+            List<Map<String, Object>> shown = Aggregates.rowsTop(rows, c.get("limit"));
+            List<String> values = new ArrayList<>();
+            for (Map<String, Object> row : shown) {
                 String value = str(row.get(of));
-                if (value.isEmpty()) {
-                    continue;
+                if (!value.isEmpty()) {
+                    values.add(value);
                 }
-                if (sb.length() > 0) {
-                    sb.append(sep);
-                }
-                sb.append(value);
             }
-            return sb.toString();
+            // 上位だけ並べたときは<b>黙って切らない</b>。3件だけ出して終わると、読む人は
+            // 「明細は3行」と読む。何件隠れているかを添える（文言は定義で変えられる。
+            // overflow: "" と書けば何も足さない＝黙って切ると決めたことが読める）。
+            int hidden = rows.size() - shown.size();
+            if (hidden > 0 && !values.isEmpty()) {
+                String template = c.get("overflow") != null
+                        ? c.get("overflow").toString()
+                        : messages.resolve("computed.more");
+                if (!template.isEmpty()) {
+                    values.add(template.replace("{count}", String.valueOf(hidden)));
+                }
+            }
+            return String.join(sep, values);
         });
         return m;
     }

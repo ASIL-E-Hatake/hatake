@@ -1054,6 +1054,9 @@ computed: { op: sum, field: lines, of: amount,
 | `field` | string | ②畳む明細（`type: subTable`）の項目名。 |
 | `of` | string | ②行のどの項目を畳むか。`count` 以外で必須。`compare` の `of` と同じ意味。 |
 | `where` | condition | ②畳む前に行を絞る条件。**行1件に対して**評価する。 |
+| `sort` | `{ field, ascending }` | ②畳む前に行を**並べる**（`limit` で上位を採るため）。語彙はダッシュボードのカードと帳票と同じ。 |
+| `limit` | integer（1以上） | ②`where` → `sort` のあと、**先頭だけ**畳む／並べる。 |
+| `overflow` | string | ②`join` を `limit` で切ったときに足す文。`{count}` は**隠れた行数**。既定は枠組みの文言（「ほか {count} 件」）、`""` で何も足さない。 |
 
 | 組込 `op` | モード | 説明 |
 |---|---|---|
@@ -1079,6 +1082,17 @@ computed: { op: sum, field: lines, of: amount,
   ページ送りで別に取るので、行がそこに揃っていない（`validate` が
   `computed-of-paged-subtable` で言う）
 - `field` と `fields` の両方を書いたら **`field` が勝つ**（`validate` が言う）
+- **上位だけ畳む・並べる**なら `sort` と `limit`（「金額の大きい順に3件」）。順番は
+  `where`（絞る）→ `sort`（並べる）→ `limit`（採る）で、これは変わらない（順番が違うと
+  「上位3件」が別の3件になる）。要約の欄は幅が決まっているので、全部並べると溢れる
+- 並べ方は `sort: { field, ascending }`＝**ダッシュボードのカードと帳票と同じ語彙**
+  （同じことを2つの言い方で持たない）。比べ方は `compare` と同じ（両方が数として読めれば数、
+  でなければ文字）。**値が無い行は向きに関わらず後ろ**（「金額の大きい順」で金額の無い行が
+  上に来ると読み違える）。同じ値なら**元の順**（並べ替えの実装が言語で違っても答えが同じ）
+- `limit` は**数を畳むときにも効く**（「上位3件の合計」）。`join` で切ったときは
+  **黙って切らない**＝「ほか N 件」を足す（3件だけ出して終わると、読む人は「明細は3行」と
+  読む）。文言は `overflow` で変えられ、`overflow: ""` と書けば「黙って切る」と決めたことが
+  定義から読める
 - 計算は**宣言順に1回**なので、`小計 → 消費税 → 合計` の順に並べる（後ろの項目は前の
   結果を使える。逆に書くと**空のまま計算される**ので `validate` が `computed-order` で言う）。
   依存が絡んでいるときは `hatake diagram <file> --computed` で1枚の絵にできる
@@ -1115,9 +1129,16 @@ computed: { op: sum, field: lines, of: amount,
 | `email` | — | メールアドレス形式であること。 |
 | `postalCode` | — | 郵便番号形式（`1234567` / `123-4567`）。 |
 | `compare` | `operator` / `field`（＋`aggregate` / `of`） | **他の項目と比べる**（下記）。 |
+| `unique` | `of`（行の項目名） | 明細（`subTable`）の**行どうし**が重ならないこと（下記）。 |
 
 `message` を書くと既定（日本語）メッセージを上書きできる。既定文言をまるごと差し替えたい
 （別ロケールにしたい）ときは `ValidatorRegistry` に `MessageResolver` を注入する。
+
+**1項目で複数落ちたときに出るのは1件だけ。** 出す順は「**自分の形が先、他の項目に依るものが
+後**」（`compare` だけが後ろ）。「開始日以上にしてください」より先に「形式が正しくありません」と
+言われないと、直す順番が分からない（形が読めない値を比べた結果は、そもそも当てにならない）。
+自分の形どうしは**書いた順**＝そこは書く人が決める。3エディションで同じ順になることは
+[`spec/conformance/validation_order.json`](conformance/validation_order.json) で固定。
 
 ### 項目間の検証（`compare`）
 
@@ -1159,6 +1180,41 @@ computed: { op: sum, field: lines, of: amount,
 * 3エディションで同じ答えになることは
   [`spec/conformance/cross_field_validation.json`](conformance/cross_field_validation.json) で固定
   （このファイル自体が動く実例）
+
+### 明細の行どうしの検証（`unique`）
+
+1行ずつ見ていては分からない規則（「同じ品名が2行にある」）は `unique` で書く。判定する相手は
+**行の集合**なので、行の中（`fields` の `validators`）ではなく**明細の項目そのもの**に書く。
+
+```yaml
+- field: lines
+  label: 明細
+  type: subTable
+  validators:
+    - { type: unique, of: item }      # 同じ品名の行を2つ書けない
+  fields:
+    - { field: item, label: 品名, required: true }
+    - { field: qty, label: 数量, type: number }
+```
+
+| パラメータ | 意味 |
+|---|---|
+| `of` | 重なりを見る**行の項目名**。必須（無いと何も判定しない） |
+
+決めごと:
+
+* 比べるのは**文字にした値**で、前後の空白は無視する（表に出ている字が同じなら同じ＝`1` と
+  `"1"` は同じ。`normalize: [trim]` を書き忘れた行で見逃さないため）
+* **空の値は飛ばす**（入れかけの行が「重複」になると、入力の途中で怒られる）
+* エラーは**明細の項目**に付く（行の集合に対する規則なので、どの行が悪いとは決めない）。
+  何行目が重なっているかは文で言う（「品名 が同じ行があります（3 行目）」。**1から数える**）
+* 別テーブルに持つ明細（`source`）では判定しない。行はページ送りで別に取るので、ここに揃って
+  いない＝画面に出ている行だけを見ても「重なっていない」とは言えない（`validate` が言う）
+* 書き間違い（`of` の抜け・行に無い項目名・明細ではない項目に書いた）は**静かに通ってしまう**
+  ので、`hatake validate` が警告で言う（`unique-without-of` / `unique-unknown-field` /
+  `unique-without-subtable` / `unique-on-paged-subtable`）
+* 3エディションで同じ答えになることは
+  [`spec/conformance/row_rules_validation.json`](conformance/row_rules_validation.json) で固定
 
 ## action
 
@@ -1676,6 +1732,14 @@ TODO にならない（collection の名前は複数形を**推測**して埋め
 | `unknown-open` | `action.open` が `same` / `tab` 以外 → 黙って `same` になる |
 | `open-without-navigate` | `open` を遷移ではないボタンに書いた → 開く先が無いので何も起きない |
 | `open-without-tabs` | `open: tab` を書いたが、この定義は画面を並べない（`app.navigation: tabs` ではない）→ いままで通り同じ画面の続きとして開く |
+| `computed-sort-without-rows` | 同じレコードの項目を畳む計算（`fields`）に `sort` / `limit` / `overflow` を書いた → 並べる行が無いので効かない |
+| `computed-sort-without-field` | `sort` に `field` が無い → 並べ替えが効かず、**行の順のまま**上位として採られる（値はもっともらしいので画面では気づけない） |
+| `computed-sort-unknown-field` | `sort.field` が明細の行に無い → 全部が「値なし」＝並べ替えが効かない |
+| `computed-overflow-unused` | `overflow` を書いたが切っていない（`limit` が無い）／数を畳む計算に書いた → その文は出ない |
+| `unique-without-of` | `unique` に `of` が無い → 何も判定しない |
+| `unique-unknown-field` | `unique` の `of` が明細の行に無い → どの行も値が取れず**黙って通る** |
+| `unique-without-subtable` | `unique` を明細（`subTable`）ではない項目に書いた → 見る行が無いので**黙って通る** |
+| `unique-on-paged-subtable` | `unique` を別テーブルに持つ明細（`source`）に書いた → 行が揃っていないので**黙って通る** |
 | `role-not-in-app` | 定義に書いた役割名が、**アプリが配る役割の中に無い** → その役割で出し分けている列・ボタンは**誰にも見えない**（役割ごとの件数に書いてあれば、その数は誰にも効かない） |
 
 一覧（`--registry` に渡す JSON）は `refs --needs-registration --json` の出力と同じ形。

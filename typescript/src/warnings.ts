@@ -1170,6 +1170,7 @@ function checkFieldEntry(
 ): void {
   checkOptions(field, path, found, siblings);
   checkCompare(field, path, found, siblings, siblingDefs);
+  checkUnique(field, path, found);
   checkComputed(field, path, found, siblingDefs);
   list(field.validators).forEach((raw, i) => {
     if (isDict(raw)) return;
@@ -1266,6 +1267,9 @@ function checkComputed(
   const target = str(computed.field);
   const of = str(computed.of);
   const where = isDict(computed.where) ? computed.where : undefined;
+  const sort = isDict(computed.sort) ? computed.sort : undefined;
+  const hasLimit = computed.limit !== undefined;
+  const overflow = computed.overflow;
   const label = str(field.label) ?? str(field.field) ?? "項目";
   // 「畳む」のは数にする op、`join` は「並べる」。同じ言葉で言うと読めない。
   const folding = op === "join" ? "並べる" : "畳む";
@@ -1297,6 +1301,24 @@ function checkComputed(
           `畳んでいます（\`fields\`）。「${label}」は絞られずに計算されます。`,
         "行を絞りたいなら `field: <明細の項目名>` で明細を畳む形にしてください。" +
           "レコードの状態で計算を変えたいなら、それは計算ではなく `visibleWhen` の話です。",
+      );
+    }
+    // `sort` / `limit` も**行に対する**指定。畳む行が無いので、書いても何も起きない
+    // （並べ替えたつもり・上位だけにしたつもりで、全部が畳まれる）。
+    const onRows = [
+      ...(sort !== undefined ? ["sort"] : []),
+      ...(hasLimit ? ["limit"] : []),
+      ...(overflow !== undefined ? ["overflow"] : []),
+    ];
+    if (onRows.length > 0) {
+      warn(
+        found,
+        "computed-sort-without-rows",
+        `${at}.${onRows[0]}`,
+        `\`${onRows.join("` / `")}\` は**明細の行**を並べる／切る指定ですが、この計算は` +
+          `同じレコードの項目を畳んでいます（\`fields\`）。「${label}」には効きません。`,
+        "行を並べたいなら `field: <明細の項目名>` で明細を畳む形にしてください" +
+          "（同じレコードの項目には順番も上限もありません）。",
       );
     }
     checkComputedOrder(field, computed, at, found, siblingDefs);
@@ -1380,8 +1402,10 @@ function checkComputed(
     );
     return;
   }
+  checkOverflow(op, hasLimit, overflow, at, found, label);
   const rowNames = rowFieldNames(def);
   if (rowNames.size === 0) return;
+  if (sort !== undefined) checkSort(sort, rowNames, at, found, label);
   if (of !== undefined && !rowNames.has(of)) {
     const near = closestKey(of, [...rowNames]);
     warn(
@@ -1397,6 +1421,86 @@ function checkComputed(
   }
   if (where !== undefined) {
     checkWhereFields(where, `${at}.where`, found, rowNames, label, "computed");
+  }
+}
+
+/**
+ * 並べ方（`sort`）の辻褄。
+ *
+ * 並べるのは**上位だけ採る**ため（`limit`）。並べ替えが効いていないと、「金額の大きい順に
+ * 3件」が**行の順のまま先頭3件**になる＝出ている値はもっともらしいので、画面を見ても
+ * 気づけない。
+ */
+function checkSort(
+  sort: Dict,
+  rowNames: Set<string>,
+  at: string,
+  found: DefinitionWarning[],
+  label: string,
+): void {
+  const field = str(sort.field);
+  if (field === undefined || field === "") {
+    warn(
+      found,
+      "computed-sort-without-field",
+      `${at}.sort.field`,
+      "並べる項目（`field`）が書かれていないので、**並べ替えは効きません**（行の順の" +
+        `まま採ります）。「${label}」は「上位」に見えて上位ではない値になります。`,
+      "`sort: { field: <行の項目名>, ascending: false }` の形で書いてください" +
+        "（`ascending: false` が大きい順）。",
+    );
+    return;
+  }
+  if (!rowNames.has(field)) {
+    const near = closestKey(field, [...rowNames]);
+    warn(
+      found,
+      "computed-sort-unknown-field",
+      `${at}.sort.field`,
+      `並べる項目 "${field}" が明細の行にありません。値が無い行は後ろへ回すので、` +
+        `**全部が「値なし」＝並べ替えは効きません**（「${label}」は行の順のまま）。`,
+      near === null
+        ? "行の項目名（`fields` に書いた `field`）を書いてください。"
+        : `${near} の間違いではないですか？`,
+    );
+  }
+}
+
+/**
+ * 「ほか N 件」（`overflow`）が効く形か。
+ *
+ * 効くのは **`join` を `limit` で切ったとき**だけ。切っていない・数を畳んでいるときは、
+ * 書いても出ない（書いた人は「言うようにした」と思ったまま出荷できる）。
+ */
+function checkOverflow(
+  op: string,
+  hasLimit: boolean,
+  overflow: unknown,
+  at: string,
+  found: DefinitionWarning[],
+  label: string,
+): void {
+  if (overflow === undefined) return;
+  if (op !== "join") {
+    warn(
+      found,
+      "computed-overflow-unused",
+      `${at}.overflow`,
+      "`overflow` は行を**並べる**計算（`op: join`）で、切ったぶんを言う文です。" +
+        `\`${op}\` は数を1つにするので、書いても出ません（「${label}」は数のまま）。`,
+      "`op: join` に書いてください（数を畳むときは、切ったことは数から読めません）。",
+    );
+    return;
+  }
+  if (!hasLimit) {
+    warn(
+      found,
+      "computed-overflow-unused",
+      `${at}.overflow`,
+      "`limit` が無いので**行は切りません**＝切ったぶんを言う文（`overflow`）は出ません。",
+      "上位だけ並べるなら `limit: 3` のように書いてください。全部並べるなら " +
+        "`overflow` は要りません。",
+    );
   }
 }
 
@@ -1640,6 +1744,76 @@ function checkCompare(
       if (rowNames.size > 0) {
         checkWhereFields(where, `${at}.where`, found, rowNames, label, "compare");
       }
+    });
+}
+
+/**
+ * 明細の**行どうし**の検証（`unique`）の辻褄。
+ *
+ * この検証も**書き間違えても静かに通る**（見る値が取れなければ判定しない）。しかも
+ * 相手は行の集合なので、画面で1行ずつ見ていても効いていないことに気づけない。
+ */
+function checkUnique(
+  field: Dict,
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  const label = str(field.label) ?? str(field.field) ?? "項目";
+  const isSubTable = str(field.type) === FieldTypes.subTable;
+  list(field.validators)
+    .filter(isDict)
+    .forEach((rule, index) => {
+      if (str(rule.type) !== ValidatorTypes.unique) return;
+      const at = `${path}.validators[${index}]`;
+      if (!isSubTable) {
+        warn(
+          found,
+          "unique-without-subtable",
+          `${at}.type`,
+          `\`unique\` は明細の**行どうし**が重ならないことを見る検証ですが、` +
+            `「${label}」は明細（\`type: subTable\`）ではありません。見る行が無いので、` +
+            "この検証は**黙って通ります**。",
+          "明細の項目に書いてください（1つの値が他と重ならないことは、画面の中だけでは" +
+            "決められません＝サーバの仕事です）。",
+        );
+        return;
+      }
+      if (isDict(field.source)) {
+        warn(
+          found,
+          "unique-on-paged-subtable",
+          `${at}.type`,
+          `「${label}」は別のテーブルに持つ明細（\`source\` つき）です。行は**ページ` +
+            `送りで**別に取るので、ここには揃っていません。この検証は**黙って通ります**。`,
+          "全部の行で重なりを見るなら、サーバ側で見てください（画面に出ている行だけを" +
+            "見ても、重なっていないとは言えません）。",
+        );
+        return;
+      }
+      const of = str(rule.of);
+      if (of === undefined) {
+        warn(
+          found,
+          "unique-without-of",
+          at,
+          "重なりを見る項目（`of`）がありません。この検証は何も判定しません。",
+          "`of: <行の項目名>` を書いてください（例: `{ type: unique, of: item }`）。",
+        );
+        return;
+      }
+      const rowNames = rowFieldNames(field);
+      if (rowNames.size === 0 || rowNames.has(of)) return;
+      const near = closestKey(of, [...rowNames]);
+      warn(
+        found,
+        "unique-unknown-field",
+        `${at}.of`,
+        `明細「${label}」の行に "${of}" がありません。どの行も値が取れないので、` +
+          "この検証は**黙って通ります**。",
+        near === null
+          ? "行の項目名（`fields` に書いた `field`）を書いてください。"
+          : `${near} の間違いではないですか？`,
+      );
     });
 }
 

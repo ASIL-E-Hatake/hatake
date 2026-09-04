@@ -1,0 +1,68 @@
+{
+  "_comment": "1項目で複数の検証が落ちたとき、どれを出すか。各エディションが `page` を解析し、case ごとに `record` をフォームで検証して、エラーを {field,message} の順不同の集合で比べる。固定したいのは3つ: (1) **自分の形の検証が先**で、他の項目に依る検証（compare）は後（形が読めない値を比べた結果は当てにならないので、先に「開始日以上にしてください」と言うと直す順番が分からない）、(2) それは**書いた順に関わらず**そうなる（この定義は compare を先に書いてある）、(3) 自分の形どうしは**書いた順**（そこは書く人が決める）。",
+  "page": {
+    "dsl_version": "1.0",
+    "page": {
+      "type": "form",
+      "id": "reservation",
+      "title": "予約",
+      "repository": "reservationRepository",
+      "key": "id",
+      "form": {
+        "sections": [
+          {
+            "fields": [
+              { "field": "startDate", "label": "開始日" },
+              {
+                "field": "endDate",
+                "label": "終了日",
+                "validators": [
+                  { "type": "compare", "operator": "gte", "field": "startDate" },
+                  { "type": "pattern", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+                ]
+              },
+              {
+                "field": "code",
+                "label": "予約番号",
+                "validators": [
+                  { "type": "minLength", "value": 5 },
+                  { "type": "pattern", "pattern": "^[A-Z]+$" }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "cases": [
+    {
+      "name": "形も比べも落ちるときは、形を先に言う（compare を先に書いてあっても）",
+      "record": { "startDate": "2026-05-10", "endDate": "1999/1/1" },
+      "expected": [{ "field": "endDate", "message": "形式が正しくありません" }]
+    },
+    {
+      "name": "形が合っていて比べだけ落ちるなら、比べを言う",
+      "record": { "startDate": "2026-05-10", "endDate": "1999-01-01" },
+      "expected": [{ "field": "endDate", "message": "開始日以上にしてください" }]
+    },
+    {
+      "name": "どちらも通れば何も言わない",
+      "record": { "startDate": "2026-05-10", "endDate": "2026-05-20" },
+      "expected": []
+    },
+    {
+      "name": "自分の形どうしは書いた順（minLength が先）",
+      "record": { "code": "ab" },
+      "expected": [{ "field": "code", "message": "5文字以上で入力してください" }]
+    },
+    {
+      "name": "並べ替えても1項目1件は変わらない",
+      "record": { "startDate": "2026-05-10", "endDate": "1999/1/1", "code": "ab" },
+      "expected": [
+        { "field": "endDate", "message": "形式が正しくありません" },
+        { "field": "code", "message": "5文字以上で入力してください" }
+      ]
+    }
+  ]
+}

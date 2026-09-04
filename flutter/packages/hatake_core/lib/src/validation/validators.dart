@@ -110,7 +110,52 @@ Map<String, ContextValidatorFn> builtinValidators([MessageResolver? messages]) {
     },
     ValidatorTypes.compare: (value, def, context) =>
         _compare(value, def, context, m),
+    ValidatorTypes.unique: (value, def, context) =>
+        _unique(value, def, context, m),
   };
+}
+
+/// 明細の**行どうし**の規則（`unique`）。
+///
+/// 判定する相手は明細（`subTable`）の値＝**行の配列**。行の中の検証（`rowFields` の
+/// `validators`）は1行ずつしか見ないので、「同じ品名が2行にある」は誰も気づけない。
+/// 行の集合に対する規則なので、明細の項目そのものに書く。
+///
+/// 決めごと:
+///
+/// * 比べるのは**文字にした値**（表に出ている字が同じなら同じ＝`1` と `"1"` は同じ）。
+///   前後の空白は無視する（`normalize: [trim]` を書き忘れた行で見逃さないため）
+/// * **空の値は飛ばす**（入れかけの行が「重複」になると、入力の途中で怒られる）
+/// * 何行目かは**1から数えて**言う（画面で数える番号と合わせる）
+/// * 判定できないときは通す（`of` が無い・値が行の配列ではない）。書き間違いは
+///   `hatake validate` が言う
+String? _unique(
+  Object? value,
+  ValidatorDefinition def,
+  ValidationContext context,
+  MessageResolver messages,
+) {
+  final of = def.params['of'];
+  if (of is! String || value is! Iterable) return null;
+  final firstSeen = <String, int>{};
+  final duplicates = <int>[];
+  var row = 0;
+  for (final raw in value) {
+    row++;
+    if (raw is! Map) continue;
+    final key = raw[of]?.toString().trim() ?? '';
+    if (key.isEmpty) continue;
+    if (firstSeen.containsKey(key)) {
+      duplicates.add(row);
+    } else {
+      firstSeen[key] = row;
+    }
+  }
+  if (duplicates.isEmpty) return null;
+  return messages.resolve('unique', {
+    'label': context.labels?[of] ?? of,
+    'rows': duplicates.join('・'),
+  });
 }
 
 /// Comparisons `compare` can make (only the ones with an order).

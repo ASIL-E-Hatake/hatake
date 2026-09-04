@@ -84,6 +84,21 @@ public final class JsonSchemaEmitter {
         return out;
     }
 
+    /**
+     * 「この値はサーバが決める／画面が計算する」を契約に出す（readOnly）。
+     *
+     * <p>定義には書いてあるのに、契約には<b>ただの任意の項目</b>として出ていた＝サーバ側を
+     * 書く人は「送られてくるのか、送っていいのか、無視していいのか」を定義から読めない。
+     * JSON Schema の readOnly は「持ち主が決める値で、書き換えは無視されて構わない」という
+     * 注記なので、readOnly の項目と<b>計算項目</b>にそのまま当たる。
+     *
+     * <p>注記なので判定は変わらない（枠組みの client は下書きごと送るので、送れなくなると
+     * 困る）。サーバは受け取った値を無視して<b>定義から計算し直してよい</b>、が意味。
+     */
+    private static boolean managedByServer(DtoSpec.Member member) {
+        return member.readOnly() || member.computed();
+    }
+
     private static Map<String, Object> memberSchema(DtoSpec.Member member, String refBase) {
         if ("array".equals(member.type())) {
             // 配列の制約は要素側に載る（配列そのものではない）。
@@ -99,16 +114,25 @@ public final class JsonSchemaEmitter {
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("type", "array");
             out.put("items", items);
+            if (managedByServer(member)) {
+                out.put("readOnly", true);
+            }
             return out;
         }
         if ("object".equals(member.type()) && member.shape() != null) {
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("$ref", refBase + member.shape());
+            if (managedByServer(member)) {
+                out.put("readOnly", true);
+            }
             return out;
         }
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("type", member.type());
         applyConstraints(out, member);
+        if (managedByServer(member)) {
+            out.put("readOnly", true);
+        }
         return out;
     }
 

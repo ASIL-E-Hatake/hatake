@@ -102,6 +102,7 @@ public final class FormValidator {
             rules.add(new ValidatorDefinition("required", Map.of(), null));
         }
         rules.addAll(field.validators());
+        rules = inOrder(rules);
         ValidatorRegistry.ValidationContext context =
                 new ValidatorRegistry.ValidationContext(record, labels, mode);
         for (ValidatorDefinition rule : rules) {
@@ -118,6 +119,36 @@ public final class FormValidator {
         if (field.isSubTable() && !field.rowFields().isEmpty()) {
             errors.addAll(validateRows(field, value));
         }
+    }
+
+    /**
+     * 出す順（1項目で複数落ちたとき、どれを出すか）。
+     *
+     * <p><b>自分の形の検証が先、他の項目に依る検証（compare）は後</b>。「開始日以上に
+     * してください」より先に「日付の形が正しくありません」と言われないと、直す順番が
+     * 分からない（形が読めない値を比べた結果は、そもそも当てにならない）。
+     *
+     * <p>同じ組の中では<b>書いた順</b>＝そこは書く人が決める。プラグインの検証は自分の
+     * 形の側に置く（他の項目を見るかどうかを枠組みは知らないので、書いた場所を動かさない）。
+     */
+    private static List<ValidatorDefinition> inOrder(List<ValidatorDefinition> rules) {
+        List<ValidatorDefinition> ordered = new ArrayList<>();
+        for (ValidatorDefinition rule : rules) {
+            if (!dependsOnOthers(rule)) {
+                ordered.add(rule);
+            }
+        }
+        for (ValidatorDefinition rule : rules) {
+            if (dependsOnOthers(rule)) {
+                ordered.add(rule);
+            }
+        }
+        return ordered;
+    }
+
+    /** 他の項目の値を見る検証か（組み込みでは compare だけ）。 */
+    private static boolean dependsOnOthers(ValidatorDefinition rule) {
+        return "compare".equals(rule.type());
     }
 
     private boolean isRequiredByCondition(

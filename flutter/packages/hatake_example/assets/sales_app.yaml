@@ -323,6 +323,10 @@ app:
               - field: lines
                 label: 明細
                 type: subTable
+                # 行の**中**ではなく行**どうし**の規則。1行ずつ見ていては分からない
+                # （同じ品名を2行に書くと、どちらが正しい数量か決められない）。
+                validators:
+                  - { type: unique, of: item }
                 columns:
                   - { field: item, label: 品名, width: 220 }
                   - { field: qty, label: 数量, type: number, width: 90 }
@@ -351,9 +355,13 @@ app:
                   computed: { op: count, field: lines,
                               where: { field: cancelled, operator: notEquals, value: true } } }
               # 並べて1行にするのは join（数ではなく文字が出る）。伝票の「品名」欄。
-              - { field: itemNames, label: 品名, type: textarea, readOnly: true,
+              # 欄の幅は決まっているので、**金額の大きい順に3件だけ**（`sort` + `limit`）。
+              # 切ったぶんは黙って落とさず「ほか N 件」と言う（3件だけ出して終わると、
+              # 読む人は「明細は3行」と読む）。
+              - { field: itemNames, label: 主な品名, type: textarea, readOnly: true,
                   computed: { op: join, field: lines, of: item, separator: "、",
-                              where: { field: cancelled, operator: notEquals, value: true } } }
+                              where: { field: cancelled, operator: notEquals, value: true },
+                              sort: { field: amount, ascending: false }, limit: 3 } }
       actions:
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: order_entry } }
 

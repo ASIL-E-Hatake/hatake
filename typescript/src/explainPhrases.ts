@@ -143,6 +143,10 @@ export const VALIDATORS: Record<string, Phrase> = {
   email: { ja: "メールアドレスの形", en: "an email address" },
   postalCode: { ja: "郵便番号の形", en: "a postal code" },
   compare: { ja: "{value}", en: "{value}" },
+  unique: {
+    ja: "{value} が同じ行は書けない",
+    en: "no two rows with the same {value}",
+  },
 };
 
 /**

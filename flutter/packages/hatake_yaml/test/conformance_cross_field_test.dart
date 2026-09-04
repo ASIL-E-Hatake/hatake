@@ -14,36 +14,41 @@ import 'package:test/test.dart';
 /// 相手のラベルで出す」の5つ。フロントとバックで検証がズレないことが値打ちなので、
 /// 同じフィクスチャを3エディションで回す。
 void main() {
-  final fixture = jsonDecode(
-    File('../../../spec/conformance/cross_field_validation.json')
-        .readAsStringSync(),
-  ) as Map<String, dynamic>;
+  void runFixture(String name, String file) {
+    final fixture = jsonDecode(
+      File('../../../spec/conformance/$file').readAsStringSync(),
+    ) as Map<String, dynamic>;
 
-  // strict で読む＝フィクスチャが「本当に書ける定義」であることも縛る。
-  final page = parsePageJson(jsonEncode(fixture['page']), strict: true)
-      as FormPageDefinition;
-  final validator = FormValidator();
+    // strict で読む＝フィクスチャが「本当に書ける定義」であることも縛る。
+    final page = parsePageJson(jsonEncode(fixture['page']), strict: true)
+        as FormPageDefinition;
+    final validator = FormValidator();
 
-  group('conformance: cross-field validation', () {
-    for (final raw in fixture['cases'] as List) {
-      final c = raw as Map<String, dynamic>;
-      test(c['name'], () {
-        final record = (c['record'] as Map).cast<String, Object?>();
-        final actual = validator
-            .validate(page.form, record, mode: c['mode'] as String?)
-            .errors;
+    group('conformance: $name', () {
+      for (final raw in fixture['cases'] as List) {
+        final c = raw as Map<String, dynamic>;
+        test(c['name'], () {
+          final record = (c['record'] as Map).cast<String, Object?>();
+          final actual = validator
+              .validate(page.form, record, mode: c['mode'] as String?)
+              .errors;
 
-        String key(String field, String message) => '$field=$message';
-        final expected = [
-          for (final e in c['expected'] as List)
-            key((e as Map)['field'] as String, e['message'] as String),
-        ];
-        expect(
-          actual.map((e) => key(e.field, e.message)).toSet(),
-          expected.toSet(),
-          reason: 'errors: ${actual.map((e) => key(e.field, e.message))}',
-        );
-      });
-    }
-  });
+          String key(String field, String message) => '$field=$message';
+          final expected = [
+            for (final e in c['expected'] as List)
+              key((e as Map)['field'] as String, e['message'] as String),
+          ];
+          expect(
+            actual.map((e) => key(e.field, e.message)).toSet(),
+            expected.toSet(),
+            reason: 'errors: ${actual.map((e) => key(e.field, e.message))}',
+          );
+        });
+      }
+    });
+  }
+
+  runFixture('cross-field validation', 'cross_field_validation.json');
+  // 1項目で複数落ちたとき、自分の形が先・他の項目に依るものが後。
+  runFixture('which error is reported first', 'validation_order.json');
 }

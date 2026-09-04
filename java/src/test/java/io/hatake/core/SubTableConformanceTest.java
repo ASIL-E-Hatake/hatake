@@ -33,6 +33,12 @@ class SubTableConformanceTest {
         return runFixture("subtable_source_validation.json");
     }
 
+    /** 行の中ではなく<b>行どうし</b>の規則（同じ品名が2行にある）。 */
+    @TestFactory
+    Stream<DynamicTest> crossRowRules() throws IOException {
+        return runFixture("row_rules_validation.json");
+    }
+
     @SuppressWarnings("unchecked")
     private static Stream<DynamicTest> runFixture(String file) throws IOException {
         String content = Files.readString(Path.of("../spec/conformance/" + file));

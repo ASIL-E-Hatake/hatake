@@ -179,6 +179,32 @@ const WORDS = {
     (table: string, of: string) =>
       `the ${of} of every row in ${table}, listed (not typed in)`,
   ),
+  /** 上位だけ畳む・並べる（`sort` + `limit`）。**何件のうち何件か**を言う。 */
+  topRows: pair(
+    (count: number, of: string, order: string) =>
+      `${of}が${order}${count} 件だけ`,
+    (count: number, of: string, order: string) =>
+      `only the ${count} rows with the ${order} ${of}`,
+  ),
+  /** 並べずに上位だけ採ったとき（行の順のまま先頭から）。 */
+  firstRows: pair(
+    (count: number) => `先頭の ${count} 件だけ（並べ替えなし）`,
+    (count: number) => `only the first ${count} rows (unordered)`,
+  ),
+  /** 並べるだけ（切らない）。`join` の並び順は読む人に見えるので言う。 */
+  rowsInOrder: pair(
+    (of: string, order: string) => `${of}が${order}並べる`,
+    (of: string, order: string) => `listed ${order} ${of} first`,
+  ),
+  orderDescending: pair("大きい順に", "largest"),
+  orderAscending: pair("小さい順に", "smallest"),
+  /** 切ったぶんを言う（`join` の `overflow`）。 */
+  saysRest: pair("切ったぶんは件数で言う", "the rest is named as a count"),
+  /** 切ったぶんを黙って落とすと決めたとき（`overflow: ""`）。 */
+  hidesRest: pair(
+    "切ったぶんは出さない",
+    "the rest is dropped without a word",
+  ),
   /** 畳む前に行を絞る（`where`）。条件の言い方は visibleWhen と同じものを使う。 */
   onlyRows: pair(
     (condition: string) => `${condition}の行だけ`,
@@ -356,6 +382,11 @@ const WORDS = {
   notOnRow: pair(
     (label: string) => `${label}（行には出ない：選んだ行に実行するボタン）`,
     (label: string) => `${label} (not on the row: it runs on the checked rows)`,
+  ),
+  /** 行どうしの規則なのに、見る項目が書かれていない（`validate` が言う）。 */
+  uniqueNoField: pair(
+    "行どうしの重なりを見る（見る項目が書かれていない）",
+    "checks rows for repeats (but no field is named)",
   ),
   openEdit: pair("編集を開く", "opens the editor"),
   deleteRow: pair("削除する", "deletes"),
