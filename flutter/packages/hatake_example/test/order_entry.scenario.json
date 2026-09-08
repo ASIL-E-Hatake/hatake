@@ -1,0 +1,148 @@
+{
+  "$comment": "デモの受注入力（order_entry）を動かして答えを見るシナリオ。**同じファイルを2つの版が食べる**: Flutter 側は scenario_test.dart（アプリの登録を渡した ScenarioRunner）、CLI 側は CI の `hatake run`。収束フィクスチャ（spec/conformance）が縛るのは枠組みが書いた表だけなので、**案件の定義**で答えが揃っていることはこれでしか言えない。期待は業務の言葉で人が書いたもので、下書き（run --draft）の写しではない。",
+  "page": "order_entry",
+  "cases": [
+    {
+      "name": "全部埋めた（小計・行数・主な品名が出る）",
+      "record": {
+        "orderNo": "SO-2001",
+        "customer": "山田商事",
+        "orderDate": "2026-09-08",
+        "status": "未出荷",
+        "lines": [
+          { "item": "ノートPC", "qty": 2, "price": 60000 },
+          { "item": "マウス", "qty": 4, "price": 2000 }
+        ]
+      },
+      "expect": {
+        "errors": [],
+        "computed": {
+          "subtotal": 128000,
+          "lineCount": 2,
+          "itemNames": "ノートPC、マウス"
+        },
+        "required": ["orderNo", "customer", "orderDate", "status", "lines"]
+      }
+    },
+    {
+      "name": "取消した行は、小計にも行数にも品名にも入らない",
+      "record": {
+        "orderNo": "SO-2002",
+        "customer": "佐藤物産",
+        "orderDate": "2026-09-08",
+        "status": "未出荷",
+        "lines": [
+          { "item": "ノートPC", "qty": 1, "price": 60000 },
+          { "item": "保守契約（年）", "qty": 1, "price": 40000, "cancelled": true }
+        ]
+      },
+      "expect": {
+        "errors": [],
+        "computed": {
+          "subtotal": 60000,
+          "lineCount": 1,
+          "itemNames": "ノートPC"
+        }
+      }
+    },
+    {
+      "name": "主な品名は金額の大きい順に3件だけ（切ったぶんは件数で言う）",
+      "record": {
+        "orderNo": "SO-2003",
+        "customer": "鈴木工業",
+        "orderDate": "2026-09-08",
+        "status": "未出荷",
+        "lines": [
+          { "item": "マウス", "qty": 1, "price": 2000 },
+          { "item": "業務用サーバ", "qty": 1, "price": 280000 },
+          { "item": "会議用モニタ", "qty": 2, "price": 32000 },
+          { "item": "保守契約（年）", "qty": 1, "price": 40000 }
+        ]
+      },
+      "expect": {
+        "errors": [],
+        "computed": {
+          "subtotal": 386000,
+          "lineCount": 4,
+          "itemNames": "業務用サーバ、会議用モニタ、保守契約（年）、ほか 1 件"
+        }
+      }
+    },
+    {
+      "name": "受注番号は全角で入れても半角になる（保存前に整える）",
+      "record": {
+        "orderNo": "ＳＯ－２００４ ",
+        "customer": "山田商事",
+        "orderDate": "2026-09-08",
+        "status": "未出荷",
+        "lines": [{ "item": "マウス", "qty": 1, "price": 2000 }]
+      },
+      "expect": { "errors": [] }
+    },
+    {
+      "name": "同じ品名の行を2つ書くと、行どうしの規則が拾う",
+      "record": {
+        "orderNo": "SO-2005",
+        "customer": "山田商事",
+        "orderDate": "2026-09-08",
+        "status": "未出荷",
+        "lines": [
+          { "item": "マウス", "qty": 1, "price": 2000 },
+          { "item": "マウス", "qty": 2, "price": 2000 }
+        ]
+      },
+      "expect": {
+        "errors": [
+          { "field": "lines", "message": "品名 が同じ行があります（2 行目）" }
+        ]
+      }
+    },
+    {
+      "name": "数量 0 は行の中の検証が拾う（行番号つきで返る）",
+      "record": {
+        "orderNo": "SO-2006",
+        "customer": "山田商事",
+        "orderDate": "2026-09-08",
+        "status": "未出荷",
+        "lines": [
+          { "item": "マウス", "qty": 1, "price": 2000 },
+          { "item": "ノートPC", "qty": 0, "price": 60000 }
+        ]
+      },
+      "expect": {
+        "errors": [
+          { "field": "lines[1].qty", "message": "1以上で入力してください" }
+        ],
+        "computed": { "subtotal": 2000 }
+      }
+    },
+    {
+      "name": "ヘッダの必須を空にすると、空にした分だけ言う",
+      "record": {
+        "orderNo": "SO-2007",
+        "lines": [{ "item": "マウス", "qty": 1, "price": 2000 }]
+      },
+      "expect": {
+        "errors": [
+          { "field": "customer", "message": "必須項目です" },
+          { "field": "orderDate", "message": "必須項目です" },
+          { "field": "status", "message": "必須項目です" }
+        ]
+      }
+    },
+    {
+      "name": "明細が空なら必須で落ちる（合計は 0＝畳む相手が無いだけ）",
+      "$comment": "行が1件も無いときの合計は 0（null ではない）。「合計 0」と「行が無い」を見分けたいときは lineCount を一緒に見る、が枠組みの決めごと。",
+      "record": {
+        "orderNo": "SO-2008",
+        "customer": "山田商事",
+        "orderDate": "2026-09-08",
+        "status": "未出荷"
+      },
+      "expect": {
+        "errors": [{ "field": "lines", "message": "必須項目です" }],
+        "computed": { "subtotal": 0, "lineCount": 0, "itemNames": "" }
+      }
+    }
+  ]
+}

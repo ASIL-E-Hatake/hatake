@@ -13,7 +13,8 @@
     "showDefinition"
   ],
   "roles": [
-    "manager"
+    "manager",
+    "staff"
   ],
   "sinks": [
     "exportSink",

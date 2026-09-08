@@ -17,9 +17,11 @@ class ProductRepository implements Repository {
 
   factory ProductRepository.seeded() {
     return ProductRepository(const [
-      {'id': 1, 'code': 'P001', 'name': 'ノートPC'},
-      {'id': 2, 'code': 'P002', 'name': 'ワイヤレスマウス'},
-      {'id': 3, 'code': 'P003', 'name': '4Kモニター'},
+      // 原価と売価は「原価管理」（承認者だけが入口を持つ画面）が読む。粗利は
+      // 定義の側の計算項目（売価 − 原価）なので、ここには持たない。
+      {'id': 1, 'code': 'P001', 'name': 'ノートPC', 'cost': 48000, 'price': 60000},
+      {'id': 2, 'code': 'P002', 'name': 'ワイヤレスマウス', 'cost': 1200, 'price': 2000},
+      {'id': 3, 'code': 'P003', 'name': '4Kモニター', 'cost': 26000, 'price': 32000},
     ]);
   }
 

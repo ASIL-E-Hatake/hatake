@@ -71,7 +71,7 @@ npx hatake validate dept_master.yaml
 | --- | --- |
 | 「こうしたい」から書き方を引く | [機能別の書き方](/dsl/) |
 | 全体像を絵で見る | [図解](/diagrams) |
-| 動いている画面を触る | <a href="/hatake/demo/" target="_self">デモ</a> |
+| 動いている画面を触る | <a href="/hatake/demo/" target="_self">デモ</a>（右下の札で**役割を切り替える**と、隠れる列・出ないボタンが見える） |
 | 自分で書いた定義を試す | <a href="/hatake/demo/?playground=1" target="_self">プレイグラウンド</a> |
 | 自分の AI に hatake を書かせる | [AI に書かせる](/ai) |
 | 導入手順・仕組み・写経用サンプル | [GitHub のドキュメント](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/index.ja.md) |

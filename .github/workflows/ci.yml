@@ -1620,6 +1620,39 @@ jobs:
             console.log("scenario fixture: " + fixture.cases.length + " 件一致");
           '
 
+      - name: The demo's own scenarios answer the same in both editions
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          SCENARIO=../flutter/packages/hatake_example/test/order_entry.scenario.json
+          # 収束フィクスチャが縛るのは**枠組みが書いた表**だけ。案件の定義（デモ）で
+          # 答えが揃っていることは、同じファイルを両方の版で回して初めて言える。
+          # Flutter 側は hatake_example/test/scenario_test.dart が同じファイルを食べる。
+          node dist/cli.js run "$DEMO" --page order_entry --scenario "$SCENARIO" \
+            > /tmp/demo-scenario.log
+          grep -q '件すべて期待どおり' /tmp/demo-scenario.log
+          # 期待は**人が業務の言葉で書いたもの**（下書きの写しではない）＝道具が
+          # 答えを変えたらここで落ちる。件数も見る（黙って空になっていないこと）。
+          node -e '
+            const file = JSON.parse(require("fs").readFileSync(
+              "../flutter/packages/hatake_example/test/order_entry.scenario.json", "utf8"));
+            if (file.cases.length < 5) {
+              console.error("シナリオが薄い: " + file.cases.length); process.exit(1);
+            }
+            if (file.cases.some((c) => c.expect === undefined)) {
+              console.error("期待を書いていない件がある"); process.exit(1);
+            }
+          '
+          # 役割で出し分けている所は**誰にも見えない**にならないこと（デモの語彙と
+          # 定義の役割名が揃っていることを、同梱の一覧で突き合わせる）。
+          node dist/cli.js validate --warn-as-error "$DEMO" \
+            --registry ../flutter/packages/hatake_example/assets/hatake-registry.json
+          # デモは担当（staff）と承認者（manager）の2つを配る。どちらも定義が使っている。
+          node dist/cli.js explain "$DEMO" --roles > /tmp/demo-roles.log
+          grep -q 'staff' /tmp/demo-roles.log
+          grep -q 'manager' /tmp/demo-roles.log
+
       - name: What was asked, and what was written (intent / trace)
         working-directory: typescript
         run: |
