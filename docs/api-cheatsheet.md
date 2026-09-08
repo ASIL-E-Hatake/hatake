@@ -38,7 +38,27 @@ fields, which buttons are pressable — in the same order the screen uses (`norm
 `--draft` seeds a scenario from the definition's own constraints, `--cover` lists the
 branches no case has reached yet. Plugin computeds/validators are not in the CLI, so it
 says so instead of inventing a value (the app replays the same file through
-`ScenarioRunner` with its real registries).
+`ScenarioRunner` with its real registries — and so does the server: the Java edition has
+the same `ScenarioRunner`, except that it does not answer which buttons are pressable,
+because a server definition does not read `actions`).
+
+The **data to test a server with** comes from the definition too: `npx hatake fixtures <def>`
+emits records that should be accepted and records that should be rejected, built from the
+same boundaries as `run --draft` so the screen and the server are tested at the same edge.
+Nothing is claimed before it is run — a record meant to be rejected that actually passes is
+dropped, with the reason recorded.
+
+What a *user adds* can drift between the client and the server:
+`npx hatake registry --compare app.json server.json` fails when a custom validator,
+computed, converter or aggregate exists on one side only (that is how "it passes on the
+screen and is rejected on save" happens). Both lists are written by the running app
+(`registrySnapshot`) or server (`RegistrySnapshot`).
+
+Widget tests get their own toolkit: `hatake_test`'s `pumpPage(tester, definition, rows: …)`
+renders a definition as-is, `HatakeFind.field('code')` / `HatakeFind.action('approve')` press
+and type through the published key convention (`HatakeKeys`, cross-checked against the
+renderer in CI), and `FakeRepository` **remembers what it was asked** so a test can say "the
+button was pressed but nothing was saved".
 
 An app may say **how screens open**: `app.navigation` (`single`, the default, swaps the
 screen; `tabs` opens them side by side). The application may override it

@@ -12,8 +12,8 @@
 // 入れる＝すぐ回せる代わりに、**業務として正しいかは人が見る**（定義が間違っていれば、
 // 間違ったまま写る）。だから各件に「何から作ったか」を書いておく。
 //
-// 形が決まっている項目（`pattern`）は**値を作らない**（`TODO_<項目>` を置く）。
-// 正規表現を満たす文字列を機械が作ると、業務としてあり得ない値になる。
+// 値そのものの作り方は [fieldValues] に置いてある（サーバ側の試験データを出す
+// `hatake fixtures` と**同じ所**で作る＝画面とサーバが同じ境界で試される）。
 
 import {
   FieldTypes,
@@ -22,8 +22,8 @@ import {
   type FieldDefinition,
   type FormDefinition,
   type PageDefinition,
-  type ValidatorDefinition,
 } from "./definition.js";
+import { numParam, plausible, row, ruleOf } from "./fieldValues.js";
 import {
   compareAnswer,
   formOf,
@@ -35,69 +35,6 @@ import {
 
 /** 下書きが作る件数の上限（多すぎると読まれない）。 */
 export const DRAFT_CASE_LIMIT = 12;
-
-const rule = (
-  field: FieldDefinition,
-  type: string,
-): ValidatorDefinition | undefined =>
-  field.validators.find((one) => one.type === type);
-
-const num = (value: unknown): number | undefined =>
-  typeof value === "number" ? value : undefined;
-
-/** その項目の「それらしい値」。形が決まっているものは作らない（`TODO_` を置く）。 */
-function plausible(field: FieldDefinition): unknown {
-  if (rule(field, ValidatorTypes.pattern) !== undefined) {
-    return `TODO_${field.field}`;
-  }
-  switch (field.type) {
-    case FieldTypes.number: {
-      const min = num(rule(field, ValidatorTypes.min)?.params.value);
-      const max = num(rule(field, ValidatorTypes.max)?.params.value);
-      if (min !== undefined) return min;
-      if (max !== undefined) return Math.min(1, max);
-      return 1;
-    }
-    case FieldTypes.checkbox:
-      // 印は**立てない**のが基本形（`取消` のような印を既定で立てると、合計が 0 の
-      // 下書きが出て「計算が壊れている」ように見える）。立てた形は別の件で作る。
-      return false;
-    case FieldTypes.date:
-      return "2026-01-05";
-    case FieldTypes.dateTime:
-      return "2026-01-05T09:00";
-    case FieldTypes.time:
-      return "09:00";
-    case FieldTypes.select:
-    case FieldTypes.radio:
-      return field.options[0]?.value ?? `TODO_${field.field}`;
-    case FieldTypes.multiSelect: {
-      const first = field.options[0]?.value;
-      return first === undefined ? [`TODO_${field.field}`] : [first];
-    }
-    case FieldTypes.subTable:
-      return [row(field)];
-    default: {
-      if (rule(field, ValidatorTypes.email) !== undefined) return "test@example.com";
-      if (rule(field, ValidatorTypes.postalCode) !== undefined) return "1234567";
-      const minLength = num(rule(field, ValidatorTypes.minLength)?.params.value);
-      const maxLength = num(rule(field, ValidatorTypes.maxLength)?.params.value);
-      if (minLength !== undefined) return "X".repeat(minLength);
-      if (maxLength !== undefined && maxLength < 3) return "X".repeat(maxLength);
-      return "テスト";
-    }
-  }
-}
-
-/** 明細の1行（行の項目を同じ規則で埋める。行の中の計算は当てない＝道具が出す）。 */
-function row(field: FieldDefinition): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const one of field.rowFields) {
-    if (one.computed !== undefined) continue;
-    out[one.field] = plausible(one);
-  }
-  return out;
-}
 
 /** 手で入れる項目（計算項目と、別テーブルに持つ明細は入れない）。 */
 const typedIn = (form: FormDefinition): FieldDefinition[] =>
@@ -176,7 +113,7 @@ export function draftScenario(
 
   // 文字数の境界（ぴったり／1文字超）。
   for (const field of typedIn(form)) {
-    const max = num(rule(field, ValidatorTypes.maxLength)?.params.value);
+    const max = numParam(ruleOf(field, ValidatorTypes.maxLength)?.params.value);
     if (max === undefined) continue;
     cases.push({
       name: `「${field.label}」が ${max} 文字ぴったり`,
@@ -224,7 +161,7 @@ export function draftScenario(
 
   // 行どうしの規則（同じ値の行を2つ）。
   for (const field of typedIn(form)) {
-    const unique = rule(field, ValidatorTypes.unique);
+    const unique = ruleOf(field, ValidatorTypes.unique);
     const of = unique?.params.of;
     if (unique === undefined || typeof of !== "string") continue;
     const one = row(field);

@@ -5,7 +5,6 @@ import 'package:hatake_material/hatake_material.dart';
 import 'package:hatake_yaml/hatake_yaml.dart';
 
 import 'export_dialog.dart';
-import 'playground_data.dart';
 
 /// Paste a definition, see the screen. Nothing to install.
 ///

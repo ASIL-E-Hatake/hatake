@@ -157,6 +157,12 @@ import {
   scanRegistrations,
   type SourceFile,
 } from "./registryScan.js";
+import {
+  comparisonLines,
+  compareRegistries,
+  type RegistryDocument,
+} from "./registryDiff.js";
+import { deriveFixtures, fixtureLines } from "./fixtures.js";
 import { toJavaRecords, toTypeScript } from "./types.js";
 
 
@@ -191,6 +197,15 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --cover は「まだ試していない所」を定義の分岐から挙げる（落とさない）。
       プラグインの計算・検証は**この道具には無い**ので、値を作らずにそう言う
       （アプリの試験で回す）。
+
+  hatake fixtures <file> [--page <id>] [--json] [--out file]
+      サーバ側の**試験データ**を定義から出す（通るはずの形と、弾かれるはずの形）。
+      境界は定義に書いてある（必須・文字数・数の上下限・行どうしの規則）ので機械が
+      作れる。値の作り方は run --draft と**同じ所**＝画面とサーバが同じ境界で試される
+      （別々に作ると必ずどちらかが緩い）。
+      出す前に**自分で動かして確かめる**（画面と同じ順で動かし、通ると言った形が落ちる・
+      弾かれると言った形が通るなら、その件は出さずに理由を残す）。
+      レコードは**サーバが受け取る形**（整えたあと・計算した値つき）。
 
   hatake explain <file> [--page <id>] [--brief] [--json] [--markdown] [--lang ja|en]
       定義を「この画面は何をするか」に開く（日本語）。DSL を知らない人が、AI に
@@ -288,6 +303,16 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       として報告し、終了コード 1 にする（黙って落とすと一覧が嘘になるため）。
       役割は HatakeScope(knownRoles:) に書いた**語彙**を読む（いま配られている
       roles: は読まない＝ログイン状態なので突き合わせに使えない）。
+
+  hatake registry --compare <画面の一覧.json> <サーバの一覧.json> [--json]
+      **利用者が足したもの**が画面とサーバで同じかを見る。組み込みが3版で同じ答えを
+      出すことは収束テストで縛ってあるが、足した検証・計算・変換・集約は縛られていない
+      ＝片側にしか無ければ「画面では通るのに保存で弾かれる」（その逆もある）。
+      見るのは**答えを決める種類だけ**（validators / converters / computedOps /
+      aggregates）。Repository・プラグイン・項目の型のように片側にしか無くて当然の
+      種類は、理由つきで「見なかった」に並べる。食い違いがあれば終了コード 1。
+      渡す一覧は registrySnapshot（Dart）/ RegistrySnapshot（Java）が書いたもの
+      ＝どちらも「足したもの全部」を出すので、無い種類は「足していない」と読む。
 
   hatake refs <file...> [--json] [--needs-registration] [--unused]
               [--filled] [--source <実装のパス>] [--pending-as-error]
@@ -464,6 +489,7 @@ const BOOLEAN_FLAGS = new Set([
   "todo",
   "draft",
   "cover",
+  "compare",
   "dry-run",
   "if-changed",
   "help",
@@ -526,6 +552,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return validate(positional, flags, io);
       case "run":
         return run(positional, flags, io);
+      case "fixtures":
+        return fixtures(positional, flags, io);
       case "dto":
         return emit(positional, io, (page) =>
           JSON.stringify(deriveDto(page), null, 2),
@@ -1696,6 +1724,7 @@ function loadFailures(
  * 警告が出る。出力自体は書く（手で足せるように）。
  */
 function registry(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (flags.compare === true) return registryCompare(files, flags, io);
   if (files.length === 0) {
     io.err("ソースのファイルかディレクトリを指定してください。");
     return 1;
@@ -1752,6 +1781,66 @@ function registry(files: string[], flags: Args["flags"], io: CliIo): number {
     io.err(`     ${site.file}:${site.line} (${site.kind}) ${site.reason}`);
   }
   return 1;
+}
+
+/**
+ * サーバ側の試験データを定義から出す（`fixtures`）。
+ *
+ * 出す形は `run --draft` と同じ値づくり（[fieldValues]）で作る。片方だけ緩い境界を
+ * 作らないため。
+ */
+function fixtures(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("試験データを作る定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const page = scenarioPageOf(io.readFile(files[0]), str(flags, "page"), io);
+  if (page === null) return 1;
+
+  const file = deriveFixtures(page);
+  const out = str(flags, "out");
+  if (out !== undefined) {
+    io.writeFile(out, `${JSON.stringify(file, null, 2)}
+`);
+    io.out(`書きました: ${out}（${file.records.length} 件）`);
+  } else if (flags.json === true) {
+    io.out(JSON.stringify(file, null, 2));
+  } else {
+    for (const line of fixtureLines(file)) io.out(line);
+  }
+  for (const line of file.notes) io.err(`・${line}`);
+  return 0;
+}
+
+/**
+ * 画面とサーバの「登録済みのもの」を突き合わせる（`registry --compare`）。
+ *
+ * 渡すのは `registrySnapshot`（Dart）/ `RegistrySnapshot`（Java）が書いた一覧。
+ * 見るのは**答えを決める種類だけ**で、片側にしか無くて当然の種類は理由つきで
+ * 「見なかった」に並べる。食い違いがあれば終了コード 1。
+ */
+function registryCompare(
+  files: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  if (files.length !== 2) {
+    io.err(
+      "--compare には一覧を2つ渡してください" +
+        "（hatake registry --compare 画面の一覧.json サーバの一覧.json）。",
+    );
+    return 1;
+  }
+  const [app, server] = files.map(
+    (path) => JSON.parse(io.readFile(path)) as RegistryDocument,
+  );
+  const result = compareRegistries(app, server);
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+  } else {
+    for (const line of comparisonLines(result)) io.out(line);
+  }
+  return result.gaps.length > 0 ? 1 : 0;
 }
 
 /**

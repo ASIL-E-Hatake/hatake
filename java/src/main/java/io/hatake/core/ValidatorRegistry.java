@@ -1,9 +1,11 @@
 package io.hatake.core;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -88,6 +90,24 @@ public final class ValidatorRegistry {
     /** レコード全体も見る検証を登録する（自前の項目間チェック）。 */
     public void register(String type, ContextValidator fn) {
         validators.put(type, fn);
+    }
+
+    /**
+     * このアプリが足した名前だけ（組み込みは除く）。名前順。
+     *
+     * <p>申告するのは足したものだけ。組み込みは突き合わせる側が知っているので、
+     * 混ぜると一覧が無駄に太り、組み込みが増えるたびに古くなる。
+     */
+    public List<String> customKeys() {
+        Set<String> builtin = builtins(new MessageResolver()).keySet();
+        List<String> out = new ArrayList<>();
+        for (String key : validators.keySet()) {
+            if (!builtin.contains(key)) {
+                out.add(key);
+            }
+        }
+        Collections.sort(out);
+        return out;
     }
 
     public boolean has(String type) {

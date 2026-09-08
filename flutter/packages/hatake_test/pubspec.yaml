@@ -1,0 +1,39 @@
+name: hatake_test
+description: >-
+  Test toolkit for hatake — pump a definition into a widget test, fake a
+  Repository, and find widgets by the framework's published key convention.
+version: 0.0.1
+repository: https://github.com/ASIL-E-Hatake/hatake
+homepage: https://github.com/ASIL-E-Hatake/hatake
+issue_tracker: https://github.com/ASIL-E-Hatake/hatake/issues
+topics:
+  - testing
+  - declarative
+  - crud
+  - renderer
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.16.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+  hatake: ^0.0.1
+  hatake_material: ^0.0.1
+  hatake_yaml: ^0.0.1
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+
+dependency_overrides:
+  hatake:
+    path: ../hatake
+  hatake_core:
+    path: ../hatake_core
+  hatake_material:
+    path: ../hatake_material
+  hatake_yaml:
+    path: ../hatake_yaml

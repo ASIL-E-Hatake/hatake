@@ -1860,8 +1860,110 @@ Decisions:
   lines of code. It is **not a gate** — its value is telling you which case to write next
 - **The same file replays inside the app's tests.** On the Flutter side `ScenarioRunner`
   takes the application's own registries, so plugin computeds and validators are covered
-  too. That the CLI and Dart answer identically is pinned by
+  too. That every edition answers identically is pinned by
   [`spec/conformance/scenario.json`](conformance/scenario.json)
+- **And on the server.** The Java edition has a `ScenarioRunner` too (`io.hatake.core`), so
+  one project's scenarios can be replayed by the screen, the tool and the server — the
+  promise "same definition, same answer" checked against the project's own data. One thing
+  the server does not answer: **which buttons are pressable**. Its `PageDefinition` does not
+  read `actions` (what a press does lives only on the client), so an expectation asking for
+  `enabled` is reported under `cannot` and `compare` skips that field — turning an answer
+  nobody can give into a mismatch would fail every case
+
+## Server-side fixtures
+
+The contract could already be emitted (`schema` / `openapi` / `types`), but the **data to
+test with** was still written by hand. The boundaries are in the definition, so a machine
+can build them.
+
+```bash
+npx hatake fixtures order_entry.yaml --out fixtures.json
+```
+
+```json
+{
+  "shape": "OrderEntryRequest",
+  "records": [
+    { "name": "全部埋めた", "valid": true, "why": "…", "record": { "…": "…" } },
+    { "name": "必須の「顧客」が無い", "valid": false, "field": "customer",
+      "why": "required: true …", "record": { "…": "…" } }
+  ],
+  "notes": ["…"]
+}
+```
+
+Decisions:
+
+- **Values are made in the same place as `run --draft`** (`fieldValues`), so the screen and
+  the server are tested at the **same boundary**. Built separately, one of the two is always
+  the looser — and the looser one is what lets "it passed here, it was rejected there" happen
+- **Nothing is claimed before it is run.** A record meant to be rejected sometimes passes (a
+  field required only under a condition, a hidden field). Those are **dropped, with the
+  reason recorded in `notes`** — better to say nothing than to say something false
+- A record is **what the server receives** (after `normalize`, with computed values). The
+  client sends the whole draft, so `readOnly` / `computed` members **do arrive**: ignoring
+  them is correct, rejecting them makes a screen that cannot save. Since that is true of
+  every record, it is said once in `notes` rather than as its own case
+- A field with a fixed shape (`pattern`) gets `TODO_<field>` instead of an invented value —
+  which sometimes means no passing record can be emitted at all
+
+## Comparing what the app and the server registered
+
+The DSL's promise is "same definition, same answer". That the built-ins agree across the
+three editions is pinned by the conformance fixtures; **what a user adds** is not.
+
+```bash
+npx hatake registry --compare app.json server.json
+```
+
+Both lists are written by the running app / server (`registrySnapshot` in Dart,
+`RegistrySnapshot` in Java). Both report *everything the app added*, so a kind that is
+absent means "nothing added", not "not reported".
+
+- Only the kinds that **decide the answer** are compared (`validators` / `converters` /
+  `computedOps` / `aggregates`). Present on one side only means "it passes on the screen and
+  is rejected on save", or the reverse
+- Repositories, plugins, field types, formatters and roles legitimately live on one side
+  only, so they are listed as **skipped, with the reason**. Listing the obvious as a mismatch
+  is how a report stops being read
+- If neither side added anything, the tool says **there is nothing to compare** — saying
+  "they match" would feel like a check that never happened
+
+## Writing widget tests (the key convention)
+
+The `Key`s a renderer attaches are a **published contract** for tests. The convention lives
+in `HatakeKeys` (`hatake_core`), and CI cross-checks it against the keys the renderer
+actually attaches — so the written contract cannot drift from the implementation.
+
+| Convention | What it points at |
+|---|---|
+| `hatake.form.<field>` | an input field (an option is `hatake.form.<field>.<value>`) |
+| `hatake.action.<id>` | a page-level button |
+| `hatake.rowaction.<id>.<row key>` | a row button (built-ins: `hatake.edit.<key>` / `hatake.delete.<key>`) |
+| `hatake.confirm.ok` | the "yes" of a confirmation |
+| `hatake.subtable.<field>.add` | "add a row" of a child table |
+
+`HatakeKeys.shapes` is the whole set. From a test, `hatake_test` is shorter:
+
+```dart
+final page = await pumpPage(tester, yaml, rows: [{'id': 1, 'code': 'SO-1'}]);
+await tester.tap(HatakeFind.edit(1));
+await tester.pumpAndSettle();
+await tester.enterText(HatakeFind.field('code'), 'SO-9');
+await tester.tap(HatakeFind.formSave);
+await tester.pumpAndSettle();
+expect(page.repository.calls, contains('update(1)'));
+```
+
+- `pumpPage` renders a definition (YAML / JSON / already parsed) as-is. **Parsing is
+  strict**: a key silently dropped inside a test makes a test that passes while testing
+  nothing
+- `FakeRepository` holds rows and **remembers what it was asked** (`calls` / `queries`), so
+  "the button was pressed but nothing was saved" becomes something a test can say
+- With no `rows`, plausible ones are fabricated from the definition (`sampleRows`). Those
+  values are fiction — **write the rows when the test is about values**
+- For computeds and validation alone, `ScenarioRunner` is faster than rendering. Render only
+  to check what rendering decides: pressable, visible, saved
 
 ## Real failures
 

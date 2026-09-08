@@ -35,7 +35,7 @@ jobs:
       - name: Analyze & test
         run: |
           set -e
-          for pkg in hatake hatake_material hatake_example; do
+          for pkg in hatake hatake_material hatake_test hatake_example; do
             echo "::group::$pkg"
             (cd "flutter/packages/$pkg" && flutter pub get && flutter analyze && { if [ -d test ]; then flutter test; fi; })
             echo "::endgroup::"
@@ -1618,6 +1618,91 @@ jobs:
               }
             }
             console.log("scenario fixture: " + fixture.cases.length + " 件一致");
+          '
+
+      - name: Server-side fixtures come from the same boundaries
+        working-directory: typescript
+        run: |
+          set -e
+          DEMO=../flutter/packages/hatake_example/assets/sales_app.yaml
+          node dist/cli.js fixtures "$DEMO" --page order_entry \
+            --out /tmp/fixtures.json 2>/tmp/fixtures.err
+          # 1. 通る形と弾く形の**両方**が出る（片側だけだと、緩めたことに気づけない）。
+          node -e '
+            const fs = require("fs");
+            const file = JSON.parse(fs.readFileSync("/tmp/fixtures.json", "utf8"));
+            const ok = file.records.filter((r) => r.valid);
+            const ng = file.records.filter((r) => !r.valid);
+            if (ok.length === 0 || ng.length === 0) {
+              console.error("片側しかない: 通る " + ok.length + " / 弾く " + ng.length);
+              process.exit(1);
+            }
+            if (ng.some((r) => typeof r.field !== "string")) {
+              console.error("どの項目で落ちるかを言っていない件がある"); process.exit(1);
+            }
+            // 2. レコードは**サーバが受け取る形**（計算した値が入っている）。
+            if (typeof ok[0].record.subtotal !== "number") {
+              console.error("計算した値が入っていない"); process.exit(1);
+            }
+            // 3. 弾くと言った形を、そのまま run のシナリオにする。
+            fs.writeFileSync("/tmp/reject.scenario.json", JSON.stringify({
+              cases: ng.map((r) => ({ name: r.name, record: r.record })),
+            }), "utf8");
+          '
+          # サーバが決める項目（readOnly / computed）は全件に入っている、と言う。
+          grep -q 'どのレコードにも入っています' /tmp/fixtures.err
+          # 4. **弾くと言った形は、本当に落ちる**（道具どうしを突き合わせる）。
+          node dist/cli.js run "$DEMO" --page order_entry \
+            --scenario /tmp/reject.scenario.json --json > /tmp/reject.json
+          node -e '
+            const out = JSON.parse(require("fs").readFileSync("/tmp/reject.json", "utf8"));
+            for (const one of out.results) {
+              if (one.answer.errors.length === 0) {
+                console.error("弾かれるはずが通った: " + one.name); process.exit(1);
+              }
+            }
+            console.log("弾く形 " + out.results.length + " 件すべて落ちた");
+          '
+
+      - name: The app and the server must have registered the same things
+        working-directory: typescript
+        run: |
+          set -e
+          APP=../flutter/packages/hatake_example/assets/hatake-registry.json
+          # 1. デモは**答えを決める登録を足していない**（Repository とプラグインだけ）。
+          #    そこで「同じです」と言うと、確かめた気になる＝言わない。
+          node dist/cli.js registry --compare "$APP" "$APP" > /tmp/cmp-demo.log
+          grep -q '突き合わせるものがありません' /tmp/cmp-demo.log
+          # 2. 片側にしか無い登録は落とす（画面では通るのに保存で弾かれる、が起きる）。
+          echo '{"validators":["memberCode"],"computedOps":["consumptionTax"],"plugins":["csvExport"]}' \
+            > /tmp/app.json
+          echo '{"validators":["memberCode","creditLimit"]}' > /tmp/server.json
+          if node dist/cli.js registry --compare /tmp/app.json /tmp/server.json \
+               > /tmp/cmp.log; then
+            echo "食い違いがあるのに通ってしまった"; cat /tmp/cmp.log; exit 1
+          fi
+          grep -q 'computedOps の consumptionTax … サーバに無い' /tmp/cmp.log
+          grep -q 'validators の creditLimit … 画面に無い' /tmp/cmp.log
+          # 3. 片側にしか無くて当然のものは、**理由つきで「見なかった」**に落とす。
+          grep -q 'plugins … 押したときの処理は画面の側にしかない' /tmp/cmp.log
+          # 4. 実行時に申告する側（Dart / Java）が、この種類を出せること。
+          node -e '
+            const fs = require("fs");
+            const spec = JSON.parse(
+              fs.readFileSync("../spec/conformance/registry_snapshot.json", "utf8"));
+            const dart = fs.readFileSync(
+              "../flutter/packages/hatake/lib/src/runtime/registry_snapshot.dart", "utf8");
+            const java = fs.readFileSync(
+              "../java/src/main/java/io/hatake/core/RegistrySnapshot.java", "utf8");
+            for (const kind of spec.answerKinds) {
+              if (!dart.includes("RegistryKinds." + kind)) {
+                console.error("Dart が申告しない種類: " + kind); process.exit(1);
+              }
+              if (!java.includes("\"" + kind + "\"")) {
+                console.error("Java が申告しない種類: " + kind); process.exit(1);
+              }
+            }
+            console.log("答えを決める種類は3版で申告できる");
           '
 
       - name: The tutorial's definition and its output are real

@@ -1,8 +1,11 @@
 package io.hatake.core;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Resolves input converter names to implementations. Built-ins and names are
@@ -47,6 +50,24 @@ public final class ConverterRegistry {
 
     public void register(String name, Converter converter) {
         converters.put(name, converter);
+    }
+
+    /**
+     * このアプリが足した名前だけ（組み込みは除く）。名前順。
+     *
+     * <p>申告するのは足したものだけ。組み込みは突き合わせる側が知っているので、
+     * 混ぜると一覧が無駄に太り、組み込みが増えるたびに古くなる。
+     */
+    public List<String> customKeys() {
+        Set<String> builtin = builtins().keySet();
+        List<String> out = new ArrayList<>();
+        for (String key : converters.keySet()) {
+            if (!builtin.contains(key)) {
+                out.add(key);
+            }
+        }
+        Collections.sort(out);
+        return out;
     }
 
     public boolean has(String name) {

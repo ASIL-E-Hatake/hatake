@@ -28,6 +28,7 @@ Business Definition (YAML / JSON / Dart)
 | `hatake_print` | 帳票 → PDF（opt-in アダプタ）。**純 Dart**＝UI 無しでも刷れる | core |
 | `hatake_http` | 定義が宣言している REST API と話す Repository（opt-in アダプタ）。**通信は持たない**＝送る関数を1つ受け取る | core |
 | `hatake_encoding` | 文字コード変換（cp932 / Shift_JIS / EUC-JP。opt-in アダプタ） | なし |
+| `hatake_test` | 画面の試験の道具（定義を出す・偽の Repository・キーの規約） | material |
 | `hatake_example` | サンプルアプリ | all |
 
 ## ざっとイメージ
@@ -108,6 +109,8 @@ CrudPage と SearchPage が動いてる。中身はこんな感じ。
 | フォーム（新規/編集/バリデーション・ダイアログ） | ✅ 完了（widget テスト済み） |
 | バリデーションエンジン（純Dart・Plugin拡張可） | ✅ 完了（ユニットテスト済み） |
 | `hatake_example` サンプルアプリ（YAML→描画） | ✅ 完了（widget テスト済み） |
+| 画面の試験の道具（`hatake_test`: `pumpPage` / `FakeRepository` / `HatakeFind`） | ✅ 完了（キーの規約 `HatakeKeys` と Renderer の突き合わせを CI が見る＝規約が嘘をつかない） |
+| 定義を動かして答えを見る（`ScenarioRunner`） | ✅ 完了（Dart / TS / Java の3版。[`conformance/scenario.json`](../spec/conformance/scenario.json) で同じ答えを固定） |
 | 公開準備（Apache-2.0 / pub metadata / CHANGELOG / CI） | ✅ 完了（dry-run 0 warnings） |
 | ライブデモ（Flutter web ビルド + Pages デプロイ workflow） | ✅ ビルド確認済み（push で自動公開） |
 | Plugin 機構（[日本語](docs/plugins.ja.md) / [EN](docs/plugins.md)：Validator/Action/Field型/Renderer） | ✅ 完了（3種のPluginをテストで実証） |
