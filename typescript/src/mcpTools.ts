@@ -10,6 +10,7 @@
 import { join } from "node:path";
 import { parse as parseYamlText } from "yaml";
 import { deriveDto } from "./dto.js";
+import { deriveFixtures } from "./fixtures.js";
 import { diffDefinitions } from "./defDiff.js";
 import { renderExplain } from "./explain.js";
 import { appAccess, opensByRole } from "./appAccess.js";
@@ -127,6 +128,8 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
    列の並び・小計の位置・切れた文字は、explain では分からない）
 7. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
 8. バックエンドの形が要るなら hatake_api_shape
+   （format: fixtures で**サーバ側の試験データ**も出る＝通る形と弾かれる形。
+   境界は hatake_run --draft と同じ所で作るので、画面とサーバが同じ境界で試される）
 9. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
    直した内容を人に伝えるときは hatake_explain に before を渡す（変更を画面の言葉で言い直す）
 10. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグイン / 出す口の一覧）
@@ -1111,7 +1114,9 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
       description:
         "同じ定義からバックエンドが返す/受け取る形を導出する。" +
         "format は dto（中立な DtoSpec）/ jsonSchema（2020-12）/ openapi（3.1）/ " +
-        "typescript / java（ネイティブ型）。" +
+        "typescript / java（ネイティブ型）/ fixtures（サーバ側の試験データ）。" +
+        "fixtures は通るはずの形と弾かれるはずの形を定義の制約から作る" +
+        "（境界は画面側の hatake_run --draft と同じ所で作るので、画面とサーバが同じ境界で試される）。" +
         "フロントとバックで定義がズレるのを防ぐのが目的なので、API を書く前にこれを見る。" +
         "定義は常に strict で読むので、書き間違いのある定義からは何も出ない。",
       inputSchema: {
@@ -1120,7 +1125,14 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           source: { type: "string", description: "ページ定義の中身（1ページ分）。" },
           format: {
             type: "string",
-            enum: ["dto", "jsonSchema", "openapi", "typescript", "java"],
+            enum: [
+              "dto",
+              "jsonSchema",
+              "openapi",
+              "typescript",
+              "java",
+              "fixtures",
+            ],
           },
           basePath: {
             type: "string",
@@ -1143,6 +1155,8 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             return pretty(toOpenApi(spec, { basePath: str(args, "basePath") }));
           case "typescript":
             return toTypeScript(spec);
+          case "fixtures":
+            return pretty(deriveFixtures(page));
           case "java":
             return Object.entries(
               toJavaRecords(spec, { packageName: str(args, "package") }),
@@ -1151,7 +1165,8 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
               .join("\n");
           default:
             throw new Error(
-              "format は dto / jsonSchema / openapi / typescript / java のどれかです。",
+              "format は dto / jsonSchema / openapi / typescript / java / " +
+                "fixtures のどれかです。",
             );
         }
       },

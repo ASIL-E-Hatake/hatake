@@ -24,6 +24,7 @@ export 'src/runtime/repository_registry.dart';
 export 'src/runtime/route_url.dart';
 export 'src/runtime/sub_table_controller.dart';
 export 'src/runtime/wizard_controller.dart';
+export 'src/tooling/sample_data.dart';
 export 'src/widgets/hatake_app.dart';
 export 'src/widgets/hatake_router_scope.dart';
 export 'src/widgets/hatake_scope.dart';

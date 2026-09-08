@@ -48,6 +48,10 @@ npx hatake wire app.yaml --merge lib/wiring.dart --write  # 2回目以降：足�
 npx hatake refs app.yaml --unused              # 逆向き：登録したのに誰も使っていないもの
 npx hatake paper report.yaml                   # 帳票を「刷ったらどう見えるか」に開く（文字で）
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「登録済み」の一覧を作る
+npx hatake registry --compare app.json server.json  # 足した登録が画面とサーバで同じか
+npx hatake run page.yaml --draft --out s.json   # 定義から下書きのシナリオを起こす
+npx hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所
+npx hatake fixtures page.yaml                   # サーバ側の試験データ（通る形・弾く形）
 npx hatake explain page.yaml                 # この定義、結局どういう画面？
 npx hatake explain page.yaml --brief         # 1行で（README や PR 本文に貼る用）
 npx hatake explain --diff old.yaml page.yaml # 何を変えたのか、画面の言葉で
@@ -234,7 +238,7 @@ formatters:
 
 ```
 読めなかった登録が 1 件あります。一覧は**不完全**なので、その分は手で足してください:
-     lib/playground_data.dart:20 (repositories) キーが文字列リテラルではありません: for (final key in keys…
+     lib/src/tooling/sample_data.dart:20 (repositories) キーが文字列リテラルではありません: for (final key in keys…
 ```
 
 黙って落とすと「登録してあるのに未登録」という**嘘の警告**になり、仕組みごと信用されなくなる。

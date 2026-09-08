@@ -70,6 +70,20 @@ extension PageParts on PageDefinition {
         ReportPageDefinition(:final actions) => actions,
       };
 
+  /// The primary-key field of a record, for the kinds that point at records.
+  ///
+  /// Null on a report and a dashboard: neither points at a single record, so
+  /// "which field is the key" has no answer there (rather than a wrong `id`).
+  String? get recordKeyField => switch (this) {
+        CrudPageDefinition(:final keyField) => keyField,
+        SearchPageDefinition(:final keyField) => keyField,
+        MasterPageDefinition(:final keyField) => keyField,
+        DetailPageDefinition(:final keyField) => keyField,
+        FormPageDefinition(:final keyField) => keyField,
+        WizardPageDefinition(:final keyField) => keyField,
+        _ => null,
+      };
+
   /// The repository key this page reads from. Null on a dashboard that leaves
   /// it to each card.
   String? get repositoryKey => switch (this) {

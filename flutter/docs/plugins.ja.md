@@ -142,3 +142,14 @@ npx hatake validate page.yaml            # 隣の hatake-registry.json を黙っ
 出るのは**自分で足したものだけ**（組み込みは検証側が知っている）。ソースを読んで作る
 `npx hatake registry lib/main.dart` もあり、こちらはアプリを動かさずに済むが、
 **変数や関数から組み立てている登録は読めない**。動的に作っているなら `registrySnapshot` を使う。
+
+同じ一覧を**サーバ側でも**出せる（Java の `RegistrySnapshot`）。両方を突き合わせると、
+足した検証・計算・変換・集約が片側にしか無いことを機械が言える。
+
+```bash
+npx hatake registry --compare 画面の一覧.json サーバの一覧.json
+```
+
+片側にしか無ければ**同じ定義でも答えが変わる**（画面では通るのに保存で弾かれる、その逆も）。
+Repository やプラグインのように片側にしか無くて当然のものは、理由つきで「見なかった」に
+落ちる。

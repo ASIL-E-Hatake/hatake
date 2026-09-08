@@ -76,7 +76,13 @@ npx hatake new crud --id customer_master --title 顧客マスタ   # 雛形（8�
 npx hatake types page.yaml --lang java --out gen/            # ネイティブ型
 ```
 
-**書いた定義は動かして確かめられる**: `npx hatake run <定義> --scenario s.json`。1件は「この値を入れたら、こうなる」で、返るのは**検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン**（答えの作り方は画面と同じ順＝`normalize` → `computed` → 状態 → 検証）。期待は**書いた欄だけ**見る（全部書かなくてよい）。`--draft` で下書きを起こし、`--cover` で「まだ試していない分岐」を出す。プラグインの計算・検証は CLI には無いので、値を作らずにそう言う（アプリ側は `ScenarioRunner` に登録を渡して同じシナリオを回す）。
+**書いた定義は動かして確かめられる**: `npx hatake run <定義> --scenario s.json`。1件は「この値を入れたら、こうなる」で、返るのは**検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン**（答えの作り方は画面と同じ順＝`normalize` → `computed` → 状態 → 検証）。期待は**書いた欄だけ**見る（全部書かなくてよい）。`--draft` で下書きを起こし、`--cover` で「まだ試していない分岐」を出す。プラグインの計算・検証は CLI には無いので、値を作らずにそう言う（アプリ側は `ScenarioRunner` に登録を渡して同じシナリオを回す。**サーバ側（Java）にも同じ `ScenarioRunner` が在る**＝画面・道具・サーバの3つが同じ答えを出すことを案件のシナリオで確かめられる。ただし押せるボタンはサーバ側では答えない＝サーバの定義は `actions` を読まない）。
+
+**サーバ側の試験データ**: `npx hatake fixtures <定義>`＝通るはずの形と弾かれるはずの形を、定義の制約から作る（値の作り方は `run --draft` と同じ所＝画面とサーバが同じ境界で試される）。**言い切る前に自分で動かして確かめる**ので、「弾かれるはず」が実際には通る件は出さずに理由を残す。
+
+**足したものが3版で揃っているか**: `npx hatake registry --compare 画面の一覧.json サーバの一覧.json`＝独自の検証・計算・変換・集約が片側にしか無ければ落とす（画面では通るのに保存で弾かれる、が起きる）。一覧は `registrySnapshot`（Dart）/ `RegistrySnapshot`（Java）が書く。
+
+**画面の試験**: `hatake_test` の `pumpPage(tester, 定義, rows: …)` で定義をそのまま画面に出し、`HatakeFind.field('code')` / `HatakeFind.action('approve')` で押す・入れる（キーの規約は `HatakeKeys`。Renderer との一致は CI が突き合わせる）。`FakeRepository` は**聞かれたことを覚えている**（`calls` / `queries`）ので「押したのに保存に行っていない」が言える。
 
 **画面をどう開くかも定義で言える**: `app.navigation`（`single`＝1画面ずつ／`tabs`＝並べて
 開く）。既定は `single`（いままでの動き）。**アプリ側で上書きできる**
@@ -572,4 +578,4 @@ nextBusinessDay('2024-01-05', holidays: {'2024-01-08'}); // 2024-01-09
 拡張したいときは各レジストリに `register(name, fn)`、または `MaterialRenderer(fieldBuilders: {...})`。詳細は [Plugin ガイド](../flutter/docs/plugins.ja.md)。
 
 ## 他言語（バックエンド）
-TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `evaluateCondition` / `ComputedRegistry` / `isAllowed` / `parseApp*`（app定義パーサ＝menu/ページ目録） / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。定義（YAML/JSON）は全言語共通。
+TypeScript(`@hatake/core`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `evaluateCondition` / `ComputedRegistry` / `isAllowed` / `parseApp*`（app定義パーサ＝menu/ページ目録） / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` / `ScenarioRunner`（定義を動かして答えを見る。TS は `hatake run`）を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。Java には `RegistrySnapshot`（サーバが足した登録の申告。`hatake registry --compare` に渡す）も在る。定義（YAML/JSON）は全言語共通。

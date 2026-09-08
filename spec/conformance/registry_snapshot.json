@@ -17,6 +17,20 @@
     "chartKinds",
     "roles"
   ],
+  "_comment_server": "`serverKinds` はサーバ側（Java 版）が申告できる種類。画面だけの種類（Repository・プラグイン・項目の型・カードの型・出す口・役割）は在っても意味が無いので出さない。`answerKinds` は**答えを決める種類**＝画面とサーバで同じでなければならないもの。`hatake registry --compare` が突き合わせるのはここだけで、残りは「見ない」として理由つきで並べる（片側にしか無くて当然のものを食い違いと言うと、報告が読まれなくなる）。",
+  "serverKinds": [
+    "validators",
+    "converters",
+    "computedOps",
+    "aggregates",
+    "formatters"
+  ],
+  "answerKinds": [
+    "validators",
+    "converters",
+    "computedOps",
+    "aggregates"
+  ],
   "runtimeKinds": [
     "repositories",
     "plugins",
@@ -47,6 +61,12 @@
       "converters": [
         "trim"
       ],
+      "computedOps": [
+        "consumptionTax"
+      ],
+      "aggregates": [
+        "median"
+      ],
       "fieldTypes": [
         "color"
       ],
@@ -67,12 +87,76 @@
       "validators": [
         "even"
       ],
+      "computedOps": [
+        "consumptionTax"
+      ],
+      "aggregates": [
+        "median"
+      ],
       "fieldTypes": [
         "color"
       ],
       "roles": [
         "manager",
         "staff"
+      ]
+    }
+  },
+  "compare": {
+    "_comment": "画面（app）とサーバ（server）が申告した一覧を突き合わせる。`answerKinds` の食い違いだけを言い、それ以外の種類は「見ない」として理由を並べる。同じ定義を読んでいても、**利用者が足したもの**が片側にしか無ければ答えは違う（画面では通るのにサーバが弾く／その逆）。",
+    "app": {
+      "repositories": [
+        "orderRepository"
+      ],
+      "plugins": [
+        "csvExport"
+      ],
+      "validators": [
+        "memberCode"
+      ],
+      "computedOps": [
+        "consumptionTax"
+      ],
+      "fieldTypes": [
+        "color"
+      ],
+      "roles": [
+        "manager"
+      ]
+    },
+    "server": {
+      "validators": [
+        "memberCode",
+        "creditLimit"
+      ],
+      "computedOps": [],
+      "aggregates": [
+        "median"
+      ]
+    },
+    "expected": {
+      "gaps": [
+        {
+          "kind": "aggregates",
+          "name": "median",
+          "missingFrom": "app"
+        },
+        {
+          "kind": "computedOps",
+          "name": "consumptionTax",
+          "missingFrom": "server"
+        },
+        {
+          "kind": "validators",
+          "name": "creditLimit",
+          "missingFrom": "app"
+        }
+      ],
+      "skipped": [
+        "fieldTypes",
+        "plugins",
+        "repositories",
+        "roles"
       ]
     }
   }

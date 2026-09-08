@@ -30,6 +30,8 @@ HatakeScope _scope({
   Map<String, ActionHandler> actions = const {},
   Map<String, ValidatorFn> validators = const {},
   Map<String, Converter> converters = const {},
+  Map<String, ComputedFn> computeds = const {},
+  Map<String, AggregateFn> aggregates = const {},
   Map<String, MaterialFieldBuilder> fieldBuilders = const {},
   Map<String, MaterialDashboardItemBuilder> dashboardItemBuilders = const {},
   FormatterRegistry? formatters,
@@ -41,6 +43,8 @@ HatakeScope _scope({
       actions: ActionRegistry(actions),
       validators: ValidatorRegistry(validators),
       converters: ConverterRegistry(converters),
+      computeds: ComputedRegistry(computeds),
+      aggregates: AggregateRegistry(aggregates),
       renderer: MaterialRenderer(
         fieldBuilders: fieldBuilders,
         dashboardItemBuilders: dashboardItemBuilders,
@@ -74,6 +78,12 @@ void main() {
         converters: {
           for (final name in names('converters'))
             name: (value, options) => value,
+        },
+        computeds: {
+          for (final name in names('computedOps')) name: (c, r) => 0,
+        },
+        aggregates: {
+          for (final name in names('aggregates')) name: (rows, field) => 0,
         },
         fieldBuilders: {
           for (final name in names('fieldTypes'))
@@ -132,6 +142,19 @@ void main() {
     test('組み込みと同じ名前で上書きしても、一覧には出さない', () {
       final scope = _scope(converters: {'trim': (value, options) => value});
       expect(registrySnapshot(scope), <String, List<String>>{});
+    });
+
+    test('プラグインの計算・集約も申告する', () {
+      // ここが抜けていた＝登録してあるのに `hatake validate --registry` は
+      // 「その op の登録が要る」と言い続けていた（道具が嘘をつく側に倒れていた）。
+      final scope = _scope(
+        computeds: {'consumptionTax': (c, r) => 0},
+        aggregates: {'median': (rows, field) => 0},
+      );
+      expect(registrySnapshot(scope), {
+        'computedOps': ['consumptionTax'],
+        'aggregates': ['median'],
+      });
     });
 
     test('Renderer が持っているフォーマッタも拾う', () {

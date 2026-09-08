@@ -1874,8 +1874,103 @@ npx hatake run order_entry.yaml --scenario order.scenario.json --cover
   決まるのが値打ち）
 - **同じシナリオを画面の試験でも回せる。** Flutter 側は `ScenarioRunner` に**アプリの登録**
   （`ComputedRegistry` / `ValidatorRegistry` / `ConverterRegistry`）を渡せるので、プラグインを
-  含めて同じ答えを確かめられる。CLI と Dart が同じ答えを出すことは
+  含めて同じ答えを確かめられる。3版が同じ答えを出すことは
   [`spec/conformance/scenario.json`](conformance/scenario.json) で固定
+- **サーバでも回せる。** Java 版にも `ScenarioRunner` が在る（`io.hatake.core`）。案件の
+  シナリオを画面・道具・サーバの3つに食べさせれば、**同じ定義から同じ答えが出ること**を
+  案件のデータで確かめられる。ただし**押せるボタンはサーバ側では答えない**（サーバの
+  `PageDefinition` は `actions` を読まない＝押したときの処理は画面の側にしかない）。
+  聞かれたら「答えません」と `cannot` に並べ、`compare` は `enabled` を見ない
+  ＝答えの無いものを食い違いにすると全件落ちるので
+
+## サーバ側の試験データ（fixtures）
+
+契約（`schema` / `openapi` / `types`）は出せるが、**試すデータ**はサーバを書く人が手で
+作っていた。境界は定義に書いてあるので機械が作れる。
+
+```bash
+npx hatake fixtures order_entry.yaml --out fixtures.json
+```
+
+```json
+{
+  "shape": "OrderEntryRequest",
+  "records": [
+    { "name": "全部埋めた", "valid": true, "why": "…", "record": { "…": "…" } },
+    { "name": "必須の「顧客」が無い", "valid": false, "field": "customer",
+      "why": "required: true。画面でもサーバでも同じ規則で効く（同じ定義を読むので）。",
+      "record": { "…": "…" } }
+  ],
+  "notes": ["サーバが決める項目（subtotal）は、どのレコードにも入っています。…"]
+}
+```
+
+決めごと:
+
+- **値の作り方は `run --draft` と同じ所**（`fieldValues`）＝画面とサーバが**同じ境界**で
+  試される。別々に作ると、必ずどちらかが緩い（緩い側が「通ったのに本番で弾かれる」を作る）
+- **言い切る前に自分で動かして確かめる。** 「弾かれるはず」の形が実際には通ってしまう
+  ことがある（条件で隠れている項目の必須など）。そういう件は**出さずに理由を `notes` に
+  残す**＝道具が嘘をつくより、言わないほうがいい
+- レコードは**サーバが受け取る形**（`normalize` を当てたあと・計算した値つき）。画面は
+  レコードごと送るので、`readOnly` / `computed` も**送られてくる**＝無視するのは正しいが、
+  **弾くと保存できない画面になる**（これは全件に入っているので、`notes` で1回だけ言う）
+- 形が決まっている項目（`pattern`）は値を作らず `TODO_<項目>` を置く。だから「通るはず」の
+  形が出ないことがある（正規表現を満たす文字列を機械が作ると、業務としてあり得ない値になる）
+
+## 画面とサーバの登録を突き合わせる
+
+DSL の約束は「同じ定義なら同じ答え」。組み込みが3版で同じ答えを出すことは収束テストで
+縛ってあるが、**利用者が足したもの**は縛られていない。
+
+```bash
+npx hatake registry --compare 画面の一覧.json サーバの一覧.json
+```
+
+一覧を書くのは**動いているアプリ／サーバ**（`registrySnapshot`（Dart）/ `RegistrySnapshot`
+（Java））。どちらも「足したもの全部」を出すので、種類が無いのは「足していない」と読む。
+
+- 見るのは**答えを決める種類だけ**（`validators` / `converters` / `computedOps` /
+  `aggregates`）。片側にしか無ければ「画面では通るのに保存で弾かれる」（その逆も）
+- Repository・プラグイン・項目の型・見せ方・役割は**片側にしか無くて当然**なので、
+  理由つきで「見なかった」に落とす（当然のものを食い違いとして並べると、報告が読まれない）
+- どちらも何も足していなければ「**突き合わせるものがありません**」と言う（「同じです」と
+  言うと、確かめた気になる）
+
+## 画面の試験を書く（キーの規約）
+
+Renderer が付けている `Key` は、画面の試験にとって**公開された契約**。規約は
+`HatakeKeys`（`hatake_core`）に在り、Renderer が実際に付けているキーとの一致は CI が
+突き合わせる＝**規約の紙が嘘をつかない**。
+
+| 規約 | 何を指すか |
+|---|---|
+| `hatake.form.<項目>` | 入力の項目（選択肢は `hatake.form.<項目>.<値>`） |
+| `hatake.action.<id>` | 画面のボタン |
+| `hatake.rowaction.<id>.<行の鍵>` | 行のボタン（組み込みは `hatake.edit.<鍵>` / `hatake.delete.<鍵>`） |
+| `hatake.confirm.ok` | 確認の「はい」 |
+| `hatake.subtable.<項目>.add` | 明細の「行を追加」 |
+
+全部は `HatakeKeys.shapes`。試験からは `hatake_test` を使うと短い。
+
+```dart
+final page = await pumpPage(tester, yaml, rows: [{'id': 1, 'code': 'SO-1'}]);
+await tester.tap(HatakeFind.edit(1));
+await tester.pumpAndSettle();
+await tester.enterText(HatakeFind.field('code'), 'SO-9');
+await tester.tap(HatakeFind.formSave);
+await tester.pumpAndSettle();
+expect(page.repository.calls, contains('update(1)'));
+```
+
+- `pumpPage` … 定義（YAML / JSON / 解析済み）をそのまま画面に出す。**解析は strict**
+  ＝試験の中で黙って捨てられたキーがあると、通ったのに効いていない試験になる
+- `FakeRepository` … 行を持ち、**聞かれたことを覚えている**（`calls` / `queries`）。
+  「押したのに保存に行っていない」が言える
+- 行を渡さなければ定義から**それらしい行**を作る（`sampleRows`）。値は嘘なので、
+  **値を確かめる試験では行を書く**
+- 値の計算や検証だけなら、画面を出さずに `ScenarioRunner` のほうが速い。画面を出すのは
+  「押せるか・出ているか・保存に行ったか」を見るときだけでよい
 
 ## 実際に転んだ実例
 

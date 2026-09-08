@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hatake_example/main.dart';
-import 'package:hatake_example/playground_data.dart';
 import 'package:hatake_material/hatake_material.dart';
 import 'package:hatake_yaml/hatake_yaml.dart';
 

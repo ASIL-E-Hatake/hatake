@@ -1,17 +1,23 @@
-import 'package:hatake_material/hatake_material.dart';
+import 'package:hatake_core/hatake_core.dart';
 
-/// Sample data for a definition somebody just pasted.
-///
-/// A playground cannot ask the visitor to also write a backend, so it fabricates
-/// rows from the definition itself: every `field` the document mentions gets a
-/// value that looks like what its type suggests. Demo-only — a real application
-/// implements [Repository] against its own backend.
+import '../runtime/repository_registry.dart';
 
-/// Builds a registry where **every repository the document names** answers with
-/// fabricated rows.
+/// 定義から「それらしい行」を作る。**本番では使わない**（値は嘘なので）。
 ///
-/// Keys are collected from the document as written (`repository:` anywhere),
-/// so a pasted definition renders instead of failing on an unregistered key.
+/// 貼られた定義を見せるだけの所（プレイグラウンド）と、画面の試験（`hatake_test`）で
+/// 要るもの。どちらも「バックエンドを先に書け」とは言えない＝**定義そのものから**
+/// 行を作る。項目名から型を推し量って値を作るので、値が正しいことは保証しない
+/// （目的は、値が合っていることではなく**画面の形が見えること**）。
+///
+/// 本物のアプリは自分のバックエンドに対して [Repository] を実装する。
+///
+/// 元はデモの中（`playground_data.dart`）に埋まっていた。試験を書く人が同じものを
+/// 書き直すことになるので、枠組み側に出した。
+
+/// **定義が名指しした Repository すべて**が、作った行を返す登録を組む。
+///
+/// キーは定義に書いてあるまま拾う（どこの `repository:` でも）ので、貼られた定義が
+/// 「登録が無い」で落ちずに描ける。
 RepositoryRegistry sampleRepositories(Map<String, Object?> document) {
   final names = <String>{};
   final keys = <String>{};
@@ -52,48 +58,52 @@ void _walk(Object? node, Set<String> names, Set<String> keys) {
   }
 }
 
-/// Answers every query with a handful of rows shaped like the definition.
+/// 項目名の一覧から、[count] 件の行を作る（`id` は 1 から）。
+///
+/// 画面の試験で「行が在る一覧」を出したいときの手っ取り早い入口。値は嘘なので、
+/// **値を確かめる試験には使わない**（そのときは行を自分で書く）。
+List<DataRecord> sampleRows(Iterable<String> fieldNames, {int count = 12}) => [
+      for (var i = 1; i <= count; i++)
+        {
+          'id': i,
+          for (final name in fieldNames) name: _sampleValue(name, i),
+        },
+    ];
+
+/// 項目名から「それらしい値」を作る。型は定義側にあるが、ここは名前だけで
+/// 十分（目的は、値が正しいことではなく画面の形が見えること）。
+Object? _sampleValue(String name, int index) {
+  final lower = name.toLowerCase();
+  if (name == 'id') return index;
+  if (lower.contains('date') || lower.contains('日')) {
+    return '2026-0${(index % 9) + 1}-1${index % 9}';
+  }
+  if (lower.contains('amount') ||
+      lower.contains('price') ||
+      lower.contains('qty') ||
+      lower.contains('count') ||
+      lower.contains('金額') ||
+      lower.contains('数量')) {
+    return index * 12000;
+  }
+  if (lower.contains('flag') ||
+      lower.startsWith('is') ||
+      lower.contains('済')) {
+    return index.isEven;
+  }
+  if (lower.contains('code') || lower.contains('no')) {
+    return '${name.toUpperCase().substring(0, 1)}-${1000 + index}';
+  }
+  return '$name $index';
+}
+
+/// 定義が名指しした Repository の代わり。どの問い合わせにも、作った行を返す。
 class _SampleRepository implements Repository {
   final List<String> names;
 
   _SampleRepository(this.names);
 
-  static const int _rowCount = 12;
-
-  late final List<DataRecord> _rows = [
-    for (var i = 1; i <= _rowCount; i++)
-      {
-        'id': i,
-        for (final name in names) name: _value(name, i),
-      },
-  ];
-
-  /// 項目名から「それらしい値」を作る。型は定義側にあるが、ここは名前だけで
-  /// 十分（プレビューの目的は、値が正しいことではなく画面の形が見えること）。
-  Object? _value(String name, int index) {
-    final lower = name.toLowerCase();
-    if (name == 'id') return index;
-    if (lower.contains('date') || lower.contains('日')) {
-      return '2026-0${(index % 9) + 1}-1${index % 9}';
-    }
-    if (lower.contains('amount') ||
-        lower.contains('price') ||
-        lower.contains('qty') ||
-        lower.contains('count') ||
-        lower.contains('金額') ||
-        lower.contains('数量')) {
-      return index * 12000;
-    }
-    if (lower.contains('flag') ||
-        lower.startsWith('is') ||
-        lower.contains('済')) {
-      return index.isEven;
-    }
-    if (lower.contains('code') || lower.contains('no')) {
-      return '${name.toUpperCase().substring(0, 1)}-${1000 + index}';
-    }
-    return '$name $index';
-  }
+  late final List<DataRecord> _rows = sampleRows(names);
 
   @override
   Future<PageResult> search(RepositoryQuery query) async {

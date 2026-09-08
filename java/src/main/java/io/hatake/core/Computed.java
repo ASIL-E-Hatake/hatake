@@ -1,9 +1,11 @@
 package io.hatake.core;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 計算項目（computed）をレコードから導出する。Dart / TypeScript 版と同結果。
@@ -61,6 +63,24 @@ public final class Computed {
 
     public void register(String op, ComputedFn fn) {
         ops.put(op, fn);
+    }
+
+    /**
+     * このアプリが足した名前だけ（組み込みは除く）。名前順。
+     *
+     * <p>申告するのは足したものだけ。組み込みは突き合わせる側が知っているので、
+     * 混ぜると一覧が無駄に太り、組み込みが増えるたびに古くなる。
+     */
+    public List<String> customKeys() {
+        Set<String> builtin = builtins(new MessageResolver()).keySet();
+        List<String> out = new ArrayList<>();
+        for (String key : ops.keySet()) {
+            if (!builtin.contains(key)) {
+                out.add(key);
+            }
+        }
+        Collections.sort(out);
+        return out;
     }
 
     public boolean has(String op) {

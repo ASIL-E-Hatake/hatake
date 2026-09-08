@@ -67,6 +67,11 @@ Map<String, List<String>> registrySnapshot(HatakeScope scope) {
       ],
       RegistryKinds.validators: scope.validators.customKeys,
       RegistryKinds.converters: scope.converters.customKeys,
+      // 計算と集約も申告する。ここが抜けていると、プラグインの計算を登録している
+      // アプリでも `hatake validate --registry` は「その op は登録が要る」と言い
+      // 続ける＝**登録してあるのに無いと言われる**（道具が嘘をつく側に倒れる）。
+      RegistryKinds.computedOps: scope.computeds.customKeys,
+      RegistryKinds.aggregates: scope.aggregates.customKeys,
       // 役割は**語彙**（`knownRoles`）を申告する。いま配られている役割（`roles`）を
       // 出すと「staff で動かしたスナップショット」になり、突き合わせた側が
       // 「manager はアプリに無い」と言い出す＝道具が嘘をつく。

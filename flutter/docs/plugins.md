@@ -147,3 +147,15 @@ It reports **only what you added** (the checker knows the built-ins). There is a
 `npx hatake registry lib/main.dart`, which reads the code instead of running it — but it
 cannot read a registry built from a variable or a function. Use the snapshot when the
 registrations are dynamic.
+
+The server can report the same list (`RegistrySnapshot` in the Java edition), and comparing
+the two says whether a custom validator, computed, converter or aggregate exists on one side
+only:
+
+```bash
+npx hatake registry --compare app.json server.json
+```
+
+Present on one side only means **the same definition gives different answers** (it passes on
+the screen and is rejected on save, or the reverse). Kinds that legitimately live on one side
+only — repositories, plugins, field types — are listed as skipped, with the reason.
