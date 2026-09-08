@@ -163,6 +163,12 @@ import {
   type RegistryDocument,
 } from "./registryDiff.js";
 import { deriveFixtures, fixtureLines } from "./fixtures.js";
+import {
+  IntentParseError,
+  parseIntent,
+  type IntentDocument,
+} from "./intent.js";
+import { hardFindings, traceIntent, traceLines } from "./trace.js";
 import { toJavaRecords, toTypeScript } from "./types.js";
 
 
@@ -197,6 +203,17 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --cover は「まだ試していない所」を定義の分岐から挙げる（落とさない）。
       プラグインの計算・検証は**この道具には無い**ので、値を作らずにそう言う
       （アプリの試験で回す）。
+
+  hatake trace <file> [--page <id>] [--intent file] [--json] [--require-intent]
+      **言ったこと**（意図の1枚＝intent）と**書いたもの**（定義）を突き合わせる。
+      言えるのは4つ: 言ったのに入っていない・**言っていないのに入っている**（どの要求
+      からも来ていない項目やボタン）・未定と言ったのに決まっている・どこに落ちたか
+      書いていない要求。**意図どおりかは言わない**（それは人が読む）。
+      意図は定義の隣（<画面id>.intent.yaml）を黙って拾う。--intent で明示もできる。
+      落とすのは**確かに食い違っているもの**だけ（指す相手が定義に無い・未定なのに
+      決まっている）。由来の無い定義と covers の書き漏れは言うだけ＝あとから意図を
+      書き始めた定義では最初から全部出るので、落とすと道具ごと使われなくなる。
+      --require-intent を付けると全部が落とす対象になる（意図が無いことも含む。CI 用）。
 
   hatake fixtures <file> [--page <id>] [--json] [--out file]
       サーバ側の**試験データ**を定義から出す（通るはずの形と、弾かれるはずの形）。
@@ -490,6 +507,7 @@ const BOOLEAN_FLAGS = new Set([
   "draft",
   "cover",
   "compare",
+  "require-intent",
   "dry-run",
   "if-changed",
   "help",
@@ -554,6 +572,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return run(positional, flags, io);
       case "fixtures":
         return fixtures(positional, flags, io);
+      case "trace":
+        return trace(positional, flags, io);
       case "dto":
         return emit(positional, io, (page) =>
           JSON.stringify(deriveDto(page), null, 2),
@@ -1781,6 +1801,54 @@ function registry(files: string[], flags: Args["flags"], io: CliIo): number {
     io.err(`     ${site.file}:${site.line} (${site.kind}) ${site.reason}`);
   }
   return 1;
+}
+
+/**
+ * 意図の1枚を探す（明示 → 定義の隣の `<画面id>.intent.yaml`）。
+ *
+ * 隣を黙って拾うのは `hatake-registry.json` と同じ考え（渡し忘れで「食い違いなし」と
+ * 言うより、在るものを読むほうが嘘が少ない）。
+ */
+function intentOf(
+  file: string,
+  pageId: string,
+  flags: Args["flags"],
+  io: CliIo,
+): IntentDocument | undefined {
+  const explicit = str(flags, "intent");
+  if (explicit !== undefined) return parseIntent(io.readFile(explicit));
+  try {
+    return parseIntent(io.readFile(join(dirname(file), `${pageId}.intent.yaml`)));
+  } catch (error) {
+    // 隣に無いのは普通のこと（意図を書いていない定義）。読めたのに**壊れている**
+    // ときは黙って無視しない＝拾わなかったのか壊れていたのかが分からなくなる。
+    if (error instanceof IntentParseError) throw error;
+    return undefined;
+  }
+}
+
+/**
+ * 言ったこと（意図）と書いたもの（定義）を突き合わせる（`trace`）。
+ */
+function trace(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("突き合わせる定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const page = scenarioPageOf(io.readFile(files[0]), str(flags, "page"), io);
+  if (page === null) return 1;
+
+  const intent = intentOf(files[0], page.id, flags, io);
+  const result = traceIntent(page, intent);
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+  } else {
+    for (const line of traceLines(result)) io.out(line);
+  }
+  if (flags["require-intent"] === true) {
+    return result.hasIntent && result.findings.length === 0 ? 0 : 1;
+  }
+  return hardFindings(result).length > 0 ? 1 : 0;
 }
 
 /**

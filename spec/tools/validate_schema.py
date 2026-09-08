@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Validate hatake definition documents against spec/hatake-page.schema.json.
+"""Validate hatake documents against a spec/ schema.
 
-Usage: python spec/tools/validate_schema.py [file ...]
-Defaults to the bundled example documents. Supports YAML and JSON inputs.
+Usage: python spec/tools/validate_schema.py [--schema <name>] [file ...]
+Defaults to hatake-page.schema.json and the bundled example documents.
+`--schema hatake-intent.schema.json` checks the intent documents (what a human
+asked for) instead. Supports YAML and JSON inputs.
 """
 import json
 import sys
@@ -12,7 +14,7 @@ import yaml
 from jsonschema import Draft202012Validator
 
 SPEC = Path(__file__).resolve().parent.parent
-SCHEMA_PATH = SPEC / "hatake-page.schema.json"
+DEFAULT_SCHEMA = "hatake-page.schema.json"
 
 CATALOG_PATH = SPEC / "examples" / "index.json"
 
@@ -38,11 +40,23 @@ def load(path: Path):
     return yaml.safe_load(text)
 
 
+# 意図の1枚（言ったこと）は別のスキーマ。同じ道具で見るのは、検証の書き方を2つ
+# 持たないため（--schema を渡さなければ従来どおり定義を見る）。
+INTENT_DOCS = sorted((SPEC / "intents").glob("*.yaml"))
+
+
 def main(argv):
-    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema_name = DEFAULT_SCHEMA
+    if argv[:1] == ["--schema"]:
+        schema_name = argv[1]
+        argv = argv[2:]
+    schema = json.loads((SPEC / schema_name).read_text(encoding="utf-8"))
     validator = Draft202012Validator(schema)
 
-    docs = [Path(a).resolve() for a in argv] or DEFAULT_DOCS
+    default_docs = (
+        INTENT_DOCS if schema_name == "hatake-intent.schema.json" else DEFAULT_DOCS
+    )
+    docs = [Path(a).resolve() for a in argv] or default_docs
     failures = 0
     for doc in docs:
         data = load(doc)

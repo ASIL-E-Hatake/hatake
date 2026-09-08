@@ -35,6 +35,7 @@ export default defineConfig({
       { text: '試す', link: '/testing' },
       { text: 'AI に書かせる', link: '/ai' },
       { text: 'AI への頼み方', link: '/asking' },
+      { text: '言ったことを残す', link: '/design' },
       { text: 'デモ', link: '/demo/', target: '_self' },
       // 定義を貼るとその場で描画される場。デモアプリの中にある（同じ成果物）。
       { text: '触ってみる', link: '/demo/?playground=1', target: '_self' },

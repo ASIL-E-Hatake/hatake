@@ -1620,6 +1620,66 @@ jobs:
             console.log("scenario fixture: " + fixture.cases.length + " 件一致");
           '
 
+      - name: What was asked, and what was written (intent / trace)
+        working-directory: typescript
+        run: |
+          set -e
+          DEF=../spec/examples/product_search.yaml
+          INTENT=../spec/intents/product_search.intent.yaml
+          # 1. 同梱の例は**要求と定義が1対1**（指せる言葉が実際の画面を覆えている証拠）。
+          node dist/cli.js trace "$DEF" --intent "$INTENT" --require-intent \
+            > /tmp/trace.log
+          grep -q '要求と定義は1対1です' /tmp/trace.log
+          grep -q '終わりの判定' /tmp/trace.log
+          # 2. 意図の隣置き（<画面id>.intent.yaml）を黙って拾う。
+          mkdir -p /tmp/traced
+          cp "$DEF" /tmp/traced/product_search.yaml
+          cp "$INTENT" /tmp/traced/product_search.intent.yaml
+          node dist/cli.js trace /tmp/traced/product_search.yaml --require-intent \
+            > /tmp/trace-sidecar.log
+          grep -q '要求と定義は1対1です' /tmp/trace-sidecar.log
+          # 3. **言ったのに入っていない**は落とす（指す相手が定義に無い）。
+          sed 's|covers: \[filter:name\]|covers: [filter:productName]|' "$INTENT" \
+            > /tmp/wrong.intent.yaml
+          if node dist/cli.js trace "$DEF" --intent /tmp/wrong.intent.yaml \
+               > /tmp/trace-wrong.log; then
+            echo "指す相手が定義に無いのに通ってしまった"; cat /tmp/trace-wrong.log; exit 1
+          fi
+          grep -q 'filter:productName は定義にありません' /tmp/trace-wrong.log
+          # 4. **言っていないのに入っている**は言うだけ（落とさない）。
+          #    意図を後から書き始めた定義では最初から全部出るので、落とすと使われない。
+          cat > /tmp/thin.intent.yaml <<'YAML'
+          page: product_search
+          asked:
+            - id: R1
+              text: 商品名で探せて、一覧にコード・商品名・カテゴリ・価格が出る
+              covers: [filter:name, column:code, column:name, column:category, column:price]
+          YAML
+          node dist/cli.js trace "$DEF" --intent /tmp/thin.intent.yaml \
+            > /tmp/trace-orphan.log
+          grep -q 'action:export は、どの要求からも来ていません' /tmp/trace-orphan.log
+          # ただし --require-intent なら落ちる（CI に置くときはこちら）。
+          if node dist/cli.js trace "$DEF" --intent /tmp/thin.intent.yaml \
+               --require-intent > /dev/null; then
+            echo "--require-intent で由来の無い定義を見逃した"; exit 1
+          fi
+          # 5. **未定なのに決まっている**は落とす。
+          sed 's|covers: \[column:stock\]|covers: [column:price]|' "$INTENT" \
+            > /tmp/decided.intent.yaml
+          if node dist/cli.js trace "$DEF" --intent /tmp/decided.intent.yaml \
+               > /tmp/trace-decided.log; then
+            echo "未定なのに決まっているのに通ってしまった"; exit 1
+          fi
+          grep -q '未定のはずですが' /tmp/trace-decided.log
+          # 6. 意図が無ければ「分かりません」と言う（「食い違い無し」とは言わない）。
+          node dist/cli.js trace ../spec/examples/customer_master.yaml \
+            > /tmp/trace-none.log
+          grep -q '意図の1枚（intent）がありません' /tmp/trace-none.log
+          if node dist/cli.js trace ../spec/examples/customer_master.yaml \
+               --require-intent > /dev/null; then
+            echo "意図が無いのに --require-intent が通った"; exit 1
+          fi
+
       - name: Server-side fixtures come from the same boundaries
         working-directory: typescript
         run: |
@@ -2756,6 +2816,9 @@ jobs:
           python spec/tools/validate_schema.py
           # 資料の絵の元になっている定義も、スキーマで見る（絵だけ通って定義が腐るのを防ぐ）。
           python spec/tools/validate_schema.py docs/diagrams/roles-app.yaml
+          # 意図の1枚（言ったこと）は別のスキーマ。TS の読み手と2か所になるので、
+          # **どちらでも読めること**をここで見る（YAML 1.1 と 1.2 の食い違いも拾う）。
+          python spec/tools/validate_schema.py --schema hatake-intent.schema.json
       - name: Charset tables are up to date
         run: |
           set -e

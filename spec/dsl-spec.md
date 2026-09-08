@@ -1965,6 +1965,82 @@ expect(page.repository.calls, contains('update(1)'));
 - For computeds and validation alone, `ScenarioRunner` is faster than rendering. Render only
   to check what rendering decides: pressable, visible, saved
 
+## What was asked, and what was written (intent / trace)
+
+Everything derivable from a definition can now be derived (`explain`, `openapi`,
+`fixtures`). What a **definition cannot tell you** is what was *asked*: the intent, the
+reason, who decided — and above all **what was left undecided**. None of that is written
+anywhere in the definition, which is why generating a design document from the code does
+not settle "I said / you never said".
+
+What does settle it is making the correspondence between requirements and definition
+**machine-checkable**. That is the intent document (`<page id>.intent.yaml`, schema in
+[`spec/hatake-intent.schema.json`](hatake-intent.schema.json)).
+
+```yaml
+intent_version: "1.0"
+page: order_search
+
+asked:                                  # what a human said, verbatim
+  - id: R1
+    text: 受注を受注番号・顧客名・受注日の範囲で探せる
+    covers: [filter:orderNo, filter:customer, filter:orderDate]
+    by: 田中
+    at: "2026-09-08"
+
+decisions:                              # business rules, with the reason
+  - id: D1
+    text: 出荷済の受注は直せない
+    why: 倉庫の締めが先に走るため
+    covers: [field:status]
+
+undecided:                              # kept as a first-class entry, not a blank
+  - id: U1
+    text: 却下の理由の選択肢は未定
+    covers: [field:rejectReason]
+
+acceptance:                             # definition of done, in runnable form
+  - validate --warn-as-error
+  - run --scenario order.scenario.json
+```
+
+```bash
+npx hatake trace order_search.yaml          # picks up order_search.intent.yaml next to it
+npx hatake trace order_search.yaml --require-intent
+```
+
+Four things get said, most valuable first:
+
+| What it says | What is happening | Fails? |
+|---|---|---|
+| **Nothing asked for this** | a field or button no requirement covers — **it was never asked for** (AI-written definitions always produce some, and they *work*, so no screen review catches them) | reported |
+| Asked for, not there | a requirement's `covers` points at something the definition does not have (including a renamed field) | **fails** |
+| Undecided, yet decided | an `undecided` entry points at something that *is* in the definition | **fails** |
+| No `covers` / unconfirmed draft | the link was never written, or an `ai-draft` requirement no human has confirmed | reported |
+
+Decisions:
+
+- **Do not summarize the original.** `text` holds what the person said — a summary mixes in
+  the reader's interpretation, which is the very thing that causes the dispute
+- **Never generate requirements from the definition.** They would match by construction and
+  the check would mean nothing. A requirement an AI read out of a conversation is marked
+  `source: ai-draft` and becomes `confirmed: true` only when a human has read it (`trace`
+  reports the unconfirmed ones)
+- **A machine can only speak about correspondence.** Whether the definition matches the
+  *intent* is not claimed — that is for a human reading `explain` back
+- Only the certain mismatches fail. Orphans and missing `covers` are merely reported:
+  **a definition that starts writing intent late produces nothing but those**, and a tool
+  that fails on all of them stops being used (`--require-intent` turns everything into a
+  failure, for CI)
+- `covers` kinds are a closed set (`page` / `field` / `filter` / `column` / `action` /
+  `card` / `repository` / `role`). A field's validators and a child table's row fields count
+  as part of that field (`field:<name>`), so one requirement never needs five lines
+- Orphans are only asked about `field` / `filter` / `column` / `action` / `card`. The page
+  itself, the repository and role names **can** be covered but are never reported as
+  orphans — listing the obvious is how a report stops being read
+- Dates are written **quoted** (`at: "2026-09-08"`). The key is not `on` because a YAML 1.1
+  reader turns `on:` into a *boolean* key (same for `yes` / `no` / `off`)
+
 ## Real failures
 
 The table above is a curated set of mistakes **a human thought of**, which is not

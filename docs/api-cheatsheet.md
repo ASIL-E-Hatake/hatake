@@ -54,6 +54,14 @@ computed, converter or aggregate exists on one side only (that is how "it passes
 screen and is rejected on save" happens). Both lists are written by the running app
 (`registrySnapshot`) or server (`RegistrySnapshot`).
 
+What a definition cannot tell you is **what was asked**. An intent document
+(`<page id>.intent.yaml`) holds the requirements verbatim, the business rules with their
+reasons, **what is still undecided**, and the definition of done; `covers:` links each one
+to the definition (`filter:orderNo`, `action:approve`). `npx hatake trace <def>` then reports
+what nobody asked for (a field or button with no requirement behind it), what was asked for
+but is missing, and what was called undecided yet is decided in the definition. It never
+claims the definition matches the *intent* — that is for a human reading `explain` back.
+
 Widget tests get their own toolkit: `hatake_test`'s `pumpPage(tester, definition, rows: …)`
 renders a definition as-is, `HatakeFind.field('code')` / `HatakeFind.action('approve')` press
 and type through the published key convention (`HatakeKeys`, cross-checked against the
