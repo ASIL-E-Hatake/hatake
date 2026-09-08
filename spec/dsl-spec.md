@@ -2041,6 +2041,43 @@ Decisions:
 - Dates are written **quoted** (`at: "2026-09-08"`). The key is not `on` because a YAML 1.1
   reader turns `on:` into a *boolean* key (same for `yes` / `no` / `off`)
 
+### Drafting one from the instruction
+
+Writing the first document by hand is friction, and the instruction already exists — so a
+machine opens it up.
+
+```bash
+npx hatake intent --draft --from ask.md --definition order_search.yaml \
+  --out order_search.intent.yaml
+```
+
+**All it does is turn lines into entries.** It never merges, rewords or reorders.
+
+| Decided by the machine | Left alone |
+|---|---|
+| splitting lines into entries (one per bullet; prose splits on 。) | what was said (`text` is the line, verbatim) |
+| the bucket (headings and fixed cue words only) | with no headings, everything is `asked` — nothing is inferred |
+| `covers` (**only where the business wording actually matches**) | no match means empty, for a human to fill |
+
+- Heading cues: 決まっていない / 未定 / 未決 / 保留 / TBD → `undecided`;
+  決めごと / 制約 / ルール / 規則 → `decisions`;
+  終わりの判定 / 完了条件 / 受け入れ → `acceptance`; anything else → `asked`
+- A line's opening word (`探す:` / `見る:` / `押す:` / `入れる:`) **narrows which kinds are
+  matched**. The same word is routinely both a filter and a column ("商品名"), so without it
+  one entry points at both. Those openings are the ones
+  [the asking template](../site/docs/asking.md) already prescribes — fixed text, not inference
+- A field's own name (`orderNo`) counts as a match too (instructions often name the API
+  field), but **short names are ignored** (`id` matches half of any sentence)
+- Template hint lines (`（1文。例: …）`) and fenced code blocks are skipped — a pasted
+  definition must not become a requirement
+- Every drafted entry is `source: ai-draft`: until a human reads it and sets
+  `confirmed: true`, it claims nothing more than "this is how the AI read it"
+- With a definition attached, the parts **whose wording matched nothing in the instruction**
+  are listed too (never asked for, or just worded differently) — that is where a field or
+  button somebody added on their own shows up
+- **The input is the instruction only.** Requirements must never be derived from the
+  definition: they would match by construction and the check would say nothing
+
 ## Real failures
 
 The table above is a curated set of mistakes **a human thought of**, which is not

@@ -62,6 +62,14 @@ what nobody asked for (a field or button with no requirement behind it), what wa
 but is missing, and what was called undecided yet is decided in the definition. It never
 claims the definition matches the *intent* — that is for a human reading `explain` back.
 
+The first draft of that document comes from the instruction itself:
+`npx hatake intent --draft --from ask.md --definition page.yaml` opens one line into one
+requirement — it never summarizes, reorders or merges — marks every entry `source: ai-draft`
+(no claim until a human confirms it), classifies only by headings and fixed cue words, and
+fills `covers` only where the business wording actually matches. Over MCP the same thing is
+`hatake_intent`, which is meant to be called **twice**: before writing the definition, and
+again afterwards with the definition attached.
+
 Widget tests get their own toolkit: `hatake_test`'s `pumpPage(tester, definition, rows: …)`
 renders a definition as-is, `HatakeFind.field('code')` / `HatakeFind.action('approve')` press
 and type through the published key convention (`HatakeKeys`, cross-checked against the

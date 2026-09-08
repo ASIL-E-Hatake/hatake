@@ -52,6 +52,7 @@ npx hatake registry --compare app.json server.json  # 足した登録が画面�
 npx hatake run page.yaml --draft --out s.json   # 定義から下書きのシナリオを起こす
 npx hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所
 npx hatake fixtures page.yaml                   # サーバ側の試験データ（通る形・弾く形）
+npx hatake intent --draft --from 指示.md --definition page.yaml  # 指示文を意図の1枚に
 npx hatake trace page.yaml                      # 言ったこと（intent）と書いたものの突き合わせ
 npx hatake explain page.yaml                 # この定義、結局どういう画面？
 npx hatake explain page.yaml --brief         # 1行で（README や PR 本文に貼る用）

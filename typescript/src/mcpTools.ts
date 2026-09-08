@@ -11,6 +11,9 @@ import { join } from "node:path";
 import { parse as parseYamlText } from "yaml";
 import { deriveDto } from "./dto.js";
 import { deriveFixtures } from "./fixtures.js";
+import { parseIntent } from "./intent.js";
+import { draftIntent, intentYaml } from "./intentDraft.js";
+import { traceIntent, traceLines } from "./trace.js";
 import { diffDefinitions } from "./defDiff.js";
 import { renderExplain } from "./explain.js";
 import { appAccess, opensByRole } from "./appAccess.js";
@@ -104,12 +107,18 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 このサーバを使えば、リポジトリの仕様書を読まなくても正しい定義が書ける。
 
 推奨の順番:
-1. hatake_examples で近い例を探す（例をコピーして直すのが一番速い）
-2. 新規なら hatake_new_page で雛形を出す
-3. キーの型・既定値・書ける場所に迷ったら hatake_reference で引く（仕様書は読まなくていい）
+1. **人から指示文をもらったら、まず hatake_intent**（言われたことを1枚にする）。
+   1行が1件の下書きになり、text は言われたまま・全部 source: ai-draft の印つき
+   ＝人が読んで confirmed: true にするまで「AI がこう読んだ」以上のことは主張しない。
+   **定義を書いたあともう一度呼ぶ**（source も渡す）＝covers が当たり、
+   **言われていないのに在るもの**（勝手に足した項目・ボタン）が出る。
+   定義から要求を起こしてはいけない（必ず一致して、突き合わせが何も言わなくなる）
+2. hatake_examples で近い例を探す（例をコピーして直すのが一番速い）
+3. 新規なら hatake_new_page で雛形を出す
+4. キーの型・既定値・書ける場所に迷ったら hatake_reference で引く（仕様書は読まなくていい）
    文言に差し込み（{count} など）を書くなら hatake_reference の placeholders: true
    （**閉じた集合**なので、項目名を書いても埋まらない＝そのまま文字で出る）
-4. 書けたら必ず hatake_validate にかける（知らないキーは黙って捨てられるので、書いた気になって効いていない事故が起きる）
+5. 書けたら必ず hatake_validate にかける（知らないキーは黙って捨てられるので、書いた気になって効いていない事故が起きる）
    問題が出たら hatake_fix に通す（綴り違いのような**一意な直し**は自分で書き直さない。別の所を壊す）
    そのあと hatake_explain で読み返す（**書いたものが意図どおりか**は、警告では分からない）
    さらに hatake_advise を1回（**書いていない所**は検証に出てこない＝並べ替えできない一覧・
@@ -120,21 +129,21 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
    roles や maxRows.byRole を書くときは先に hatake_explain の roles: true で
    **定義に出てくる役割**を引く
    （役割名を想像で書くと、画面は出るのに誰にも見えない）
-5. **書けたら hatake_run で動かす**（draft: true で下書きのシナリオを作り、そのまま
+6. **書けたら hatake_run で動かす**（draft: true で下書きのシナリオを作り、そのまま
    回す）。validate は「書ける」ことしか言わず、explain は「そう書いてある」ことしか
    言わない＝**その値でいくらになるか・何が必須になるか・押せるか**は動かさないと
    分からない。cover: true で「まだ試していない分岐」も出る（次に書くシナリオが決まる）
-6. **帳票（type: report）を書いたら hatake_print_preview**（刷ったらどう見えるかを文字で返す。
+7. **帳票（type: report）を書いたら hatake_print_preview**（刷ったらどう見えるかを文字で返す。
    列の並び・小計の位置・切れた文字は、explain では分からない）
-7. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
-8. バックエンドの形が要るなら hatake_api_shape
+8. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
+9. バックエンドの形が要るなら hatake_api_shape
    （format: fixtures で**サーバ側の試験データ**も出る＝通る形と弾かれる形。
    境界は hatake_run --draft と同じ所で作るので、画面とサーバが同じ境界で試される）
-9. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
+10. **既にある定義を直したときは hatake_diff**（壊していないか・確かめてほしい変化はないか）
    直した内容を人に伝えるときは hatake_explain に before を渡す（変更を画面の言葉で言い直す）
-10. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグイン / 出す口の一覧）
+11. アプリに組み込むときは hatake_refs（定義が要求している Repository / プラグイン / 出す口の一覧）
    → そのまま繋ぐコードの下書きが要るなら hatake_wire（Flutter の HatakeScope を組む）
-11. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
+12. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
 
 原則: Flutter の Widget や API のコードを手で書かず、定義を書く。定義に無い機能は
 DSL の拡張（プラグイン）で足す。`;
@@ -210,6 +219,83 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
   const pitfalls = () => readJson(PITFALLS_FILE) as PitfallCatalog;
 
   return [
+    {
+      name: "hatake_intent",
+      title: "言われたことを1枚にして、定義と突き合わせる",
+      description:
+        "**指示文（自然言語）を渡すと、言われたことを機械可読な1枚（意図）の下書きにして返す。**" +
+        "1行が1件になり、text は言われたまま（要約しない）。全部に source: ai-draft の印が付く" +
+        "＝AI がこう読んだという下書きなので、人が読んで confirmed: true にするまで主張しない。" +
+        "分類は見出しと合図の言葉だけで決める（「業務の決めごと」「決まっていないこと」" +
+        "「終わりの判定」）。source（定義）も渡すと covers（要求が定義のどこに落ちたか）を" +
+        "**業務の言葉が一致した所だけ**当て、**言われていないのに在るもの**" +
+        "（どの要求からも来ていない項目・ボタン）も返す＝AI が勝手に足したものがここで出る。" +
+        "既にある意図を intent に渡したときは突き合わせだけをする（言ったのに入っていない・" +
+        "未定なのに決まっている）。**定義から要求を起こすことはしない**" +
+        "（起こせば必ず一致して、突き合わせが何も言わなくなる）。" +
+        "定義を書く前にこれを呼び、書いたあともう一度呼んで突き合わせる。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          instruction: {
+            type: "string",
+            description:
+              "人からの指示文（そのまま）。渡すと意図の下書きを起こす。",
+          },
+          source: {
+            type: "string",
+            description:
+              "ページ定義の中身（1ページ分）。covers を当てるのと、突き合わせに使う。",
+          },
+          intent: {
+            type: "string",
+            description:
+              "既にある意図の1枚（YAML）。渡すと下書きは作らず、突き合わせだけをする。",
+          },
+          page: {
+            type: "string",
+            description: "app: の定義を渡したとき、どの画面か（id）。",
+          },
+        },
+      },
+      run(args) {
+        const instruction = str(args, "instruction");
+        const definition = str(args, "source");
+        const existing = str(args, "intent");
+        const page =
+          definition === undefined
+            ? undefined
+            : scenarioPage(definition, str(args, "page"));
+
+        if (instruction !== undefined && existing !== undefined) {
+          throw new Error(
+            "instruction と intent は同時に渡せません" +
+              "（下書きを起こすのか、既にあるものを突き合わせるのかを決めてください）。",
+          );
+        }
+        if (instruction !== undefined) {
+          const drafted = draftIntent(instruction, page);
+          const lines = [intentYaml(drafted.document), "人がやること:"];
+          for (const line of drafted.todo) lines.push(`  ・${line}`);
+          return lines.join("\n");
+        }
+        if (page === undefined) {
+          throw new Error(
+            "source（定義）か instruction（指示文）のどちらかは要ります。",
+          );
+        }
+        const result = traceIntent(
+          page,
+          existing === undefined ? undefined : parseIntent(existing),
+        );
+        const lines = traceLines(result);
+        if (existing === undefined) {
+          lines.push("指せる相手:");
+          for (const target of result.targets) lines.push(`  ・${target}`);
+        }
+        return lines.join("\n");
+      },
+    },
     {
       name: "hatake_reference",
       title: "DSL リファレンスを引く",
