@@ -25,6 +25,8 @@ export * from "./scenarioDraft.js";
 export * from "./scenarioCover.js";
 export * from "./fieldValues.js";
 export * from "./fixtures.js";
+export * from "./intent.js";
+export * from "./trace.js";
 export * from "./messageResolver.js";
 export * from "./conditionEvaluator.js";
 export * from "./computed.js";

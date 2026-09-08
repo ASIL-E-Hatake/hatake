@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-intent.schema.json
+# hatake — 意図の1枚の例。対になる定義は spec/examples/product_search.yaml。
+#
+# 「言ったこと」をここに置き、定義との対応を `hatake trace` が突き合わせる。
+#   npx hatake trace spec/examples/product_search.yaml \
+#     --intent spec/intents/product_search.intent.yaml
+#
+# text は**人が言ったまま**（要約すると読んだ側の解釈が混ざる）。日付は引用符付きで
+# 書く（引用符が無いと、YAML の実装によって日付の型になったり文字列になったりする）。
+intent_version: "1.0"
+page: product_search
+
+asked:
+  - id: R1
+    text: 営業が商品を探せる画面。商品マスタから読むだけで、直せなくていい。
+    covers: [page:product_search, repository:productRepository]
+    by: 田中
+    at: "2026-09-01"
+
+  - id: R2
+    text: 商品名で部分一致で探せるようにしてほしい。
+    covers: [filter:name]
+    by: 田中
+    at: "2026-09-01"
+
+  - id: R3
+    text: カテゴリ（食品・飲料・日用品）で絞れて、カテゴリを選んだら細目も絞れる。
+    covers: [filter:category, filter:subCategory]
+    by: 田中
+    at: "2026-09-01"
+
+  - id: R4
+    text: 一覧に出すのはコード・商品名・カテゴリ・価格。価格は円マークと桁区切りで。
+    covers: [column:code, column:name, column:category, column:price]
+    by: 田中
+    at: "2026-09-01"
+
+  - id: R5
+    text: 行から詳細を開きたい。
+    covers: [action:detail]
+    by: 田中
+    at: "2026-09-01"
+
+  - id: R6
+    text: 検索結果を CSV で落として、会議の資料に貼りたい。
+    covers: [action:export]
+    by: 佐藤
+    at: "2026-09-03"
+
+decisions:
+  - id: D1
+    text: この画面からは商品を直せない（照会だけ）。
+    why: 商品の登録は購買部の別の画面でやっていて、二重に入れる口を作りたくない
+    covers: [page:product_search]
+
+undecided:
+  - id: U1
+    text: 在庫数を一覧に出すかは未定（在庫は別システムなので、出せるか分からない）。
+    # covers を書いておくと、誰かが勝手に列を足したときに trace が言う。
+    covers: [column:stock]
+
+acceptance:
+  - validate --warn-as-error
+  - explain（読み返して、上の要求と読み比べる）
+  - trace --require-intent

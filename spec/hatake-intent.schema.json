@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-intent.schema.json",
+  "title": "hatake intent document",
+  "description": "「人が言ったこと」を機械可読な1枚にしたもの（意図）。定義（hatake-page.schema.json）と対になり、hatake trace が両者の対応を突き合わせる。text は人が言ったまま置く（要約しない）。要求を定義から生成してはいけない（生成すれば必ず一致して、突き合わせが無意味になる）。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$comment": { "type": "string" },
+    "intent_version": {
+      "description": "この形式の版。いまは 1.0 だけ。",
+      "const": "1.0"
+    },
+    "page": {
+      "description": "どの画面の話か（app: の中の1枚でもよい）。定義の page.id と同じ値。",
+      "type": "string"
+    },
+    "asked": {
+      "description": "人が言ったこと。原文のまま。",
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "decisions": {
+      "description": "業務の決めごと（why に理由を書く。理由の無い決めごとは、後から誰も直せない）。",
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "undecided": {
+      "description": "決まっていないこと。空欄と区別して持つ（AI が埋めたのか人が決めたのかが後から分かる）。covers を書いておくと「未定なのに定義では決まっている」を機械が言える。",
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "acceptance": {
+      "description": "終わりの判定（hatake validate --warn-as-error / hatake run --scenario … のような、回せる形で書く）。",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "text"],
+      "properties": {
+        "id": {
+          "description": "短い名前（R1 / D2 / U3）。PR や報告で指すので重複させない。",
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "description": "人が言った文。**要約しない**（要約すると読んだ側の解釈が混ざる＝言った言ってないの原因そのもの）。",
+          "type": "string",
+          "minLength": 1
+        },
+        "covers": {
+          "description": "定義のどこに落ちたか。<種類>:<名前> の形で、種類は page / field / filter / column / action / card / repository / role。項目に付いた検証と明細の行の項目は、その項目（field:<項目>）の一部として数える。",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(page|field|filter|column|action|card|repository|role):.+$"
+          }
+        },
+        "why": {
+          "description": "なぜそう決めたか。",
+          "type": "string"
+        },
+        "by": {
+          "description": "誰が言ったか（言った言ってないは「誰が」まで要る）。",
+          "type": "string"
+        },
+        "at": {
+          "description": "いつ言ったか（ISO の日付。\"2026-09-08\" と引用符付きで書く）。キーが on でないのは、YAML 1.1 で読む実装が on: を真偽値のキーにしてしまうため（yes / no / off も同じ）。",
+          "type": "string"
+        },
+        "source": {
+          "description": "human（人が書いた）か ai-draft（AI が読み取った下書き）。既定は human。",
+          "enum": ["human", "ai-draft"]
+        },
+        "confirmed": {
+          "description": "下書きを人が確かめたか。human は最初から確かめ済みとして扱う。",
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

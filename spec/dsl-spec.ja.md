@@ -1972,6 +1972,82 @@ expect(page.repository.calls, contains('update(1)'));
 - 値の計算や検証だけなら、画面を出さずに `ScenarioRunner` のほうが速い。画面を出すのは
   「押せるか・出ているか・保存に行ったか」を見るときだけでよい
 
+## 言ったことと書いたもの（意図・trace）
+
+定義から出せるものは一通り出せる（`explain` / `openapi` / `fixtures`）。けれど
+**言ったこと**は定義から出てこない ── 意図・理由・決めた人・そして**決まっていない
+こと**は、定義のどこにも書いていないから。だから設計書をコードから生成しても、
+言った言ってないは消えない。
+
+消せるのは**要求と定義の対応を機械が突き合わせられるようにしたとき**だけ。そのための
+1枚が「意図」（`<画面id>.intent.yaml`。スキーマは
+[`spec/hatake-intent.schema.json`](hatake-intent.schema.json)）。
+
+```yaml
+intent_version: "1.0"
+page: order_search
+
+asked:                                  # 人が言ったこと（原文のまま）
+  - id: R1
+    text: 受注を受注番号・顧客名・受注日の範囲で探せる
+    covers: [filter:orderNo, filter:customer, filter:orderDate]
+    by: 田中
+    at: "2026-09-08"
+  - id: R2
+    text: 承認ボタンを押したら approveOrders を呼んで、選んだ行をまとめて確定にする
+    covers: [action:approve]
+
+decisions:                              # 業務の決めごと（理由つき）
+  - id: D1
+    text: 出荷済の受注は直せない
+    why: 倉庫の締めが先に走るため
+    covers: [field:status]
+
+undecided:                              # 決まっていないこと（空欄と区別して持つ）
+  - id: U1
+    text: 却下の理由の選択肢は未定
+    covers: [field:rejectReason]
+
+acceptance:                             # 終わりの判定（回せる形で書く）
+  - validate --warn-as-error
+  - run --scenario order.scenario.json
+```
+
+```bash
+npx hatake trace order_search.yaml            # 隣の order_search.intent.yaml を拾う
+npx hatake trace order_search.yaml --require-intent   # CI に置くとき
+```
+
+言えるのは4つ。値打ちの順に:
+
+| 言うこと | 何が起きているか | 落とすか |
+|---|---|---|
+| **由来の無い定義** | どの要求からも来ていない項目・ボタン＝**言っていないのに入っている**（AI に書かせると必ず出る。しかも動くので画面を見ても気づけない） | 言うだけ |
+| 言ったのに入っていない | 要求の `covers` が指す相手が定義に無い（名前違いも含む） | **落とす** |
+| 未定なのに決まっている | `undecided` が指す相手が定義に在る＝誰かが決めた | **落とす** |
+| どこに落ちたか書いていない／人が見ていない下書き | `covers` の書き漏れ、`source: ai-draft` のまま確認されていない要求 | 言うだけ |
+
+決めごと:
+
+- **原文を要約しない。** `text` は人が言ったまま置く（要約すると読んだ側の解釈が混ざる
+  ＝言った言ってないの原因そのもの）
+- **要求を定義から生成してはいけない。** 生成すれば必ず一致するので、突き合わせが
+  無意味になる。AI が読み取った下書きは `source: ai-draft` と印を付け、人が見たときに
+  `confirmed: true` にする（未確認は `trace` が言う）
+- **機械が言えるのは対応の有無だけ。** 「意図どおりか」は言わない（それは `explain` の
+  読み返しを人が読んで決める）
+- 落とすのは**確かに食い違っているもの**だけ。由来の無い定義と `covers` の書き漏れは
+  言うだけ＝**後から意図を書き始めた定義では最初から全部出る**ので、落とすと道具ごと
+  使われなくなる（`--require-intent` を渡したときだけ全部が落とす対象になる）
+- `covers` の種類は閉じた集合（`page` / `field` / `filter` / `column` / `action` /
+  `card` / `repository` / `role`）。項目に付いた検証（`required` / `maxLength`）と明細の
+  行の項目は、その項目（`field:<項目>`）の一部として数える＝1つの要求に何行も書かせない
+- 由来を問うのは `field` / `filter` / `column` / `action` / `card` だけ。画面そのもの・
+  データの出どころ・役割名は**指せるが、無くても言わない**（当然のものを並べると報告が
+  読まれなくなる）
+- 日付は `at: "2026-09-08"` と**引用符付き**で書く。キーが `on` でないのは、YAML 1.1 で
+  読む実装が `on:` を**真偽値のキー**にしてしまうため（`yes` / `no` / `off` も同じ）
+
 ## 実際に転んだ実例
 
 対照表は**人が考えた間違い**の集合で、AI が実際に転ぶ所とはズレる。実例は
