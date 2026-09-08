@@ -1671,6 +1671,38 @@ jobs:
             echo "未定なのに決まっているのに通ってしまった"; exit 1
           fi
           grep -q '未定のはずですが' /tmp/trace-decided.log
+          # 5.5 指示文から**下書き**を起こして、そのまま突き合わせられる。
+          cat > /tmp/ask.md <<'MD'
+          ## やること
+          商品を探せる画面を作って。
+          ## 画面でやること
+          - 探す: 商品名・カテゴリ
+          - 見る: コード・商品名・価格
+          - 押す: 行から詳細を開く
+          ## 決まっていないこと
+          - 在庫数を一覧に出すかは未定
+          ## 終わりの判定
+          - validate を警告ゼロで通す
+          MD
+          node dist/cli.js intent --draft --from /tmp/ask.md --definition "$DEF" \
+            --out /tmp/drafted.intent.yaml 2>/tmp/drafted.err
+          # 起こしたものは**全部未確認**（人が読むまで主張しない）。
+          grep -q 'source: ai-draft' /tmp/drafted.intent.yaml
+          grep -q 'confirmed: true' /tmp/drafted.err
+          # 業務の言葉が一致した所だけ covers に入る（`探す:` は絞り込みだけ）。
+          grep -q 'filter:name' /tmp/drafted.intent.yaml
+          grep -q 'column:code' /tmp/drafted.intent.yaml
+          # 未定は見出しで未決に落ちる（要求として固めない）。
+          grep -q 'undecided:' /tmp/drafted.intent.yaml
+          # 終わりの判定は回すものとして並ぶ。
+          grep -q 'validate を警告ゼロで通す' /tmp/drafted.intent.yaml
+          # **起こした下書きは、そのまま trace に食える**（往復する）。
+          node dist/cli.js trace "$DEF" --intent /tmp/drafted.intent.yaml \
+            > /tmp/trace-draft.log
+          # 人が見ていない下書きは、そう言う（言うだけで落とさない）。
+          grep -q '人が見ていない下書き' /tmp/trace-draft.log
+          # 言葉が一致しなかった相手は、指示文の側に無いものとして挙げる。
+          grep -q 'action:export' /tmp/drafted.err
           # 6. 意図が無ければ「分かりません」と言う（「食い違い無し」とは言わない）。
           node dist/cli.js trace ../spec/examples/customer_master.yaml \
             > /tmp/trace-none.log
@@ -2742,9 +2774,10 @@ jobs:
             '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"hatake_advise","arguments":{"source":"page: {type: search, id: s, title: S, repository: r, table: {columns: [{field: a, label: A}]}}"}}}' \
             '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"hatake_apply_advice","arguments":{"source":"page: {type: search, id: s, title: S, repository: r, table: {columns: [{field: amount, label: A}]}}","picks":[{"rule":"money-without-format"}]}}}' \
             '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"hatake_explain","arguments":{"source":"page: {type: search, id: s, title: S, repository: r, table: {columns: [{field: a, label: A, roles: [manager]}]}}","roles":true}}}' \
+            '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"hatake_intent","arguments":{"instruction":"- 見る: コード","source":"page: {type: search, id: s, title: S, repository: r, table: {columns: [{field: code, label: コード}]}}"}}}' \
             | node dist/mcp.js > /tmp/mcp.log
-          # 通知には返事をしない = 7 送って 6 行。stdout に他のものを書いていないことも見る。
-          test "$(wc -l < /tmp/mcp.log)" -eq 6
+          # 通知には返事をしない = 8 送って 7 行。stdout に他のものを書いていないことも見る。
+          test "$(wc -l < /tmp/mcp.log)" -eq 7
           # 役割名は定義から引ける（想像で書かせない）。
           grep -q '出てくる役割' /tmp/mcp.log
           grep -q 'manager' /tmp/mcp.log
@@ -2761,6 +2794,10 @@ jobs:
           grep -q 'format: currency' /tmp/mcp.log
           # 当てた所は**画面の言葉**でも返る（道の書き方では人がレビューできない）。
           grep -q 'changed' /tmp/mcp.log
+          # 言われたことを1枚にする口も渡している（定義を書く前に呼ぶ道具）。
+          grep -q 'hatake_intent' /tmp/mcp.log
+          grep -q 'source: ai-draft' /tmp/mcp.log
+          grep -q 'column:code' /tmp/mcp.log
 
       - name: Scaffolds are valid definitions
         working-directory: typescript

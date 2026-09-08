@@ -118,25 +118,73 @@ function rolesOf(page: PageDefinition): string[] {
   ];
 }
 
+/** 指せる相手1つと、その**業務の言葉**（指示文と突き合わせるのに要る）。 */
+export interface TraceablePart {
+  /** `field:orderNo` の形。 */
+  target: string;
+  /** 定義に書いてあるラベル（無い種類は名前そのもの）。 */
+  label: string;
+  /** 定義の中の名前（項目名・id・キー）。 */
+  name: string;
+}
+
 /**
- * 定義の中で**指せる相手**を全部。並びは固定（毎回同じ順で読めるように）。
+ * 定義の中で**指せる相手**を全部、業務の言葉つきで。並びは固定（毎回同じ順で
+ * 読めるように）。
  *
  * 明細の行の項目は、その明細（`field:<項目>`）の一部として数える（分けると1つの
  * 要求に何行も書くことになり、誰も書かなくなる）。
  */
-export function definitionTargets(page: PageDefinition): string[] {
-  const found = [
-    `page:${page.id}`,
-    ...repositoriesOf(page).map((one) => `repository:${one}`),
-    ...filtersOf(page).map((one) => `filter:${one.field}`),
-    ...columnsOf(page).map((one) => `column:${one.field}`),
-    ...inputFields(page).map((one) => `field:${one.field}`),
-    ...actionsOf(page).map((one) => `action:${one.id}`),
-    ...cardsOf(page).map((one) => `card:${one.id}`),
-    ...rolesOf(page).map((one) => `role:${one}`),
+export function traceableParts(page: PageDefinition): TraceablePart[] {
+  const found: TraceablePart[] = [
+    { target: `page:${page.id}`, label: page.title, name: page.id },
+    ...repositoriesOf(page).map((one) => ({
+      target: `repository:${one}`,
+      label: one,
+      name: one,
+    })),
+    ...filtersOf(page).map((one) => ({
+      target: `filter:${one.field}`,
+      label: one.label,
+      name: one.field,
+    })),
+    ...columnsOf(page).map((one) => ({
+      target: `column:${one.field}`,
+      label: one.label,
+      name: one.field,
+    })),
+    ...inputFields(page).map((one) => ({
+      target: `field:${one.field}`,
+      label: one.label,
+      name: one.field,
+    })),
+    ...actionsOf(page).map((one) => ({
+      target: `action:${one.id}`,
+      label: one.label,
+      name: one.id,
+    })),
+    ...cardsOf(page).map((one) => ({
+      target: `card:${one.id}`,
+      label: one.title,
+      name: one.id,
+    })),
+    ...rolesOf(page).map((one) => ({
+      target: `role:${one}`,
+      label: one,
+      name: one,
+    })),
   ];
-  return [...new Set(found)];
+  const seen = new Set<string>();
+  return found.filter((one) => {
+    if (seen.has(one.target)) return false;
+    seen.add(one.target);
+    return true;
+  });
 }
+
+/** 定義の中で指せる相手（[traceableParts] の名前だけ）。 */
+export const definitionTargets = (page: PageDefinition): string[] =>
+  traceableParts(page).map((one) => one.target);
 
 /** 定義と意図を突き合わせる。 */
 export function traceIntent(

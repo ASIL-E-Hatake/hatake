@@ -84,6 +84,8 @@ npx hatake types page.yaml --lang java --out gen/            # ネイティブ�
 
 **言ったことと書いたもの**: `<画面id>.intent.yaml`（意図の1枚）に**人が言ったまま**の要求・決めごと・**決まっていないこと**・終わりの判定を書き、`covers: [filter:orderNo, action:approve]` で定義のどこに落ちたかを指す。`npx hatake trace <定義>` が突き合わせて、**由来の無い項目・ボタン**（言っていないのに入っている）・言ったのに入っていない・未定なのに決まっている、を言う。**意図どおりかは言わない**（それは `explain` を人が読む）。要求を定義から生成してはいけない（生成すれば必ず一致して、突き合わせが無意味になる）。
 
+**指示文から意図を起こす**: `npx hatake intent --draft --from 指示.md --definition page.yaml`＝1行1件に開き、`text` は**その行のまま**・全部 `source: ai-draft`（人が読んで `confirmed: true` にするまで主張しない）。分類は見出しと合図の言葉だけ（推し量らない）、`covers` は**業務の言葉が一致した所だけ**。MCP は `hatake_intent`（`instruction` に指示文、`source` に定義）＝**定義を書く前と書いたあとの2回**呼ぶ。
+
 **画面の試験**: `hatake_test` の `pumpPage(tester, 定義, rows: …)` で定義をそのまま画面に出し、`HatakeFind.field('code')` / `HatakeFind.action('approve')` で押す・入れる（キーの規約は `HatakeKeys`。Renderer との一致は CI が突き合わせる）。`FakeRepository` は**聞かれたことを覚えている**（`calls` / `queries`）ので「押したのに保存に行っていない」が言える。
 
 **画面をどう開くかも定義で言える**: `app.navigation`（`single`＝1画面ずつ／`tabs`＝並べて

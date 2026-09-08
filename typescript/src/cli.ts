@@ -168,6 +168,7 @@ import {
   parseIntent,
   type IntentDocument,
 } from "./intent.js";
+import { draftIntent, intentYaml } from "./intentDraft.js";
 import { hardFindings, traceIntent, traceLines } from "./trace.js";
 import { toJavaRecords, toTypeScript } from "./types.js";
 
@@ -203,6 +204,19 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --cover は「まだ試していない所」を定義の分岐から挙げる（落とさない）。
       プラグインの計算・検証は**この道具には無い**ので、値を作らずにそう言う
       （アプリの試験で回す）。
+
+  hatake intent --draft --from <指示文> [--definition <定義>] [--page <id>]
+                        [--out file] [--json]
+      **指示文から意図の下書きを起こす**（1行 → 1件）。要求は「その行のまま」置き、
+      全部に source: ai-draft の印を付ける＝**AI がこう読んだ**という下書きなので、
+      人が読んで confirmed: true にするまでは主張しない。
+      分類は**見出しと合図の言葉だけ**で決める（「業務の決めごと」「決まっていない
+      こと」「終わりの判定」）。見出しが無ければ全部 asked（推し量って分けると、
+      決めごとを要求に格下げしたり、未決を決定にしてしまう）。
+      --definition を渡すと covers を**業務の言葉が一致した所**だけ当て、さらに
+      **指示文のどこにも出てこない定義**（言われていないのに在るもの）も挙げる。
+      入力は指示文だけ＝定義から要求を起こしてはいけない（必ず一致するので、
+      突き合わせが何も言わなくなる）。
 
   hatake trace <file> [--page <id>] [--intent file] [--json] [--require-intent]
       **言ったこと**（意図の1枚＝intent）と**書いたもの**（定義）を突き合わせる。
@@ -574,6 +588,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return fixtures(positional, flags, io);
       case "trace":
         return trace(positional, flags, io);
+      case "intent":
+        return intent(positional, flags, io);
       case "dto":
         return emit(positional, io, (page) =>
           JSON.stringify(deriveDto(page), null, 2),
@@ -1801,6 +1817,59 @@ function registry(files: string[], flags: Args["flags"], io: CliIo): number {
     io.err(`     ${site.file}:${site.line} (${site.kind}) ${site.reason}`);
   }
   return 1;
+}
+
+/**
+ * 指示文から意図の下書きを起こす（`intent --draft`）。
+ *
+ * 入力は**指示文だけ**。定義を渡すのは covers を当てるためで、要求そのものは
+ * 定義から作らない（作れば必ず一致して、突き合わせが無意味になる）。
+ */
+function intent(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (flags.draft !== true) {
+    io.err(
+      "intent は --draft だけです（既にある意図を確かめるのは hatake trace）。",
+    );
+    return 1;
+  }
+  const from = str(flags, "from") ?? files[0];
+  if (from === undefined) {
+    io.err("--from に指示文のファイルを渡してください。");
+    return 1;
+  }
+
+  const definition = str(flags, "definition");
+  let page: PageDefinition | undefined;
+  if (definition !== undefined) {
+    const found = scenarioPageOf(io.readFile(definition), str(flags, "page"), io);
+    if (found === null) return 1;
+    page = found;
+  }
+
+  const drafted = draftIntent(io.readFile(from), page);
+  const text = intentYaml(drafted.document);
+  const out = str(flags, "out");
+  if (out !== undefined) {
+    io.writeFile(out, text);
+    io.out(`書きました: ${out}`);
+  } else if (flags.json === true) {
+    io.out(
+      JSON.stringify(
+        {
+          intent: drafted.document,
+          todo: drafted.todo,
+          ...(drafted.trace === undefined ? {} : { trace: drafted.trace }),
+        },
+        null,
+        2,
+      ),
+    );
+    return 0;
+  } else {
+    io.out(text);
+  }
+  for (const line of drafted.todo) io.err(`・${line}`);
+  return 0;
 }
 
 /**

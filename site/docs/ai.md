@@ -38,10 +38,11 @@ claude mcp add hatake -- node <repo>/typescript/dist/mcp.js
 }
 ```
 
-エージェントに渡る道具は16個。
+エージェントに渡る道具は17個。
 
 | 道具 | 何をするか |
 | --- | --- |
+| `hatake_intent` | **人からの指示文を1枚にする**（言われたまま・1行1件・全部 `source: ai-draft`）。定義も渡すと `covers` が当たり、**言われていないのに在るもの**が出る。定義を書く前と書いたあとに呼ぶ → [言ったことを残す](/design) |
 | `hatake_examples` | やりたいことに近い例を取る（まずこれ。写して直すのが最速） |
 | `hatake_new_page` | 新規なら雛形を出す |
 | `hatake_reference` | キーの型・既定値・書ける場所を引く（仕様書を読まなくていい） |

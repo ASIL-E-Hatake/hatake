@@ -83,6 +83,7 @@ describe("MCP プロトコル", () => {
   it("tools/list は道具を、説明と入力スキーマ付きで出す", () => {
     const list = (send("tools/list")?.result as any).tools;
     expect(list.map((t: any) => t.name)).toEqual([
+      "hatake_intent",
       "hatake_reference",
       "hatake_examples",
       "hatake_validate",
@@ -516,6 +517,56 @@ describe("hatake_refs", () => {
     const missing = call("hatake_refs", {});
     expect(missing.isError).toBe(true);
     expect(missing.text).toContain("source は必須");
+  });
+});
+
+describe("hatake_intent", () => {
+  const source = readFileSync("../spec/examples/product_search.yaml", "utf8");
+  const instruction = `## やること
+- 探す: 商品名
+- 見る: 価格
+`;
+
+  it("指示文を意図の下書きにする（言われたまま・未確認の印つき）", () => {
+    const out = call("hatake_intent", { instruction, source });
+    expect(out.text).toContain("source: ai-draft");
+    expect(out.text).toContain("探す: 商品名");
+    // 業務の言葉が当たった所だけ covers に入る。
+    expect(out.text).toContain("filter:name");
+    expect(out.text).toContain("column:price");
+    // 人がやることも一緒に返す（読まずに使わせない）。
+    expect(out.text).toContain("人がやること:");
+  });
+
+  it("言われていないのに在るものを、その場で言う", () => {
+    const out = call("hatake_intent", { instruction, source });
+    expect(out.text).toContain("action:export");
+  });
+
+  it("既にある意図を渡すと、突き合わせだけをする", () => {
+    const intent = `asked:
+  - id: R1
+    text: 品名で探せる
+    covers: [filter:nickname]
+`;
+    const out = call("hatake_intent", { intent, source });
+    expect(out.text).toContain("filter:nickname は定義にありません");
+  });
+
+  it("意図を渡さなければ、指せる相手を返す（何に紐づけられるかが分かる）", () => {
+    const out = call("hatake_intent", { source });
+    expect(out.text).toContain("意図の1枚（intent）がありません");
+    expect(out.text).toContain("filter:name");
+  });
+
+  it("下書きと突き合わせを同時には頼めない", () => {
+    const out = call("hatake_intent", {
+      instruction,
+      intent: "asked: []",
+      source,
+    });
+    expect(out.isError).toBe(true);
+    expect(out.text).toContain("同時に渡せません");
   });
 });
 
