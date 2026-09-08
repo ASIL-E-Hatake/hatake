@@ -13,6 +13,7 @@ import 'order_repository.dart';
 import 'playground.dart';
 import 'print_dialog.dart';
 import 'product_repository.dart';
+import 'role_switcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +43,7 @@ Future<void> main() async {
 ///
 /// [source] is the raw YAML, kept so the "定義を見る" action can show visitors
 /// the definition behind the screen they are looking at.
-class HatakeExampleApp extends StatelessWidget {
+class HatakeExampleApp extends StatefulWidget {
   final AppDefinition definition;
   final String source;
 
@@ -55,6 +56,13 @@ class HatakeExampleApp extends StatelessWidget {
   /// 共有リンク（`?yaml=`）で渡された定義。
   final String? sharedSource;
 
+  /// 最初に配る役割（**アプリが配るもの**＝ログイン状態）。
+  ///
+  /// 既定は担当（`staff`）。誰でもない状態で始めると、デモを開いた人が見るものが
+  /// 減ってしまう（持ち出しのボタンが出ない）ので、**普通の利用者**から始める。
+  /// 右下の札で切り替えられる。
+  final Set<String> roles;
+
   const HatakeExampleApp({
     super.key,
     required this.definition,
@@ -62,20 +70,34 @@ class HatakeExampleApp extends StatelessWidget {
     this.samples = const {},
     this.openPlayground = false,
     this.sharedSource,
+    this.roles = const {'staff'},
   });
 
+  @override
+  State<HatakeExampleApp> createState() => _HatakeExampleAppState();
+}
+
+class _HatakeExampleAppState extends State<HatakeExampleApp> {
   /// Lets the export sink reach the widget tree. A sink is plain I/O and gets no
   /// [BuildContext] — a real app downloads or saves the file, so it needs none;
   /// this demo shows the document, so it goes through the navigator.
-  static final GlobalKey<NavigatorState> navigatorKey =
-      GlobalKey<NavigatorState>();
+  ///
+  /// **アプリ1つに1本**（static にしない）。static にすると、同じ鍵を2つの木が
+  /// 名乗ることになり、試験の中でアプリを2回出したときに壊れる（実際に踏んだ:
+  /// 2つ目の `pumpAndSettle` が返ってこなくなる）。グローバルな状態を持たない、
+  /// という枠組み側の決めごとと同じ理由。
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  /// いま配っている役割。切り替えると `HatakeScope(roles:)` が変わり、
+  /// 隠れる列・出ないボタン・消えるメニューがその場で変わる（画面は作り直さない
+  /// ので、開いているタブと検索結果はそのまま残る）。
+  late Set<String> _roles = widget.roles;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'hatake example',
       debugShowCheckedModeBanner: false,
-      navigatorKey: navigatorKey,
+      navigatorKey: _navigatorKey,
       theme: ThemeData(
         colorSchemeSeed: Colors.green,
         useMaterial3: true,
@@ -93,11 +115,11 @@ class HatakeExampleApp extends StatelessWidget {
         // 別で、こちらは**名前の一覧**。宣言しておくと `hatake validate --registry` が
         // 「定義にしか無い役割」＝誰にも見えない列やボタンを言える（定義側は
         // sales_app.yaml の maxRows.byRole が manager を見ている）。
-        knownRoles: const {'manager'},
+        knownRoles: const {'staff', 'manager'},
         // Where `type: export` actions send their document. The framework builds
         // the CSV; getting it to the user is the application's job.
         exportSink: (request) async {
-          final context = navigatorKey.currentContext;
+          final context = _navigatorKey.currentContext;
           if (context == null) return;
           await ExportDialog.show(context, request);
         },
@@ -105,7 +127,7 @@ class HatakeExampleApp extends StatelessWidget {
         // over the paper's contents; making the PDF is the opt-in adapter
         // (hatake_print), and getting it to a printer or a file is this app's.
         printSink: (request) async {
-          final context = navigatorKey.currentContext;
+          final context = _navigatorKey.currentContext;
           if (context == null) return;
           await PrintDialog.show(context, request);
         },
@@ -121,7 +143,7 @@ class HatakeExampleApp extends StatelessWidget {
           'rejectOrders': BulkDialog.show,
           'showDefinition': (ctx) async {
             final pageId = ctx.action.config['page']?.toString() ?? '';
-            final yaml = extractPageYaml(source, pageId);
+            final yaml = extractPageYaml(widget.source, pageId);
             if (yaml == null) return;
             await DefinitionDialog.show(
               ctx.buildContext,
@@ -135,15 +157,36 @@ class HatakeExampleApp extends StatelessWidget {
             await Navigator.of(ctx.buildContext).push(
               MaterialPageRoute<void>(
                 builder: (_) => _playground(
-                  initial: extractPageYaml(source, pageId) ?? source,
+                  initial:
+                      extractPageYaml(widget.source, pageId) ?? widget.source,
                 ),
               ),
             );
           },
         }),
-        child: openPlayground
-            ? _playground(initial: sharedSource ?? samples.values.firstOrNull)
-            : HatakeApp(app: definition),
+        // いま見ている人。定義に書いた `roles` はここと突き合わされる。
+        roles: _roles,
+        child: widget.openPlayground
+            ? _playground(
+                initial: widget.sharedSource ?? widget.samples.values.firstOrNull,
+              )
+            // 役割の札はアプリの作り（デモ自身）なので、画面の上に重ねる。
+            // 定義の側に「切り替え」を書く場所は無い＝役割はアプリが配るもの。
+            : Stack(
+                children: [
+                  HatakeApp(app: widget.definition),
+                  Positioned(
+                    right: 16,
+                    bottom: 16,
+                    child: SafeArea(
+                      child: RoleSwitcher(
+                        roles: _roles,
+                        onChanged: (roles) => setState(() => _roles = roles),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -151,7 +194,7 @@ class HatakeExampleApp extends StatelessWidget {
   /// プレイグラウンドは定義を書く場なので、デモの Repository ではなく
   /// 「貼られた定義に合わせて作るサンプルデータ」で動く（Playground の中で組む）。
   Widget _playground({String? initial}) => Playground(
-        initialSource: initial ?? source,
-        samples: samples,
+        initialSource: initial ?? widget.source,
+        samples: widget.samples,
       );
 }

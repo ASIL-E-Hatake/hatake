@@ -3,7 +3,8 @@ import 'package:hatake_material/hatake_material.dart';
 /// A simple in-memory [Repository] for the order search / detail / entry pages.
 ///
 /// The key field is `orderNo` (a string); rows also carry `customer`,
-/// `orderDate`, `status`, `shipped`, `amount` and **`lines`** — the child rows
+/// `orderDate`, `status`, `shipped`, `amount`, `margin`（粗利＝承認者だけに見せる
+/// 列の値）and **`lines`** — the child rows
 /// of the master-detail entry screen. Because the aggregate is one record,
 /// header and lines are saved in a single call. A real application would
 /// implement this against an HTTP API or database.
@@ -25,6 +26,7 @@ class OrderRepository implements Repository {
         'status': '未出荷',
         'shipped': false,
         'amount': 128000,
+        'margin': 24000,
         'lines': [
           {'item': 'ノートPC', 'qty': 2, 'price': 60000, 'amount': 120000},
           {'item': 'マウス', 'qty': 4, 'price': 2000, 'amount': 8000},
@@ -37,6 +39,7 @@ class OrderRepository implements Repository {
         'status': '出荷済',
         'shipped': true,
         'amount': 54000,
+        'margin': 9000,
         'lines': [
           {'item': '複合機トナー', 'qty': 6, 'price': 9000, 'amount': 54000},
         ],
@@ -48,6 +51,7 @@ class OrderRepository implements Repository {
         'status': '未出荷',
         'shipped': false,
         'amount': 320000,
+        'margin': 61000,
         'lines': [
           {'item': '業務用サーバ', 'qty': 1, 'price': 280000, 'amount': 280000},
           {'item': '保守契約（年）', 'qty': 1, 'price': 40000, 'amount': 40000},
@@ -60,6 +64,7 @@ class OrderRepository implements Repository {
         'status': '出荷済',
         'shipped': true,
         'amount': 96000,
+        'margin': 15000,
         'lines': [
           {'item': '会議用モニタ', 'qty': 3, 'price': 32000, 'amount': 96000},
         ],

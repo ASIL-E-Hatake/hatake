@@ -67,8 +67,11 @@ List<Map<String, Object?>> _rows(
 
 /// `field` が指す明細の行を、[op] の集約で畳む。
 ///
-/// 畳めないとき（行が無い・集約が知らない名前）は **null**。0 を返さないのは、
-/// 「行が無い」と「合計が 0」を画面で見分けられなくなるため。
+/// 畳めないとき（集約が知らない名前・`of` の要る集約に `of` が無い）は **null**。
+///
+/// **行が1件も無いときは、集約が決める**（[builtinAggregates] のまま）＝`sum` と
+/// `count` は 0、`avg` / `min` / `max` は null。合計 0 と「行が無い」を見分けたい
+/// なら `count` を一緒に見る（0 件なら 0 が返る）。
 num? _fold(String op, Map<String, Object?> c, Map<String, Object?> record) {
   final aggregate = builtinAggregates[op];
   if (aggregate == null) return null;

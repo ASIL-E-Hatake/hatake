@@ -139,8 +139,12 @@ public final class Computed {
     /**
      * field が指す明細の行を、op の集約で畳む。
      *
-     * <p>畳めないとき（行が無い・集約が知らない名前）は <b>null</b>。0 を返さないのは、
-     * 「行が無い」と「合計が 0」を画面で見分けられなくなるため。
+     * <p>畳めないとき（集約が知らない名前・{@code of} の要る集約に {@code of} が無い）は
+     * <b>null</b>。
+     *
+     * <p><b>行が1件も無いときは、集約が決める</b>（{@link Aggregates} のまま）＝
+     * {@code sum} と {@code count} は 0、{@code avg} / {@code min} / {@code max} は null。
+     * 合計 0 と「行が無い」を見分けたいなら {@code count} を一緒に見る（0 件なら 0）。
      */
     private static Double fold(String op, Map<String, Object> c, Map<String, Object> record) {
         Aggregates.AggregateFn fn = Aggregates.builtin(op);

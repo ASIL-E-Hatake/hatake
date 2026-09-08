@@ -26,6 +26,11 @@ app:
     - { id: salesReport, label: 売上明細表, icon: receipt_long, page: sales_report }
     - { id: orderEntry, label: 受注入力, icon: edit_note, page: order_entry }
     - { id: orderEntryPaged, label: 受注入力（明細別テーブル）, icon: table_rows, page: order_entry_paged }
+    # 承認者だけの入口。**ページ自身に roles は書けない**（画面を開けるかどうかは
+    # 入口＝メニューと遷移ボタンで決まる）。担当で見ているとこの項目は出ない＝
+    # 「見えないことが正しい」機能なので、役割を切り替えて見せないと伝わらない
+    # （デモ右下の切り替えで試せる）。
+    - { id: costs, label: 原価管理, icon: price_change, page: cost_master, roles: [manager] }
   pages:
     # ダッシュボード: カードごとに小さな読み取りクエリを投げ、結果の見せ方だけを
     # 定義する。集計は Repository が返した行に対する畳み込み（aggregate）。
@@ -137,6 +142,32 @@ app:
         - { id: create, type: create, label: 新規登録 }
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: product_master } }
 
+    # 原価の画面。入口（メニュー）に roles を書いてあるので、担当には出ない。
+    # 粗利は「入れるもの」ではなく「出るもの」＝computed（売価 − 原価）。
+    - type: master
+      id: cost_master
+      title: 原価管理
+      repository: productRepository
+      table:
+        columns:
+          - { field: code, label: コード, width: 140 }
+          - { field: name, label: 商品名, width: 220 }
+          - { field: cost, label: 原価, type: number, format: currency, config: { symbol: "¥" }, width: 130 }
+          - { field: price, label: 売価, type: number, format: currency, config: { symbol: "¥" }, width: 130 }
+          - { field: margin, label: 粗利, type: number, format: currency, config: { symbol: "¥" }, width: 130 }
+      form:
+        sections:
+          - fields:
+              - { field: code, label: コード, required: true }
+              - { field: name, label: 商品名, required: true }
+              - { field: cost, label: 原価, type: number, required: true, validators: [{ type: min, value: 0 }] }
+              - { field: price, label: 売価, type: number, required: true, validators: [{ type: min, value: 0 }] }
+              - { field: margin, label: 粗利, format: currency, config: { symbol: "¥" },
+                  computed: { op: subtract, fields: [price, cost] } }
+      actions:
+        - { id: create, type: create, label: 新規登録 }
+        - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: cost_master } }
+
     - type: search
       id: order_search
       title: 受注照会
@@ -165,6 +196,9 @@ app:
           - { field: orderDate, label: 受注日, width: 140 }
           - { field: status, label: 状態, type: badge, width: 120 }
           - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" }, width: 140 }
+          # 粗利は承認者だけ。`roles` を書いた列は、その役割の人にだけ出る
+          # （担当で見ると列ごと消える＝CSV にも出ない）。
+          - { field: margin, label: 粗利, type: number, format: currency, config: { symbol: "¥" }, width: 140, roles: [manager] }
       actions:
         # 行から詳細へ遷移。$row.no を詳細ページの key に渡す。
         - { id: detail, type: navigate, label: 詳細, page: order_detail, params: { id: "$row.orderNo" } }
@@ -183,7 +217,9 @@ app:
         # 一覧を残したまま個別を開くのが業務の意図なら、それは定義に書ける。
         - { id: openEntryPaged, type: navigate, label: 明細（別テーブル）, page: order_entry_paged, params: { id: "$row.orderNo" }, open: tab }
         # 一覧の CSV。表示中のページではなく検索結果全体を出す。
-        - { id: csv, type: export, label: CSV出力, config: { filename: 受注一覧, bom: true } }
+        # 持ち出しは**ログインした人だけ**（誰でもない人には出させない）。roles を
+        # 書いたボタンは、その役割の人にだけ出る。
+        - { id: csv, type: export, label: CSV出力, config: { filename: 受注一覧, bom: true }, roles: [staff, manager] }
         # 選んだ行に対して実行する。scope: selection を書くと表にチェックボックスが
         # 出て、ボタンは選ぶまで押せない。一括の中身は業務なので type: plugin＝
         # 選んだ行（records）を受け取るのはアプリ側。
@@ -221,6 +257,8 @@ app:
           plugin: rejectOrders
           label: 却下
           scope: selection
+          # 却下は承認者だけ（担当にはボタンが出ない）。
+          roles: [manager]
           # 戻せない操作なので、承認より小さい上限にしてある。
           maxRows: 5
           confirm: { message: '{count} 件を却下します。元に戻せません。', danger: true }
@@ -323,6 +361,9 @@ app:
               - field: lines
                 label: 明細
                 type: subTable
+                # 明細の無い受注はあり得ないので必須。**シナリオを書いて初めて
+                # 気づいた**（画面は出るし、保存もできてしまっていた）。
+                required: true
                 # 行の**中**ではなく行**どうし**の規則。1行ずつ見ていては分からない
                 # （同じ品名を2行に書くと、どちらが正しい数量か決められない）。
                 validators:

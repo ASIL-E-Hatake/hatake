@@ -110,7 +110,8 @@ CrudPage と SearchPage が動いてる。中身はこんな感じ。
 | バリデーションエンジン（純Dart・Plugin拡張可） | ✅ 完了（ユニットテスト済み） |
 | `hatake_example` サンプルアプリ（YAML→描画） | ✅ 完了（widget テスト済み） |
 | 画面の試験の道具（`hatake_test`: `pumpPage` / `FakeRepository` / `HatakeFind`） | ✅ 完了（キーの規約 `HatakeKeys` と Renderer の突き合わせを CI が見る＝規約が嘘をつかない） |
-| 定義を動かして答えを見る（`ScenarioRunner`） | ✅ 完了（Dart / TS / Java の3版。[`conformance/scenario.json`](../spec/conformance/scenario.json) で同じ答えを固定） |
+| 定義を動かして答えを見る（`ScenarioRunner`） | ✅ 完了（Dart / TS / Java の3版。[`conformance/scenario.json`](../spec/conformance/scenario.json) で同じ答えを固定）。**デモのシナリオ**（`hatake_example/test/order_entry.scenario.json`）は Flutter と CLI の両方が同じファイルを回す＝案件の定義でも答えが揃っていることを CI が見る |
+| デモで役割を切り替える（`hatake_example` 右下の札） | ✅ 完了（担当／承認者／誰でもない。隠れる列・出ないボタン・消える入口が目で見える。切り替えても開いている画面はそのまま） |
 | 公開準備（Apache-2.0 / pub metadata / CHANGELOG / CI） | ✅ 完了（dry-run 0 warnings） |
 | ライブデモ（Flutter web ビルド + Pages デプロイ workflow） | ✅ ビルド確認済み（push で自動公開） |
 | Plugin 機構（[日本語](docs/plugins.ja.md) / [EN](docs/plugins.md)：Validator/Action/Field型/Renderer） | ✅ 完了（3種のPluginをテストで実証） |
