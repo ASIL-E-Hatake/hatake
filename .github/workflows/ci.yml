@@ -1620,6 +1620,83 @@ jobs:
             console.log("scenario fixture: " + fixture.cases.length + " 件一致");
           '
 
+      - name: Reading permissions from the role's side
+        working-directory: typescript
+        run: |
+          set -e
+          ASSETS=../flutter/packages/hatake_example/assets
+          DEMO=$ASSETS/sales_app.yaml
+          # 1. 役割から画面を引く（棚卸しは「この役割で何が開けるか」を聞かれる）。
+          node dist/cli.js index "$DEMO" --role staff > /tmp/index-staff.log
+          node dist/cli.js index "$DEMO" --role manager > /tmp/index-manager.log
+          grep -q 'staff で開ける画面 … 8 枚' /tmp/index-staff.log
+          grep -q 'manager で開ける画面 … 9 枚' /tmp/index-manager.log
+          # 承認者だけの画面は、担当の索引に出てこない。
+          if grep -q 'cost_master' /tmp/index-staff.log; then
+            echo "担当の索引に承認者だけの画面が出ている"; exit 1
+          fi
+          grep -q 'cost_master' /tmp/index-manager.log
+          # 2. 定義に出てこない役割名は**エラー**（黙って0枚にすると「何も開けない」
+          #    に見える）。
+          if node dist/cli.js index "$DEMO" --role admin > /tmp/index-bad.log 2>&1; then
+            echo "知らない役割名で通ってしまった"; cat /tmp/index-bad.log; exit 1
+          fi
+          grep -q '出てくるのは manager / staff' /tmp/index-bad.log
+          # 3. 役割を横に並べた表。**誰でもない人の列が必ず入る**（ログインしていない
+          #    人に何が見えているかを落とさない）。
+          node dist/cli.js explain "$DEMO" --roles --matrix > /tmp/matrix.log
+          grep -q '誰でもない人' /tmp/matrix.log
+          grep -q '画面「原価管理」' /tmp/matrix.log
+          grep -q '列「粗利」（order_search）' /tmp/matrix.log
+          grep -q 'ボタン「CSV出力」（order_search）' /tmp/matrix.log
+          # メニューの行は出さない（画面の行と同じことを言う）。
+          if grep -q 'メニュー「原価管理」' /tmp/matrix.log; then
+            echo "画面の行と同じことをメニューの行でも言っている"; exit 1
+          fi
+          # ○×の幅が揃っていること（日本語の端末では × も2幅。ずれると読めない）。
+          node -e '
+            const lines = require("fs").readFileSync("/tmp/matrix.log", "utf8")
+              .split("\n")
+              // 表の行だけ（末尾の注記にも ○× が出てくる）。
+              .filter((one) => /^(画面|列|ボタン|項目|絞り込み|カード)「/.test(one));
+            const width = (text) => [...text].reduce((total, ch) => {
+              const code = ch.codePointAt(0);
+              const narrow = (code >= 0x20 && code <= 0x7e)
+                || (code >= 0xff61 && code <= 0xff9f);
+              return total + (narrow ? 1 : 2);
+            }, 0);
+            const widths = new Set(lines.map(width));
+            if (widths.size !== 1) {
+              console.error("行の幅が揃っていない: " + [...widths].join(" / "));
+              process.exit(1);
+            }
+            console.log(lines.length + " 行が同じ幅（" + [...widths][0] + "）");
+          '
+          # 4. 役割ごとの「見えないのは何件」まで言う（見えない側を書かないと、
+          #    「この役割で何ができるか」は分からない）。
+          node dist/cli.js explain "$DEMO" --roles > /tmp/roles.log
+          grep -q '見え方 … 役割で絞られている 4 件のうち、見えるのは 4 件' /tmp/roles.log
+          grep -q '見え方 … 役割で絞られている 4 件のうち、見えるのは 1 件' /tmp/roles.log
+          # 5. **アプリが配るのに、定義が出し分けに使っていない役割**を言う
+          #    （消せとは言わない＝定義側の書き忘れの疑いという事実だけ）。
+          node -e '
+            const fs = require("fs");
+            const path = "../flutter/packages/hatake_example/assets/hatake-registry.json";
+            const registry = JSON.parse(fs.readFileSync(path, "utf8"));
+            registry.roles = [...registry.roles, "viewer"];
+            fs.writeFileSync("/tmp/with-viewer.json", JSON.stringify(registry), "utf8");
+          '
+          node dist/cli.js explain "$DEMO" --roles --registry /tmp/with-viewer.json \
+            > /tmp/unused.log
+          grep -q '定義が出し分けに使っていない役割 … viewer' /tmp/unused.log
+          grep -q '消す相手ではありません' /tmp/unused.log
+          # デモの一覧そのままなら、使っていない役割は無い（嘘の指摘を出さない）。
+          node dist/cli.js explain "$DEMO" --roles \
+            --registry $ASSETS/hatake-registry.json > /tmp/used.log
+          if grep -q '使っていない役割' /tmp/used.log; then
+            echo "全部使っているのに使っていないと言った"; exit 1
+          fi
+
       - name: The demo's own scenarios answer the same in both editions
         working-directory: typescript
         run: |

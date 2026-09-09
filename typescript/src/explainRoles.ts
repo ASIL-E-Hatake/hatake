@@ -52,6 +52,8 @@ export function renderRoles(
   title: string,
   opens?: Map<string, RoleOpen>,
   bulks?: Map<string, RoleBulk[]>,
+  sights?: Map<string, { seen: number; hidden: number }>,
+  unused: string[] = [],
 ): string {
   const out = [`${title} — ${ROLES_TITLE} ${inventory.length}`];
   if (inventory.length === 0) {
@@ -61,6 +63,7 @@ export function renderRoles(
         "書かれていない＝**全部の人に全部見えます**）。",
     );
     out.push("");
+    for (const line of unusedLines(unused)) out.push(line);
     out.push(NOTE);
     return out.join("\n");
   }
@@ -70,6 +73,15 @@ export function renderRoles(
     use.spots.forEach((_, index) => out.push(spotLine(use, index)));
     const open = opens?.get(use.role);
     if (open !== undefined) out.push(`  ${opensLine(open)}`);
+    // 「この役割で何ができるか」は**見えない側**まで書かないと分からない
+    // （書いてある場所を並べるだけでは、他の役割だけのものが出てこない）。
+    const sight = sights?.get(use.role);
+    if (sight !== undefined) {
+      out.push(
+        `  見え方 … 役割で絞られている ${sight.seen + sight.hidden} 件のうち、` +
+          `見えるのは ${sight.seen} 件（見えないのは ${sight.hidden} 件）`,
+      );
+    }
     // 一括は「1回で何件動くか」が危険度そのもの。上限も区切りも役割で変わるので、
     // **役割から引ける**形で並べる（ボタンごとに定義を開いて役割の枝を追わない）。
     for (const one of bulks?.get(use.role) ?? []) {
@@ -96,6 +108,14 @@ export function renderRoles(
       "※ 1か所しか出てこない役割は**綴り違いの疑い**があります（並びは出てくる回数の多い順）。",
     );
   }
+  if (sights !== undefined) {
+    out.push(
+      "※ 「見え方」が数えているのは**役割で絞られている物だけ**です" +
+        "（絞っていない物は全員に見えます）。役割ごとに並べた○×の表は " +
+        "hatake explain --roles --matrix。",
+    );
+  }
+  for (const line of unusedLines(unused)) out.push(line);
   out.push(NOTE);
   return out.join("\n");
 }
@@ -112,6 +132,23 @@ function opensLine(open: RoleOpen): string {
   return open.gated.length === 0
     ? `開ける画面 … この役割だから開ける画面はありません${rest}`
     : `開ける画面 … ${open.gated.join(" / ")}${rest}`;
+}
+
+/**
+ * アプリが配るのに、定義が出し分けに使っていない役割。
+ *
+ * **消せとは言わない。** 役割を配るのはアプリの決めごとで、定義が使っていないこと自体は
+ * 間違いではない（画面の外＝アプリのコードで使っていることもある）。言いたいのは
+ * 「出し分けを書き忘れていないか」だけ。
+ */
+function unusedLines(unused: string[]): string[] {
+  if (unused.length === 0) return [];
+  return [
+    "",
+    `アプリが配るのに、定義が出し分けに使っていない役割 … ${unused.join(" / ")}`,
+    "※ **消す相手ではありません**（アプリのコードで使っていることも、出し分けの" +
+      "書き忘れのこともあります）。この役割で見え方が変わる所は1つもない、という事実だけです。",
+  ];
 }
 
 /** 役割名の出どころを、毎回書く（読む人が「権限がかかっている」と読まないように）。 */

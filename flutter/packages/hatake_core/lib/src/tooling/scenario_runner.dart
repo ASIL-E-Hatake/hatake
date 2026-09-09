@@ -405,7 +405,7 @@ List<ScenarioMismatch> compareAnswer(
     String key(ValidationError e) => '${e.field}=${e.message}';
     final wanted = wantedErrors.map(key).toList()..sort();
     final actual = answer.errors.map(key).toList()..sort();
-    if (wanted.join(' ') != actual.join(' ')) {
+    if (wanted.join(' ') != actual.join(' ')) {
       found.add(ScenarioMismatch(
         'errors',
         wantedErrors.map(key).toList(),

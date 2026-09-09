@@ -18,6 +18,8 @@ import { diffDefinitions } from "./defDiff.js";
 import { renderExplain } from "./explain.js";
 import { appAccess, opensByRole } from "./appAccess.js";
 import { renderRoles, roleTitleOf } from "./explainRoles.js";
+import { renderMatrix, roleMatrix, sightSummary } from "./roleMatrix.js";
+import { roleSights } from "./roleSight.js";
 import { bulkByRole } from "./roleBulk.js";
 import { PLACEHOLDER_CONTEXTS } from "./placeholders.js";
 import { roleInventory } from "./roles.js";
@@ -781,6 +783,9 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "lang に en を渡すと英語（節の見出しと言い回しだけ。**定義に書いてあるラベルは訳さない**" +
         "＝業務の言葉なので、訳すと現場と違うものを指す）。before との差と助言は日本語だけ。" +
         "**roles を true にすると、定義に出てくる役割の一覧**（どこに書いてあるか付き）。" +
+        "roles と matrix を両方 true にすると、**役割を横に並べた○×の表**" +
+        "（画面を開けるか・列が見えるか・ボタンが出るか。**誰でもない人**の列も必ず入る）。" +
+        "「この役割で何ができるか」を聞かれたらこれを返す。" +
         "`roles` や `maxRows.byRole` を書く前にこれを引く＝**役割名を想像で書かない**" +
         "（定義に無い名前を書いても画面は出るので、誰も気づけない）。",
       inputSchema: {
@@ -809,6 +814,12 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
               "定義に出てくる役割の一覧を返す（既定 false）。書いてある場所つき。" +
               "出るのは定義に書いてある名前だけで、アプリ側の権限判定は見ない。",
           },
+          matrix: {
+            type: "boolean",
+            description:
+              "roles と一緒に true にすると、役割を横に並べた○×の表を返す（既定 false）。" +
+              "並ぶのは役割で絞られている物だけ（絞っていない物は全員に見える）。",
+          },
           lang: {
             type: "string",
             enum: ["ja", "en"],
@@ -836,12 +847,21 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             throw new Error("定義（map）として読めません。");
           }
           const raw = document as Record<string, unknown>;
+          if (args.matrix === true) {
+            return renderMatrix(roleMatrix(raw), roleTitleOf(raw));
+          }
           const inventory = roleInventory(raw);
           return renderRoles(
             inventory,
             roleTitleOf(raw),
             opensByRole(appAccess(raw)),
             bulkByRole(raw, inventory.map((use) => use.role)),
+            new Map(
+              roleSights(raw, inventory.map((use) => use.role)).map((one) => [
+                one.role,
+                sightSummary(one),
+              ]),
+            ),
           );
         }
         const page = str(args, "page");

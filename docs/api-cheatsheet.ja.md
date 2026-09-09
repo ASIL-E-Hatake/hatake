@@ -82,6 +82,8 @@ npx hatake types page.yaml --lang java --out gen/            # ネイティブ�
 
 **足したものが3版で揃っているか**: `npx hatake registry --compare 画面の一覧.json サーバの一覧.json`＝独自の検証・計算・変換・集約が片側にしか無ければ落とす（画面では通るのに保存で弾かれる、が起きる）。一覧は `registrySnapshot`（Dart）/ `RegistrySnapshot`（Java）が書く。
 
+**役割から引く（棚卸し）**: `npx hatake index app.yaml --role staff`＝その役割で開ける画面だけ（入口を辿った結果。定義に出てこない役割名はエラー）。`npx hatake explain app.yaml --roles --matrix`＝役割を横に並べた○×の表で、**誰でもない人（未ログイン）の列が必ず入る**。`--roles` の各行には「見えるのは何件・見えないのは何件」も出る（見えない側まで書かないと「この役割で何ができるか」は答えられない）。`--registry` を渡すと「アプリが配るのに定義が使っていない役割」も言う（消せとは言わない）。MCP は `hatake_explain` の `roles: true` ＋ `matrix: true`。
+
 **言ったことと書いたもの**: `<画面id>.intent.yaml`（意図の1枚）に**人が言ったまま**の要求・決めごと・**決まっていないこと**・終わりの判定を書き、`covers: [filter:orderNo, action:approve]` で定義のどこに落ちたかを指す。`npx hatake trace <定義>` が突き合わせて、**由来の無い項目・ボタン**（言っていないのに入っている）・言ったのに入っていない・未定なのに決まっている、を言う。**意図どおりかは言わない**（それは `explain` を人が読む）。要求を定義から生成してはいけない（生成すれば必ず一致して、突き合わせが無意味になる）。
 
 **指示文から意図を起こす**: `npx hatake intent --draft --from 指示.md --definition page.yaml`＝1行1件に開き、`text` は**その行のまま**・全部 `source: ai-draft`（人が読んで `confirmed: true` にするまで主張しない）。分類は見出しと合図の言葉だけ（推し量らない）、`covers` は**業務の言葉が一致した所だけ**。MCP は `hatake_intent`（`instruction` に指示文、`source` に定義）＝**定義を書く前と書いたあとの2回**呼ぶ。

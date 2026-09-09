@@ -54,6 +54,13 @@ computed, converter or aggregate exists on one side only (that is how "it passes
 screen and is rejected on save" happens). Both lists are written by the running app
 (`registrySnapshot`) or server (`RegistrySnapshot`).
 
+Permissions read the other way round too: `npx hatake index app.yaml --role staff` lists only
+the screens that role can open (following the entries — a page cannot carry `roles`), and
+`npx hatake explain app.yaml --roles --matrix` puts the roles side by side as a table of
+marks, with **nobody (not signed in) always as one of the columns**. Each role's line also
+says how many gated things it sees and how many it does not. Over MCP: `hatake_explain` with
+`roles: true` and `matrix: true`.
+
 What a definition cannot tell you is **what was asked**. An intent document
 (`<page id>.intent.yaml`) holds the requirements verbatim, the business rules with their
 reasons, **what is still undecided**, and the definition of done; `covers:` links each one
