@@ -72,6 +72,8 @@ export * from "./adviseDraft.js";
 export * from "./pageParts.js";
 export * from "./roleBulk.js";
 export * from "./roles.js";
+export * from "./roleSight.js";
+export * from "./roleMatrix.js";
 export * from "./adviseCompare.js";
 export * from "./adviseRules.js";
 export * from "./adviseRequire.js";

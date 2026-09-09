@@ -1965,6 +1965,88 @@ expect(page.repository.calls, contains('update(1)'));
 - For computeds and validation alone, `ScenarioRunner` is faster than rendering. Render only
   to check what rendering decides: pressable, visible, saved
 
+## Reading permissions from the role's side
+
+`roles` can be written in five places, so answering "what can this role do?" means opening
+the whole definition. That question — the one an inventory review actually asks — runs the
+other way, so ask the tools.
+
+```bash
+npx hatake index app.yaml --role staff          # only the screens that role can open
+npx hatake explain app.yaml --roles             # per role: where it is written, and what it sees
+npx hatake explain app.yaml --roles --matrix    # roles side by side, as a table
+```
+
+```
+販売管理（sales_admin） — 役割ごとの見え方
+
+見えるもの                          manager  staff  誰でもない人
+----------------------------------  -------  -----  ------------
+画面「原価管理」                      ○      ×         ×
+列「粗利」（order_search）            ○      ×         ×
+ボタン「CSV出力」（order_search）     ○      ○         ×
+```
+
+Decisions:
+
+- **Nobody (not signed in) is always one of the columns.** List only the roles that exist
+  and no one ever looks at what an unauthenticated visitor can see
+- Only the **role-gated** things are listed; everything else is visible to everyone, and
+  listing it would make the table as large as the definition
+- The "画面" (screen) rows are **the result of following the entries** — a page cannot carry
+  `roles` itself. Menu rows say the same thing, so they are dropped
+- `--role` **fails on a role the definition never mentions**: quietly printing zero screens
+  reads as "that role can open nothing"
+- Each role's line also carries **how many gated things it sees and how many it does not** —
+  "what can this role do" needs the invisible half to be answerable
+- With `--registry`, roles the **application hands out but the definition never gates
+  anything with** are listed too. It never says to delete them (the application's own code
+  may use them): the fact is only "nothing changes for this role". The opposite direction —
+  a role only the definition knows — is a `validate` warning
+- The marks are **what the definition says**, nothing more. Data is still reachable through
+  the API, so real access control lives in the backend (`hatake attack` tests it)
+
+## Reading permissions from the role's side
+
+`roles` can be written in five places, so answering "what can this role do?" means opening
+the whole definition. That question — the one an inventory review actually asks — runs the
+other way, so ask the tools.
+
+```bash
+npx hatake index app.yaml --role staff          # only the screens that role can open
+npx hatake explain app.yaml --roles             # per role: where it is written, and what it sees
+npx hatake explain app.yaml --roles --matrix    # roles side by side, as a table
+```
+
+```
+販売管理（sales_admin） — 役割ごとの見え方
+
+見えるもの                          manager  staff  誰でもない人
+----------------------------------  -------  -----  ------------
+画面「原価管理」                      ○      ×         ×
+列「粗利」（order_search）            ○      ×         ×
+ボタン「CSV出力」（order_search）     ○      ○         ×
+```
+
+Decisions:
+
+- **Nobody (not signed in) is always one of the columns.** List only the roles that exist
+  and no one ever looks at what an unauthenticated visitor can see
+- Only the **role-gated** things are listed; everything else is visible to everyone, and
+  listing it would make the table as large as the definition
+- The "画面" (screen) rows are **the result of following the entries** — a page cannot carry
+  `roles` itself. Menu rows say the same thing, so they are dropped
+- `--role` **fails on a role the definition never mentions**: quietly printing zero screens
+  reads as "that role can open nothing"
+- Each role's line also carries **how many gated things it sees and how many it does not** —
+  "what can this role do" needs the invisible half to be answerable
+- With `--registry`, roles the **application hands out but the definition never gates
+  anything with** are listed too. It never says to delete them (the application's own code
+  may use them): the fact is only "nothing changes for this role". The opposite direction —
+  a role only the definition knows — is a `validate` warning
+- The marks are **what the definition says**, nothing more. Data is still reachable through
+  the API, so real access control lives in the backend (`hatake attack` tests it)
+
 ## What was asked, and what was written (intent / trace)
 
 Everything derivable from a definition can now be derived (`explain`, `openapi`,

@@ -344,6 +344,48 @@ describe("hatake_diff", () => {
   });
 });
 
+describe("hatake_explain の役割ごとの表", () => {
+  const source = `app:
+  id: sales
+  title: 販売管理
+  home: orders
+  menu:
+    - { id: orders, label: 受注, page: order_search }
+    - { id: costs, label: 原価, page: cost_master, roles: [manager] }
+  pages:
+    - type: search
+      id: order_search
+      title: 受注照会
+      repository: orderRepository
+      table:
+        columns:
+          - { field: margin, label: 粗利, roles: [manager] }
+      actions:
+        - { id: csv, type: export, label: CSV出力, roles: [staff, manager] }
+    - type: master
+      id: cost_master
+      title: 原価管理
+      repository: productRepository
+      table:
+        columns: [{ field: code, label: コード }]
+      form:
+        sections: [{ fields: [{ field: code, label: コード, required: true }] }]
+`;
+
+  it("役割を横に並べた表を返す（誰でもない人の列も入る）", () => {
+    const out = call("hatake_explain", { source, roles: true, matrix: true });
+    expect(out.text).toContain("誰でもない人");
+    expect(out.text).toContain("画面「原価管理」");
+    expect(out.text).toContain("列「粗利」（order_search）");
+  });
+
+  it("matrix を渡さなければ、役割ごとの見え方の数が付く", () => {
+    const out = call("hatake_explain", { source, roles: true });
+    expect(out.text).toContain("見え方 …");
+    expect(out.text).toContain("見えないのは");
+  });
+});
+
 describe("hatake_fix", () => {
   const typos = `page:
   type: crud

@@ -92,6 +92,8 @@ import { withDrafts } from "./adviseDraft.js";
 import { appAccess, opensByRole } from "./appAccess.js";
 import { renderRoles, roleTitleOf } from "./explainRoles.js";
 import { bulkByRole } from "./roleBulk.js";
+import { renderMatrix, roleMatrix, sightSummary } from "./roleMatrix.js";
+import { NOBODY, roleSights, rolesInDocument } from "./roleSight.js";
 import {
   PLACEHOLDER_CONTEXTS,
   renderPlaceholders,
@@ -284,11 +286,18 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       1件ずつ当てて「問題が減る・新しい問題が出ない」ことを確かめ、崩れたら何もしない。
       直さなかったものは**理由つきで**標準エラーに出す（意図が要るものは人の仕事）。
 
-  hatake explain <file> --roles [--json]
+  hatake explain <file> --roles [--matrix] [--registry hatake-registry.json] [--json]
       **定義に出てくる役割の全部**と、どこに書いてあるか（メニュー・ボタン・列・項目）。
       出てくる回数の多い順に並べるので、1か所しか出てこない役割＝綴り違いの疑いが
       下に落ちてくる。出るのは**定義に書いてある名前**だけで、アプリ側の権限判定と
       合っているかは見られない（誰がどの画面を開けるかは explain の「開ける人」）。
+      役割ごとに「**見えるのは何件・見えないのは何件**」も出る＝「この役割で何が
+      できるか」は見えない側まで書かないと分からない。
+      --matrix で**役割を横に並べた○×の表**（画面を開けるか・列が見えるか・ボタンが
+      出るか）。**誰でもない人**の列が必ず入る＝ログインしていない人に何が見えているか
+      を落とさない。人事異動のときに聞かれるのはこの形。
+      --registry を渡すと「**アプリが配るのに、定義が出し分けに使っていない役割**」も
+      言う（消せとは言わない＝出し分けの書き忘れの疑いという事実だけ）。
 
   hatake advise <file> [--rules team.json] [--apply picks.json] [--write] [--json]
       **書き足したほうがいい所**を挙げる（並べ替えできる列が無い・絞り込みが無い・
@@ -305,9 +314,14 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       決めごと「この場所には必ずこのキーを書く」を足す）。知らないキーや知らない
       規則名を書いた物差しは、黙って無視せずエラーにする。
 
-  hatake index <path...> [--find "顧客 検索"] [--by size] [--json] [--out file]
+  hatake index <path...> [--find "顧客 検索"] [--by size] [--role admin]
+              [--json] [--out file]
       定義の山から**画面の索引**を作る（1行の要約＋探すための語）。--find は語の AND。
       --by size で規模の大きい画面から。--json / --out はそのまま機械に渡せる形。
+      --role でその役割が**開ける画面だけ**に絞る（権限の棚卸しは「役割から画面」を
+      引く作業）。絞るのは**入口を辿った結果**で、ページ自身に roles は書けない。
+      定義に出てこない役割名はエラー（黙って0枚にすると「何も開けない」に見える）。
+      入口が定義に無い単票（app: に入っていない定義）は絞れないので、別に言う。
 
   hatake diagram <file> [--out file.svg] [--role admin] [--json]
               [--format mermaid|dot] [--computed [--page <id>]]
@@ -522,6 +536,7 @@ const BOOLEAN_FLAGS = new Set([
   "cover",
   "compare",
   "require-intent",
+  "matrix",
   "dry-run",
   "if-changed",
   "help",
@@ -1367,21 +1382,61 @@ function explainRoles(source: string, flags: Args["flags"], io: CliIo): number {
     return 1;
   }
   const raw = document as Record<string, unknown>;
+
+  // 役割を横に並べた表（棚卸しで聞かれるのはこの形）。
+  if (flags.matrix === true) {
+    const table = roleMatrix(raw);
+    if (flags.json === true) {
+      io.out(JSON.stringify(table, null, 2));
+      return 0;
+    }
+    io.out(renderMatrix(table, roleTitleOf(raw)));
+    return 0;
+  }
+
   const inventory = roleInventory(raw);
   if (flags.json === true) {
     io.out(JSON.stringify(inventory, null, 2));
     return 0;
   }
   const access = appAccess(raw);
+  const sights = new Map(
+    roleSights(raw, inventory.map((use) => use.role)).map((one) => [
+      one.role,
+      sightSummary(one),
+    ]),
+  );
   io.out(
     renderRoles(
       inventory,
       roleTitleOf(raw),
       opensByRole(access),
       bulkByRole(raw, inventory.map((use) => use.role)),
+      sights,
+      unusedRoles(raw, flags, io),
     ),
   );
   return 0;
+}
+
+/**
+ * アプリが配るのに、定義がどこでも出し分けに使っていない役割。
+ *
+ * 逆向き（定義にしか無い役割）は `validate --registry` が警告で言う。こちらは**警告に
+ * しない**＝役割を配るのはアプリの決めごとで、定義が使っていないこと自体は間違いでは
+ * ない（出し分けの書き忘れの疑いはある）。一覧が無ければ何も言わない。
+ */
+function unusedRoles(
+  raw: Record<string, unknown>,
+  flags: Args["flags"],
+  io: CliIo,
+): string[] {
+  const registry = str(flags, "registry");
+  if (registry === undefined) return [];
+  const known = (JSON.parse(io.readFile(registry)) as DefinitionRegistry).roles;
+  if (known === undefined) return [];
+  const inDefinition = new Set(rolesInDocument(raw));
+  return known.filter((role) => role !== NOBODY && !inDefinition.has(role));
 }
 
 /**
@@ -1568,12 +1623,62 @@ function screenIndex(paths: string[], flags: Args["flags"], io: CliIo): number {
     found = [...found].sort((a, b) => sizeOf(b) - sizeOf(a));
   }
 
+  // その役割で開ける画面だけに絞る（棚卸しは「役割から画面」を引く作業）。
+  const role = str(flags, "role");
+  const unknownEntry: string[] = [];
+  if (role !== undefined) {
+    const openable = new Set<string>();
+    const known = new Set<string>();
+    for (const input of inputs) {
+      let raw: unknown;
+      try {
+        raw = parseYamlText(input.source);
+      } catch {
+        continue; // 読めない定義は buildIndex が「不完全」として言う。
+      }
+      if (typeof raw !== "object" || raw === null) continue;
+      const document = raw as Record<string, unknown>;
+      for (const one of rolesInDocument(document)) known.add(one);
+      for (const sight of roleSights(document, [role])) {
+        for (const page of sight.pages) {
+          // 入口が定義に無い（単票の定義・どこからも開けない画面）は、開ける・
+          // 開けないを言えない＝黙って落とさずに、そう言う。
+          if (page.entryUnknown) unknownEntry.push(page.page);
+          else if (page.canOpen) openable.add(page.page);
+        }
+      }
+    }
+    if (!known.has(role)) {
+      io.err(
+        `役割 "${role}" は、この定義のどこにも出てきません` +
+          `（出てくるのは ${[...known].sort().join(" / ") || "（1つもありません）"}）。`,
+      );
+      return 1;
+    }
+    found = found.filter((screen) => openable.has(screen.id));
+  }
+
   if (str(flags, "out") !== undefined) {
     output(JSON.stringify({ ...index, screens: found }, null, 2), flags, io);
   } else if (flags.json === true) {
     io.out(JSON.stringify({ ...index, screens: found }, null, 2));
   } else {
+    if (role !== undefined) {
+      io.out(
+        `${role} で開ける画面 … ${found.length} 枚` +
+          `（入口を辿った結果。ページ自身に roles は書けません）`,
+      );
+      io.out("");
+    }
     io.out(renderIndex(found, { showSize: str(flags, "by") === "size" }));
+  }
+  if (unknownEntry.length > 0) {
+    // 単票の定義（app が無い）は入口が分からない＝役割で絞れない。索引から静かに
+    // 落とすと「その役割では開けない」と読めてしまうので、別に言う。
+    io.err(
+      `入口が定義に無いので役割で絞れなかった画面が ${unknownEntry.length} 枚あります` +
+        `（app: の定義に入っていない単票）: ${[...new Set(unknownEntry)].join(" / ")}`,
+    );
   }
   if (index.unreadable.length === 0) return 0;
   io.err(`読めなかった定義が ${index.unreadable.length} 件あります（索引は不完全です）:`);

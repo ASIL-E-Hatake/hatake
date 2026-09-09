@@ -66,6 +66,8 @@ npx hatake fix page.yaml --todo              # 直せなかった分を「次の
 npx hatake advise page.yaml                  # 書き足したほうがいい所（助言。警告ではない）
 npx hatake advise page.yaml --rules team.json # 案件ごとの決めごとで見る
 npx hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
+npx hatake index app.yaml --role staff       # その役割で開ける画面だけ（棚卸し）
+npx hatake explain app.yaml --roles --matrix # 役割を横に並べた○×の表
 npx hatake diagram app.yaml --out app.svg    # 画面とメニューと遷移の図（権限も重なる）
 npx hatake diagram app.yaml --role admin     # その役割で通れる道だけ
 npx hatake probe app.yaml --base http://localhost:8080/api   # 宣言どおり返ってくるか、叩いて見る
