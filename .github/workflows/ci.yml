@@ -1991,7 +1991,9 @@ jobs:
           python3 - <<'PY' > /tmp/tutorial.yaml
           import io, re
           text = io.open("../docs/tutorial.ja.md", encoding="utf-8").read()
-          blocks = re.findall(r"```yaml\n(.*?)```", text, re.S)
+          # 囲みの言語のうしろには印が付くことがある（`no-check:<理由>`）。
+          # 言語の後ろは読み飛ばす＝印を足したら塊が取れなくなる、を起こさない。
+          blocks = re.findall(r"```yaml[^\n]*\n(.*?)```", text, re.S)
           # 通しで作る定義（明細の縦計を持つ1枚）。
           found = [b for b in blocks if "consumptionTax" in b]
           assert len(found) == 1, "定義の塊が1つに決まらない: %d" % len(found)
@@ -2061,7 +2063,12 @@ jobs:
           python3 - <<'PY' > /tmp/snippet.sh
           import io, yaml, re
           text = io.open("../docs/guide/pr-comment.ja.md", encoding="utf-8").read()
-          block = re.search(r"```yaml\n(.*?)```", text, re.S).group(1)
+          # 囲みの言語のうしろには印が付くことがある（`no-check:<理由>`）ので、
+          # 言語の後ろは読み飛ばす。取れなかったら**何が起きたか言って**落ちる
+          # （None に .group して AttributeError で落ちると、原因が読めない）。
+          found = re.search(r"```yaml[^\n]*\n(.*?)```", text, re.S)
+          assert found is not None, "pr-comment.ja.md から yaml の塊が取れませんでした"
+          block = found.group(1)
           steps = yaml.safe_load(block)["jobs"]["explain"]["steps"]
           run = next(s["run"] for s in steps if s.get("id") == "explain")
           io.open("/dev/stdout", "w", encoding="utf-8").write(run)
