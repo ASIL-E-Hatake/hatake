@@ -19,7 +19,7 @@ flutter pub get && flutter run -d chrome
 
 ⚠️ **まだ pub.dev 未公開**。当面は git 依存で入れる。`hatake_material` は `hatake` / `hatake_core` を hosted 制約で参照しているので、**公開までは overrides も必要**（公開後は `hatake_material: ^x.y.z` の1行だけで済む）。
 
-```yaml
+```yaml no-check:pubspec.yaml（hatake の定義ではない）
 # pubspec.yaml
 dependencies:
   flutter:

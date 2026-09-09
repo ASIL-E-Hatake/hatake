@@ -82,7 +82,11 @@ export function handleMessage(
         tools: tools.map((tool) => ({
           name: tool.name,
           title: tool.title,
-          description: tool.description,
+          // 説明に**そのまま呼べる例**を継ぎ足す。文で書いた例とは別に持たない＝
+          // 渡している例と CI が呼ぶ例が**同じ値**になる（古い例が残らない）。
+          description: `${tool.description}
+
+呼び方の例（そのまま渡せます）: ${JSON.stringify(tool.example)}`,
           inputSchema: tool.inputSchema,
         })),
       });

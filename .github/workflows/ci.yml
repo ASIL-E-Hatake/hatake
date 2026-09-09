@@ -1620,6 +1620,81 @@ jobs:
             console.log("scenario fixture: " + fixture.cases.length + " 件一致");
           '
 
+      - name: What the guides show, and what the tools publish
+        working-directory: typescript
+        run: |
+          set -e
+          # 1. 手引きに載せた定義とコマンドを機械が読む（定義は validate に、断片は
+          #    キー名を語彙と、コマンドと旗は --help と突き合わせる）。
+          node tool/check-docs.mjs > /tmp/docs.log
+          grep -q '食い違っていません' /tmp/docs.log
+          # **飛ばした所は必ず言う**（黙って飛ばすと、見ていないことが見えなくなる）。
+          grep -q '飛ばした: ' /tmp/docs.log
+          # 2. 落とせることを確かめる（通ることしか確かめない検査は、寝ていても気づけない）。
+          mkdir -p /tmp/rotten
+          cat > /tmp/rotten/stale.md <<'MD'
+          # 腐った手引き（試験用）
+
+          ```yaml
+          - { field: code, label: コード, sortble: true }
+          ```
+
+          ```bash
+          npx hatake explain page.yaml --rolez
+          npx hatake explane page.yaml
+          ```
+          MD
+          if node tool/check-docs.mjs /tmp/rotten/stale.md > /tmp/rotten.log 2>&1; then
+            echo "腐った手引きで通ってしまった"; cat /tmp/rotten.log; exit 1
+          fi
+          grep -q 'sortble（sortable の間違い？）' /tmp/rotten.log
+          grep -q -- '--rolez という旗は、--help に載っていません' /tmp/rotten.log
+          grep -q '"explane" というコマンドはありません' /tmp/rotten.log
+          # 理由を書かない no-check も落とす（黙って外せる印にはしない）。
+          cat > /tmp/rotten/silent.md <<'MD'
+          ```yaml no-check
+          jobs: { build: { runs-on: ubuntu-latest } }
+          ```
+          MD
+          if node tool/check-docs.mjs /tmp/rotten/silent.md > /tmp/silent.log 2>&1; then
+            echo "理由の無い no-check で通ってしまった"; cat /tmp/silent.log; exit 1
+          fi
+          grep -q 'no-check には理由を書いてください' /tmp/silent.log
+          # 3. MCP の道具に付けた**そのまま呼べる例**が、tools/list にも出ること。
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+            | node dist/mcp.js > /tmp/mcp-examples.log
+          grep -q '呼び方の例' /tmp/mcp-examples.log
+          # 例は**渡している値そのもの**（文で別に書いていない＝古い例が残らない）。
+          node -e '
+            const fs = require("fs");
+            const lines = fs.readFileSync("/tmp/mcp-examples.log", "utf8").trim().split("\n");
+            const list = JSON.parse(lines[lines.length - 1]).result.tools;
+            for (const tool of list) {
+              const found = /呼び方の例（そのまま渡せます）: (\{.*\})$/.exec(tool.description);
+              if (found === null) {
+                console.error(tool.name + " に呼び方の例が無い"); process.exit(1);
+              }
+              const example = JSON.parse(found[1]);
+              const declared = Object.keys(tool.inputSchema.properties ?? {});
+              for (const key of Object.keys(example)) {
+                if (!declared.includes(key)) {
+                  console.error(tool.name + " の例に宣言の無い引数: " + key);
+                  process.exit(1);
+                }
+              }
+              for (const key of tool.inputSchema.required ?? []) {
+                if (!(key in example)) {
+                  console.error(tool.name + " の例に必須の引数が無い: " + key);
+                  process.exit(1);
+                }
+              }
+            }
+            console.log(list.length + " 個の道具に、そのまま呼べる例が付いている");
+          '
+
       - name: Reading permissions from the role's side
         working-directory: typescript
         run: |
@@ -1916,7 +1991,9 @@ jobs:
           python3 - <<'PY' > /tmp/tutorial.yaml
           import io, re
           text = io.open("../docs/tutorial.ja.md", encoding="utf-8").read()
-          blocks = re.findall(r"```yaml\n(.*?)```", text, re.S)
+          # 囲みの言語のうしろには印が付くことがある（`no-check:<理由>`）。
+          # 言語の後ろは読み飛ばす＝印を足したら塊が取れなくなる、を起こさない。
+          blocks = re.findall(r"```yaml[^\n]*\n(.*?)```", text, re.S)
           # 通しで作る定義（明細の縦計を持つ1枚）。
           found = [b for b in blocks if "consumptionTax" in b]
           assert len(found) == 1, "定義の塊が1つに決まらない: %d" % len(found)
@@ -1986,7 +2063,12 @@ jobs:
           python3 - <<'PY' > /tmp/snippet.sh
           import io, yaml, re
           text = io.open("../docs/guide/pr-comment.ja.md", encoding="utf-8").read()
-          block = re.search(r"```yaml\n(.*?)```", text, re.S).group(1)
+          # 囲みの言語のうしろには印が付くことがある（`no-check:<理由>`）ので、
+          # 言語の後ろは読み飛ばす。取れなかったら**何が起きたか言って**落ちる
+          # （None に .group して AttributeError で落ちると、原因が読めない）。
+          found = re.search(r"```yaml[^\n]*\n(.*?)```", text, re.S)
+          assert found is not None, "pr-comment.ja.md から yaml の塊が取れませんでした"
+          block = found.group(1)
           steps = yaml.safe_load(block)["jobs"]["explain"]["steps"]
           run = next(s["run"] for s in steps if s.get("id") == "explain")
           io.open("/dev/stdout", "w", encoding="utf-8").write(run)

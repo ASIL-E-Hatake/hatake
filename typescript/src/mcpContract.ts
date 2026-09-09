@@ -11,6 +11,9 @@
 //   3. どの道具も、最初に渡す使い方（INSTRUCTIONS）のどこかで名前が出ているか
 //      （出てこない道具は「いつ使うか」が無いので、モデルは使わない）
 //   4. 引数に説明が付いているか（型だけでは何を渡すか決まらない）
+//   5. **そのまま呼べる例**（`example`）が在り、宣言と食い違っていないか
+//      （例は AI が写すもの。古い例は「引数名は合っているのに動かない」を作る。
+//      実際に呼んで通ることは `mcpExamples.test.ts` が見る＝ここは形だけ）
 //
 // 1 は `run` の中身を読んで確かめる。読み方が追えない形（`args` を丸ごと別の関数に渡す）
 // が混ざっていたら、**それも問題として報告する**＝「見たけれど分からなかった」を
@@ -123,6 +126,29 @@ export function checkToolContracts(tools: McpTool[], instructions: string): stri
         if (!declaredNames.includes(name)) {
           problems.push(
             `${tool.name}: run が "${name}" を読んでいるのに宣言が無い（誰も渡せない）。`,
+          );
+        }
+      }
+    }
+
+    // そのまま呼べる例。宣言と食い違っていたら、写した人が転ぶ。
+    const example = tool.example;
+    if (typeof example !== "object" || example === null) {
+      problems.push(
+        `${tool.name}: example が無い（AI は例を写すので、呼べる1組を必ず置く）。`,
+      );
+    } else {
+      for (const name of Object.keys(example)) {
+        if (!declaredNames.includes(name)) {
+          problems.push(
+            `${tool.name}: example の "${name}" は宣言に無い引数（渡しても捨てられる）。`,
+          );
+        }
+      }
+      for (const name of (tool.inputSchema.required ?? []) as string[]) {
+        if (!(name in example)) {
+          problems.push(
+            `${tool.name}: example に必須の "${name}" が無い（そのままでは呼べない）。`,
           );
         }
       }
