@@ -25,7 +25,7 @@ diff は機械の言葉で出る。
 
 `.github/workflows/explain-on-pr.yml` として置く。定義の場所（`DEFS`）だけ直せば動く。
 
-```yaml
+```yaml no-check:GitHub Actions のワークフロー
 name: 画面の変化を PR に書く
 
 on:
@@ -122,7 +122,7 @@ jobs:
 
 説明は**読む**ための道具なので、**止める**道具と組にする。
 
-```yaml
+```yaml no-check:GitHub Actions のワークフロー（手順の断片）
       - name: 壊す変更なら落とす
         run: npx hatake diff --git "$BASE...HEAD" "$file" --caution-as-error
 
@@ -150,7 +150,7 @@ npx hatake explain "$file" --lang en --markdown > body.md
 fork からの `pull_request` では `GITHUB_TOKEN` に書き込み権限が付かない（GitHub の仕様）。
 コメントは貼れないので、**説明をログに出すだけ**にする。
 
-```yaml
+```yaml no-check:GitHub Actions のワークフロー（手順の断片）
       - name: 説明をログに出す（fork からの PR）
         if: github.event.pull_request.head.repo.full_name != github.repository
         run: cat body.md

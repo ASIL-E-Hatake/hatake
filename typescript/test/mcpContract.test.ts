@@ -28,6 +28,7 @@ describe("道具の説明と実物が合っているか", () => {
             },
             required: ["source"],
           },
+          example: { source: "page: {}" },
           run(args) {
             return String(args.source);
           },
@@ -48,6 +49,8 @@ describe("道具の説明と実物が合っているか", () => {
           title: "偽の道具",
           description: "試験用。",
           inputSchema: { type: "object", properties: {}, required: [] },
+          // 宣言が空なので、例も空（宣言に無い引数を書くと別の問題が増える）。
+          example: {},
           run(args) {
             return String(args.source);
           },
@@ -68,6 +71,7 @@ describe("道具の説明と実物が合っているか", () => {
           title: "偽の道具",
           description: "先に hatake_validte に通すこと。",
           inputSchema: { type: "object", properties: {} },
+          example: {},
           run() {
             return "";
           },
@@ -86,6 +90,7 @@ describe("道具の説明と実物が合っているか", () => {
           title: "偽の道具",
           description: "試験用。",
           inputSchema: { type: "object", properties: {} },
+          example: {},
           run() {
             return "";
           },

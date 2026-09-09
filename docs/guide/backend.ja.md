@@ -323,7 +323,7 @@ npx hatake attack app.yaml --all-roles --login login.json --base "$BASE" \
 
 毎晩回す形（GitHub Actions）。前の晩の結果は artifact で持ち回ります。
 
-```yaml
+```yaml no-check:GitHub Actions のワークフロー
 name: nightly-probe
 on:
   schedule: [{ cron: "0 18 * * *" }]   # UTC

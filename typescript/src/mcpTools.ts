@@ -94,6 +94,16 @@ export interface McpTool {
   title: string;
   description: string;
   inputSchema: Record<string, unknown>;
+  /**
+   * **そのまま呼べる引数**（1組）。AI は例を写して呼ぶので、例が古いと最初の1回で転ぶ。
+   *
+   * `description` の中に文で書いた例は、機械には読めない（＝古くなっても誰も気づかない）。
+   * ここに置いた1組は **CI が実際に呼ぶ**（[checkToolContracts] が形を、
+   * `mcpExamples.test.ts` が「呼べること」を見る）。だから、値の形が変わったら落ちる。
+   *
+   * 自己完結させること（ファイルを読ませない・サーバを叩かせない）。
+   */
+  example: Record<string, unknown>;
   run(args: Record<string, unknown>): string;
 }
 
@@ -103,6 +113,103 @@ export interface McpToolOptions {
   /** ファイル読み。テストから差し替えられるように受け取る。 */
   readFile(path: string): string;
 }
+
+/**
+ * 例に使う定義。**インラインで持つ**（例はそのまま呼べることが値打ちなので、
+ * ファイルやサーバに依らせない）。ここが古くなれば `mcpExamples.test.ts` が落ちる。
+ */
+const EXAMPLE_CRUD = `page:
+  type: crud
+  id: customer_master
+  title: 顧客マスタ
+  repository: customerRepository
+  key: id
+  table:
+    columns:
+      - { field: code, label: コード, sortable: true }
+      - { field: name, label: 顧客名 }
+  form:
+    sections:
+      - fields:
+          - { field: code, label: コード, required: true }
+          - { field: name, label: 顧客名, required: true }
+  actions:
+    - { id: create, type: create, label: 新規登録 }
+`;
+
+/** 金額の列に見せ方が書いていない一覧（助言が1件出る形）。 */
+const EXAMPLE_SEARCH = `page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+      - { field: amount, label: 金額, type: number }
+`;
+
+/** 明細と計算項目のある入力画面（動かす・API の形・紙のもと）。 */
+const EXAMPLE_FORM = `page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号, required: true, normalize: [trim] }
+          - { field: customer, label: 顧客, required: true }
+          - field: lines
+            label: 明細
+            type: subTable
+            required: true
+            columns:
+              - { field: item, label: 品名 }
+              - { field: qty, label: 数量, type: number }
+            fields:
+              - { field: item, label: 品名, required: true }
+              - { field: qty, label: 数量, type: number, required: true, validators: [{ type: min, value: 1 }] }
+              - { field: price, label: 単価, type: number, required: true }
+              - { field: amount, label: 金額, computed: { op: product, fields: [qty, price] } }
+          - { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amount } }
+`;
+
+/** 帳票（刷ったらどう見えるか）。 */
+const EXAMPLE_REPORT = `page:
+  type: report
+  id: sales_report
+  title: 売上明細表
+  repository: orderRepository
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号, width: 120 }
+      - { field: customer, label: 顧客, width: 160 }
+      - { field: amount, label: 金額, type: number, width: 120, format: currency, config: { symbol: "¥" } }
+  report:
+    paper: { size: A4, orientation: portrait }
+    rowsPerPage: 20
+    totals:
+      - { field: amount, aggregate: sum }
+`;
+
+/** 綴り違いが1つある定義（直し方が一意なので fix が直せる）。 */
+const EXAMPLE_TYPO = `page:
+  type: crud
+  id: customer_master
+  title: 顧客マスタ
+  repository: customerRepository
+  keyy: id
+  table:
+    columns:
+      - { field: code, label: コード }
+  form:
+    sections:
+      - fields:
+          - { field: code, label: コード, required: true }
+`;
 
 /** クライアントに最初に渡す使い方。順番を書いておくと迷わない。 */
 export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で作るフレームワーク。
@@ -260,6 +367,10 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           },
         },
       },
+      example: {
+        instruction: "## 画面でやること\n- 探す: 顧客名\n- 見る: コード・顧客名\n",
+        source: EXAMPLE_CRUD,
+      },
       run(args) {
         const instruction = str(args, "instruction");
         const definition = str(args, "source");
@@ -333,6 +444,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           },
         },
       },
+      example: { name: "rowsPerPage" },
       run(args) {
         // 差し込みはスキーマに書いていない取り決め（埋める側の約束）なので、
         // リファレンスとは別の答えとして返す。
@@ -385,6 +497,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           },
         },
       },
+      example: { query: "一覧" },
       run(args) {
         const file = str(args, "file");
         if (file !== undefined) {
@@ -440,6 +553,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["source"],
       },
+      example: { source: EXAMPLE_CRUD },
       run(args) {
         const source = required(args, "source");
         const strict = args.strict !== false;
@@ -517,6 +631,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["source"],
       },
+      example: { source: EXAMPLE_SEARCH },
       run(args) {
         const source = required(args, "source");
         const document = parseYamlText(source);
@@ -609,6 +724,10 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["source", "picks"],
       },
+      example: {
+        source: EXAMPLE_SEARCH,
+        picks: [{ rule: "money-without-format" }],
+      },
       run(args) {
         const source = required(args, "source");
         const document = parseYamlText(source);
@@ -678,6 +797,12 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["kind", "id", "title"],
       },
+      example: {
+        kind: "crud",
+        id: "customer_master",
+        title: "顧客マスタ",
+        repository: "customerRepository",
+      },
       run(args) {
         return scaffold(required(args, "kind"), {
           id: required(args, "id"),
@@ -706,6 +831,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           lang: { type: "string", enum: ["ja", "en"] },
         },
       },
+      example: { query: "groupBy" },
       run(args) {
         const found = filterPitfalls(pitfalls(), str(args, "query"));
         if (found.length === 0) {
@@ -748,6 +874,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["before", "after"],
       },
+      example: { before: EXAMPLE_CRUD, after: EXAMPLE_SEARCH },
       run(args) {
         const documentOf = (source: string): Record<string, unknown> => {
           // 書き間違いを差分として見せないよう、strict に通してから素の document を使う。
@@ -828,6 +955,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["source"],
       },
+      example: { source: EXAMPLE_CRUD },
       run(args) {
         const source = required(args, "source");
         const before = str(args, "before");
@@ -901,6 +1029,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["source"],
       },
+      example: { source: EXAMPLE_TYPO },
       run(args) {
         const registry =
           typeof args.registry === "object" && args.registry !== null
@@ -969,6 +1098,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["source"],
       },
+      example: { source: EXAMPLE_FORM, draft: true },
       run(args) {
         const source = required(args, "source");
         const page = scenarioPage(source, str(args, "page"));
@@ -1056,6 +1186,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["source"],
       },
+      example: { source: EXAMPLE_REPORT },
       run(args) {
         const source = required(args, "source");
         const wanted = str(args, "page");
@@ -1122,6 +1253,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["source"],
       },
+      example: { source: EXAMPLE_CRUD },
       run(args) {
         const result = minimizeSource(required(args, "source"), reference());
         return pretty({
@@ -1150,6 +1282,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["source"],
       },
+      example: { source: EXAMPLE_CRUD },
       run(args) {
         const document = parseYamlText(required(args, "source"));
         const refs =
@@ -1197,6 +1330,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["source"],
       },
+      example: { source: EXAMPLE_CRUD, baseUrl: "/api" },
       run(args) {
         const document = parseYamlText(required(args, "source"));
         // 配列や素の値は定義ではない（`page:` か `app:` が一番外に要る）。
@@ -1249,6 +1383,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         },
         required: ["source", "format"],
       },
+      example: { source: EXAMPLE_FORM, format: "openapi" },
       run(args) {
         const page = parsePageYaml(required(args, "source"), { strict: true });
         const spec = deriveDto(page);
