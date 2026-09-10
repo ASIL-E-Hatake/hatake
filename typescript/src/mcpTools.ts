@@ -51,6 +51,9 @@ import {
 import { type FailureCatalog } from "./failures.js";
 import { findWarnings } from "./warnings.js";
 import { ADVICE_NOTE, findAdvice, unwritableAdvice } from "./advise.js";
+import { parseProject } from "./project.js";
+import { findProjectAdvice } from "./projectAdvise.js";
+import { projectLines } from "./projectExplain.js";
 import { type AdvicePick, applyAdvice } from "./adviseApply.js";
 import { withDrafts } from "./adviseDraft.js";
 import { DEFAULT_RULES, parseAdviceRules } from "./adviseRules.js";
@@ -211,11 +214,32 @@ const EXAMPLE_TYPO = `page:
           - { field: code, label: コード, required: true }
 `;
 
+/** 案件の前書き（読み返しと、名前・用語の突き合わせに使う形）。 */
+const EXAMPLE_PROJECT = `project_version: "1.0"
+system:
+  what: 卸売の受注。営業が電話で受けた注文を入れて、出荷指示まで出す。
+  users:
+    - 営業（10人・PC）
+  premises:
+    - 商品マスタは購買部の別システムが正。こちらからは直せない。
+glossary:
+  - term: 取引先
+    field: partnerCode
+    avoid: [顧客, 得意先]
+naming:
+  page: snake_case
+  field: camelCase
+`;
+
 /** クライアントに最初に渡す使い方。順番を書いておくと迷わない。 */
 export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で作るフレームワーク。
 このサーバを使えば、リポジトリの仕様書を読まなくても正しい定義が書ける。
 
 推奨の順番:
+0. **案件の前書き（hatake.project.yaml）が在れば、まず hatake_project**。
+   この案件は何のシステムか・誰が使うか・**何ができないか**・業務の言葉と項目名の
+   対応・名前の決めごとが1枚に入っている。読んでから書けば、用語の揺れと命名の
+   直しが最初から起きない（前書きは人が書くもので、定義から起こしてはいけない）
 1. **人から指示文をもらったら、まず hatake_intent**（言われたことを1枚にする）。
    1行が1件の下書きになり、text は言われたまま・全部 source: ai-draft の印つき
    ＝人が読んで confirmed: true にするまで「AI がこう読んだ」以上のことは主張しない。
@@ -232,6 +256,8 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
    そのあと hatake_explain で読み返す（**書いたものが意図どおりか**は、警告では分からない）
    さらに hatake_advise を1回（**書いていない所**は検証に出てこない＝並べ替えできない一覧・
    誰でも消せる画面・確認の無い一括。好みなので直すかは業務の判断）
+   前書きが在れば hatake_advise に project も渡す（案件の名前の決めごと・用語辞書との
+   食い違いが project- で始まる助言に出る）
    当てると決めたものは hatake_apply_advice に渡す（**書く場所は機械のほうが正確**。
    値＝確認の文・件数・見せる相手は業務の決めごとなので、こちらで決めて value に渡す。
    助言に draft が付いていれば、中身を見てそのまま value に渡してよい）
@@ -328,6 +354,37 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
   const pitfalls = () => readJson(PITFALLS_FILE) as PitfallCatalog;
 
   return [
+    {
+      name: "hatake_project",
+      title: "案件の前書きを読む（何のシステムか・用語・名前の決めごと）",
+      description:
+        "**定義を書く前に、案件の前書き（hatake.project.yaml）を読む。**" +
+        "この案件は何のシステムで、誰が使い、**何ができないか**（業務の前提）、" +
+        "業務の言葉と項目名の対応（用語辞書）、名前の決めごと（画面 id は snake_case・" +
+        "項目名は camelCase・`type: date` の項目は `〜Date` で終わる…）が1枚に入っている。" +
+        "**前書きは人が書く**（定義から起こさない＝起こせば必ず一致して読む値打ちが無くなる）。" +
+        "読んだら、その言葉と名前で定義を書く＝用語辞書に載っている業務語は" +
+        "**そこに書いてある項目名**を使い、載っていない言葉は勝手に決めない。" +
+        "**機械が見る所は限られる**（用語と名前だけ。システムの説明と業務の前提は誰も" +
+        "突き合わせていない＝読むのはあなた）。答えの最後にそれを書いて返す。" +
+        "書いたあとは hatake_advise に project も渡すと、決めごととの食い違いが出る。" +
+        "ブランチ名やコミット規約はここには入っていない（定義に現れないものは持たない）。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description:
+              "案件の前書きの中身そのもの（hatake.project.yaml。ファイルパスではない）。",
+          },
+        },
+        required: ["source"],
+      },
+      example: { source: EXAMPLE_PROJECT },
+      run(args) {
+        return projectLines(parseProject(required(args, "source"))).join("\n");
+      },
+    },
     {
       name: "hatake_intent",
       title: "言われたことを1枚にして、定義と突き合わせる",
@@ -628,6 +685,13 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
               "options（組み込みの規則の目盛り）/ require（この場所には必ずこのキーを書く）。" +
               "知らないキー・知らない規則名はエラーにする（設定が黙って効かないのを防ぐため）。",
           },
+          project: {
+            type: "string",
+            description:
+              "案件の前書き（hatake.project.yaml の中身）。渡すと**名前の決めごとと" +
+              "用語辞書**も突き合わせる（project- で始まる助言）。これも助言＝名前と" +
+              "言葉は好みなので、直すかは業務の判断。",
+          },
         },
         required: ["source"],
       },
@@ -643,9 +707,15 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           typeof args.rules === "object" && args.rules !== null
             ? parseAdviceRules(args.rules)
             : DEFAULT_RULES;
+        const preamble = str(args, "project");
         const raw = document as Record<string, unknown>;
         // 書く値の下書きも添える（「何を足すか」まで言えても、値で止まるので）。
-        const all = withDrafts(raw, findAdvice(raw, rules));
+        const all = withDrafts(raw, [
+          ...findAdvice(raw, rules),
+          ...(preamble === undefined
+            ? []
+            : findProjectAdvice(raw, parseProject(preamble), rules)),
+        ]);
         // 物差しが「その場所に書けないキー」を勧めていたら、助言を出さずに止める。
         // 間違いを教える助言は、無いほうがまし（CLI と同じ判断）。
         const bad = unwritableAdvice(all, reference());
@@ -794,6 +864,13 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             type: "string",
             description: "Repository キー。省略すると id から推測する。",
           },
+          project: {
+            type: "string",
+            description:
+              "案件の前書き（hatake.project.yaml の中身）。渡すと**案件の名前の" +
+              "決めごとの形**で名前を出す（DSL のキーは触らない）。id は渡した字を" +
+              "そのまま使う。",
+          },
         },
         required: ["kind", "id", "title"],
       },
@@ -804,10 +881,14 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         repository: "customerRepository",
       },
       run(args) {
+        const preamble = str(args, "project");
         return scaffold(required(args, "kind"), {
           id: required(args, "id"),
           title: required(args, "title"),
           repository: str(args, "repository"),
+          ...(preamble === undefined
+            ? {}
+            : { naming: parseProject(preamble).naming }),
         });
       },
     },

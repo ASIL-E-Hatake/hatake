@@ -592,9 +592,18 @@ export function unwritableAdvice(
  * 決めごとを読むと、話が噛み合わない（「hatake がこう言っている」ではなく「うちがこう
  * 決めた」なので）。
  */
+/** 報告に添える「どの物差し・どの前書きで見たか」。 */
+export interface AdviceRender {
+  /** `--rules` に渡したファイル名。 */
+  rulesFrom?: string;
+  rules?: AdviceRules;
+  /** 読んだ案件の前書きのファイル名（`--project` か、定義の隣）。 */
+  projectFrom?: string;
+}
+
 export function renderAdvice(
   advice: Advice[],
-  options: { rulesFrom?: string; rules?: AdviceRules } = {},
+  options: AdviceRender = {},
 ): string {
   const ruler = rulerNote(options);
   if (advice.length === 0) {
@@ -624,21 +633,32 @@ export function renderAdvice(
 }
 
 /** どの物差しで見たか（渡していなければ何も言わない）。 */
-function rulerNote(options: { rulesFrom?: string; rules?: AdviceRules }): string[] {
-  if (options.rulesFrom === undefined) return [];
-  const rules = options.rules ?? DEFAULT_RULES;
-  const parts: string[] = [];
-  if (rules.off.length > 0) parts.push(`止めた規則 ${rules.off.length} 件`);
-  if (rules.require.length > 0) {
-    parts.push(`案件の決めごと ${rules.require.length} 件`);
+function rulerNote(options: AdviceRender): string[] {
+  const out: string[] = [];
+  if (options.rulesFrom !== undefined) {
+    const rules = options.rules ?? DEFAULT_RULES;
+    const parts: string[] = [];
+    if (rules.off.length > 0) parts.push(`止めた規則 ${rules.off.length} 件`);
+    if (rules.require.length > 0) {
+      parts.push(`案件の決めごと ${rules.require.length} 件`);
+    }
+    const tuned = Object.keys(rules.options).length;
+    if (tuned > 0) parts.push(`目盛りを変えた規則 ${tuned} 件`);
+    out.push(
+      `※ 物差しは ${options.rulesFrom} を使いました` +
+        `（${parts.length === 0 ? "組み込みのまま" : parts.join(" / ")}）。`,
+    );
   }
-  const tuned = Object.keys(rules.options).length;
-  if (tuned > 0) parts.push(`目盛りを変えた規則 ${tuned} 件`);
-  return [
-    `※ 物差しは ${options.rulesFrom} を使いました` +
-      `（${parts.length === 0 ? "組み込みのまま" : parts.join(" / ")}）。`,
-    "",
-  ];
+  // 前書きから来た助言（`project-` で始まる規則）は「hatake がこう言っている」ではなく
+  // 「うちがこう決めた」なので、どの1枚から来たかを言う。
+  if (options.projectFrom !== undefined) {
+    out.push(
+      `※ 案件の前書きは ${options.projectFrom} を読みました` +
+        "（`project-` で始まる助言はそこの決めごとです）。",
+    );
+  }
+  if (out.length > 0) out.push("");
+  return out;
 }
 
 /** 助言の位置づけは毎回書く。読み手が警告と混同すると、警告の信頼が落ちる。 */

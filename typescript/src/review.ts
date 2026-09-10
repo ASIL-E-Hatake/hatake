@@ -10,7 +10,12 @@
 // app の1枚だけを読むときは、助言も**その画面のものだけ**に絞る（他の画面の指摘が混じると、
 // 目の前の画面の話だと読み違える）。
 
-import { type Advice, ADVICE_NOTE, findAdvice } from "./advise.js";
+import {
+  type Advice,
+  ADVICE_NOTE,
+  type AdviceRender,
+  findAdvice,
+} from "./advise.js";
 import { withDrafts } from "./adviseDraft.js";
 import { type AdviceRules, DEFAULT_RULES } from "./adviseRules.js";
 import { type ExplainDocument, renderExplain } from "./explain.js";
@@ -34,12 +39,25 @@ export interface ReviewDocument {
  */
 export function reviewSource(
   source: string,
-  options: { page?: string; rules?: AdviceRules } = {},
+  options: {
+    page?: string;
+    rules?: AdviceRules;
+    /**
+     * 組み込み以外の助言（いまは案件の前書きから来るもの）。
+     *
+     * ここで受けるのは、**レビューの1枚に載らない助言を作らない**ため。`advise` では
+     * 出るのに `--review` では出ないと、1枚を読んだ人は「言われていない」と読む。
+     */
+    extra?: Advice[];
+  } = {},
 ): ReviewDocument {
   const explain = explainSource(source, { page: options.page });
   const raw = rawDocument(source);
   // 下書きも添える（レビューする人が「じゃあ何を書くのか」で止まらないように）。
-  const all = withDrafts(raw, findAdvice(raw, options.rules ?? DEFAULT_RULES));
+  const all = withDrafts(raw, [
+    ...findAdvice(raw, options.rules ?? DEFAULT_RULES),
+    ...(options.extra ?? []),
+  ]);
   const advice =
     options.page === undefined
       ? all
@@ -54,7 +72,7 @@ export function reviewSource(
 /** 人が読む形。説明の続きに助言の節を足すだけ（見た目を変えない）。 */
 export function renderReview(
   review: ReviewDocument,
-  options: { rulesFrom?: string; rules?: AdviceRules } = {},
+  options: AdviceRender = {},
 ): string {
   const out = [renderExplain(review.explain), ""];
   out.push("## 書き足したほうがいい所（助言）");
@@ -75,6 +93,12 @@ export function renderReview(
     out.push(
       `※ 助言の物差しは ${options.rulesFrom} を使いました` +
         `（止めた規則 ${rules.off.length} 件 / 案件の決めごと ${rules.require.length} 件）。`,
+    );
+  }
+  if (options.projectFrom !== undefined) {
+    out.push(
+      `※ 案件の前書きは ${options.projectFrom} を読みました` +
+        "（project- で始まる助言はそこの決めごとです）。",
     );
   }
   out.push(ADVICE_NOTE);

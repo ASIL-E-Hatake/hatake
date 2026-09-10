@@ -44,7 +44,12 @@ import {
 import { draftScenario } from "./scenarioDraft.js";
 import { coverScenario } from "./scenarioCover.js";
 import { renderExplain } from "./explain.js";
-import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
+import {
+  explainSource,
+  isAppSource,
+  parseAppSource,
+  rawDocument,
+} from "./explainSource.js";
 import {
   describeChange,
   explainDiffSources,
@@ -170,6 +175,14 @@ import {
   parseIntent,
   type IntentDocument,
 } from "./intent.js";
+import {
+  matchesShape,
+  parseProject,
+  ProjectParseError,
+  type ProjectDocument,
+} from "./project.js";
+import { findProjectAdvice } from "./projectAdvise.js";
+import { projectLines } from "./projectExplain.js";
 import { draftIntent, intentYaml } from "./intentDraft.js";
 import { hardFindings, traceIntent, traceLines } from "./trace.js";
 import { toJavaRecords, toTypeScript } from "./types.js";
@@ -206,6 +219,18 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --cover は「まだ試していない所」を定義の分岐から挙げる（落とさない）。
       プラグインの計算・検証は**この道具には無い**ので、値を作らずにそう言う
       （アプリの試験で回す）。
+
+  hatake project [<前書き>] [--json]
+      **案件の前書き**（この案件は何のシステムか・使う人・業務の前提・用語・名前の
+      決めごと）を読み返す。省略すると hatake.project.yaml を探す。
+      前書きは**人が書く**（定義から起こさない＝起こせば必ず一致して読む値打ちが
+      無くなる）。定義を書く前に AI に読ませる1枚で、hatake advise --project と
+      hatake new --project がこれを見る。
+      **機械が見る所と見ない所を毎回言う**＝用語（glossary）と名前（naming）は
+      定義と突き合わせるが、システムの説明と業務の前提は**誰も突き合わせていない**
+      （人と AI が読むだけ）。
+      ブランチ名やコミット規約はここに書かない（定義に現れないので機械が
+      突き合わせられず、必ず腐る。そちらは AGENTS.md / CLAUDE.md の担当）。
 
   hatake intent --draft --from <指示文> [--definition <定義>] [--page <id>]
                         [--out file] [--json]
@@ -250,11 +275,14 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       英語は説明だけ＝--diff と --review はまだ日本語なので、--lang en を渡すと落ちる
       （半分だけ英語の文書を出すほうが困る）。
 
-  hatake explain <file> --review [--page <id>] [--rules team.json] [--json] [--markdown]
+  hatake explain <file> --review [--page <id>] [--rules team.json]
+                        [--project hatake.project.yaml] [--json] [--markdown]
       レビュー用の1枚。説明（何ができて、何ができないか）と助言（書き足したほうが
       いい所）をまとめて出す。レビューする人が見る紙は1枚がいいので、道具を2回
       叩かせない。助言は最後の節にまとめ、警告ではないと毎回書く（終了コードは
       変えない）。--page を渡すと、助言もその画面のものだけに絞る。
+      案件の前書きが在れば**名前と用語の決めごともこの1枚に載る**（advise で出るのに
+      ここで出ないと、1枚を読んだ人は「言われていない」と読む）。
 
   hatake explain --diff <old file> <new file> [--json] [--markdown] [--if-changed]
   hatake explain --diff --git <range> <file> [--json] [--markdown] [--if-changed]
@@ -299,7 +327,8 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --registry を渡すと「**アプリが配るのに、定義が出し分けに使っていない役割**」も
       言う（消せとは言わない＝出し分けの書き忘れの疑いという事実だけ）。
 
-  hatake advise <file> [--rules team.json] [--apply picks.json] [--write] [--json]
+  hatake advise <file> [--rules team.json] [--project hatake.project.yaml]
+               [--apply picks.json] [--write] [--json]
       **書き足したほうがいい所**を挙げる（並べ替えできる列が無い・絞り込みが無い・
       誰でも消せる・金額に桁区切りが無い…）。これは助言で警告ではないので、
       終了コードは変えない。「書いたのに効かない」は validate の担当。
@@ -313,6 +342,10 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --rules で**物差しを渡せる**（合わない規則を切る・目盛りを変える・案件の
       決めごと「この場所には必ずこのキーを書く」を足す）。知らないキーや知らない
       規則名を書いた物差しは、黙って無視せずエラーにする。
+      --project で**案件の前書き**を渡すと、**名前の決めごとと用語辞書**も突き合わせる
+      （形が違う名前・型に合わない終わり方・辞書と違う項目名・呼ばないことにした言葉）。
+      定義の隣に hatake.project.yaml があれば渡さなくても読む。これも助言＝
+      名前と言葉は好みなので、終了コードは変えない。
 
   hatake index <path...> [--find "顧客 検索"] [--by size] [--role admin]
               [--json] [--out file]
@@ -476,7 +509,12 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       ネイティブ型を出す。--out でファイルに書く（省略時は標準出力）。
 
   hatake new <kind> --id <id> --title <title> [--repository <key>] [--out file]
+             [--project hatake.project.yaml]
       ページ定義の雛形を出す。kind: ${scaffoldKinds.join(" | ")}
+      --project を渡すと**案件の名前の決めごとの形**で名前を出す（DSL のキーは
+      触らない）。隣に hatake.project.yaml があれば渡さなくても読む。
+      **渡した --id は書き換えない**（頼んだ字と違うものが出るほうが困る）。決めごとに
+      合っていなければそう言うだけ。
 
   hatake reference [name] [--page-kind <kind>] [--out file]
       機械可読な DSL リファレンス（JSON）。name にノード名・キー名・ページ種別を
@@ -605,6 +643,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return trace(positional, flags, io);
       case "intent":
         return intent(positional, flags, io);
+      case "project":
+        return projectCommand(positional, flags, io);
       case "dto":
         return emit(positional, io, (page) =>
           JSON.stringify(deriveDto(page), null, 2),
@@ -977,7 +1017,7 @@ function explain(files: string[], flags: Args["flags"], io: CliIo): number {
   const source = io.readFile(files[0]);
   const wanted = str(flags, "page");
   if (flags.roles === true) return explainRoles(source, flags, io);
-  if (flags.review === true) return review(source, wanted, flags, io);
+  if (flags.review === true) return review(source, wanted, flags, io, files[0]);
   const document =
     flags.brief === true
       ? briefSource(source, { page: wanted, lang })
@@ -1461,10 +1501,17 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
   if (picks !== undefined) {
     return applyPicked(files[0], source, picks, rules, flags, io);
   }
+  const project = projectOf(files[0], flags, io);
   // 下書きも添える（「何を足すか」までは言えても、値で止まるので）。
   const advice = withDrafts(
     document as Record<string, unknown>,
-    findAdvice(document as Record<string, unknown>, rules),
+    [
+      ...findAdvice(document as Record<string, unknown>, rules),
+      // 案件の決めごと（名前・用語）は、前書きが在るときだけ。
+      ...(project === undefined
+        ? []
+        : findProjectAdvice(document as Record<string, unknown>, project, rules)),
+    ],
   );
   // 物差しが「その場所に書けないキー」を勧めていたら、助言を出す前に止める。
   // 間違いを教える助言は、無いほうがまし。
@@ -1474,7 +1521,15 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
     io.out(JSON.stringify(advice, null, 2));
     return 0;
   }
-  io.out(renderAdvice(advice, { rulesFrom: str(flags, "rules"), rules }));
+  io.out(
+    renderAdvice(advice, {
+      rulesFrom: str(flags, "rules"),
+      rules,
+      ...(project === undefined
+        ? {}
+        : { projectFrom: projectPath(files[0], flags) }),
+    }),
+  );
   return 0;
 }
 
@@ -1499,6 +1554,26 @@ function applyPicked(
       : typeof given === "object" && given !== null
         ? (given as { picks?: unknown }).picks
         : undefined;
+  // 名前と言葉の助言は当てない。項目名を書き換えると、その名前で話している所
+  // （Repository・API・試験・別の画面の遷移）まで一緒に直さないと壊れる＝機械が
+  // その場に書けるものではない。「当てられない」と言うほうが安全。
+  if (
+    Array.isArray(picks) &&
+    picks.some(
+      (one) =>
+        typeof one === "object" &&
+        one !== null &&
+        typeof (one as { rule?: unknown }).rule === "string" &&
+        (one as { rule: string }).rule.startsWith("project-"),
+    )
+  ) {
+    io.err(
+      "案件の決めごと（project- で始まる助言）は --apply で当てられません。" +
+        "名前を変えると、その名前で話している所（Repository・API・試験・遷移）まで" +
+        "一緒に直す必要があるので、機械が定義だけ書き換えると壊れます。",
+    );
+    return 1;
+  }
   if (!Array.isArray(picks) || picks.length === 0) {
     io.err(
       '当てる助言を並べてください（[{ "rule": "money-without-format" }] か ' +
@@ -1579,15 +1654,30 @@ function review(
   page: string | undefined,
   flags: Args["flags"],
   io: CliIo,
+  file?: string,
 ): number {
   const rules = loadAdviceRules(flags, io);
-  const document = reviewSource(source, { page, rules });
+  // 案件の決めごともこの1枚に載せる（`advise` では出るのに `--review` では出ないと、
+  // 1枚を読んだ人は「言われていない」と読む）。
+  const project = projectOf(file, flags, io);
+  const raw = rawDocument(source);
+  const document = reviewSource(source, {
+    page,
+    rules,
+    ...(project === undefined
+      ? {}
+      : { extra: findProjectAdvice(raw, project, rules) }),
+  });
   if (unwritable(document.advice, flags, io) > 0) return 1;
   if (flags.json === true) {
     io.out(JSON.stringify(document, null, 2));
     return 0;
   }
-  const options = { rulesFrom: str(flags, "rules"), rules };
+  const options = {
+    rulesFrom: str(flags, "rules"),
+    rules,
+    ...(project === undefined ? {} : { projectFrom: projectPath(file, flags) }),
+  };
   io.out(
     flags.markdown === true
       ? reviewMarkdown(document, options)
@@ -1997,6 +2087,65 @@ function intentOf(
     // 隣に無いのは普通のこと（意図を書いていない定義）。読めたのに**壊れている**
     // ときは黙って無視しない＝拾わなかったのか壊れていたのかが分からなくなる。
     if (error instanceof IntentParseError) throw error;
+    return undefined;
+  }
+}
+
+/** 案件の前書きの既定の名前（定義の隣に置く）。 */
+const PROJECT_FILE = "hatake.project.yaml";
+
+/** どこの前書きを読む（読んだ）か。報告に「どの1枚の決めごとか」を書くのに使う。 */
+const projectPath = (near: string | undefined, flags: Args["flags"]): string =>
+  str(flags, "project") ??
+  (near === undefined ? PROJECT_FILE : join(dirname(near), PROJECT_FILE));
+
+/**
+ * 案件の前書きを読み返す（`project`）。
+ */
+function projectCommand(
+  positional: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const found =
+    positional[0] === undefined
+      ? projectOf(undefined, flags, io)
+      : parseProject(io.readFile(positional[0]));
+  if (found === undefined) {
+    io.err(
+      `案件の前書きが見つかりません（${PROJECT_FILE} を置くか、ファイル名を` +
+        "渡してください）。書き方は docs/guide/project.ja.md。",
+    );
+    return 1;
+  }
+  if (flags.json === true) {
+    io.out(JSON.stringify(found, null, 2));
+    return 0;
+  }
+  io.out(projectLines(found).join("\n"));
+  return 0;
+}
+
+/**
+ * 案件の前書きを探す（明示 → 定義の隣の `hatake.project.yaml`）。
+ *
+ * 隣を黙って拾うのは意図の1枚（[intentOf]）と `hatake-registry.json` と同じ考え
+ * （渡し忘れで「決めごとなし」と言うより、在るものを読むほうが嘘が少ない）。
+ */
+function projectOf(
+  near: string | undefined,
+  flags: Args["flags"],
+  io: CliIo,
+): ProjectDocument | undefined {
+  const explicit = str(flags, "project");
+  if (explicit !== undefined) return parseProject(io.readFile(explicit));
+  const path = projectPath(near, flags);
+  try {
+    return parseProject(io.readFile(path));
+  } catch (error) {
+    // 隣に無いのは普通のこと（前書きを書いていない定義）。読めたのに**壊れている**
+    // ときは黙って無視しない＝拾わなかったのか壊れていたのかが分からなくなる。
+    if (error instanceof ProjectParseError) throw error;
     return undefined;
   }
 }
@@ -2601,11 +2750,23 @@ function scaffoldCommand(
     );
     return 1;
   }
+  const project = projectOf(str(flags, "out"), flags, io);
   const yaml = scaffold(kind, {
     id,
     title,
     repository: str(flags, "repository"),
+    ...(project === undefined ? {} : { naming: project.naming }),
   });
+  // 渡された id は書き換えない（頼んだ字と違うものが出るほうが困る）。合っていない
+  // ことだけを言う＝直すかは人が決める。
+  const shape = project?.naming.shapes.page;
+  if (shape !== undefined && !matchesShape(id, shape)) {
+    io.err(
+      `※ 画面 id "${id}" は、案件の決めごとの形（${shape}）になっていません` +
+        `（${projectPath(str(flags, "out"), flags)} の naming.page）。` +
+        "雛形はそのまま出しました。",
+    );
+  }
   const out = str(flags, "out");
   if (out === undefined) {
     io.out(yaml);

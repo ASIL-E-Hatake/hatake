@@ -86,12 +86,13 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 
 | 道具 | いつ使うか | 主な引数 |
 |---|---|---|
+| `hatake_project` | **いちばん最初**。案件の前書き（この案件は何のシステムか・**何ができないか**・業務の言葉と項目名の対応・名前の決めごと）を読む。書いてある言葉と名前で定義を書く | `source`（前書きの中身そのもの） |
 | `hatake_reference` | キーの型・既定値・書ける場所・取れる値を知りたい。仕様書を読む代わり。**`placeholders: true` で文言に書ける差し込みの一覧**（`{count}` / `{failedKeys}` / `$row.<項目名>` …と、いつ埋まるか） | `name`（キー名/ノード名/ページ種別）、`pageKind`（その画面の分だけに絞る）、`placeholders` |
 | `hatake_examples` | 定義を書き始める前に近い例を探す。`file` を渡すと YAML 全文 | `query`（日本語でよい）、`file` |
 | `hatake_validate` | 書いたら/直したら必ず通す。知らないキーを全部まとめて指摘＋綴りの提案 | `source`（中身そのもの）、`strict`（既定 true）、`registry`（アプリ側で登録済みのもの＝外との辻褄も見る） |
-| `hatake_advise` | **検証を通したあと**：書いて**いない**から不便かもしれない所を挙げる（並べ替えできない一覧・誰でも消せる画面・確認の無い一括）。好みなので直すかは業務の判断。**`draft` に書く値の下書きが付く** | `source`、`page`（app のとき1枚だけ）、`rules`（案件の物差し＝`off` / `options` / `require`） |
+| `hatake_advise` | **検証を通したあと**：書いて**いない**から不便かもしれない所を挙げる（並べ替えできない一覧・誰でも消せる画面・確認の無い一括）。好みなので直すかは業務の判断。**`draft` に書く値の下書きが付く** | `source`、`page`（app のとき1枚だけ）、`rules`（案件の物差し＝`off` / `options` / `require`）、`project`（案件の前書き＝名前と用語も突き合わせる） |
 | `hatake_apply_advice` | **助言を当てると決めたとき**：選んだものを定義に書き込む（書く場所は機械が決める。**値は渡す側が決める**）。`changed` に「何が変わったか」が画面の言葉で返る | `source`、`picks`（`[{ rule, value }]`。value は advise の `draft` をそのまま渡せる）、`rules` |
-| `hatake_new_page` | 新しい画面の出発点。そのまま検証を通る雛形が出る | `kind`、`id`、`title`、`repository` |
+| `hatake_new_page` | 新しい画面の出発点。そのまま検証を通る雛形が出る | `kind`、`id`、`title`、`repository`、`project`（案件の名前の決めごとの形で出す） |
 | `hatake_pitfalls` | よくある間違い → なぜ駄目か → 正しい書き方。書く前に眺める / 落ちて直せないとき | `query`、`lang`（ja/en） |
 | `hatake_diff` | **既にある定義を直したとき**：契約（api）を壊すか＋画面・権限・アプリ構成の**確かめてほしい**変化 | `before`、`after` |
 | `hatake_explain` | **検証を通したあと**：書いた定義が何をする画面かを日本語で読み返す（意図と違っていないか）。直したものを人に伝えるときは `before` も渡す。**`roles: true` で定義に出てくる役割の一覧**（`roles` を書く前に引く） | `source`、`before`（直す前＝変更を画面の言葉で言い直す）、`page`（app のとき1枚だけ）、`brief`（1行だけ）、`roles`（役割の棚卸し） |
@@ -103,19 +104,25 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 `initialize` の応答に**使う順番**（instructions）を載せてあるので、対応クライアントなら勝手にこの順で動きます。
 
 ```
-1. hatake_examples で近い例を探す
-2. 新規なら hatake_new_page で雛形
-3. 迷ったキーだけ hatake_reference で引く
-4. 書けたら必ず hatake_validate → 問題が出たら hatake_fix → hatake_explain で読み返す
-   → さらに hatake_advise を1回（**書いていない所**は検証に出てこない。`draft` に値の下書きが付く）
+0. 案件の前書きが在れば hatake_project（この案件は何のシステムか・**何ができないか**・
+   用語・名前の決めごと）。書いていなければ AI は書ける方に倒すので、ここが最初
+1. 人から指示文をもらったら hatake_intent（言われたことを1枚にする。定義を書いたあと
+   もう一度呼ぶと、**言われていないのに在るもの**が出る）
+2. hatake_examples で近い例を探す
+3. 新規なら hatake_new_page で雛形（前書きが在れば project も渡す）
+4. 迷ったキーだけ hatake_reference で引く
+5. 書けたら必ず hatake_validate → 問題が出たら hatake_fix → hatake_explain で読み返す
+   → さらに hatake_advise を1回（**書いていない所**は検証に出てこない。`draft` に値の下書きが付く。
+     前書きが在れば project も渡す＝名前と用語の食い違いが project- で始まる助言に出る）
    → 当てると決めたものは hatake_apply_advice（書く場所は機械のほうが正確）
    → roles を書くなら先に hatake_explain の roles: true（**役割名を想像で書かない**）
-5. 直し方が分からない / 書く前に落とし穴を知りたいときは hatake_pitfalls
-6. バックエンドの形が要るなら hatake_api_shape
-7. 既にある定義を直したときは hatake_diff（壊していないか・確かめてほしい変化はないか）
+6. 書けたら hatake_run で動かす（draft: true で下書きのシナリオを作ってそのまま回す）
+7. 直し方が分からない / 書く前に落とし穴を知りたいときは hatake_pitfalls
+8. バックエンドの形が要るなら hatake_api_shape
+9. 既にある定義を直したときは hatake_diff（壊していないか・確かめてほしい変化はないか）
    直した内容を人に伝えるときは hatake_explain に before を渡す（変更を画面の言葉で）
-8. アプリに組み込むときは hatake_refs（何を登録すればいいか）
-9. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
+10. アプリに組み込むときは hatake_refs（何を登録すればいいか）
+11. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
 ```
 
 `hatake_explain` は「意図どおりか」を見る道具です。strict もスキーマも警告も**綴りと構造しか見ない**ので、条件の向きを間違えた・意図と違う項目を必須にした、は全部通ります。検証のあとに日本語で読み返して、頼まれたことと違っていたら直す。人に見せてレビューしてもらう出力にもなります（読み手は DSL を知らなくてよい）。
@@ -214,6 +221,7 @@ CLI にはあるが MCP に出していないものがあります。**道具は
 
 ## 関連
 
+* [案件の前書き](project.ja.md) — `hatake_project` が読む1枚の書き方（何を書き、何を書かないか）
 * [CLI](../../typescript/README.md#cli) — 人間が同じことを手で叩く口
 * [DSL リファレンス](../../spec/dsl-spec.ja.md#機械可読なリファレンス) — `reference.json` の中身
 * [例のカタログ](../../spec/examples/README.md)

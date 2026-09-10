@@ -11,7 +11,7 @@
 //   ・`<` `>` `&` は**逃がす**。ただし `` ` `` で囲んだ中は触らない（`hatake explain
 //     <file>` のような行が消えるのを防ぐ。HTML として食われる）
 
-import { type Advice, ADVICE_NOTE } from "./advise.js";
+import { type Advice, ADVICE_NOTE, type AdviceRender } from "./advise.js";
 import { type AdviceRules, DEFAULT_RULES } from "./adviseRules.js";
 import { type DefinitionChange, type DefinitionDiff } from "./defDiff.js";
 import { type ExplainDocument, type ExplainSection } from "./explain.js";
@@ -89,7 +89,7 @@ export function explainMarkdown(document: ExplainDocument): string {
 /** レビュー1枚（`explain --review`）。助言は最後の節にまとめる。 */
 export function reviewMarkdown(
   review: ReviewDocument,
-  options: { rulesFrom?: string; rules?: AdviceRules } = {},
+  options: AdviceRender = {},
 ): string {
   const out = [explainMarkdown(review.explain), ""];
   out.push(...section("書き足したほうがいい所（助言）", adviceLines(review.advice)));
@@ -99,6 +99,14 @@ export function reviewMarkdown(
       ...note(
         `助言の物差しは ${options.rulesFrom} を使いました` +
           `（止めた規則 ${rules.off.length} 件 / 案件の決めごと ${rules.require.length} 件）。`,
+      ),
+    );
+  }
+  if (options.projectFrom !== undefined) {
+    out.push(
+      ...note(
+        `案件の前書きは ${options.projectFrom} を読みました` +
+          "（project- で始まる助言はそこの決めごとです）。",
       ),
     );
   }
