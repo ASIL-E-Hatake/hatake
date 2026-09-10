@@ -30,6 +30,7 @@ export * from "./intentDraft.js";
 export * from "./trace.js";
 export * from "./project.js";
 export * from "./projectAdvise.js";
+export * from "./projectAgents.js";
 export * from "./projectExplain.js";
 export * from "./messageResolver.js";
 export * from "./conditionEvaluator.js";

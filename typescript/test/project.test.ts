@@ -1,11 +1,15 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  AGENTS_BEGIN,
+  AGENTS_END,
+  agentsSection,
   findProjectAdvice,
   matchesShape,
   parseProject,
   ProjectParseError,
   projectLines,
+  replaceAgentsSection,
   scaffold,
   toShape,
 } from "../src/index.js";
@@ -13,10 +17,14 @@ import { parse as parseYamlText } from "yaml";
 import { runCli, type CliIo } from "../src/cli.js";
 
 /** CLI が書いたものを集めて、ファイルは記憶から出す（cli.test.ts と同じ手）。 */
-function fakeIo(files: Record<string, string>): CliIo & { stdout: string[] } {
+function fakeIo(
+  files: Record<string, string>,
+): CliIo & { stdout: string[]; written: Record<string, string> } {
   const stdout: string[] = [];
+  const written: Record<string, string> = {};
   return {
     stdout,
+    written,
     out: (text) => stdout.push(text),
     err: () => {},
     readFile: (path) => {
@@ -24,7 +32,9 @@ function fakeIo(files: Record<string, string>): CliIo & { stdout: string[] } {
       if (source === undefined) throw new Error(`no such file: ${path}`);
       return source;
     },
-    writeFile: () => {},
+    writeFile: (path, content) => {
+      written[path] = content;
+    },
     listFiles: () => null,
   };
 }
@@ -311,6 +321,100 @@ describe("雛形を案件の形で出す", () => {
     expect(scaffold("report", options)).toBe(
       scaffold("report", { ...options, naming: { shapes: {}, suffix: {} } }),
     );
+  });
+});
+
+describe("AI の設定ファイルに貼る断片", () => {
+  const section = () => agentsSection(project(), { from: "hatake.project.yaml" });
+
+  it("印で挟んで、前書きの中身をそのまま並べる", () => {
+    const text = section();
+    expect(text.startsWith(AGENTS_BEGIN)).toBe(true);
+    expect(text.trimEnd().endsWith(AGENTS_END)).toBe(true);
+    expect(text).toContain("卸売の受注");
+    expect(text).toContain("商品マスタは購買部の別システムが正");
+    expect(text).toContain("`productRepository`");
+    expect(text).toContain("| 商品名 | `name` | 品目名 |");
+    expect(text).toContain("画面 id は `snake_case`");
+  });
+
+  it("生成物だと断り、直す場所を1か所に寄せる", () => {
+    const text = section();
+    expect(text).toContain("から生成した節です");
+    expect(text).toContain("前書きを直して貼り直す");
+  });
+
+  it("機械が見ていない所は、貼った先でも言う", () => {
+    // 設定ファイルに前提が載ると「守られている」と読まれるので、そこは断る。
+    expect(section()).toContain("機械が見ていない");
+  });
+
+  it("印の中だけを差し替え、人が書いた所は触らない", () => {
+    const before = [
+      "# AGENTS",
+      "",
+      "- ブランチは feat/<機能>",
+      "",
+      AGENTS_BEGIN,
+      "古い中身",
+      AGENTS_END,
+      "",
+      "## その他",
+      "",
+    ].join("\n");
+    const after = replaceAgentsSection(before, section());
+    expect(after).not.toBeNull();
+    expect(after).toContain("- ブランチは feat/<機能>");
+    expect(after).toContain("## その他");
+    expect(after).not.toContain("古い中身");
+    // 2回当てても増えない（印は1組のまま）。
+    const twice = replaceAgentsSection(after as string, section()) as string;
+    expect(twice.split(AGENTS_BEGIN)).toHaveLength(2);
+  });
+
+  it("印が無ければ書かない（どこに入れるかは人が決める）", () => {
+    expect(replaceAgentsSection("# AGENTS\n", section())).toBeNull();
+  });
+
+  it("改行はその紙のものに合わせる（差分が全行にならないように）", () => {
+    const before = `# AGENTS\r\n\r\n${AGENTS_BEGIN}\r\n古い\r\n${AGENTS_END}\r\n`;
+    const after = replaceAgentsSection(before, section()) as string;
+    expect(after.includes("\n\n")).toBe(false);
+  });
+
+  it("貼った節が古いと言う（--check。書かない）", () => {
+    const io = fakeIo({
+      "hatake.project.yaml": PREAMBLE,
+      "AGENTS.md": `# AGENTS\n\n${AGENTS_BEGIN}\n古い\n${AGENTS_END}\n`,
+    });
+    expect(
+      runCli(["project", "--agents", "--merge", "AGENTS.md", "--check"], io),
+    ).toBe(1);
+    // 見るだけ＝直すのは人（CI に置くので、勝手に書き換えない）。
+    expect(io.written["AGENTS.md"]).toBeUndefined();
+  });
+
+  it("貼った節が最新なら通る", () => {
+    const pasted = `# AGENTS\n\n${section().trimEnd()}\n`;
+    const io = fakeIo({
+      "hatake.project.yaml": PREAMBLE,
+      "AGENTS.md": pasted,
+    });
+    expect(
+      runCli(["project", "--agents", "--merge", "AGENTS.md", "--check"], io),
+    ).toBe(0);
+  });
+
+  it("CLI から書ける（印が無ければ 1 を返して理由を言う）", () => {
+    const io = fakeIo({
+      "hatake.project.yaml": PREAMBLE,
+      "AGENTS.md": `# AGENTS\n\n${AGENTS_BEGIN}\n古い\n${AGENTS_END}\n`,
+      "plain.md": "# AGENTS\n",
+    });
+    expect(runCli(["project", "--agents", "--merge", "AGENTS.md"], io)).toBe(0);
+    expect(io.written["AGENTS.md"]).toContain("卸売の受注");
+    expect(runCli(["project", "--agents", "--merge", "plain.md"], io)).toBe(1);
+    expect(io.written["plain.md"]).toBeUndefined();
   });
 });
 

@@ -276,6 +276,24 @@ function parseNaming(value: unknown): NamingRules {
   return { shapes, suffix };
 }
 
+/**
+ * 何の名前かを人の言葉で。助言・読み返し・貼る断片で**同じ字**を使うため1か所に置く。
+ */
+export const NAMING_WORDS: Record<NamingTarget, string> = {
+  page: "画面 id",
+  field: "項目名",
+  action: "ボタン id",
+  repository: "Repository キー",
+  role: "役割名",
+};
+
+/**
+ * 「画面 id は」「項目名は」。英字で終わる言葉だけ助詞の前を空ける
+ * （`項目名 は` は読みにくく、`id は` は空けないと読みにくい）。
+ */
+export const namingSubject = (target: NamingTarget): string =>
+  `${NAMING_WORDS[target]}${/[A-Za-z0-9]$/.test(NAMING_WORDS[target]) ? " " : ""}は`;
+
 /** 雛形の埋め忘れの印。名前として見ない（形を直すと目立たなくなる）。 */
 export const isPlaceholderName = (name: string): boolean =>
   name.startsWith("TODO_");
