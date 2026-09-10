@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-project.schema.json",
+  "title": "hatake project preamble",
+  "description": "案件の前書き（この案件は何のシステムか・業務の前提・用語・名前の決めごと）を機械可読な1枚にしたもの。定義（hatake-page.schema.json）の**手前**に置き、AI が最初に読む。書くのは**定義に現れるもの**だけ。ブランチ名・コミット規約・レビューの回し方は書かない（定義に現れないので機械が突き合わせられず、書いても腐る＝AGENTS.md / CLAUDE.md の担当）。system と premises は人と AI が読むだけで機械は見ない（見ていないことは hatake project が毎回言う）。glossary と naming は hatake advise が定義と突き合わせる。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project_version", "system"],
+  "properties": {
+    "$comment": { "type": "string" },
+    "project_version": {
+      "description": "この形式の版。いまは 1.0 だけ。",
+      "const": "1.0"
+    },
+    "system": {
+      "description": "何のシステムか。**人が書く**（定義から起こしてはいけない＝起こせば必ず一致して、読む値打ちが無くなる）。",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["what"],
+      "properties": {
+        "what": {
+          "description": "1〜3行。何の業務で、何をする道具か（「卸売の受注。営業が電話で受けた注文を入れて、出荷指示まで出す」）。",
+          "type": "string",
+          "minLength": 1
+        },
+        "users": {
+          "description": "誰が使うか。人数・置かれ方（PC / タブレット）まで書くと、画面の作りが決まる。",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "premises": {
+          "description": "業務の前提。**「できない」を書く場所**（「商品マスタは購買部の別システムが正。こちらからは直せない」）。前提を書かないと、AI は書ける方に倒す。",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "external": {
+          "description": "外の相手（Repository / プラグインの名前と、その向こうに何が居るか）。",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "what"],
+            "properties": {
+              "name": {
+                "description": "定義に書く名前（`repository:` / `plugin:` に出てくる字）。",
+                "type": "string",
+                "minLength": 1
+              },
+              "what": { "description": "その向こうに何が居るか。", "type": "string", "minLength": 1 },
+              "owner": { "description": "誰の持ち物か（聞く相手）。", "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "glossary": {
+      "description": "用語辞書。業務の言葉と、定義に書く名前の対応。**揺れを止めるためのもの**（同じものが画面ごとに「取引先」「顧客」「得意先」になる）。",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["term"],
+        "properties": {
+          "term": {
+            "description": "業務の言葉（画面に出す字）。",
+            "type": "string",
+            "minLength": 1
+          },
+          "field": {
+            "description": "定義に書く項目名。書くと `hatake advise` が「その言葉のラベルなのに項目名が違う」を言える。",
+            "type": "string"
+          },
+          "avoid": {
+            "description": "**その言葉で呼ばない**言い換え。ラベルに出てきたら advise が言う。",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "note": { "description": "なぜその言葉なのか（理由の無い決めごとは、後から誰も直せない）。", "type": "string" }
+        }
+      }
+    },
+    "naming": {
+      "description": "名前の決めごと。**書いたものだけ**を見る（書いていない所は見ない＝黙って別の形を当てない）。",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "page": { "$ref": "#/$defs/shape", "description": "画面 id の形。" },
+        "field": { "$ref": "#/$defs/shape", "description": "項目名（列・絞り込み・入力欄）の形。" },
+        "action": { "$ref": "#/$defs/shape", "description": "ボタン id の形。" },
+        "repository": { "$ref": "#/$defs/shape", "description": "Repository キーの形。" },
+        "role": { "$ref": "#/$defs/shape", "description": "役割名の形。" },
+        "suffix": {
+          "description": "「この型の項目は、名前をこう終わらせる」（`date: Date` なら `type: date` の項目は `orderDate`）。キーは項目の型で、知らない型はエラー（黙って効かない設定を作らない）。",
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "shape": {
+      "description": "名前の形。`TODO_` で始まる名前は雛形の埋め忘れの印なので見ない。",
+      "enum": ["camelCase", "snake_case", "PascalCase", "kebab-case"]
+    }
+  }
+}

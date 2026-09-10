@@ -52,6 +52,7 @@ npx hatake registry --compare app.json server.json  # 足した登録が画面�
 npx hatake run page.yaml --draft --out s.json   # 定義から下書きのシナリオを起こす
 npx hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所
 npx hatake fixtures page.yaml                   # サーバ側の試験データ（通る形・弾く形）
+npx hatake project                              # 案件の前書き（何のシステムか・用語・名前の決めごと）
 npx hatake intent --draft --from 指示.md --definition page.yaml  # 指示文を意図の1枚に
 npx hatake trace page.yaml                      # 言ったこと（intent）と書いたものの突き合わせ
 npx hatake explain page.yaml                 # この定義、結局どういう画面？
@@ -65,6 +66,7 @@ npx hatake fix page.yaml                     # 直し方が一意な問題だけ
 npx hatake fix page.yaml --todo              # 直せなかった分を「次の1往復で渡す形」にする
 npx hatake advise page.yaml                  # 書き足したほうがいい所（助言。警告ではない）
 npx hatake advise page.yaml --rules team.json # 案件ごとの決めごとで見る
+npx hatake advise page.yaml --project hatake.project.yaml # 案件の名前・用語の決めごとで見る
 npx hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
 npx hatake index app.yaml --role staff       # その役割で開ける画面だけ（棚卸し）
 npx hatake explain app.yaml --roles --matrix # 役割を横に並べた○×の表

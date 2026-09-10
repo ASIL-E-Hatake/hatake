@@ -1805,6 +1805,95 @@ jobs:
           grep -q 'staff' /tmp/demo-roles.log
           grep -q 'manager' /tmp/demo-roles.log
 
+      - name: The project preamble, and what is written from it
+        working-directory: typescript
+        run: |
+          set -e
+          PRE=../spec/projects/wholesale.project.yaml
+          DEF=../spec/examples/product_search.yaml
+          # 1. 読み返しは**何を機械が見ていないか**を必ず言う（前書きを渡すと
+          #    「これで縛れた」と思ってしまうので、そこを黙らない）。
+          node dist/cli.js project "$PRE" > /tmp/pre.log
+          grep -q '機械が見るもの: 用語' /tmp/pre.log
+          grep -q '機械が見ないもの:' /tmp/pre.log
+          grep -q '人と AI が読むだけ' /tmp/pre.log
+          # 2. 同梱の例は、その前書きの決めごとに合っている（言うことが無い）。
+          node dist/cli.js advise "$DEF" --project "$PRE" > /tmp/clean.log
+          # 見るのは助言の見出し（`# 場所 [規則名]`）。末尾の注記にも project- の字が
+          # 出るので、そこに当たらない形で見る。
+          if grep -q '\[project-' /tmp/clean.log; then
+            echo "同梱の例が案件の決めごとに合っていない"; cat /tmp/clean.log; exit 1
+          fi
+          grep -q '案件の前書きは' /tmp/clean.log
+          # 3. 定義の隣に置いた前書きは、渡さなくても読む（registry / intent と同じ）。
+          mkdir -p /tmp/near
+          cp "$DEF" /tmp/near/product_search.yaml
+          cp "$PRE" /tmp/near/hatake.project.yaml
+          node dist/cli.js advise /tmp/near/product_search.yaml > /tmp/near.log
+          grep -q 'hatake.project.yaml を読みました' /tmp/near.log
+          # 4. 決めごとに反した定義は**全部言うが、落とさない**（名前と言葉は好み＝助言。
+          #    ここを警告にすると、事実を言う警告まで読まれなくなる）。
+          cat > /tmp/near/rotten.yaml <<'YAML'
+          dsl_version: "1.0"
+          page:
+            type: search
+            id: ProductSearch
+            title: 商品照会
+            repository: product_repo
+            key: id
+            search:
+              filters:
+                - { field: order_day, label: 受注日, type: date, operator: equals }
+            table:
+              columns:
+                - { field: item_name, label: 品目名, sortable: true }
+                - { field: kubun, label: 区分, type: badge }
+            actions:
+              - { id: csv_export, type: plugin, plugin: csvExport, label: CSV出力, roles: [SalesManager] }
+          YAML
+          node dist/cli.js advise /tmp/near/rotten.yaml --project "$PRE" > /tmp/rotten.log
+          grep -q 'id: product_search' /tmp/rotten.log
+          grep -q 'repository: productRepo' /tmp/rotten.log
+          grep -q 'field: itemName' /tmp/rotten.log
+          grep -q 'roles: \[sales_manager\]' /tmp/rotten.log
+          grep -q '"Date" で終わらせます' /tmp/rotten.log
+          grep -q '「商品名」と呼びます' /tmp/rotten.log
+          grep -q '区分コードとは別物' /tmp/rotten.log
+          # 5. レビューの1枚にも同じものが載る（片方だけに出ると「言われていない」に
+          #    なるので、出す所は揃える）。
+          node dist/cli.js explain /tmp/near/rotten.yaml --review --project "$PRE" \
+            > /tmp/review.log
+          grep -q 'project-name-shape' /tmp/review.log
+          grep -q '案件の前書きは' /tmp/review.log
+          # 6. 名前は当てさせない（項目名を変えると、その名前で話している所まで
+          #    一緒に直さないと壊れる＝定義だけ書き換えると嘘になる）。
+          echo '[{"rule":"project-name-shape"}]' > /tmp/near/picks.json
+          if node dist/cli.js advise /tmp/near/rotten.yaml --project "$PRE" \
+               --apply /tmp/near/picks.json > /tmp/apply.log 2>&1; then
+            echo "案件の決めごとを当ててしまった"; cat /tmp/apply.log; exit 1
+          fi
+          grep -q '当てられません' /tmp/apply.log
+          # 7. 知らないキー・知らない形は**エラー**（黙って効かない設定を作らない）。
+          printf 'project_version: "1.0"\nsystem: { what: x }\nglosary: []\n' \
+            > /tmp/near/typo.project.yaml
+          if node dist/cli.js project /tmp/near/typo.project.yaml > /tmp/typo.log 2>&1; then
+            echo "知らないキーの前書きで通ってしまった"; cat /tmp/typo.log; exit 1
+          fi
+          grep -q 'glossary の間違い' /tmp/typo.log
+          # 8. 雛形は案件の形で名前を出し、**渡した id は書き換えず**そう言うだけ。
+          node dist/cli.js new report --id SalesReport --title 売上帳票 \
+            --project "$PRE" > /tmp/new.log 2>/tmp/new.err
+          grep -q 'id: SalesReport' /tmp/new.log
+          grep -q 'id: printPdf' /tmp/new.log
+          grep -q 'naming.page' /tmp/new.err
+          # 9. MCP からも同じ1枚が読める（AI が最初に引く道具）。
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+            | node dist/mcp.js > /tmp/mcp-project.log
+          grep -q 'hatake_project' /tmp/mcp-project.log
+
       - name: What was asked, and what was written (intent / trace)
         working-directory: typescript
         run: |
@@ -3048,6 +3137,8 @@ jobs:
           # 意図の1枚（言ったこと）は別のスキーマ。TS の読み手と2か所になるので、
           # **どちらでも読めること**をここで見る（YAML 1.1 と 1.2 の食い違いも拾う）。
           python spec/tools/validate_schema.py --schema hatake-intent.schema.json
+          # 案件の前書き（この案件は何のシステムか・用語・名前の決めごと）も別のスキーマ。
+          python spec/tools/validate_schema.py --schema hatake-project.schema.json
       - name: Charset tables are up to date
         run: |
           set -e

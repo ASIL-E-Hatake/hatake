@@ -83,6 +83,7 @@ describe("MCP プロトコル", () => {
   it("tools/list は道具を、説明と入力スキーマ付きで出す", () => {
     const list = (send("tools/list")?.result as any).tools;
     expect(list.map((t: any) => t.name)).toEqual([
+      "hatake_project",
       "hatake_intent",
       "hatake_reference",
       "hatake_examples",

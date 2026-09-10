@@ -12,6 +12,12 @@
 // 業務でしか決められない値は `TODO_` を付けた名前で置く（`roles: [TODO_role]`）。
 // 書き換えないと誰にも見えないので、埋め忘れが画面に出る側に倒してある。
 
+import {
+  type NamingRules,
+  type NamingTarget,
+  toShape,
+} from "./project.js";
+
 /** 雛形を出せるページ種別。 */
 export const scaffoldKinds = [
   "crud",
@@ -29,19 +35,37 @@ export interface ScaffoldOptions {
   title: string;
   /** Repository キー。省略時は id から作る（`order_search` → `orderRepository`）。 */
   repository?: string;
+  /**
+   * 案件の名前の決めごと（`hatake.project.yaml` の `naming`）。
+   *
+   * 渡すと**雛形が出す業務の名前**をその形にする。DSL のキー（`pageSize` など）は
+   * 触らない＝枠組みが決めた字なので、案件の決めごとの外。
+   */
+  naming?: NamingRules;
 }
+
+/** 業務の名前を案件の形に直す関数（渡されなければ素通し）。 */
+type Rename = (name: string, target: NamingTarget) => string;
+
+const renamer =
+  (naming?: NamingRules): Rename =>
+  (name, target) => {
+    const shape = naming?.shapes[target];
+    return shape === undefined ? name : toShape(name, shape);
+  };
 
 /** `order_search` → `orderRepository`（先頭の語をそのまま使う素直な変換）。 */
 const repositoryKeyFor = (id: string): string => `${id.split("_")[0]}Repository`;
 
-const searchBlock = (): string[] => [
+const searchBlock = (n: Rename): string[] => [
   "  search:",
   "    layout: { columns: 2 }",
   "    filters:",
-  "      - { field: name, label: 名称, type: text, operator: contains }",
+  `      - { field: ${n("name", "field")}, label: 名称, type: text, operator: contains }`,
 ];
 
 const tableBlock = (
+  n: Rename,
   options: {
     rowActions?: string;
     extraColumns?: string[];
@@ -60,8 +84,8 @@ const tableBlock = (
   ...(options.keyField === undefined
     ? []
     : [`      - { field: ${options.keyField}, label: ID, width: 80 }`]),
-  "      - { field: code, label: コード, width: 140, sortable: true }",
-  "      - { field: name, label: 名称 }",
+  `      - { field: ${n("code", "field")}, label: コード, width: 140, sortable: true }`,
+  `      - { field: ${n("name", "field")}, label: 名称 }`,
   ...(options.extraColumns ?? []),
 ];
 
@@ -73,21 +97,25 @@ const tableBlock = (
  */
 const ROLES_TODO = "roles: [TODO_role]";
 
-const formBlock = (): string[] => [
+const formBlock = (n: Rename): string[] => [
   "  form:",
   "    sections:",
   "      - title: 基本情報",
   "        layout: { columns: 2 }",
   "        fields:",
-  "          - { field: code, label: コード, type: text, required: true, normalize: [toHankaku, trim] }",
-  "          - { field: name, label: 名称, type: text, required: true }",
+  `          - { field: ${n("code", "field")}, label: コード, type: text, required: true, normalize: [toHankaku, trim] }`,
+  `          - { field: ${n("name", "field")}, label: 名称, type: text, required: true }`,
 ];
 
 /**
  * [kind] の雛形 YAML。未知の種別は例外（CLI がそのまま表示する）。
  */
 export function scaffold(kind: string, options: ScaffoldOptions): string {
-  const repository = options.repository ?? repositoryKeyFor(options.id);
+  const n = renamer(options.naming);
+  // **渡された id は直さない**（人が書いた名前を黙って書き換えると、頼んだものと
+  // 違う字が出る）。決めごとに合っていないことは CLI が言う。
+  const repository =
+    options.repository ?? n(repositoryKeyFor(options.id), "repository");
   const head = (repositoryComment: string): string[] => [
     'dsl_version: "1.0"',
     "page:",
@@ -97,7 +125,8 @@ export function scaffold(kind: string, options: ScaffoldOptions): string {
     `  repository: ${repository}   # ${repositoryComment}`,
   ];
   const page = head("RepositoryRegistry に登録するキー");
-  const key = "  key: id                  # レコードの主キー項目名";
+  const keyField = n("id", "field");
+  const key = `  key: ${keyField}                  # レコードの主キー項目名`;
 
   switch (kind) {
     case "crud":
@@ -105,23 +134,23 @@ export function scaffold(kind: string, options: ScaffoldOptions): string {
       return lines([
         ...page,
         key,
-        ...searchBlock(),
-        ...tableBlock({ rowActions: "edit, delete", keyField: "id" }),
-        ...formBlock(),
+        ...searchBlock(n),
+        ...tableBlock(n, { rowActions: "edit, delete", keyField }),
+        ...formBlock(n),
         "  actions:",
-        "    - { id: create, type: create, label: 新規登録 }",
-        `    - { id: csv, type: export, label: CSV出力, ${ROLES_TODO} }`,
+        `    - { id: ${n("create", "action")}, type: create, label: 新規登録 }`,
+        `    - { id: ${n("csv", "action")}, type: export, label: CSV出力, ${ROLES_TODO} }`,
       ]);
     case "search":
       return lines([
         ...page,
         key,
-        ...searchBlock(),
-        ...tableBlock({ rowActions: "detail", keyField: "id" }),
+        ...searchBlock(n),
+        ...tableBlock(n, { rowActions: n("detail", "action"), keyField }),
         "  actions:",
         "    # 行から詳細へ。遷移先は app: の pages に置く",
-        '    - { id: detail, type: navigate, label: 詳細, page: TODO_detail_page, params: { id: "$row.id" } }',
-        `    - { id: csv, type: export, label: CSV出力, ${ROLES_TODO} }`,
+        `    - { id: ${n("detail", "action")}, type: navigate, label: 詳細, page: TODO_detail_page, params: { ${keyField}: "$row.${keyField}" } }`,
+        `    - { id: ${n("csv", "action")}, type: export, label: CSV出力, ${ROLES_TODO} }`,
       ]);
     case "detail":
       return lines([
@@ -131,11 +160,11 @@ export function scaffold(kind: string, options: ScaffoldOptions): string {
         "    sections:",
         "      - title: 基本情報",
         "        fields:",
-        "          - { field: code, label: コード }",
-        "          - { field: name, label: 名称 }",
+        `          - { field: ${n("code", "field")}, label: コード }`,
+        `          - { field: ${n("name", "field")}, label: 名称 }`,
       ]);
     case "form":
-      return lines([...page, key, ...formBlock()]);
+      return lines([...page, key, ...formBlock(n)]);
     case "wizard":
       return lines([
         ...page,
@@ -146,13 +175,13 @@ export function scaffold(kind: string, options: ScaffoldOptions): string {
         "      title: 基本情報",
         "      layout: { columns: 2 }",
         "      fields:",
-        "        - { field: code, label: コード, required: true, normalize: [toHankaku, trim] }",
-        "        - { field: name, label: 名称, required: true }",
+        `        - { field: ${n("code", "field")}, label: コード, required: true, normalize: [toHankaku, trim] }`,
+        `        - { field: ${n("name", "field")}, label: 名称, required: true }`,
         "    - id: confirm",
         "      title: 確認",
         "      fields:",
         "        # 前のステップの入力を computed で見せる（読み取り表示）",
-        '        - { field: summary, label: 内容, computed: { op: concat, fields: [code, name], separator: " / " } }',
+        `        - { field: ${n("summary", "field")}, label: 内容, computed: { op: concat, fields: [${n("code", "field")}, ${n("name", "field")}], separator: " / " } }`,
       ]);
     case "dashboard":
       return lines([
@@ -161,24 +190,24 @@ export function scaffold(kind: string, options: ScaffoldOptions): string {
         "  items:",
         "    # value 省略時は count（件数）。集計は Repository が返した行の畳み込み",
         "    - { id: total, title: 件数 }",
-        "    - id: amount",
+        `    - id: ${n("amount", "field")}`,
         "      title: 金額",
-        "      value: { aggregate: sum, field: amount }",
+        `      value: { aggregate: sum, field: ${n("amount", "field")} }`,
         "      format: currency",
         '      config: { symbol: "¥" }',
         "    - id: byGroup",
         "      type: chart",
         "      title: 内訳",
         "      span: 2",
-        "      chart: { kind: bar, labelField: TODO_group_field, valueField: amount, aggregate: sum }",
+        `      chart: { kind: bar, labelField: TODO_group_field, valueField: ${n("amount", "field")}, aggregate: sum }`,
       ]);
     case "report":
       return lines([
         ...page,
-        ...searchBlock(),
-        ...tableBlock({
+        ...searchBlock(n),
+        ...tableBlock(n, {
           extraColumns: [
-            "      - { field: amount, label: 金額, type: number, format: currency }",
+            `      - { field: ${n("amount", "field")}, label: 金額, type: number, format: currency }`,
           ],
         }),
         "  report:",
@@ -188,11 +217,11 @@ export function scaffold(kind: string, options: ScaffoldOptions): string {
         "    groupBy:",
         "      - { field: TODO_group_field, label: 見出し }",
         "    totals:",
-        "      - { field: amount, aggregate: sum }",
+        `      - { field: ${n("amount", "field")}, aggregate: sum }`,
         "  actions:",
-        `    - { id: csv, type: export, label: CSV出力, config: { bom: true }, ${ROLES_TODO} }`,
+        `    - { id: ${n("csv", "action")}, type: export, label: CSV出力, config: { bom: true }, ${ROLES_TODO} }`,
         // 紙に刷る口。バイト列を作るのはアプリ側（HatakeScope の printSink）。
-        `    - { id: printPdf, type: print, label: 印刷, ${ROLES_TODO} }`,
+        `    - { id: ${n("printPdf", "action")}, type: print, label: 印刷, ${ROLES_TODO} }`,
       ]);
     default:
       throw new Error(

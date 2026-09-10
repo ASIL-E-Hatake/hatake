@@ -4,7 +4,8 @@
 Usage: python spec/tools/validate_schema.py [--schema <name>] [file ...]
 Defaults to hatake-page.schema.json and the bundled example documents.
 `--schema hatake-intent.schema.json` checks the intent documents (what a human
-asked for) instead. Supports YAML and JSON inputs.
+asked for) and `--schema hatake-project.schema.json` the project preambles
+(what kind of system this is) instead. Supports YAML and JSON inputs.
 """
 import json
 import sys
@@ -40,9 +41,13 @@ def load(path: Path):
     return yaml.safe_load(text)
 
 
-# 意図の1枚（言ったこと）は別のスキーマ。同じ道具で見るのは、検証の書き方を2つ
-# 持たないため（--schema を渡さなければ従来どおり定義を見る）。
-INTENT_DOCS = sorted((SPEC / "intents").glob("*.yaml"))
+# 定義の他に、人が手で書く hatake の紙が2種類ある（言ったこと＝意図、案件の前書き）。
+# 同じ道具で見るのは、検証の書き方を増やさないため（--schema を渡さなければ従来どおり
+# 定義を見る）。置き場を表で持つので、3種類目が来ても道具は増えない。
+DOCS_BY_SCHEMA = {
+    "hatake-intent.schema.json": SPEC / "intents",
+    "hatake-project.schema.json": SPEC / "projects",
+}
 
 
 def main(argv):
@@ -53,9 +58,8 @@ def main(argv):
     schema = json.loads((SPEC / schema_name).read_text(encoding="utf-8"))
     validator = Draft202012Validator(schema)
 
-    default_docs = (
-        INTENT_DOCS if schema_name == "hatake-intent.schema.json" else DEFAULT_DOCS
-    )
+    folder = DOCS_BY_SCHEMA.get(schema_name)
+    default_docs = DEFAULT_DOCS if folder is None else sorted(folder.glob("*.yaml"))
     docs = [Path(a).resolve() for a in argv] or default_docs
     failures = 0
     for doc in docs:

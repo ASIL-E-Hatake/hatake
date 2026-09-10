@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-project.schema.json
+# hatake — 案件の前書きの例。この案件の定義は spec/examples/product_search.yaml。
+#
+# 定義を書く**前**に読む1枚。読み返しと、決めごととの突き合わせはこう:
+#   npx hatake project spec/projects/wholesale.project.yaml
+#   npx hatake advise spec/examples/product_search.yaml \
+#     --project spec/projects/wholesale.project.yaml
+#
+# 書くのは**定義に現れるもの**だけ。ブランチ名・コミット規約・レビューの回し方は
+# ここに書かない（機械が突き合わせられないので必ず腐る＝AGENTS.md の担当）。
+project_version: "1.0"
+
+system:
+  what: 卸売の受注。営業が電話で受けた注文を入れて、出荷指示まで出す。
+  users:
+    - 営業（10人・事務所の PC）
+    - 出荷担当（倉庫のタブレット。手袋のまま触る）
+    - 管理者（1人。役割の割り当てもこの人）
+  premises:
+    # **できないこと**を書く場所。書かないと、AI は書ける方に倒す。
+    - 商品マスタは購買部の別システムが正。こちらからは直せない（照会だけ）。
+    - 締めは月末。締めたあとの受注は直せない。
+    - 単価は取引先ごとの契約単価。画面で手入力させない。
+  external:
+    - name: productRepository
+      what: 商品マスタ（購買システムの REST）
+      owner: 購買部
+    - name: csvExport
+      what: 会議資料用の CSV 出力（社内の共有フォルダに置く）
+      owner: 情報システム
+
+glossary:
+  # 「業務の言葉 → 定義に書く名前」。同じものが画面ごとに違う字になるのを止める。
+  - term: 商品名
+    field: name
+    avoid: [品目名]
+  - term: カテゴリ
+    field: category
+    avoid: [分類, 区分]
+    note: 購買システムの区分コードとは別物なので、「区分」と呼ぶと話が混ざる
+  - term: 価格
+    field: price
+    avoid: [単価]
+    note: 一覧に出すのは定価。契約単価（取引先ごと）は受注画面の話
+
+naming:
+  page: snake_case
+  field: camelCase
+  action: camelCase
+  repository: camelCase
+  role: snake_case
+  suffix:
+    # `type: date` の項目は `orderDate` のように終わらせる（`orderDay` は言われる）。
+    date: Date
