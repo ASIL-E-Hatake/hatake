@@ -60,7 +60,8 @@ naming:
 ブランチ名やコミット規約はここに書かない。定義に現れないものは機械が見られないので、
 書いても腐る（そちらは `AGENTS.md` の担当）。
 
-詳しくは [案件の前書き](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/project.ja.md)。
+何を決めておくか・どう1枚に落とすかは [先に決めること](/project)。キーの意味は
+[案件の前書き](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/project.ja.md)。
 
 ## 最低限の3つ
 

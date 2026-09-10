@@ -33,6 +33,7 @@ export default defineConfig({
       { text: '機能別の書き方', link: '/dsl/' },
       { text: '図解', link: '/diagrams' },
       { text: '試す', link: '/testing' },
+      { text: '先に決めること', link: '/project' },
       { text: 'AI に書かせる', link: '/ai' },
       { text: 'AI への頼み方', link: '/asking' },
       { text: '言ったことを残す', link: '/design' },

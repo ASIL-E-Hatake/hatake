@@ -7,15 +7,11 @@
 // 「これで縛れた」と思ってしまうが、`system` と `premises` は誰も突き合わせていない
 // （人と AI が読むだけ）。見ていないものを見ているように見せないために、毎回言う。
 
-import { NAMING_TARGETS, type ProjectDocument } from "./project.js";
-
-const TARGET_WORDS: Record<string, string> = {
-  page: "画面 id",
-  field: "項目名",
-  action: "ボタン id",
-  repository: "Repository キー",
-  role: "役割名",
-};
+import {
+  NAMING_TARGETS,
+  namingSubject,
+  type ProjectDocument,
+} from "./project.js";
 
 /** 案件の前書きを人の言葉で並べる。 */
 export function projectLines(project: ProjectDocument): string[] {
@@ -63,7 +59,7 @@ export function projectLines(project: ProjectDocument): string[] {
     out.push("");
     out.push("名前の決めごと:");
     for (const target of shapes) {
-      out.push(`  ・${TARGET_WORDS[target]} は ${project.naming.shapes[target]}`);
+      out.push(`  ・${namingSubject(target)} ${project.naming.shapes[target]}`);
     }
     for (const [type, ending] of suffixes) {
       out.push(`  ・\`type: ${type}\` の項目は "${ending}" で終わる`);

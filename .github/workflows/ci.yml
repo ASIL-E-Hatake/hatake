@@ -1886,7 +1886,46 @@ jobs:
           grep -q 'id: SalesReport' /tmp/new.log
           grep -q 'id: printPdf' /tmp/new.log
           grep -q 'naming.page' /tmp/new.err
-          # 9. MCP からも同じ1枚が読める（AI が最初に引く道具）。
+          # 9. AI の設定ファイル（AGENTS.md）に貼る断片。**印の中だけ**を差し替え、
+          #    人が書いた所（ブランチ名など）は触らない。
+          node dist/cli.js project "$PRE" --agents > /tmp/agents.md
+          grep -q 'hatake:project:begin' /tmp/agents.md
+          grep -q 'から生成した節です' /tmp/agents.md
+          # 貼った先でも「機械が見ていない」ことを言う（設定ファイルに前提が載ると
+          # 「守られている」と読まれるので）。
+          grep -q '機械が見ていない' /tmp/agents.md
+          printf '# AGENTS\n\n- ブランチは feat/<機能>\n\n' > /tmp/near/AGENTS.md
+          printf '<!-- hatake:project:begin -->\n古い\n<!-- hatake:project:end -->\n' \
+            >> /tmp/near/AGENTS.md
+          node dist/cli.js project "$PRE" --agents --merge /tmp/near/AGENTS.md
+          grep -q 'ブランチは feat' /tmp/near/AGENTS.md
+          grep -q '卸売の受注' /tmp/near/AGENTS.md
+          if grep -q '古い' /tmp/near/AGENTS.md; then
+            echo "古い中身が残った"; exit 1
+          fi
+          # 2回当てても印は1組のまま（貼るたびに増えない）。
+          node dist/cli.js project "$PRE" --agents --merge /tmp/near/AGENTS.md
+          test "$(grep -c 'hatake:project:begin' /tmp/near/AGENTS.md)" = 1
+          # 貼った節が古いかを見るだけの口（CI に置く用）。いまは最新なので通る。
+          node dist/cli.js project "$PRE" --agents --merge /tmp/near/AGENTS.md --check
+          # 前書きを直せば「古い」と言う（生成物なのに古い節が貼ってあると、AI は
+          # それを読む＝前書きを直した意味が消える）。**見るだけで書かない**。
+          sed -i 's/卸売の受注/むかしの受注/' /tmp/near/AGENTS.md
+          if node dist/cli.js project "$PRE" --agents --merge /tmp/near/AGENTS.md \
+               --check > /tmp/stale.log 2>&1; then
+            echo "古い節を見逃した"; cat /tmp/stale.log; exit 1
+          fi
+          grep -q '古いです' /tmp/stale.log
+          grep -q 'むかしの受注' /tmp/near/AGENTS.md
+          # 印が無ければ**書かない**（どこに入れるかは、その紙を書いた人が決める）。
+          printf '# AGENTS\n' > /tmp/near/plain.md
+          if node dist/cli.js project "$PRE" --agents --merge /tmp/near/plain.md \
+               > /tmp/plain.log 2>&1; then
+            echo "印の無い紙に書いてしまった"; cat /tmp/plain.log; exit 1
+          fi
+          grep -q 'がありません' /tmp/plain.log
+          test "$(cat /tmp/near/plain.md)" = "# AGENTS"
+          # 10. MCP からも同じ1枚が読める（AI が最初に引く道具）。
           printf '%s\n' \
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
             '{"jsonrpc":"2.0","method":"notifications/initialized"}' \

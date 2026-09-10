@@ -182,6 +182,12 @@ import {
   type ProjectDocument,
 } from "./project.js";
 import { findProjectAdvice } from "./projectAdvise.js";
+import {
+  AGENTS_BEGIN,
+  AGENTS_END,
+  agentsSection,
+  replaceAgentsSection,
+} from "./projectAgents.js";
 import { projectLines } from "./projectExplain.js";
 import { draftIntent, intentYaml } from "./intentDraft.js";
 import { hardFindings, traceIntent, traceLines } from "./trace.js";
@@ -221,6 +227,7 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       （アプリの試験で回す）。
 
   hatake project [<前書き>] [--json]
+  hatake project [<前書き>] --agents [--merge AGENTS.md] [--check]
       **案件の前書き**（この案件は何のシステムか・使う人・業務の前提・用語・名前の
       決めごと）を読み返す。省略すると hatake.project.yaml を探す。
       前書きは**人が書く**（定義から起こさない＝起こせば必ず一致して読む値打ちが
@@ -231,6 +238,13 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       （人と AI が読むだけ）。
       ブランチ名やコミット規約はここに書かない（定義に現れないので機械が
       突き合わせられず、必ず腐る。そちらは AGENTS.md / CLAUDE.md の担当）。
+      --agents で**その AGENTS.md / CLAUDE.md に貼る断片**を出す（印つきの Markdown）。
+      同じことを2か所に書くと必ず食い違うので、**前書きを正にして貼る側を生成する**。
+      --merge <file> は**印の中だけ**を差し替える（印が無ければ書かない＝どこに
+      入れるかはその紙を書いた人が決めるので、1回目は人が貼る）。
+      --check は書かずに**古くなっていないか**だけを見る（違えば 1。CI に置く用＝
+      生成物なのに古い節が貼ってあると、AI はそれを読む）。
+      ブランチ名やコミット規約は**印の外**に手で書く（生成で消えない）。
 
   hatake intent --draft --from <指示文> [--definition <定義>] [--page <id>]
                         [--out file] [--json]
@@ -549,6 +563,8 @@ const VERSION = "0.0.1";
  */
 const BOOLEAN_FLAGS = new Set([
   "json",
+  "agents",
+  "check",
   "markdown",
   "diff",
   "brief",
@@ -2118,11 +2134,71 @@ function projectCommand(
     );
     return 1;
   }
+  if (flags.agents === true) {
+    return agents(found, positional[0], flags, io);
+  }
   if (flags.json === true) {
     io.out(JSON.stringify(found, null, 2));
     return 0;
   }
   io.out(projectLines(found).join("\n"));
+  return 0;
+}
+
+/**
+ * AI の設定ファイルに貼る断片（`project --agents`）。
+ *
+ * `--merge` は**印の中だけ**を差し替える。印が無ければ書かない＝どこに入れるかは
+ * その紙を書いた人が決めることなので、1回目は人が貼る。
+ *
+ * `--check` は書かずに**古くなっていないか**を見る（CI に置く用）。生成物なのに
+ * 古い節が貼ってあると、AI はそれを読む＝前書きを直した意味が消える。
+ */
+function agents(
+  project: ProjectDocument,
+  file: string | undefined,
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const section = agentsSection(project, {
+    from: file ?? projectPath(undefined, flags),
+  });
+  const out = str(flags, "merge");
+  if (out === undefined) {
+    io.out(section.trimEnd());
+    io.err(
+      "※ この断片を AGENTS.md / CLAUDE.md に貼ってください（印ごと）。2回目からは" +
+        " --merge <file> で印の中だけを差し替えます。" +
+        "ブランチ名やコミット規約は**印の外**に手で書いてください" +
+        "（前書きは定義に現れるものだけを持ちます）。",
+    );
+    return 0;
+  }
+  const current = io.readFile(out);
+  const replaced = replaceAgentsSection(current, section);
+  if (replaced === null) {
+    io.err(
+      `${out} に印（${AGENTS_BEGIN} … ${AGENTS_END}）がありません。` +
+        "--merge は印の中だけを差し替えるので、1回目は --merge なしで出した断片を" +
+        "**印ごと**貼ってください（どこに入れるかは、その紙を書いた人が決めることなので" +
+        "勝手に足しません）。",
+    );
+    return 1;
+  }
+  if (flags.check === true) {
+    if (replaced === current) {
+      io.out(`${out} に貼った節は、前書きと同じです。`);
+      return 0;
+    }
+    io.err(
+      `${out} に貼った節が古いです（前書きのほうが新しい）。` +
+        "AI はそこを読むので、古いままだと前書きを直した意味が消えます。" +
+        `直すには: npx hatake project --agents --merge ${out}`,
+    );
+    return 1;
+  }
+  io.writeFile(out, replaced);
+  io.out(`書きました: ${out}`);
   return 0;
 }
 

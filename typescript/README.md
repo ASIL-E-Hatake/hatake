@@ -53,6 +53,8 @@ npx hatake run page.yaml --draft --out s.json   # 定義から下書きのシナ
 npx hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所
 npx hatake fixtures page.yaml                   # サーバ側の試験データ（通る形・弾く形）
 npx hatake project                              # 案件の前書き（何のシステムか・用語・名前の決めごと）
+npx hatake project --agents --merge AGENTS.md   # その前書きを AI の設定ファイルに貼る（印の中だけ）
+npx hatake project --agents --merge AGENTS.md --check  # 貼った節が古くないか（CI 用）
 npx hatake intent --draft --from 指示.md --definition page.yaml  # 指示文を意図の1枚に
 npx hatake trace page.yaml                      # 言ったこと（intent）と書いたものの突き合わせ
 npx hatake explain page.yaml                 # この定義、結局どういう画面？
