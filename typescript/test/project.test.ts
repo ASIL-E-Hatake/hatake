@@ -67,6 +67,14 @@ glossary:
     field: category
     avoid: [区分]
     note: 購買システムの区分コードとは別物
+logic:
+  - what: 会議資料用の CSV を出す
+    where: plugin
+    name: csvExport
+  - what: 締めたあとの受注は直せない
+    where: server
+    name: orderCloseGuard
+    why: 締めは会計側が持っている
 naming:
   page: snake_case
   field: camelCase
@@ -142,6 +150,120 @@ describe("案件の前書きを読む", () => {
           "glossary: [{ term: 取引先, avoid: [顧客] }, { term: 顧客 }]\n",
       ),
     ).toThrow(/どちらで呼ぶ/);
+  });
+});
+
+describe("業務ロジックの置き場", () => {
+  const preamble = (logic: string) =>
+    `project_version: "1.0"\nsystem: { what: 受注 }\nlogic:\n${logic}`;
+
+  it("担当の表と同じ区分で書ける", () => {
+    const found = project().logic;
+    expect(found.map((one) => one.where)).toEqual(["plugin", "server"]);
+    expect(found[0].name).toBe("csvExport");
+  });
+
+  it("plugin なら name が要る（登録名と突き合わせるため）", () => {
+    expect(() => parseProject(preamble("  - { what: x, where: plugin }\n"))).toThrow(
+      /name が要ります/,
+    );
+  });
+
+  it("外に置くなら理由が要る（無いと後から誰も直せない）", () => {
+    expect(() => parseProject(preamble("  - { what: x, where: outside }\n"))).toThrow(
+      /why が要ります/,
+    );
+  });
+
+  it("知らない区分はエラー（担当の表と語彙を2つ持たない）", () => {
+    expect(() =>
+      parseProject(preamble("  - { what: x, where: screen }\n")),
+    ).toThrow(/definition \/ plugin \/ server \/ outside/);
+  });
+
+  it("同じ名前を2回書いたら落ちる", () => {
+    expect(() =>
+      parseProject(
+        preamble(
+          "  - { what: a, where: plugin, name: same }\n" +
+            "  - { what: b, where: plugin, name: same }\n",
+        ),
+      ),
+    ).toThrow(/2回/);
+  });
+
+  it("宣言したのに**どの画面からも**呼んでいなければ言う（app のときだけ）", () => {
+    const source = `dsl_version: "1.0"
+app:
+  id: sales
+  title: 受注
+  pages:
+    - type: search
+      id: product_search
+      title: 商品照会
+      repository: productRepository
+      key: id
+      table:
+        columns:
+          - { field: code, label: コード }
+`;
+    const found = findProjectAdvice(definition(source), project());
+    const one = found.find((advice) => advice.rule === "project-logic-unused");
+    expect(one?.says).toContain("csvExport");
+    expect(one?.add).toContain("plugin: csvExport");
+
+    // 1画面だけ渡されたときは言わない（他の画面で呼んでいるかもしれない）。
+    const single = findProjectAdvice(
+      definition(`dsl_version: "1.0"
+page:
+  type: search
+  id: product_search
+  title: 商品照会
+  repository: productRepository
+  key: id
+  table:
+    columns:
+      - { field: code, label: コード }
+`),
+      project(),
+    );
+    expect(single.filter((advice) => advice.rule === "project-logic-unused")).toEqual([]);
+  });
+
+  it("サーバの担当と書いたのに画面から呼んでいれば言う（食い違い）", () => {
+    const found = findProjectAdvice(
+      definition(`dsl_version: "1.0"
+page:
+  type: search
+  id: product_search
+  title: 商品照会
+  repository: productRepository
+  key: id
+  table:
+    columns:
+      - { field: code, label: コード }
+  actions:
+    - { id: csvExport, type: plugin, plugin: csvExport, label: CSV出力 }
+    - { id: close, type: plugin, plugin: orderCloseGuard, label: 締め }
+`),
+      project(),
+    );
+    const one = found.find((advice) => advice.rule === "project-logic-misplaced");
+    expect(one?.says).toContain("サーバの担当");
+    expect(one?.says).toContain("締めは会計側が持っている");
+    // 呼んでいる側は言うが、呼んでいない csvExport は言わない（使われている）。
+    expect(found.filter((advice) => advice.rule === "project-logic-unused")).toEqual([]);
+  });
+
+  it("読み返しと貼る断片に載る（AI が読む1枚に「これは外」が入る）", () => {
+    const text = projectLines(project()).join("\n");
+    expect(text).toContain("業務ロジックの置き場:");
+    expect(text).toContain("サーバの担当");
+    expect(text).toContain("業務ロジックの名前（定義が呼んでいるか）");
+
+    const section = agentsSection(project(), { from: "hatake.project.yaml" });
+    expect(section).toContain("**業務ロジックの置き場**");
+    expect(section).toContain("画面側に実装しない");
   });
 });
 

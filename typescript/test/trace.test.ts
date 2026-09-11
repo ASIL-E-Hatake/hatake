@@ -160,3 +160,51 @@ describe("同梱の例", () => {
     expect(result.acceptance.length).toBeGreaterThan(0);
   });
 });
+
+describe("業務ロジックの担当（定義に書けない規則）", () => {
+  const page = parsePageYaml(source, { strict: true }) as PageDefinition;
+  const asked = (covers: string) => `intent_version: "1.0"
+page: order_search
+asked:
+  - id: R1
+    text: 締めたあとの受注は直せないようにして
+    covers: [${covers}]
+`;
+
+  it("言われたのに誰も担当していない（前書きに宣言が無い）", () => {
+    const result = traceIntent(page, parseIntent(asked("logic:orderCloseGuard")), {
+      logic: [],
+    });
+    const found = result.findings.find((one) => one.kind === "missing-target");
+    expect(found?.text).toContain("誰も担当していません");
+    // 直す場所は前書き（定義ではない）と言う＝言われた側が直せる言い方にする。
+    expect(found?.text).toContain("hatake.project.yaml");
+    expect(hardFindings(result).length).toBe(1);
+  });
+
+  it("宣言してあれば通る（指せる相手に入る）", () => {
+    const result = traceIntent(page, parseIntent(asked("logic:orderCloseGuard")), {
+      logic: ["orderCloseGuard"],
+    });
+    expect(result.targets).toContain("logic:orderCloseGuard");
+    expect(result.findings.filter((one) => one.kind === "missing-target")).toEqual([]);
+  });
+
+  it("前書きを渡さなければ logic: は指せない（無い案件で鳴らせない）", () => {
+    const result = traceIntent(page, parseIntent(asked("logic:orderCloseGuard")));
+    expect(result.targets.some((one) => one.startsWith("logic:"))).toBe(false);
+    expect(hardFindings(result).length).toBe(1);
+  });
+
+  it("宣言は「由来の無いもの」として問わない（案件ぜんたいの紙なので）", () => {
+    // 画面1枚の突き合わせで問うと、他の画面の規則まで毎回鳴る。
+    const result = traceIntent(page, parseIntent(asked("logic:orderCloseGuard")), {
+      logic: ["orderCloseGuard", "stockAllocation"],
+    });
+    expect(
+      result.findings.filter(
+        (one) => one.kind === "orphan" && one.target?.startsWith("logic:"),
+      ),
+    ).toEqual([]);
+  });
+});

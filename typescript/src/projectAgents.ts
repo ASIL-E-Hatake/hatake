@@ -16,6 +16,7 @@ import {
   namingSubject,
   type ProjectDocument,
 } from "./project.js";
+import { WHERE_WORDS } from "./responsibility.js";
 
 /** 差し替える範囲の印（この行そのものが目印なので、消さないでもらう）。 */
 export const AGENTS_BEGIN = "<!-- hatake:project:begin -->";
@@ -77,6 +78,22 @@ export function agentsSection(
           `| ${entry.avoid.length === 0 ? "—" : cell(entry.avoid.join(" / "))} |`,
       );
     }
+  }
+
+  if (project.logic.length > 0) {
+    out.push("", "**業務ロジックの置き場**", "");
+    for (const rule of project.logic) {
+      out.push(
+        `- ${rule.what} … **${WHERE_WORDS[rule.where]}**` +
+          `${rule.name === undefined ? "" : `（\`${rule.name}\`）`}` +
+          `${rule.why === undefined ? "" : `。${rule.why}`}`,
+      );
+    }
+    out.push(
+      "",
+      "> 「枠組みの外」「サーバの担当」と書いてあるものは、**画面側に実装しない**" +
+        "（画面には結果だけを出す）。判断そのものを Dart / TypeScript で書き始めない。",
+    );
   }
 
   const rules: string[] = [];

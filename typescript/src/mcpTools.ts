@@ -471,7 +471,9 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "**業務の言葉が一致した所だけ**当て、**言われていないのに在るもの**" +
         "（どの要求からも来ていない項目・ボタン）も返す＝AI が勝手に足したものがここで出る。" +
         "既にある意図を intent に渡したときは突き合わせだけをする（言ったのに入っていない・" +
-        "未定なのに決まっている）。**定義から要求を起こすことはしない**" +
+        "未定なのに決まっている）。**project（案件の前書き）も渡すと、定義に書けない規則" +
+        "（締め・引当・承認）も covers から指せる**＝`logic:<名前>` が誰の担当かまで" +
+        "突き合わせられる。**定義から要求を起こすことはしない**" +
         "（起こせば必ず一致して、突き合わせが何も言わなくなる）。" +
         "定義を書く前にこれを呼び、書いたあともう一度呼んで突き合わせる。",
       inputSchema: {
@@ -495,6 +497,13 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           page: {
             type: "string",
             description: "app: の定義を渡したとき、どの画面か（id）。",
+          },
+          project: {
+            type: "string",
+            description:
+              "案件の前書き（hatake.project.yaml の中身）。渡すと、宣言した業務ロジック" +
+              "（`logic[].name`）も covers から指せる相手になる＝定義に書けない規則" +
+              "（締め・引当・承認）について**言われたのに誰も担当していない**を言える。",
           },
         },
       },
@@ -528,9 +537,19 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             "source（定義）か instruction（指示文）のどちらかは要ります。",
           );
         }
+        const preamble = str(args, "project");
         const result = traceIntent(
           page,
           existing === undefined ? undefined : parseIntent(existing),
+          {
+            // 前書きを渡せば、定義に書けない規則（締め・引当）も指せる相手になる。
+            logic:
+              preamble === undefined
+                ? []
+                : parseProject(preamble)
+                    .logic.map((rule) => rule.name)
+                    .filter((name): name is string => name !== undefined),
+          },
         );
         const lines = traceLines(result);
         if (existing === undefined) {

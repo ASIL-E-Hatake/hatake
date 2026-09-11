@@ -22,6 +22,7 @@ Claude Code / Claude Desktop などに繋ぐと、**このファイルを読ま�
 定義を書いたら、推測で終わらせずにこれで確認する。問題があれば終了コード 1。
 ```bash
 npx hatake where 締め処理          # これはどこの担当？（定義 / 登録 / サーバ / **枠組みの外**）
+npx hatake where --from 依頼.md    # 依頼文を行ごとに仕分ける（外が混ざっていたら先に言う）
 npx hatake project                # 案件の前書き（何のシステムか・用語・名前の決めごと）
 npx hatake project --agents       # その前書きを AGENTS.md / CLAUDE.md に貼る断片にする
 npx hatake validate page.yaml     # strict（知らないキーを弾く）。--json で機械可読

@@ -28,7 +28,7 @@
       "how": "`search.filters` に項目と `operator` を書く。範囲は `operator: between`、選択肢の連動は `optionsFrom`。",
       "keys": ["search", "filters", "operator", "optionsFrom"],
       "tool": "hatake reference filter",
-      "words": ["検索", "絞り込み", "条件", "フィルタ", "search", "filter"]
+      "words": ["検索", "絞り込", "条件", "フィルタ", "search", "filter"]
     },
     {
       "id": "screen-form",
@@ -37,7 +37,7 @@
       "how": "`form.sections[].fields` に項目を並べる。段階を踏ませるなら `type: wizard` の `steps`。",
       "keys": ["form", "sections", "fields", "steps", "layout"],
       "tool": "hatake reference form",
-      "words": ["入力", "フォーム", "登録", "編集", "ウィザード", "form", "input"]
+      "words": ["入力", "フォーム", "登録", "編集", "ウィザード", "選択肢", "form", "input"]
     },
     {
       "id": "input-validation",

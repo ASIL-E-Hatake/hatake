@@ -28,6 +28,8 @@ import {
   filterAreas,
   parseResponsibility,
   responsibilityLines,
+  sortedLines,
+  sortInstruction,
   type Where,
   WHERE_KINDS,
 } from "./responsibility.js";
@@ -235,6 +237,7 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       （アプリの試験で回す）。
 
   hatake where [<やりたいこと>] [--where definition|plugin|server|outside] [--json]
+  hatake where --from 指示.md [--json]
       **これはどこの担当か**を引く（定義で書ける / アプリ側に登録して足す /
       サーバの担当 / **枠組みの外**）。「締め処理も作って」のように定義で書けない
       ことを頼まれたとき、外だと言うために使う。
@@ -242,6 +245,9 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       バックエンド API）は CLAUDE.md の Scope が正で、この表はその写しを持つ
       （字が食い違ったら試験が落ちる）。**判断表であって実装ではない**。
       並びは**外から内**（枠組みの外を先に出す＝いちばん大事な答えなので）。
+      --from で**指示文をまとめて仕分ける**（行ごとに区分を当て、外が混ざっていたら
+      先に言う）。当て方は言葉の一致だけ＝**下書き**なので、当てられなかった行は
+      捨てずに一覧に出す（黙って落とすと、仕分けたつもりで抜ける）。囲みの中は見ない。
 
   hatake project [<前書き>] [--json]
   hatake project [<前書き>] --agents [--merge AGENTS.md] [--check]
@@ -276,7 +282,8 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       入力は指示文だけ＝定義から要求を起こしてはいけない（必ず一致するので、
       突き合わせが何も言わなくなる）。
 
-  hatake trace <file> [--page <id>] [--intent file] [--json] [--require-intent]
+  hatake trace <file> [--page <id>] [--intent file] [--project file]
+              [--json] [--require-intent]
       **言ったこと**（意図の1枚＝intent）と**書いたもの**（定義）を突き合わせる。
       言えるのは4つ: 言ったのに入っていない・**言っていないのに入っている**（どの要求
       からも来ていない項目やボタン）・未定と言ったのに決まっている・どこに落ちたか
@@ -2129,6 +2136,16 @@ function intentOf(
 /** 案件の前書きの既定の名前（定義の隣に置く）。 */
 const PROJECT_FILE = "hatake.project.yaml";
 
+/**
+ * 前書きに宣言した業務ロジックの名前（`covers: [logic:<名前>]` から指せるもの）。
+ *
+ * 名前の無い宣言は指せない（そう決めてある＝指したいなら名前を付ける）。
+ */
+const logicNames = (project: ProjectDocument | undefined): string[] =>
+  (project?.logic ?? [])
+    .map((rule) => rule.name)
+    .filter((name): name is string => name !== undefined);
+
 /** どこの前書きを読む（読んだ）か。報告に「どの1枚の決めごとか」を書くのに使う。 */
 const projectPath = (near: string | undefined, flags: Args["flags"]): string =>
   str(flags, "project") ??
@@ -2257,7 +2274,12 @@ function trace(files: string[], flags: Args["flags"], io: CliIo): number {
   if (page === null) return 1;
 
   const intent = intentOf(files[0], page.id, flags, io);
-  const result = traceIntent(page, intent);
+  // 前書きが在れば、宣言した業務ロジックも**指せる相手**に入れる（定義に書けない
+  // 規則を covers から指せる＝言われたのに誰も担当していない、が言える）。
+  const preamble = projectOf(files[0], flags, io);
+  const result = traceIntent(page, intent, {
+    logic: logicNames(preamble),
+  });
   if (flags.json === true) {
     io.out(JSON.stringify(result, null, 2));
   } else {
@@ -3064,6 +3086,19 @@ function whereCommand(
   const raw = readSpec(flags, io, RESPONSIBILITY_FILE);
   if (raw === null) return 1;
   const catalog = parseResponsibility(raw);
+
+  // 指示文をまとめて仕分ける（1問1答だと長い依頼文で引き忘れる）。
+  const from = str(flags, "from");
+  if (from !== undefined) {
+    const sorted = sortInstruction(catalog, io.readFile(from));
+    if (flags.json === true) {
+      io.out(JSON.stringify(sorted, null, 2));
+    } else {
+      for (const line of sortedLines(sorted)) io.out(line);
+    }
+    // 1行も当てられなかったときだけ 1（何も言えていないので）。
+    return sorted.lines.length === 0 ? 1 : 0;
+  }
 
   const only = str(flags, "where");
   if (only !== undefined && !WHERE_KINDS.includes(only as Where)) {

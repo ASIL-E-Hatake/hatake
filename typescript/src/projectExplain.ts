@@ -12,6 +12,7 @@ import {
   namingSubject,
   type ProjectDocument,
 } from "./project.js";
+import { WHERE_WORDS } from "./responsibility.js";
 
 /** 案件の前書きを人の言葉で並べる。 */
 export function projectLines(project: ProjectDocument): string[] {
@@ -51,6 +52,18 @@ export function projectLines(project: ProjectDocument): string[] {
     }
   }
 
+  if (project.logic.length > 0) {
+    out.push("");
+    out.push("業務ロジックの置き場:");
+    for (const rule of project.logic) {
+      out.push(
+        `  ・[${WHERE_WORDS[rule.where]}] ${rule.what}` +
+          `${rule.name === undefined ? "" : `（${rule.name}）`}`,
+      );
+      if (rule.why !== undefined) out.push(`      ${rule.why}`);
+    }
+  }
+
   const shapes = NAMING_TARGETS.filter(
     (target) => project.naming.shapes[target] !== undefined,
   );
@@ -79,6 +92,10 @@ export function projectLines(project: ProjectDocument): string[] {
 function boundaryLines(project: ProjectDocument): string[] {
   const watched: string[] = [];
   if (project.glossary.length > 0) watched.push("用語（ラベルと項目名）");
+  // 業務ロジックは**名前だけ**が見られる（規則の中身は誰も見ていない）。
+  if (project.logic.some((rule) => rule.name !== undefined)) {
+    watched.push("業務ロジックの名前（定義が呼んでいるか）");
+  }
   if (
     Object.keys(project.naming.suffix).length > 0 ||
     NAMING_TARGETS.some((target) => project.naming.shapes[target] !== undefined)
@@ -92,7 +109,8 @@ function boundaryLines(project: ProjectDocument): string[] {
       : `機械が見るもの: ${watched.join(" / ")}` +
         "。`hatake advise <定義> --project <この1枚>` が定義と突き合わせて**助言**に出します" +
         "（好みなので終了コードは変えません）。",
-    "機械が見ないもの: この案件は何か・使う人・業務の前提・外の相手。" +
+    "機械が見ないもの: この案件は何か・使う人・業務の前提・外の相手" +
+      `${project.logic.length === 0 ? "" : "・業務ロジックの中身（規則そのもの）"}。` +
       "**人と AI が読むだけ**で、誰も突き合わせていません（定義に書きようがないので）。",
   ];
 }

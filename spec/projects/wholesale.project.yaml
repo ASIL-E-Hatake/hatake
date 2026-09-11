@@ -43,6 +43,22 @@ glossary:
     avoid: [単価]
     note: 一覧に出すのは定価。契約単価（取引先ごと）は受注画面の話
 
+logic:
+  # 業務ロジックの**置き場**だけを書く（規則の中身は書かない＝書けるようにしたら
+  # 業務ロジックの DSL になり、枠組みが業務を持つことになる）。
+  # 区分は `npx hatake where <やりたいこと>` で引いたものをそのまま書く。
+  - what: 会議資料用の CSV を出す
+    where: plugin
+    name: csvExport
+  - what: 締めたあとの受注は直せない
+    where: server
+    name: orderCloseGuard
+    why: 締めは会計側が持っているので、画面で判断すると二重管理になる
+  - what: 在庫の引当
+    where: outside
+    name: stockAllocation
+    why: 在庫は別システムが正。引当の規則もそちらが持っているので、こちらでは触らない
+
 naming:
   page: snake_case
   field: camelCase

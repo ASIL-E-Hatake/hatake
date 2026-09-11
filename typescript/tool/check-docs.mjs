@@ -20,6 +20,9 @@
 // 3 は「手引き ↔ help」の突き合わせでもある。docs にしか無い旗が出たら、**どちらかが
 // 嘘**（旗が消えたか、help が書き忘れたか）。
 //
+// 定義ではない hatake の紙（案件の前書き・意図の1枚）は、**その紙の読み手**にかける
+// （DSL の語彙で見ると全部知らないキーになるので、`no-check` で外すと誰も見なくなる）。
+//
 // hatake の定義ではない YAML（`pubspec.yaml` / GitHub Actions）は、囲みの言語のうしろに
 // `no-check` と書いて外す。**黙って飛ばさない**（何をなぜ飛ばしたかを必ず出す）。
 //
@@ -28,7 +31,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-import { closestKey, parseProject } from "../dist/index.js";
+import { closestKey, parseIntent, parseProject } from "../dist/index.js";
 import { runCli } from "../dist/cli.js";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
@@ -154,13 +157,17 @@ function checkDefinition(body, where, problems) {
   }
 }
 
-/** 案件の前書きは定義ではないので、専用の読み手にかける（同じ答えを2つ持たない）。 */
-function checkPreamble(body, where, problems) {
+/**
+ * 定義ではない紙（案件の前書き・意図の1枚）は、**その紙の読み手**にかける。
+ *
+ * DSL の語彙で見ると全部知らないキーになるので、`no-check` で外したくなる。けれど
+ * 外すと誰も見ない＝手引きに載せた紙だけが腐る。読み手はもう在るので、それを呼ぶ。
+ */
+function checkPaper(body, where, problems, read, what) {
   try {
-    parseProject(body);
+    read(body);
   } catch (error) {
-    problems.push(`${where}: 載せた案件の前書きが読めません:
-    ${error.message}`);
+    problems.push(`${where}: 載せた${what}が読めません: ${error.message}`);
   }
 }
 
@@ -238,7 +245,7 @@ async function main(argv) {
   const surface = published();
   const problems = [];
   const skipped = [];
-  const counts = { whole: 0, preamble: 0, fragment: 0, command: 0 };
+  const counts = { whole: 0, preamble: 0, intent: 0, fragment: 0, command: 0 };
 
   for (const path of files) {
     if (!statSync(path).isFile()) continue;
@@ -280,10 +287,12 @@ async function main(argv) {
           counts.whole += 1;
           checkDefinition(block.body, at, problems);
         } else if (/^project_version:/.test(stripped)) {
-          // 案件の前書き（定義ではない）。DSL の語彙で見ると全部知らないキーになる
-          // ので、前書きの読み手にかける＝no-check で外さない（外すと誰も見ない）。
           counts.preamble += 1;
-          checkPreamble(block.body, at, problems);
+          checkPaper(block.body, at, problems, parseProject, "案件の前書き");
+        } else if (/^(intent_version|asked):/.test(stripped)) {
+          // 意図の1枚（言われたこと）も定義ではない。同じ理由で、専用の読み手にかける。
+          counts.intent += 1;
+          checkPaper(block.body, at, problems, parseIntent, "意図の1枚");
         } else {
           counts.fragment += 1;
           await checkFragment(block.body, at, keys, open, problems, skipped);
@@ -296,8 +305,8 @@ async function main(argv) {
 
   console.log(
     `手引きを ${files.length} 枚読みました（提案は将来の DSL なので見ていません）` +
-      `（定義 ${counts.whole}・前書き ${counts.preamble}・断片 ${counts.fragment}・` +
-      `コマンド ${counts.command}・` +
+      `（定義 ${counts.whole}・前書き ${counts.preamble}・意図 ${counts.intent}・` +
+      `断片 ${counts.fragment}・コマンド ${counts.command}・` +
       `飛ばした ${skipped.length}）。`,
   );
   for (const one of skipped) console.log(`   飛ばした: ${one}`);

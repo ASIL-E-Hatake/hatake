@@ -30,11 +30,16 @@ import { closestKey } from "./strictKeys.js";
 export const INTENT_VERSION = "1.0";
 
 /**
- * 要求が「定義のどこに落ちたか」を指す言葉。**閉じた集合**。
+ * 要求が「どこに落ちたか」を指す言葉。**閉じた集合**。
  *
  * 項目に付いた検証（`required` / `maxLength`）と、明細の行の項目は、その項目
  * （`field:<項目>`）の一部として数える。分けると1つの要求に3つ書くことになり、
  * 誰も書かなくなる。
+ *
+ * `logic` だけは**定義の外**を指す（案件の前書きに宣言した業務ロジックの名前）。
+ * 「締めたあとは直せない」のような規則は定義に書けないので、これが無いと**言われた
+ * のに誰も担当していない**を言えない（画面の部品しか指せないと、そこだけ突き合わせて
+ * 済んだ気になる）。
  */
 export const TARGET_KINDS = [
   "page",
@@ -45,6 +50,7 @@ export const TARGET_KINDS = [
   "card",
   "repository",
   "role",
+  "logic",
 ] as const;
 
 export type TargetKind = (typeof TARGET_KINDS)[number];
