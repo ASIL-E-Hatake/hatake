@@ -155,6 +155,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
                         .length,
                     onPressed: () => _onAction(action),
                     roles: _roles,
+                    unwired: unwiredReason(context, action),
                     // 読み込み中は「行が無い」と決めつけない（待っている間だけ嘘になる）。
                     hasRows: _controller.loading
                         ? null
@@ -168,10 +169,14 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
                 else
                   // 一覧の上のボタンには判定する相手が無い（開いているレコードが
                   // 無い）ので出し分けない。書いても効かないことは validate が言う。
-                  FilledButton(
-                    key: Key('hatake.action.${action.id}'),
-                    onPressed: () => _onAction(action),
-                    child: Text(action.label),
+                  _withUnwired(
+                    context,
+                    action,
+                    (enabled) => FilledButton(
+                      key: Key('hatake.action.${action.id}'),
+                      onPressed: enabled ? () => _onAction(action) : null,
+                      child: Text(action.label),
+                    ),
                   ),
           ]),
           const SizedBox(height: 12),
@@ -405,6 +410,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
               record: record,
               rowKey: key,
               labels: labels,
+              unwired: unwiredReason(context, declared[id]!),
               onPressed: () => _onAction(declared[id]!, record: record),
             ),
       ],

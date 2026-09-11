@@ -81,25 +81,32 @@ npx hatake diagram app.yaml --role admin --out admin.svg
 
 ```bash
 npx hatake diagram spec/examples/order_entry.yaml --computed
+npx hatake diagram app.yaml --computed --all    # 画面ぜんぶを1枚に（画面ごとに囲む）
+npx hatake diagram app.yaml --computed --all --format mermaid --fenced  # 囲みごと（貼る用）
 ```
+
+箱の中には**計算の中身**が出る（`op`・何を畳むか・**どの行に絞るか**）。線は「どこから
+来るか」しか言わないので、絞り込みまで見えないと「なぜこの数になるのか」が読めない。
+条件の書き方は読み返し（`explain`）と同じ関数で作っているので、図と説明が違う言い方に
+なることはない。
 
 下は同梱の例から**実際に出したもの**（CI が同じコマンドを走らせて、この図の中身が
 出ることを見ている）。
 
 ```mermaid
 %% 受注入力: 計算の依存
-%% 左から右へ「この項目はここから出る」。赤い線は順番が逆（空のまま計算される）
+%% 左から右へ「この項目はここから出る」。箱の中は計算の中身（何をどう畳むか・どの行に絞るか）。赤い線は順番が逆（空のまま計算される）
 flowchart LR
   lines_qty["数量<br/>明細 lines の行"]
   lines_price["単価<br/>明細 lines の行"]
-  lines_amount["金額<br/>明細 lines の行"]
+  lines_amount["金額<br/>明細 lines の行<br/>・ op: product<br/>・ もと: 数量 / 単価"]
   lines_cancelled["取消<br/>明細 lines の行"]
-  subtotal["小計"]
+  subtotal["小計<br/>・ op: sum<br/>・ 畳む: 「明細」の 金額<br/>・ 絞り込み: 取消 が true でないとき"]
   lines["明細"]
-  lineCount["明細行数"]
+  lineCount["明細行数<br/>・ op: count<br/>・ 畳む: 「明細」の行の数<br/>・ 絞り込み: 取消 が true でないとき"]
   lines_item["品名<br/>明細 lines の行"]
-  itemNames["品名"]
-  total["合計金額"]
+  itemNames["品名<br/>・ op: join<br/>・ 畳む: 「明細」の 品名<br/>・ 絞り込み: 取消 が true でないとき"]
+  total["合計金額<br/>・ op: sum<br/>・ もと: 小計"]
   lines_qty --> lines_amount
   lines_price --> lines_amount
   lines_amount -->|sum| subtotal

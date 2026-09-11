@@ -132,6 +132,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
               if (action.scope == ActionScopes.selection)
                 _bulkButton(
                   action: action,
+                  unwired: unwiredReason(context, action),
                   count:
                       _selection.pick(_controller.items, _def.keyField).length,
                   onPressed: () => _runAction(action),
@@ -148,10 +149,14 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
               else
                 // 一覧の上のボタンには判定する相手が無いので出し分けない
                 // （書いても効かないことは validate が言う）。
-                FilledButton(
-                  key: Key('hatake.action.${action.id}'),
-                  onPressed: () => _runAction(action),
-                  child: Text(action.label),
+                _withUnwired(
+                  context,
+                  action,
+                  (enabled) => FilledButton(
+                    key: Key('hatake.action.${action.id}'),
+                    onPressed: enabled ? () => _runAction(action) : null,
+                    child: Text(action.label),
+                  ),
                 ),
           ]),
           const SizedBox(height: 12),
@@ -236,6 +241,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
                             record: record,
                             rowKey: record[_def.keyField],
                             labels: labels,
+                            unwired: unwiredReason(context, action),
                             onPressed: () => _runAction(action, record: record),
                           ),
                       ],

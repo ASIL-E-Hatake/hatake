@@ -16,6 +16,7 @@
 //   ・独自の `op` は `fields` / `of` の意味を知らないので、**書いてあるものをそのまま**
 //     依存として読む（組み込みだけを特別扱いすると、独自の op の図が空になる）。
 
+import { describeCondition, labelVocabulary } from "./explain.js";
 import { rawFormFields } from "./pageParts.js";
 import type { TextEdge, TextGraph, TextNode } from "./graphText.js";
 
@@ -85,6 +86,58 @@ function slotsOf(page: Dict): Slot[] {
   return found;
 }
 
+/**
+ * 箱の中に出す**計算の中身**（`op`・畳む相手・絞り込み）。
+ *
+ * なぜ要るか: 線は「どこから来るか」しか言わない。**なぜこの数になるのか**は
+ * `op`（足すのか引くのか）と絞り込み（どの行を数えたのか）まで見ないと分からない
+ * ＝図を貼っても「順番だけ直せばいい」以上のことが読めない。
+ *
+ * 条件の言い方は読み返しと**同じ関数**（[describeCondition]）で作る。同じ条件が図と
+ * 説明で違う言葉になると、どちらが正か読む側に分からない。
+ */
+function computedLines(slot: Slot, byId: Map<string, Slot>): string[] {
+  const computed = slot.computed;
+  if (computed === undefined) return [];
+  const out: string[] = [];
+  const op = str(computed.op);
+  if (op !== undefined) out.push(`op: ${op}`);
+
+  const nameOf = (id: string, fallback: string): string =>
+    byId.get(id)?.label ?? fallback;
+
+  // 同じレコードの項目を畳む（`fields`）。
+  const from = list(computed.fields)
+    .map((one) => str(one))
+    .filter((one): one is string => one !== undefined)
+    .map((name) =>
+      nameOf(slot.owner === undefined ? name : `${slot.owner}.${name}`, name),
+    );
+  if (from.length > 0) out.push(`もと: ${from.join(" / ")}`);
+
+  // 明細の行を畳む（縦計）。`of` が無いのは行そのものを数える（count）。
+  const table = str(computed.field);
+  if (table !== undefined) {
+    const of = str(computed.of);
+    const tableName = nameOf(table, table);
+    out.push(
+      of === undefined
+        ? `畳む: 「${tableName}」の行の数`
+        : `畳む: 「${tableName}」の ${nameOf(`${table}.${of}`, of)}`,
+    );
+  }
+
+  // 絞り込み（どの行を数えたのか）。ここを出さないと数が合わない理由が読めない。
+  if (isDict(computed.where)) {
+    const labels = new Map(
+      [...byId.values()].map((one) => [one.field, one.label] as const),
+    );
+    const said = describeCondition(computed.where, labelVocabulary(labels));
+    if (said !== "") out.push(`絞り込み: ${said}`);
+  }
+  return out;
+}
+
 /** その段の中の項目（同じ `owner` のもの）。 */
 const sameLevel = (slots: Slot[], slot: Slot): Slot[] =>
   slots.filter((one) => one.owner === slot.owner);
@@ -92,6 +145,19 @@ const sameLevel = (slots: Slot[], slot: Slot): Slot[] =>
 export interface ComputedGraphOptions {
   /** 画面の名前（図の見出しに出す）。 */
   title?: string;
+  /**
+   * 箱を囲むまとまりの名前（1枚に複数の画面を出すときに渡す）。
+   *
+   * 渡さなければ囲まない＝1画面だけの図は今までと同じ形で出る。
+   */
+  group?: string;
+  /**
+   * 箱の名前に前置きする字（1枚に複数の画面を出すときに渡す）。
+   *
+   * 画面をまたぐと同じ項目名（`total`）がぶつかるので、**画面ごとに別の箱**にする
+   * ために要る（同じ id にすると、別の画面の線が1つの箱に集まってしまう）。
+   */
+  idPrefix?: string;
 }
 
 /**
@@ -114,11 +180,13 @@ export function computedGraph(
     const seen = nodes.get(slot.id);
     // 一度 `warn` にした箱は下げない（同じ箱が複数の線に出てくる）。
     if (seen !== undefined && (seen.tone === "warn" || tone !== "warn")) return;
+    const lines = computedLines(slot, byId);
     nodes.set(slot.id, {
       id: slot.id,
       label: slot.label,
       tone,
       ...(slot.owner === undefined ? {} : { note: `明細 ${slot.owner} の行` }),
+      ...(lines.length === 0 ? {} : { lines }),
     });
   };
 
@@ -190,13 +258,68 @@ export function computedGraph(
     put(slot, late ? "warn" : "output");
   }
 
+  // 1枚にまとめるときだけ、箱の名前を画面ごとに分けて囲む（既定は今までと同じ形）。
+  const prefix = options.idPrefix;
+  const grouped =
+    prefix === undefined && options.group === undefined
+      ? { nodes: [...nodes.values()], edges }
+      : {
+          nodes: [...nodes.values()].map((one) => ({
+            ...one,
+            id: prefix === undefined ? one.id : `${prefix}.${one.id}`,
+            ...(options.group === undefined ? {} : { group: options.group }),
+          })),
+          edges: edges.map((one) => ({
+            ...one,
+            from: prefix === undefined ? one.from : `${prefix}.${one.from}`,
+            to: prefix === undefined ? one.to : `${prefix}.${one.to}`,
+          })),
+        };
+
   return {
     title: options.title ?? "計算の依存",
     subtitle:
       nodes.size === 0
         ? "計算項目はありません"
-        : "左から右へ「この項目はここから出る」。赤い線は順番が逆（空のまま計算される）",
-    nodes: [...nodes.values()],
+        : "左から右へ「この項目はここから出る」。箱の中は計算の中身" +
+          "（何をどう畳むか・どの行に絞るか）。赤い線は順番が逆（空のまま計算される）",
+    nodes: grouped.nodes,
+    edges: grouped.edges,
+  };
+}
+
+/**
+ * 画面ぜんぶの依存を**1枚に**（`--computed --all`）。
+ *
+ * 10画面ある定義を見るのに10回叩くのは続かない。画面ごとに囲んで（`group`）、箱の名前は
+ * 画面ごとに分ける（`idPrefix`）＝同じ項目名が別の画面にあっても混ざらない。
+ *
+ * **計算が1つも無い画面は出さない**（空の囲みが並ぶと、在る所が読めなくなる）。
+ */
+export function computedGraphs(
+  pages: { id: string; title?: string; page: Dict }[],
+): TextGraph {
+  const nodes: TextNode[] = [];
+  const edges: TextEdge[] = [];
+  let drawn = 0;
+  for (const one of pages) {
+    const graph = computedGraph(one.page, {
+      group: one.title === undefined ? one.id : `${one.title}（${one.id}）`,
+      idPrefix: one.id,
+    });
+    if (graph.nodes.length === 0) continue;
+    drawn += 1;
+    nodes.push(...graph.nodes);
+    edges.push(...graph.edges);
+  }
+  return {
+    title: "計算の依存（画面ぜんぶ）",
+    subtitle:
+      drawn === 0
+        ? "計算項目のある画面はありません"
+        : `計算項目のある画面 ${drawn} 枚。囲みが1画面で、箱の中は計算の中身。` +
+          "赤い線は順番が逆（空のまま計算される）",
+    nodes,
     edges,
   };
 }

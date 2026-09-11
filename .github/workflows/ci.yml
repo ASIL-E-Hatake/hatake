@@ -1784,6 +1784,20 @@ jobs:
             echo "理由の無い no-check で通ってしまった"; cat /tmp/silent.log; exit 1
           fi
           grep -q 'no-check には理由を書いてください' /tmp/silent.log
+          # 囲みの中に囲みを書いた手引きも落とす（行頭でなくても、抜き出す側は
+          # そこで切る＝載せた断片が途中で終わる。実際に CI が落ちた形）。
+          FENCE=$(printf '\140\140\140')
+          {
+            echo '# 入れ子の手引き（試験用）'
+            echo
+            echo "${FENCE}bash"
+            echo "echo '${FENCE}mermaid'"
+            echo "${FENCE}"
+          } > /tmp/rotten/nested.md
+          if node tool/check-docs.mjs /tmp/rotten/nested.md > /tmp/nested.log 2>&1; then
+            echo "囲みの中の囲みで通ってしまった"; cat /tmp/nested.log; exit 1
+          fi
+          grep -q '囲みの中に囲みの字' /tmp/nested.log
           # 3. MCP の道具に付けた**そのまま呼べる例**が、tools/list にも出ること。
           printf '%s\n' \
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
@@ -2844,6 +2858,36 @@ jobs:
           grep -q 'lines_qty --> lines_amount' /tmp/deps.mmd
           # 畳む前の絞り込みは細い線（値の流れと区別する）。
           grep -q 'lines_cancelled -.->|絞り込み| subtotal' /tmp/deps.mmd
+          # 箱の中に**計算の中身**が出る（線は「どこから来るか」しか言わない）。
+          grep -q 'op: sum' /tmp/deps.mmd
+          grep -q '畳む: 「明細」の 金額' /tmp/deps.mmd
+          grep -q '絞り込み: 取消 が' /tmp/deps.mmd
+          # 条件の言い方は読み返しと同じ関数で作る（図と説明で2つの言い方をしない）。
+          node dist/cli.js explain ../spec/examples/order_entry.yaml > /tmp/say.log
+          node -e '
+            const fs = require("fs");
+            const graph = fs.readFileSync("/tmp/deps.mmd", "utf8");
+            const said = fs.readFileSync("/tmp/say.log", "utf8");
+            const found = /絞り込み: ([^<"]+)/.exec(graph);
+            if (found === null) { console.error("図に絞り込みが出ていない"); process.exit(1); }
+            const text = found[1].trim();
+            if (!said.includes(text)) {
+              console.error("図の条件「" + text + "」が読み返しに出てこない（言い方が2つある）");
+              process.exit(1);
+            }
+          '
+          # 画面ぜんぶを1枚に（画面ごとに囲む・計算が無い画面は囲みも出さない）。
+          node dist/cli.js diagram ../spec/examples/sales_app.yaml --computed --all \
+            > /tmp/all.mmd
+          grep -q 'subgraph g0\["受注入力（order_entry）"\]' /tmp/all.mmd
+          grep -q 'order_entry.lines_amount' /tmp/all.mmd
+          if grep -q 'order_search' /tmp/all.mmd; then
+            echo "計算の無い画面まで囲みに出した"; exit 1
+          fi
+          # DOT でも囲みになる（貼る先が違うだけで、中身は同じ）。
+          node dist/cli.js diagram ../spec/examples/sales_app.yaml --computed --all \
+            --format dot > /tmp/all.dot
+          grep -q 'subgraph cluster_0 {' /tmp/all.dot
           # サイトの図解ページに貼ってあるものと、実際の出力が一致すること。
           python3 - <<'PY'
           import io, re

@@ -65,6 +65,26 @@ _ActionEnabled _actionEnabled(
   );
 }
 
+/// そのボタンが**まだ繋がっていない**か（`type: plugin` なのにハンドラが未登録）。
+///
+/// 押してから「ハンドラが未登録です」と言うのが最後の砦。けれど**登録は実行時に引ける**
+/// （`ActionRegistry`）ので、押す前に言える。押すまで気づけないのが、この枠組みで一番
+/// まずい転び方なので、ここだけ最後の砦に任せない。
+///
+/// 灰色にすると開発中の抜けが見えにくくなる、という心配はある。だから**理由を出す**
+/// （どのプラグインが無いのかまで）。道具の側でも言っている（`validate --registry` の
+/// `unknown-plugin`）ので、黙って隠すことにはならない。
+///
+/// `plugin:` の名前が書いていないボタンは**ここでは言わない**（それは定義の間違いで、
+/// `hatake validate` の `plugin-without-name` が押す前に言う）。
+String? unwiredReason(BuildContext context, ActionDefinition action) {
+  if (action.type != ActionTypes.plugin) return null;
+  final name = action.plugin;
+  if (name == null || name.isEmpty) return null;
+  if (HatakeScope.of(context).actions.contains(name)) return null;
+  return 'まだ繋がっていません（プラグイン "$name" が登録されていません）';
+}
+
 /// 押せない理由（**何の状態で決まるのか**まで言う）。
 ///
 /// 文言を書かせない＝定義から出す。項目の業務名が分かるなら業務名で言う（[labels]）。
@@ -75,14 +95,34 @@ String _whyDisabled(_ActionEnabled state, Map<String, String> labels) {
 }
 
 /// 押せないボタンに理由を添える（押せるときはそのまま）。
+///
+/// [unwired] は「まだ繋がっていません」＝状態ではなく**アプリ側の登録**の話なので、
+/// そちらを先に言う（状態を直しても押せるようにはならない）。
 Widget _withReason(
   Widget button,
   _ActionEnabled state,
-  Map<String, String> labels,
-) =>
-    state.enabled
-        ? button
-        : Tooltip(message: _whyDisabled(state, labels), child: button);
+  Map<String, String> labels, {
+  String? unwired,
+}) {
+  if (unwired != null) return Tooltip(message: unwired, child: button);
+  return state.enabled
+      ? button
+      : Tooltip(message: _whyDisabled(state, labels), child: button);
+}
+
+/// 繋がっていないときだけ押せなくして理由を出す（一覧の上のボタン用）。
+///
+/// 一覧の上のボタンには判定する相手（開いているレコード）が無いので `enabledWhen` は
+/// 効かない。効くのは**繋がっているか**だけなので、そこだけを包む。
+Widget _withUnwired(
+  BuildContext context,
+  ActionDefinition action,
+  Widget Function(bool enabled) build,
+) {
+  final unwired = unwiredReason(context, action);
+  final button = build(unwired == null);
+  return unwired == null ? button : Tooltip(message: unwired, child: button);
+}
 
 List<Widget> _pageActionButtons(
   BuildContext context,
@@ -108,10 +148,12 @@ List<Widget> _pageActionButtons(
     // では**いま入力されている値**が渡ってくる（保存前の値で出し分ける）。無い画面では
     // 出し分けない（判定する相手が無い＝押せるまま）。
     final state = _actionEnabled(action, record: record, mode: mode);
+    // 繋がっていないボタンは押せない（押しても最後の砦が出るだけなので、押す前に言う）。
+    final unwired = unwiredReason(context, action);
     out.add(_withReason(
       FilledButton(
         key: Key('hatake.action.${action.id}'),
-        onPressed: state.enabled
+        onPressed: state.enabled && unwired == null
             ? () => _runPageAction(context, action, controller,
                 record: record, onExport: onExport, onPrint: onPrint)
             : null,
@@ -119,6 +161,7 @@ List<Widget> _pageActionButtons(
       ),
       state,
       labels,
+      unwired: unwired,
     ));
     out.add(const SizedBox(width: 8));
   }

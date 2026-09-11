@@ -158,7 +158,8 @@ void main() {
     expect(fired, 1);
   });
 
-  testWidgets('an unregistered plugin action reports itself', (tester) async {
+  testWidgets('an unregistered plugin action is disabled before the press',
+      (tester) async {
     await tester.pumpWidget(_harness(
       _withAction,
       repositories: {'repo': _Repo()},
@@ -166,9 +167,18 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('hatake.action.showDef')));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('ハンドラが未登録'), findsOneWidget);
+    // 押してから言うのではなく、押す前に灰色にして理由を出す。
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('hatake.action.showDef')))
+          .onPressed,
+      isNull,
+    );
+    final tip = tester.widget<Tooltip>(find.ancestor(
+      of: find.byKey(const Key('hatake.action.showDef')),
+      matching: find.byType(Tooltip),
+    ));
+    expect(tip.message, contains('showDefinition'));
   });
 
   testWidgets('saving a new record unlocks its repository-backed 明細',

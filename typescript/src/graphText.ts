@@ -34,6 +34,14 @@ export interface TextNode {
   lines?: string[];
   /** 色味（[DiagramBox.tone] と同じ語彙）。 */
   tone?: DiagramBox["tone"];
+  /**
+   * 囲むまとまりの名前（画面ごとに囲むときに使う）。
+   *
+   * 複数の画面を1枚に出すと、どの箱がどの画面のものか読めなくなる。Mermaid の
+   * `subgraph` と DOT の `cluster` は**同じ考え**なので、持つのは名前1つだけにして
+   * 囲み方は出す側（[toMermaid] / [toDot]）に任せる。
+   */
+  group?: string;
 }
 
 /** 線1本。 */
@@ -106,6 +114,16 @@ const boxLines = (node: TextNode): string[] => [
 
 const quote = (text: string): string => text.replace(/"/g, "'");
 
+/** 囲むまとまりの名前を、出てきた順に（並びを安定させる＝図が毎回同じ）。 */
+function groupsOf(nodes: TextNode[]): string[] {
+  const found: string[] = [];
+  for (const node of nodes) {
+    if (node.group === undefined || found.includes(node.group)) continue;
+    found.push(node.group);
+  }
+  return found;
+}
+
 /**
  * Mermaid（GitHub の本文にそのまま貼れる）。
  *
@@ -116,10 +134,21 @@ export function toMermaid(graph: TextGraph): string {
   const out: string[] = [`%% ${graph.title}`];
   if (graph.subtitle !== undefined) out.push(`%% ${graph.subtitle}`);
   out.push("flowchart LR");
-  for (const node of graph.nodes) {
+  const box = (node: TextNode, indent: string): string => {
     // Mermaid の箱の中の改行は <br/>（実体参照は使えない）。
     const text = boxLines(node).map(quote).join("<br/>");
-    out.push(`  ${names.get(node.id)}["${text}"]`);
+    return `${indent}${names.get(node.id)}["${text}"]`;
+  };
+  for (const node of graph.nodes.filter((one) => one.group === undefined)) {
+    out.push(box(node, "  "));
+  }
+  // まとまりごとに囲む（線はこのあと外に出す＝囲みを跨ぐ線が引けるように）。
+  for (const [index, group] of groupsOf(graph.nodes).entries()) {
+    out.push(`  subgraph g${index}["${quote(group)}"]`);
+    for (const node of graph.nodes.filter((one) => one.group === group)) {
+      out.push(box(node, "    "));
+    }
+    out.push("  end");
   }
   for (const edge of graph.edges) {
     const from = names.get(edge.from);
@@ -160,7 +189,7 @@ export function toDot(graph: TextGraph): string {
     `  label="${quote(graph.title)}";`,
     "  labelloc=t;",
   ];
-  for (const node of graph.nodes) {
+  const box = (node: TextNode, indent: string): string => {
     const tone = node.tone;
     const paint =
       tone === undefined
@@ -168,7 +197,20 @@ export function toDot(graph: TextGraph): string {
         : `, fillcolor="${TONE_FILL[tone]}", color="${TONE_LINE[tone]}"`;
     // DOT の箱の中の改行は、ラベルの中の \n（ファイルには2文字で書く）。
     const text = boxLines(node).map(quote).join("\\n");
-    out.push(`  ${names.get(node.id)} [label="${text}"${paint}];`);
+    return `${indent}${names.get(node.id)} [label="${text}"${paint}];`;
+  };
+  for (const node of graph.nodes.filter((one) => one.group === undefined)) {
+    out.push(box(node, "  "));
+  }
+  for (const [index, group] of groupsOf(graph.nodes).entries()) {
+    out.push(`  subgraph cluster_${index} {`);
+    out.push(`    label="${quote(group)}";`);
+    out.push('    style="rounded";');
+    out.push('    color="#9aa0a6";');
+    for (const node of graph.nodes.filter((one) => one.group === group)) {
+      out.push(box(node, "    "));
+    }
+    out.push("  }");
   }
   for (const edge of graph.edges) {
     const from = names.get(edge.from);
@@ -188,6 +230,23 @@ export function toDot(graph: TextGraph): string {
 /** 形を選んで文字にする。 */
 export const renderGraph = (graph: TextGraph, format: GraphFormat): string =>
   format === "dot" ? toDot(graph) : toMermaid(graph);
+
+/**
+ * Markdown の囲みごと出す（`--fenced`）。
+ *
+ * なぜ道具の側に置くか: 貼る先が Markdown（PR の本文・手引き・Wiki）なら、囲みは毎回
+ * 同じ。**貼る人が書くと、手引きの中に囲みを書くことになる**＝囲みが入れ子になって、
+ * 塊を抜き出す側（CI・生成器）が途中で切れる（実際に落ちた）。道具が付けるなら、その字は
+ * 1か所に在る。
+ *
+ * 印は文字を組み立てて作る＝**この原本にも囲みの字を書かない**（同じ事故をこの行で
+ * 起こさないため）。
+ */
+export function fencedGraph(graph: TextGraph, format: GraphFormat): string {
+  const fence = "`".repeat(3);
+  const body = renderGraph(graph, format).trimEnd();
+  return `${fence}${format}\n${body}\n${fence}\n`;
+}
 
 /**
  * 画面の図（[Diagram]）を [TextGraph] に開く。

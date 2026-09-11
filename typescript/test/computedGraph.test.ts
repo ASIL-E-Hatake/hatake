@@ -4,6 +4,8 @@ import { parse as parseYaml } from "yaml";
 import {
   appDiagram,
   computedGraph,
+  computedGraphs,
+  fencedGraph,
   graphOfDiagram,
   hasLateDependency,
   parseAppSource,
@@ -197,5 +199,177 @@ describe("貼れる形（Mermaid / DOT）", () => {
     expect(text).toMatch(/order_search\["受注照会<br\/>/);
     // 遷移の線と札。
     expect(text).toContain("order_search -->|詳細| order_detail");
+  });
+});
+
+describe("箱の中に計算の中身を出す", () => {
+  const page = parseYaml(`page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: lines
+            label: 明細
+            type: subTable
+            fields:
+              - { field: qty, label: 数量, type: number }
+              - { field: price, label: 単価, type: number }
+              - { field: cancelled, label: 取消, type: checkbox }
+              - { field: amount, label: 金額, type: number,
+                  computed: { op: product, fields: [qty, price] } }
+          - { field: subtotal, label: 小計, type: number,
+              computed: { op: sum, field: lines, of: amount,
+                          where: { field: cancelled, operator: equals, value: false } } }
+          - { field: lineCount, label: 明細行数, type: number,
+              computed: { op: count, field: lines } }
+`) as Dict;
+
+  const nodeOf = (id: string) => {
+    const graph = computedGraph(page.page as Dict, { title: "受注入力" });
+    const found = graph.nodes.find((one) => one.id === id);
+    expect(found, id).toBeDefined();
+    return found!;
+  };
+
+  it("何をどう畳むかを書く（線だけでは「なぜこの数か」が読めない）", () => {
+    expect(nodeOf("subtotal").lines).toEqual([
+      "op: sum",
+      "畳む: 「明細」の 金額",
+      "絞り込み: 取消 が false のとき",
+    ]);
+  });
+
+  it("of が無ければ行の数（count）だとはっきり書く", () => {
+    expect(nodeOf("lineCount").lines).toContain("畳む: 「明細」の行の数");
+  });
+
+  it("同じレコードの項目を畳むときは、もとの業務名で書く", () => {
+    expect(nodeOf("lines.amount").lines).toEqual([
+      "op: product",
+      "もと: 数量 / 単価",
+    ]);
+  });
+
+  it("計算でない項目には中身を書かない（空の箱を増やさない）", () => {
+    expect(nodeOf("lines.qty").lines).toBeUndefined();
+  });
+
+  it("貼れる形にも中身が運ばれる（見出しだけの箱にならない）", () => {
+    const graph = computedGraph(page.page as Dict);
+    expect(toMermaid(graph)).toContain("畳む: 「明細」の 金額");
+    expect(toDot(graph)).toContain("op: sum");
+  });
+});
+
+describe("画面ぜんぶを1枚に", () => {
+  const pageOf = (id: string, label: string) =>
+    (parseYaml(`page:
+  type: form
+  id: ${id}
+  title: ${label}
+  repository: r
+  key: k
+  form:
+    sections:
+      - fields:
+          - { field: price, label: 売価, type: number }
+          - { field: cost, label: 原価, type: number }
+          - { field: total, label: 粗利, type: number,
+              computed: { op: subtract, fields: [price, cost] } }
+`) as Dict).page as Dict;
+
+  const empty = (parseYaml(`page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: r
+  key: k
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+`) as Dict).page as Dict;
+
+  const graph = () =>
+    computedGraphs([
+      { id: "order_entry", title: "受注入力", page: pageOf("order_entry", "受注入力") },
+      { id: "order_search", title: "受注照会", page: empty },
+      { id: "cost_master", title: "原価管理", page: pageOf("cost_master", "原価管理") },
+    ]);
+
+  it("画面ごとに囲む（どの箱がどの画面か読めるように）", () => {
+    const groups = [...new Set(graph().nodes.map((one) => one.group))];
+    expect(groups).toEqual(["受注入力（order_entry）", "原価管理（cost_master）"]);
+  });
+
+  it("計算が無い画面は囲みも出さない（空の囲みで在る所が読めなくなる）", () => {
+    expect(graph().subtitle).toContain("2 枚");
+    expect(graph().nodes.some((one) => one.id.startsWith("order_search"))).toBe(false);
+  });
+
+  it("同じ項目名が別の画面にあっても混ざらない", () => {
+    const ids = graph().nodes.map((one) => one.id);
+    expect(ids).toContain("order_entry.total");
+    expect(ids).toContain("cost_master.total");
+    // 線も画面ごとに分かれている（別の画面の箱に集まらない）。
+    const into = graph().edges.filter((one) => one.to === "order_entry.total");
+    expect(into.map((one) => one.from)).toEqual([
+      "order_entry.price",
+      "order_entry.cost",
+    ]);
+  });
+
+  it("貼れる形では囲みになる（Mermaid の subgraph / DOT の cluster）", () => {
+    const mermaid = toMermaid(graph());
+    expect(mermaid).toContain('subgraph g0["受注入力（order_entry）"]');
+    expect(mermaid).toContain("  end");
+    const dot = toDot(graph());
+    expect(dot).toContain("subgraph cluster_0 {");
+    expect(dot).toContain('label="原価管理（cost_master）";');
+  });
+
+  it("1画面だけの図は今までと同じ形（囲まない）", () => {
+    const one = computedGraph(pageOf("order_entry", "受注入力"));
+    expect(one.nodes.every((node) => node.group === undefined)).toBe(true);
+    expect(one.nodes.map((node) => node.id)).toContain("total");
+    expect(toMermaid(one)).not.toContain("subgraph");
+  });
+});
+
+describe("Markdown の囲みごと出す", () => {
+  const graph = () =>
+    computedGraph(
+      (parseYaml(`page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: r
+  key: k
+  form:
+    sections:
+      - fields:
+          - { field: price, label: 売価, type: number }
+          - { field: total, label: 合計, computed: { op: sum, fields: [price] } }
+`) as Dict).page as Dict,
+    );
+
+  const FENCE = "`".repeat(3);
+
+  it("印つきの囲みで包む（貼る先が Markdown なら毎回同じなので道具が付ける）", () => {
+    const text = fencedGraph(graph(), "mermaid");
+    expect(text.startsWith(`${FENCE}mermaid\n`)).toBe(true);
+    expect(text.trimEnd().endsWith(FENCE)).toBe(true);
+    expect(text).toContain("flowchart LR");
+  });
+
+  it("形ごとに印が変わる（貼る先が読める字にする）", () => {
+    expect(fencedGraph(graph(), "dot").startsWith(`${FENCE}dot\n`)).toBe(true);
+  });
+
+  it("囲みは1組だけ（中身に囲みの字が混ざらない）", () => {
+    const text = fencedGraph(graph(), "mermaid");
+    expect(text.split(FENCE)).toHaveLength(3);
   });
 });

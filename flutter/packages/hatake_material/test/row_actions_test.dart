@@ -135,6 +135,9 @@ void main() {
         ],
       ),
       _Rows(_seed()),
+      // 見たいのは**行の状態**で押せるかどうか。繋がっていないボタンは押す前に
+      // 押せなくなるので、ここでは登録してから状態を見る。
+      actions: ActionRegistry({'openDetail': (_) async {}}),
     ));
     await tester.pumpAndSettle();
 
