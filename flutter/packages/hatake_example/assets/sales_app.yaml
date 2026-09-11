@@ -269,7 +269,7 @@ app:
               - { field: reason, label: 理由, type: textarea, required: true }
               - { field: rejectedOn, label: 却下日, type: date }
           onSuccess: { message: '{count} 件を却下しました' }
-          onError: { message: '{count} 件を却下しました（{failed} 件は承認済みなので却下できません）' }
+          onError: { message: '{count} 件を却下しました（{failed} 件は承認済みなので却下できません: {failedKeys}）' }
         - { id: showDef, type: plugin, plugin: showDefinition, label: 定義を見る, config: { page: order_search } }
 
     # 帳票: 一覧の印刷版。明細の列は table から取り、report が「紙の構造」を足す。

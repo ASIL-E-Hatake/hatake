@@ -478,6 +478,18 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       **読むだけ**（POST / PUT / DELETE は叩かない）。--dry-run は叩かずに
       「何を叩くか」だけ出す。集合の名前は wire と同じ推測（--collection で上書き）。
 
+  hatake probe --kinds [<印>] [--json]
+      **食い違いの印から直し方を引く**（type-mismatch / list-shape …）。
+      通信しないので定義も要らない。印は probe --json の kind に出るもので、
+      **サーバを直すなら／定義を直すなら**を分けて出す（どちらを直すかは業務の判断
+      なので、道具は決めない）。印を足したら表にも足す（試験が落ちる）。
+
+  hatake probe --login login.json --check [--json]
+      **資格が取れることだけ**を試す（業務の口は叩かない）。役割ごとに ok / 理由を
+      出し、1つでも取れなければ終了コード 1。取れたトークンは出さない（CI のログは
+      残る）。資格が取れない役割は、叩いた結果では「叩いていません」に混ざるので、
+      **資格の話とサーバの話を切り分ける**ための口。
+
   hatake attack <file> --all-roles --accounts accounts.json --base http://…
               [--login login.json] [--since 前回.json] [--save 次回.json]
               [--fail-on any|new] [--dry-run] [--json]
@@ -589,6 +601,7 @@ const BOOLEAN_FLAGS = new Set([
   "json",
   "agents",
   "check",
+  "kinds",
   "markdown",
   "diff",
   "brief",

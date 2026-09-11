@@ -1,0 +1,118 @@
+{
+  "$comment": "食い違いの印（probe / attack が返す kind）から直し方を引く表。**印ごとの一般の話**をここに置き、1件ごとの具体（何件返った・どの項目か）は probe が finding の what / fix に書く＝同じことを2か所に書かない。印は closed な集合（typescript/src/probeShape.ts の PROBE_KINDS が正）で、表に無い印・表にあるのに無い印は試験が落とす。引く口は npx hatake probe --kinds [<印>]。いまは日本語だけ（英語は束『英語』の担当）。",
+
+  "kinds": [
+    {
+      "id": "unreachable",
+      "what": "その口に繋がらない（名前が引けない・落ちている・別のポートで動いている）。",
+      "server": "動いていることと、口の在り処（ホストとポート）を確かめる。",
+      "definition": "叩き先が違うなら `--base` を直す（定義ではなく渡し方の話）。",
+      "tool": "hatake probe app.yaml --dry-run"
+    },
+    {
+      "id": "no-endpoint",
+      "what": "定義が宣言している口が、サーバに無い（404 が返る）。",
+      "server": "その口を作る（形は定義から出せる）。",
+      "definition": "口の名前が実物と違うなら、定義の `repository` と `--base` の組み合わせを直す。",
+      "tool": "hatake openapi app.yaml"
+    },
+    {
+      "id": "refused",
+      "what": "資格が通らない（401 / 403）。叩けていないので、食い違いがあるかは**分からない**。",
+      "server": "資格の取り方（トークンの発行）と、その役割に許している範囲を確かめる。",
+      "definition": "定義の話ではない。資格の渡し方は `--token` / `--headers` / `--login`。",
+      "tool": "hatake probe app.yaml --login login.json --check"
+    },
+    {
+      "id": "bad-status",
+      "what": "200 以外が返っている（500 など）。画面には何も出ない。",
+      "server": "そのまま不具合。ログを見る（定義側で直せる話ではない）。",
+      "definition": "叩いた条件が業務的にあり得ないなら、宣言している絞り込みの形を見直す。",
+      "tool": "hatake probe app.yaml --dry-run"
+    },
+    {
+      "id": "not-json",
+      "what": "JSON が返っていない（HTML のエラーページ・空など）。",
+      "server": "`Content-Type` と本文を JSON にする。",
+      "definition": "定義の話ではない。",
+      "tool": "hatake api-shape"
+    },
+    {
+      "id": "list-shape",
+      "what": "一覧の形が違う（`items` / `totalCount` の入れ物になっていない）。画面は0件になる。",
+      "server": "`{ items: [...], totalCount: n }` で返す（hatake_http はこの形と1対1で話す）。",
+      "definition": "実物の形に寄せるなら、Repository の実装で詰め替える（定義は形を選べない）。",
+      "tool": "hatake openapi app.yaml"
+    },
+    {
+      "id": "page-size-ignored",
+      "what": "1ページの件数を頼んだのに、それより多く返っている（ページ送りが効いていない）。",
+      "server": "`page` / `size` を効かせる（全件返すと、画面は増えた行を黙って描く）。",
+      "definition": "全件返す口をそのまま使うなら、`pagination: { enabled: false }` と書く（そう書いてあれば事故ではない）。",
+      "tool": "hatake reference pagination"
+    },
+    {
+      "id": "total-too-small",
+      "what": "返した行の数より `totalCount` が小さい（件数表示とページ送りが壊れる）。",
+      "server": "`totalCount` は**絞り込み後の全件数**を返す（このページの件数ではない）。",
+      "definition": "定義の話ではない。",
+      "tool": "hatake openapi app.yaml"
+    },
+    {
+      "id": "no-rows",
+      "what": "行が0件。**食い違いとは言えない**（本当に0件かもしれない）ので、見ていないことを言う。",
+      "server": "試すなら、当たるデータを入れてから叩く（空のままでは形を確かめられない）。",
+      "definition": "定義の話ではない。",
+      "tool": "hatake fixtures page.yaml"
+    },
+    {
+      "id": "row-not-object",
+      "what": "一覧の行が object でない（文字や数が並んでいる）。列が1つも描けない。",
+      "server": "行を object で返す（`[\"SO-1\", \"SO-2\"]` ではなく `[{ orderNo: … }]`）。",
+      "definition": "定義の話ではない。",
+      "tool": "hatake dto page.yaml"
+    },
+    {
+      "id": "rows-not-object",
+      "what": "どの行も object でない（一覧の中身が丸ごと違う形）。",
+      "server": "上と同じ。返す形を宣言に合わせる。",
+      "definition": "定義の話ではない。",
+      "tool": "hatake dto page.yaml"
+    },
+    {
+      "id": "no-key",
+      "what": "1件を指すキー（`page.key`）が行に入っていない。行を開く・直す・消すが繋がらない。",
+      "server": "キーの項目を返す（隠したい値でも、行を指す鍵は要る）。",
+      "definition": "実物の鍵の名前が違うなら、`key` をその名前に直す。",
+      "tool": "hatake reference key"
+    },
+    {
+      "id": "item-missing",
+      "what": "1件取る口が、そのキーで何も返さない（一覧には出ているのに開けない）。",
+      "server": "`<collection>/{key}` で1件を返す（404 は「無い」の意味で使う）。",
+      "definition": "鍵の作り方が違うなら（複合キーなど）、そこは Repository の実装で吸収する。",
+      "tool": "hatake refs page.yaml --needs-registration"
+    },
+    {
+      "id": "item-not-object",
+      "what": "1件取る口が object を返していない。",
+      "server": "1件は object で返す（配列で包まない）。",
+      "definition": "定義の話ではない。",
+      "tool": "hatake dto page.yaml"
+    },
+    {
+      "id": "missing-member",
+      "what": "宣言した項目が、返ってきた行に**どの行にも**入っていない。画面では空欄になる。",
+      "server": "その項目を返す（値が無い行は `null` で返す＝キー自体を省くと、画面は空欄と区別できない）。",
+      "definition": "サーバが持たない項目なら、定義から落とす（画面に空の列を並べない）。",
+      "tool": "hatake explain page.yaml"
+    },
+    {
+      "id": "type-mismatch",
+      "what": "項目の型が約束と違う（数を文字で返している等）。桁区切り・小計・合計が静かに効かなくなる。",
+      "server": "宣言の型で返す（`BigDecimal` を文字列で出す実装でよく出る）。",
+      "definition": "実物に寄せるなら定義の型を直す。**どちらを直すかは業務の判断**（集計に使う項目は数で返してもらうのが筋）。",
+      "tool": "hatake types page.yaml --lang ts"
+    }
+  ]
+}

@@ -2384,6 +2384,68 @@ describe("hatake probe / attack", () => {
     env: { ADMIN_PASSWORD: "a-pass", STAFF_PASSWORD: "s-pass" },
   });
 
+  it("資格の取り方だけを試す（業務の口は叩かない）", async () => {
+    const io = withEnv({ "login.json": LOGIN });
+    const auth = authServer();
+    const business = server();
+    expect(
+      await runCliAsync(
+        ["probe", "--login", "login.json", "--check"],
+        io,
+        business.send,
+        auth.send,
+      ),
+    ).toBe(0);
+    // 役割ごとに取りに行き、**業務の口は1つも叩かない**。
+    expect(auth.sent.sort()).toEqual(["admin", "staff"]);
+    expect(business.urls).toEqual([]);
+    const said = io.stdout.join("\n");
+    expect(said).toContain("業務の口は叩いていません");
+    expect(said).toContain("admin … 取れました");
+    // 取れたトークンは出さない（CI のログは残る）。
+    expect(said).not.toContain("jwt-admin");
+  });
+
+  it("取れない役割が1つでもあれば 1 を返して理由を言う", async () => {
+    const io = withEnv({ "login.json": LOGIN });
+    expect(
+      await runCliAsync(
+        ["probe", "--login", "login.json", "--check"],
+        io,
+        server().send,
+        authServer(["staff"]).send,
+      ),
+    ).toBe(1);
+    expect(io.stdout.join("\n")).toContain("staff … 取れません");
+  });
+
+  it("--check だけでは何を試すのか決まらないので言う", async () => {
+    const io = fakeIo({});
+    expect(await runCliAsync(["probe", "--check"], io, server().send)).toBe(1);
+    expect(io.stderr.join("")).toContain("--login");
+  });
+
+  it("食い違いの印は、定義もサーバも無しで引ける", async () => {
+    // 印の表は spec/ の実物を読む（記憶の中のファイルでは在り処が変わってしまう）。
+    const onDisk = () => ({
+      ...fakeIo({}),
+      readFile: (path: string) => readFileSync(path, "utf8"),
+    });
+    const io = onDisk();
+    expect(
+      await runCliAsync(["probe", "--kinds", "list-shape"], io, server().send),
+    ).toBe(0);
+    const said = io.stdout.join("\n");
+    expect(said).toContain("サーバを直すなら");
+    expect(said).toContain("定義を直すなら");
+
+    const miss = onDisk();
+    expect(
+      await runCliAsync(["probe", "--kinds", "nosuch"], miss, server().send),
+    ).toBe(1);
+    expect(miss.stderr.join("")).toContain("という印はありません");
+  });
+
   /** 単価マスタが誰にでも開いている（穴が2つ在る）サーバで1回叩く。 */
   const runSweep = async (
     io: ReturnType<typeof fakeIo>,

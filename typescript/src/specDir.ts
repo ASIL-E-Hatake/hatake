@@ -22,6 +22,9 @@ export const FAILURES_FILE = "failures.json";
 /** 担当の割り振り（どこまでを枠組みが持つか）。 */
 export const RESPONSIBILITY_FILE = "responsibility.json";
 
+/** 食い違いの印から直し方を引く表（probe / attack の kind）。 */
+export const PROBE_KINDS_FILE = "probe-kinds.json";
+
 /**
  * spec/ ディレクトリを返す。[explicit] があればそこだけを見る。
  * 無ければ実行時のカレント → このモジュールの位置、の順に上へ辿る。
