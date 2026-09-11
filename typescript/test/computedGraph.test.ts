@@ -5,6 +5,7 @@ import {
   appDiagram,
   computedGraph,
   computedGraphs,
+  fencedGraph,
   graphOfDiagram,
   hasLateDependency,
   parseAppSource,
@@ -334,5 +335,41 @@ describe("画面ぜんぶを1枚に", () => {
     expect(one.nodes.every((node) => node.group === undefined)).toBe(true);
     expect(one.nodes.map((node) => node.id)).toContain("total");
     expect(toMermaid(one)).not.toContain("subgraph");
+  });
+});
+
+describe("Markdown の囲みごと出す", () => {
+  const graph = () =>
+    computedGraph(
+      (parseYaml(`page:
+  type: form
+  id: order_entry
+  title: 受注入力
+  repository: r
+  key: k
+  form:
+    sections:
+      - fields:
+          - { field: price, label: 売価, type: number }
+          - { field: total, label: 合計, computed: { op: sum, fields: [price] } }
+`) as Dict).page as Dict,
+    );
+
+  const FENCE = "`".repeat(3);
+
+  it("印つきの囲みで包む（貼る先が Markdown なら毎回同じなので道具が付ける）", () => {
+    const text = fencedGraph(graph(), "mermaid");
+    expect(text.startsWith(`${FENCE}mermaid\n`)).toBe(true);
+    expect(text.trimEnd().endsWith(FENCE)).toBe(true);
+    expect(text).toContain("flowchart LR");
+  });
+
+  it("形ごとに印が変わる（貼る先が読める字にする）", () => {
+    expect(fencedGraph(graph(), "dot").startsWith(`${FENCE}dot\n`)).toBe(true);
+  });
+
+  it("囲みは1組だけ（中身に囲みの字が混ざらない）", () => {
+    const text = fencedGraph(graph(), "mermaid");
+    expect(text.split(FENCE)).toHaveLength(3);
   });
 });

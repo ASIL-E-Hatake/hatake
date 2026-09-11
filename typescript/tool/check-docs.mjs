@@ -34,6 +34,9 @@ import { join, relative, resolve } from "node:path";
 import { closestKey, parseIntent, parseProject } from "../dist/index.js";
 import { runCli } from "../dist/cli.js";
 
+/** 囲みの字。**この原本にも直接書かない**（自分の説明で自分を壊さないため）。 */
+const FENCE = "`".repeat(3);
+
 const ROOT = resolve(import.meta.dirname, "..", "..");
 const DOCS = join(ROOT, "docs");
 const REFERENCE = join(ROOT, "spec", "reference.json");
@@ -253,6 +256,17 @@ async function main(argv) {
     const where = relative(ROOT, path).replace(/\\/g, "/");
     for (const block of blocks(text)) {
       const at = `${where}:${block.line}`;
+      // **囲みの中に囲みを書かない。** 抜き出す側（CI の断片実行・生成器）は行頭で
+      // なくても囲みの字で切るので、塊が途中で終わる＝載せたものが走らない
+      // （実際に落ちた）。図の囲みは道具に付けさせる（`hatake diagram --fenced`）。
+      if (block.body.includes(FENCE)) {
+        problems.push(
+          `${at}: 囲みの中に囲みの字（${FENCE}）が在ります。行頭でなくても、塊を` +
+            `抜き出す側はそこで切るので**載せたものが途中で終わります**。` +
+            `図なら \`hatake diagram --fenced\`（道具が囲みを付ける）を使ってください。`,
+        );
+        continue;
+      }
       // 理由は残り全部（空白を含んでよい）。
       const noCheck = /no-check(?::\s*(.*))?$/.exec(block.info);
       if (noCheck !== null) {

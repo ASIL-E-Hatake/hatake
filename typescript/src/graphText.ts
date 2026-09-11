@@ -232,6 +232,23 @@ export const renderGraph = (graph: TextGraph, format: GraphFormat): string =>
   format === "dot" ? toDot(graph) : toMermaid(graph);
 
 /**
+ * Markdown の囲みごと出す（`--fenced`）。
+ *
+ * なぜ道具の側に置くか: 貼る先が Markdown（PR の本文・手引き・Wiki）なら、囲みは毎回
+ * 同じ。**貼る人が書くと、手引きの中に囲みを書くことになる**＝囲みが入れ子になって、
+ * 塊を抜き出す側（CI・生成器）が途中で切れる（実際に落ちた）。道具が付けるなら、その字は
+ * 1か所に在る。
+ *
+ * 印は文字を組み立てて作る＝**この原本にも囲みの字を書かない**（同じ事故をこの行で
+ * 起こさないため）。
+ */
+export function fencedGraph(graph: TextGraph, format: GraphFormat): string {
+  const fence = "`".repeat(3);
+  const body = renderGraph(graph, format).trimEnd();
+  return `${fence}${format}\n${body}\n${fence}\n`;
+}
+
+/**
  * 画面の図（[Diagram]）を [TextGraph] に開く。
  *
  * 縦積みの図は「行の順番」でも意味を持たせているが、Mermaid / DOT では並べ方は

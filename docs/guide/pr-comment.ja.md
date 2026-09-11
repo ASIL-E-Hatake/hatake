@@ -74,13 +74,14 @@ jobs:
             # そのときだけ「どこを動かせばいいか」が1枚で見える形を添える。
             : > graph.md
             if git diff --unified=0 "$BASE"...HEAD -- "$file" | grep -q 'computed'; then
-              npx hatake diagram "$file" --computed --all --format mermaid > g.mmd
+              # --fenced が Markdown の囲みごと出す（囲みを手で書くと、この手引き自身の
+              # 囲みが入れ子になって、載せた断片を抜き出す側が途中で切れる）。
+              npx hatake diagram "$file" --computed --all \
+                --format mermaid --fenced > g.md
               {
                 echo "<details><summary>計算の依存（この画面）</summary>"
                 echo
-                echo '```mermaid'
-                cat g.mmd
-                echo '```'
+                cat g.md
                 echo
                 echo "</details>"
                 echo
@@ -136,6 +137,7 @@ jobs:
 | 権限 | `pull-requests: write` だけ | コメント以外は書かない |
 | 比べる相手 | `base.sha`...HEAD（枝分かれした所） | `HEAD~1` だと「直前のコミットとの差」になり、PR 全体の変化にならない |
 | 依存の図 | **計算を触った回だけ**貼る（diff に `computed` が出たとき） | 毎回貼ると読まれない。順番の事故は触った回に起きるので、そこだけ貼れば読まれる |
+| 図の囲み | 道具に付けさせる（`--fenced`） | 囲みを断片に書くと**この手引き自身の囲みが入れ子**になり、載せた断片を機械が抜き出せなくなる |
 
 ## 一緒に置くと効くもの
 

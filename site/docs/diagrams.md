@@ -82,6 +82,7 @@ npx hatake diagram app.yaml --role admin --out admin.svg
 ```bash
 npx hatake diagram spec/examples/order_entry.yaml --computed
 npx hatake diagram app.yaml --computed --all    # 画面ぜんぶを1枚に（画面ごとに囲む）
+npx hatake diagram app.yaml --computed --all --format mermaid --fenced  # 囲みごと（貼る用）
 ```
 
 箱の中には**計算の中身**が出る（`op`・何を畳むか・**どの行に絞るか**）。線は「どこから

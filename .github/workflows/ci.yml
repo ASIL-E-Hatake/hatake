@@ -1784,6 +1784,20 @@ jobs:
             echo "理由の無い no-check で通ってしまった"; cat /tmp/silent.log; exit 1
           fi
           grep -q 'no-check には理由を書いてください' /tmp/silent.log
+          # 囲みの中に囲みを書いた手引きも落とす（行頭でなくても、抜き出す側は
+          # そこで切る＝載せた断片が途中で終わる。実際に CI が落ちた形）。
+          FENCE=$(printf '\140\140\140')
+          {
+            echo '# 入れ子の手引き（試験用）'
+            echo
+            echo "${FENCE}bash"
+            echo "echo '${FENCE}mermaid'"
+            echo "${FENCE}"
+          } > /tmp/rotten/nested.md
+          if node tool/check-docs.mjs /tmp/rotten/nested.md > /tmp/nested.log 2>&1; then
+            echo "囲みの中の囲みで通ってしまった"; cat /tmp/nested.log; exit 1
+          fi
+          grep -q '囲みの中に囲みの字' /tmp/nested.log
           # 3. MCP の道具に付けた**そのまま呼べる例**が、tools/list にも出ること。
           printf '%s\n' \
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \

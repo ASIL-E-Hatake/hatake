@@ -132,10 +132,12 @@ import {
 import { appDiagram } from "./appDiagram.js";
 import { computedGraph, computedGraphs } from "./computedGraph.js";
 import {
+  fencedGraph,
   type GraphFormat,
   graphFormats,
   graphOfDiagram,
   renderGraph,
+  type TextGraph,
 } from "./graphText.js";
 import { diffDefinitions, type DefinitionChange } from "./defDiff.js";
 import {
@@ -1876,12 +1878,28 @@ function diagram(files: string[], flags: Args["flags"], io: CliIo): number {
     io.out(JSON.stringify(picture, null, 2));
     return 0;
   }
+  if (format === undefined && flags.fenced === true) {
+    // 黙って無視すると「付けたのに付いていない」になる。
+    io.err(
+      "--fenced は --format mermaid か --format dot と一緒に使ってください" +
+        "（SVG には Markdown の囲みがありません）。",
+    );
+    return 1;
+  }
   const drawn =
     format === undefined
       ? renderDiagram(picture)
-      : renderGraph(graphOfDiagram(picture), format);
+      : graphText(graphOfDiagram(picture), format, flags);
   return write(drawn, flags, io);
 }
+
+/** 図を文字にする（`--fenced` なら Markdown の囲みごと）。 */
+const graphText = (
+  graph: TextGraph,
+  format: GraphFormat,
+  flags: Args["flags"],
+): string =>
+  flags.fenced === true ? fencedGraph(graph, format) : renderGraph(graph, format);
 
 /** 図を出す（既定は標準出力、`--out` でファイル）。 */
 function write(text: string, flags: Args["flags"], io: CliIo): number {
@@ -1928,7 +1946,7 @@ function computedDiagram(
       io.out(JSON.stringify(graph, null, 2));
       return 0;
     }
-    return write(renderGraph(graph, format ?? "mermaid"), flags, io);
+    return write(graphText(graph, format ?? "mermaid", flags), flags, io);
   }
   const page = computedPageOf(raw, str(flags, "page"), io);
   if (page === null) return 1;
@@ -1941,7 +1959,7 @@ function computedDiagram(
     io.out(JSON.stringify(graph, null, 2));
     return 0;
   }
-  return write(renderGraph(graph, format ?? "mermaid"), flags, io);
+  return write(graphText(graph, format ?? "mermaid", flags), flags, io);
 }
 
 /** 定義の中の画面を全部（`app:` でも `page:` でも同じ形にする）。 */
