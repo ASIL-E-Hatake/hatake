@@ -21,6 +21,7 @@ Connecting it lets an agent look things up on demand instead of being handed doc
 ## Validate what you wrote (CLI)
 Never leave a definition unverified: unknown keys are dropped silently by default, so a typo in an optional key does nothing at all. Exit code is 1 when something is wrong.
 ```bash
+npx hatake probe --kinds <kind>    # look up how to fix a mismatch kind (type-mismatch, …); no network
 npx hatake where 締め処理          # whose job is this? (definition / registration / server / **outside**)
 npx hatake where --from 依頼.md    # sort a whole request, line by line (what is out of scope comes first)
 npx hatake project                # the project preamble (what this system is, vocabulary, naming)

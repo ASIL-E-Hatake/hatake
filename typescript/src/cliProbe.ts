@@ -7,8 +7,11 @@
 // 判定はここに書かない（[probe] / [attack] / [runDiff] の仕事）。ここに在るのは
 // 「どの旗をどう読むか」と「出す・保存する・終了コードを決める」だけ。
 
+import { join } from "node:path";
+
 import { type Args, collectionOverrides, str } from "./cliArgs.js";
 import type { CliIo } from "./cliIo.js";
+import { findSpecDir, PROBE_KINDS_FILE } from "./specDir.js";
 import { bearer, type HttpSend, readHeaders } from "./httpProbe.js";
 import {
   type RestTargets,
@@ -30,11 +33,34 @@ import { diffRuns, hasNewTrouble, renderRunDiff } from "./runDiff.js";
 import { readRun } from "./runSnapshot.js";
 import { bodyFor, type LoginPlan, masked, parseLogin } from "./login.js";
 import {
+  parseProbeHelp,
+  probeHelpFor,
+  probeHelpLines,
+} from "./probeHelp.js";
+import {
   getToken,
   loginAccounts,
   loginRequest,
   type LoginSend,
 } from "./loginRun.js";
+
+/**
+ * spec/ の1ファイルを読む（見つからなければ理由を出して null）。
+ *
+ * 読むのは [CliIo] 経由＝試験から記憶の中のファイルを渡せるようにするため。
+ */
+function readSpecFile(
+  flags: Args["flags"],
+  io: CliIo,
+  name: string,
+): unknown | null {
+  const dir = findSpecDir(str(flags, "spec"));
+  if (dir === null) {
+    io.err(`spec/${name} が見つかりません（--spec <dir> で場所を渡せます）。`);
+    return null;
+  }
+  return JSON.parse(io.readFile(join(dir, name)));
+}
 
 /** 叩く道具に共通の引数（基点・資格・集合の名前）。 */
 function probeSetup(
@@ -188,6 +214,86 @@ function finishRun<T>(
   return (failNew ? hasNewTrouble(diff) : bad) ? 1 : 0;
 }
 
+/**
+ * 食い違いの印から直し方を引く（`--kinds`）。**通信しない**ので定義も要らない。
+ *
+ * 印は `probe --json` の鍵なので、引く口が無いと「`type-mismatch` と言われたが、で、
+ * どっちを直すのか」がコードを読まないと分からない。
+ */
+function probeKindsCommand(
+  positional: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const raw = readSpecFile(flags, io, PROBE_KINDS_FILE);
+  if (raw === null) return 1;
+  const table = probeHelpFor(parseProbeHelp(raw), positional[0]);
+  if (table.length === 0) {
+    io.err(
+      `"${positional[0]}" という印はありません` +
+        "（印を省くと全部出ます。印は probe --json の kind に出るものです）。",
+    );
+    return 1;
+  }
+  if (flags.json === true) {
+    io.out(JSON.stringify(table, null, 2));
+    return 0;
+  }
+  for (const line of probeHelpLines(table)) io.out(line);
+  return 0;
+}
+
+/**
+ * 資格の取り方だけを試す（`--login … --check`）。**業務の口は叩かない**。
+ *
+ * 資格が取れないと、叩けなかった役割が「その役割は叩いていません」として結果に混ざる
+ * ＝**資格の話とサーバの話が同じ報告に出る**。CI に置く前と、落ちた晩の切り分けのために
+ * 分けて試せる口を用意する。取れたトークンは出さない（CI のログは残る）。
+ */
+async function loginCheck(
+  plan: LoginPlan,
+  flags: Args["flags"],
+  io: CliIo,
+  loginSend: LoginSend,
+): Promise<number> {
+  const roles = Object.keys(plan.roles);
+  // 役割ごとの本文が無ければ、役割なしの1件（`body`）を試す。
+  const targets = roles.length > 0 ? roles : [""];
+  const results: { role: string; ok: boolean; why?: string }[] = [];
+  for (const role of targets) {
+    if (bodyFor(plan, role) === undefined) {
+      results.push({
+        role,
+        ok: false,
+        why: `login.json に ${role === "" ? "body" : `roles.${role}`} がありません`,
+      });
+      continue;
+    }
+    const got = await getToken(plan, role, loginSend);
+    results.push(
+      "error" in got ? { role, ok: false, why: got.error } : { role, ok: true },
+    );
+  }
+  const bad = results.filter((one) => !one.ok);
+  if (flags.json === true) {
+    io.out(JSON.stringify({ checked: results.length, results }, null, 2));
+  } else {
+    io.out("資格の取り方を試しました（**業務の口は叩いていません**）:");
+    for (const one of results) {
+      io.out(
+        `  ・${one.role === "" ? "（役割なし）" : one.role} … ` +
+          `${one.ok ? "取れました" : `取れません（${one.why}）`}`,
+      );
+    }
+    io.out("");
+    io.out(
+      "※ 取れたトークンは出しません（CI のログは残ります）。" +
+        "ここが通らない役割は、叩いた結果でも「叩いていません」になります。",
+    );
+  }
+  return bad.length > 0 ? 1 : 0;
+}
+
 /** 定義とサーバの食い違いを、実際に叩いて見る。 */
 export async function probeCommand(
   files: string[],
@@ -196,6 +302,19 @@ export async function probeCommand(
   send: HttpSend,
   loginSend: LoginSend,
 ): Promise<number> {
+  // 印の表を引くだけ／資格だけ試す＝**定義を読まない**（読まないものを要求しない）。
+  if (flags.kinds === true) return probeKindsCommand(files, flags, io);
+  if (flags.check === true) {
+    const only = readLoginPlan(flags, io);
+    if (only === undefined) {
+      io.err(
+        "--check は --login login.json と一緒に使ってください" +
+          "（試すのは資格の取り方です）。",
+      );
+      return 1;
+    }
+    return loginCheck(only, flags, io, loginSend);
+  }
   const { targets, headers } = probeSetup(files, flags, io);
   const plan = readLoginPlan(flags, io);
   if (flags["dry-run"] === true) {

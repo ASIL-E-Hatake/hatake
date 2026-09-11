@@ -21,6 +21,7 @@ Claude Code / Claude Desktop などに繋ぐと、**このファイルを読ま�
 ## 書いた定義を検証する（CLI）
 定義を書いたら、推測で終わらせずにこれで確認する。問題があれば終了コード 1。
 ```bash
+npx hatake probe --kinds <印>      # 食い違いの印（type-mismatch など）から直し方を引く（通信しない）
 npx hatake where 締め処理          # これはどこの担当？（定義 / 登録 / サーバ / **枠組みの外**）
 npx hatake where --from 依頼.md    # 依頼文を行ごとに仕分ける（外が混ざっていたら先に言う）
 npx hatake project                # 案件の前書き（何のシステムか・用語・名前の決めごと）

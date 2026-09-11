@@ -32,6 +32,8 @@ const EVERYTHING = `app:
       table:
         # ページ送りを切ってあるので「一括があるのに1回で全件」が出る。
         pagination: { enabled: false }
+        # 4つ並べてあるので「行に並べすぎ」が出る（edit / delete は組み込み）。
+        rowActions: [remove, note, edit, delete]
         columns:
           - { field: customer, label: 得意先 }
           - { field: orderDate, label: 受注日, type: date }
@@ -52,6 +54,9 @@ const EVERYTHING = `app:
                   - { field: amount, label: 金額, type: number }
       actions:
         - { id: remove, type: delete, label: 削除 }
+        # 押す前に聞くのに、どれも必須になっていない（空欄で OK を押せる）。
+        - { id: note, type: plugin, plugin: addNote, label: メモ,
+            prompt: { fields: [{ field: memo, label: メモ, type: textarea }] } }
         # 一括は roles を書いてあるので open-dangerous-action は出ない。
         # ここで出るのは「確認が無い」と「失敗の言い方が無い」の2つ。
         - { id: approve, type: plugin, plugin: approveOrders, label: 一括承認,
@@ -67,7 +72,7 @@ const EVERYTHING = `app:
         - { id: discardSelected, type: plugin, plugin: discardOrders, label: 破棄,
             scope: selection, roles: [admin], batchSize: 20,
             confirm: { message: '{count} 件を破棄します' },
-            onError: { message: '{failed} 件は破棄できませんでした' } }
+            onError: { message: '{failed} 件は破棄できませんでした: {failedKeys}' } }
     - type: report
       id: sales_report
       title: 売上明細表

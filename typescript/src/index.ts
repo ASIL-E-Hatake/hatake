@@ -32,6 +32,7 @@ export * from "./project.js";
 export * from "./projectAdvise.js";
 export * from "./projectAgents.js";
 export * from "./responsibility.js";
+export * from "./probeHelp.js";
 export * from "./projectExplain.js";
 export * from "./messageResolver.js";
 export * from "./conditionEvaluator.js";

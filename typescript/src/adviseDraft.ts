@@ -172,6 +172,33 @@ function draftOf(one: Advice, document: Dict, roles: string[]): AdviceDraft | un
           };
     }
 
+    case "destructive-without-confirm": {
+      const action = actionAt(page, rest);
+      return action === undefined
+        ? undefined
+        : {
+            value: {
+              message: `「${nameOf(action)}」します。元に戻せません。`,
+              danger: true,
+            },
+            from: "ボタンの名前から（文は業務の言葉に直してください）",
+          };
+    }
+
+    case "error-without-failed-keys": {
+      // いまの文に**足すだけ**（書き換えない＝業務の言葉はそのまま残す）。
+      const action = actionAt(page, rest);
+      const onError = isDict(action?.onError) ? action.onError : undefined;
+      const message = str(onError?.message);
+      return message === undefined
+        ? undefined
+        : {
+            value: { message: `${message}（失敗した行: {failedKeys}）` },
+            from:
+              "いまの文に足しただけ（**アプリ側が行を名指しで返すときだけ**埋まります）",
+          };
+    }
+
     case "bulk-without-error-message": {
       const action = actionAt(page, rest);
       return action === undefined

@@ -728,3 +728,134 @@ ${extra}
     expect(found?.draft).toBeUndefined();
   });
 });
+
+describe("押す前と押したあとの言い方", () => {
+  const page = (body: string) => `page:
+  type: crud
+  id: order_master
+  title: 受注
+  repository: orderRepository
+  key: orderNo
+  table:
+${body}
+`;
+
+  const rules = (advice: { rule: string }[]) => advice.map((one) => one.rule);
+
+  it("行に並べすぎたボタンを言う（目盛りは変えられる）", () => {
+    const source = page(`    rowActions: [detail, edit, delete, copy]
+    columns:
+      - { field: orderNo, label: 受注番号 }
+      - { field: customer, label: 顧客名 }`);
+    const found = findAdvice(parseRaw(source));
+    const one = found.find((advice) => advice.rule === "too-many-row-actions");
+    expect(one?.says).toContain("4 個");
+    expect(one?.where).toBe("page.table.rowActions");
+
+    // 目盛りを上げれば言わない（何個までかは案件の好み）。
+    const loose = findAdvice(parseRaw(source), {
+      off: [],
+      options: { "too-many-row-actions": { maxActions: 5 } },
+      require: [],
+    });
+    expect(rules(loose)).not.toContain("too-many-row-actions");
+  });
+
+  it("1件ずつの削除に確認が無いことを言う（一括は別の規則）", () => {
+    const source = page(`    rowActions: [edit, delete]
+    columns:
+      - { field: orderNo, label: 受注番号 }
+  actions:
+    - { id: delete, type: delete, label: 削除 }`);
+    const found = findAdvice(parseRaw(source));
+    const one = found.find((advice) => advice.rule === "destructive-without-confirm");
+    expect(one?.says).toContain("押し間違え");
+    // 行に並んでいることまで言う（隣のボタンと間違える話）。
+    expect(one?.key).toBe("confirm");
+    // 下書きはそのまま当てられる形。
+    const drafted = withDrafts(parseRaw(source), found).find(
+      (advice) => advice.rule === "destructive-without-confirm",
+    );
+    expect(drafted?.draft).toEqual({
+      message: "「削除」します。元に戻せません。",
+      danger: true,
+    });
+  });
+
+  it("確認を書いてあれば言わない", () => {
+    const source = page(`    columns:
+      - { field: orderNo, label: 受注番号 }
+  actions:
+    - { id: delete, type: delete, label: 削除, confirm: { message: 消します } }`);
+    expect(rules(findAdvice(parseRaw(source)))).not.toContain(
+      "destructive-without-confirm",
+    );
+  });
+
+  it("聞くのに必須が1つも無いことを言う（任意の項目は責めない）", () => {
+    const loose = page(`    columns:
+      - { field: orderNo, label: 受注番号 }
+  actions:
+    - id: reject
+      type: plugin
+      plugin: rejectOrders
+      label: 却下
+      scope: selection
+      confirm: { message: '{count} 件を却下します' }
+      onError: { message: '{failed} 件は却下できません: {failedKeys}' }
+      prompt:
+        title: 却下の理由
+        fields:
+          - { field: reason, label: 理由, type: textarea }
+          - { field: rejectedOn, label: 却下日, type: date }`);
+    const one = findAdvice(parseRaw(loose)).find(
+      (advice) => advice.rule === "prompt-field-without-required",
+    );
+    expect(one?.says).toContain("どれも必須に");
+
+    // 1つでも必須なら、その聞くことは関門になっている＝言わない。
+    const gated = loose.replace(
+      "{ field: reason, label: 理由, type: textarea }",
+      "{ field: reason, label: 理由, type: textarea, required: true }",
+    );
+    expect(rules(findAdvice(parseRaw(gated)))).not.toContain(
+      "prompt-field-without-required",
+    );
+  });
+
+  it("一括の失敗が件数だけのことを言う（埋まる条件まで言う）", () => {
+    const source = page(`    columns:
+      - { field: orderNo, label: 受注番号 }
+  actions:
+    - id: approve
+      type: plugin
+      plugin: approveOrders
+      label: 一括承認
+      scope: selection
+      maxRows: 20
+      batchSize: 5
+      confirm: { message: '{count} 件を承認します' }
+      onError: { message: '{failed} 件は承認できません' }`);
+    const found = findAdvice(parseRaw(source));
+    const one = found.find((advice) => advice.rule === "error-without-failed-keys");
+    // アプリ側が行を名指しで返したときだけ埋まる＝推測として出す。
+    expect(one?.guess).toBe(true);
+    expect(one?.add).toContain("アプリ側が行を名指しで返したときだけ");
+    // 下書きは**いまの文に足すだけ**（業務の言葉を書き換えない）。
+    const drafted = withDrafts(parseRaw(source), found).find(
+      (advice) => advice.rule === "error-without-failed-keys",
+    );
+    expect(drafted?.draft).toEqual({
+      message: "{failed} 件は承認できません（失敗した行: {failedKeys}）",
+    });
+
+    // 既に書いてあれば言わない。
+    const named = source.replace(
+      "'{failed} 件は承認できません'",
+      "'{failed} 件は承認できません: {failedKeys}'",
+    );
+    expect(rules(findAdvice(parseRaw(named)))).not.toContain(
+      "error-without-failed-keys",
+    );
+  });
+});

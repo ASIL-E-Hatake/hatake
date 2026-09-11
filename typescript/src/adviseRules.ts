@@ -40,6 +40,15 @@ export const BUILTIN_RULES: Record<string, Record<string, "number" | "strings">>
   "bulk-on-many-rows": {"maxRows": "number"},
   // 待たせるのに区切り（batchSize）が無い。rows = 何件動くなら言うか。
   "bulk-without-batchsize": {"rows": "number"},
+  // 行に並べたボタンが多い。maxActions = 何個から言うか。
+  "too-many-row-actions": { maxActions: "number" },
+  // 戻せないボタンなのに、押す前に何も聞かない（一括は別の規則が見ている）。
+  // types = 危ないと見なすアクション種別。
+  "destructive-without-confirm": { types: "strings" },
+  // 押す前に聞くのに、その項目を必須にしていない（空欄で OK を押せる）。
+  "prompt-field-without-required": {},
+  // 一括の失敗の言い方が件数だけ（どの行が落ちたかを言っていない）。
+  "error-without-failed-keys": {},
   // 金額らしい名前なのに見せ方が無い。words = 金額らしいと見なす語。
   "money-without-format": { words: "strings" },
   // 明細を別テーブルに持つのに親を指すキーが無い。

@@ -1,10 +1,15 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   fetchSend,
   hasProbeError,
   type HttpRequest,
   probe,
+  PROBE_KINDS,
+  probeHelpFor,
+  probeHelpLines,
   probeRequests,
+  parseProbeHelp,
   renderProbe,
   restTargets,
 } from "../src/index.js";
@@ -309,5 +314,48 @@ describe("hatake probe", () => {
 
     expect(sent[0].headers.authorization).toBe("Bearer t");
     expect(sent[0].headers.accept).toBe("application/json");
+  });
+});
+
+describe("食い違いの印から直し方を引く", () => {
+  const table = () =>
+    parseProbeHelp(JSON.parse(readFileSync("../spec/probe-kinds.json", "utf8")));
+
+  it("印の全部に直し方が在る（片方だけ増やせない）", () => {
+    const found = table();
+    expect(found).toHaveLength(PROBE_KINDS.length);
+    expect(found.map((one) => one.id).sort()).toEqual([...PROBE_KINDS].sort());
+  });
+
+  it("サーバ側と定義側を必ず分けて言う（どちらを直すかは決めない）", () => {
+    for (const one of table()) {
+      expect(one.server.length).toBeGreaterThan(0);
+      expect(one.definition.length).toBeGreaterThan(0);
+    }
+    expect(probeHelpLines(table()).join("\n")).toContain("業務の判断");
+  });
+
+  it("印が足りない表は落ちる", () => {
+    expect(() =>
+      parseProbeHelp({
+        kinds: [
+          { id: "type-mismatch", what: "x", server: "y", definition: "z" },
+        ],
+      }),
+    ).toThrow(/表に無い印があります/);
+  });
+
+  it("知らない印を書いた表も落ちる", () => {
+    expect(() =>
+      parseProbeHelp({
+        kinds: [{ id: "nosuch", what: "x", server: "y", definition: "z" }],
+      }),
+    ).toThrow(/という印はありません/);
+  });
+
+  it("1件だけ引ける", () => {
+    const one = probeHelpFor(table(), "list-shape");
+    expect(one).toHaveLength(1);
+    expect(one[0].what).toContain("items");
   });
 });

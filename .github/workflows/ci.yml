@@ -230,6 +230,130 @@ jobs:
           grep -q 'この画面でできないこと' /tmp/review.log
           grep -q '警告ではありません' /tmp/review.log
 
+      - name: What the screen says before and after the press (advice)
+        working-directory: typescript
+        run: |
+          set -e
+          # 押す前（確認・聞くこと）と押したあと（失敗の言い方）は、定義に書けるのに
+          # **書かなくても動く**ので抜けても気づけない。助言で言う（落とさない）。
+          mkdir -p /tmp/say
+          cat > /tmp/say/page.yaml <<'YAML'
+          dsl_version: "1.0"
+          page:
+            type: crud
+            id: order_master
+            title: 受注
+            repository: orderRepository
+            key: orderNo
+            table:
+              rowActions: [detail, edit, delete, copy]
+              columns:
+                - { field: orderNo, label: 受注番号, sortable: true }
+                - { field: customer, label: 顧客名 }
+                - { field: status, label: 状態 }
+            form:
+              sections:
+                - fields:
+                    - { field: orderNo, label: 受注番号, required: true }
+            actions:
+              # 行に並べる4つ（組み込みは edit / delete だけなので、残りは宣言する）。
+              - { id: detail, type: plugin, plugin: showDetail, label: 詳細 }
+              - { id: copy, type: plugin, plugin: copyOrder, label: 複製 }
+              - { id: delete, type: delete, label: 削除 }
+              - id: approve
+                type: plugin
+                plugin: approveOrders
+                label: 一括承認
+                scope: selection
+                maxRows: 20
+                batchSize: 5
+                confirm: { message: '{count} 件を承認します' }
+                onError: { message: '{failed} 件は承認できません' }
+              - id: reject
+                type: plugin
+                plugin: rejectOrders
+                label: 却下
+                scope: selection
+                maxRows: 5
+                confirm: { message: '{count} 件を却下します', danger: true }
+                onError: { message: '{failed} 件は却下できません: {failedKeys}' }
+                prompt:
+                  title: 却下の理由
+                  fields:
+                    - { field: reason, label: 理由, type: textarea }
+          YAML
+          # 定義そのものは通る（助言は「書いていない所」の話＝落とさない）。
+          node dist/cli.js validate --warn-as-error /tmp/say/page.yaml
+          node dist/cli.js advise /tmp/say/page.yaml > /tmp/say.log
+          grep -q 'too-many-row-actions' /tmp/say.log
+          grep -q 'destructive-without-confirm' /tmp/say.log
+          grep -q 'prompt-field-without-required' /tmp/say.log
+          grep -q 'error-without-failed-keys' /tmp/say.log
+          # 埋まる条件まで言う（`{failedKeys}` はアプリが行を名指しで返したときだけ）。
+          grep -q '行を名指しで返したときだけ' /tmp/say.log
+          # 下書きは**いまの文に足すだけ**（業務の言葉を書き換えない）。
+          grep -q '（失敗した行: {failedKeys}）' /tmp/say.log
+          # 助言なので終了コードは変えない。
+          node dist/cli.js advise /tmp/say/page.yaml > /dev/null
+          # 書いてあれば言わない（鳴り続ける規則は読まれなくなる）。
+          sed -i "s/{failed} 件は承認できません/{failed} 件は承認できません: {failedKeys}/" \
+            /tmp/say/page.yaml
+          sed -i "s/{ field: reason, label: 理由, type: textarea }/{ field: reason, label: 理由, type: textarea, required: true }/" \
+            /tmp/say/page.yaml
+          sed -i "s/- { id: delete, type: delete, label: 削除 }/- { id: delete, type: delete, label: 削除, confirm: { message: 消します } }/" \
+            /tmp/say/page.yaml
+          node dist/cli.js advise /tmp/say/page.yaml > /tmp/say2.log
+          for rule in destructive-without-confirm prompt-field-without-required \
+                      error-without-failed-keys; do
+            if grep -q "$rule" /tmp/say2.log; then
+              echo "書いてあるのに $rule と言った"; cat /tmp/say2.log; exit 1
+            fi
+          done
+          # 目盛りは案件ごとに変えられる（何個までかは好み）。
+          printf '{ "options": { "too-many-row-actions": { "maxActions": 9 } } }\n' \
+            > /tmp/say/rules.json
+          node dist/cli.js advise /tmp/say/page.yaml --rules /tmp/say/rules.json \
+            > /tmp/say3.log
+          if grep -q 'too-many-row-actions' /tmp/say3.log; then
+            echo "目盛りを上げたのに言った"; exit 1
+          fi
+
+      - name: A mismatch kind can be looked up, and credentials can be checked alone
+        working-directory: typescript
+        run: |
+          set -e
+          # 1. 印から直し方を引く（**通信しない**＝定義もサーバも要らない）。
+          node dist/cli.js probe --kinds > /tmp/kinds.log
+          grep -q '食い違いの印は 16 個' /tmp/kinds.log
+          node dist/cli.js probe --kinds type-mismatch > /tmp/kind1.log
+          grep -q 'サーバを直すなら' /tmp/kind1.log
+          grep -q '定義を直すなら' /tmp/kind1.log
+          grep -q '業務の判断' /tmp/kind1.log
+          # 2. 知らない印は言って落ちる（黙って全部出さない）。
+          if node dist/cli.js probe --kinds nosuch > /tmp/kind-miss.log 2>&1; then
+            echo "知らない印で通ってしまった"; cat /tmp/kind-miss.log; exit 1
+          fi
+          grep -q 'という印はありません' /tmp/kind-miss.log
+          # 3. **印だけ増やせない**（表と印の集合を両方向で突き合わせている）。
+          mkdir -p /tmp/kind-spec
+          cp ../spec/hatake-page.schema.json /tmp/kind-spec/
+          node -e '
+            const fs = require("fs");
+            const table = JSON.parse(fs.readFileSync("../spec/probe-kinds.json", "utf8"));
+            table.kinds = table.kinds.filter((one) => one.id !== "type-mismatch");
+            fs.writeFileSync("/tmp/kind-spec/probe-kinds.json", JSON.stringify(table));
+          '
+          if node dist/cli.js probe --kinds --spec /tmp/kind-spec \
+               > /tmp/kind-rotten.log 2>&1; then
+            echo "印が足りない表で通ってしまった"; cat /tmp/kind-rotten.log; exit 1
+          fi
+          grep -q '表に無い印があります' /tmp/kind-rotten.log
+          # 4. --check は --login と一緒でないと何を試すか決まらない。
+          if node dist/cli.js probe --check > /tmp/check-alone.log 2>&1; then
+            echo "--check だけで通ってしまった"; cat /tmp/check-alone.log; exit 1
+          fi
+          grep -q -- '--login' /tmp/check-alone.log
+
       - name: Cross-field validation and the access warning
         working-directory: typescript
         run: |

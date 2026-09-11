@@ -16,6 +16,7 @@
 // 何を言うかは**外から変えられる**（[AdviceRules]）。好みなので、案件ごとの決めごとを
 // 渡せないと「合わないから使わない」になる。渡せるのは「切る・目盛りを変える・足す」の3つ。
 
+import { rowActionsOf } from "./actionNeeds.js";
 import { ActionScopes, DEFAULT_PAGE_SIZE } from "./definition.js";
 import { checkCompare } from "./adviseCompare.js";
 import { checkRequired } from "./adviseRequire.js";
@@ -505,6 +506,124 @@ function checkBuiltins(
         "区切りで止められます（止めたぶんは報告に出ます）。",
       key: "batchSize",
       node: "action",
+    });
+  }
+
+  // ── ここから「押す前と押したあとの言い方」──────────────────────
+  //
+  // 押す前（確認・聞くこと）と押したあと（失敗の言い方）は、定義には書けるのに
+  // **書かなくても動く**ので、抜けても気づけない所。
+
+  // 行にボタンを並べすぎている。
+  //
+  // 行の右端は狭い（列が伸びると横に流れる）。4つ目からは畳まれるか、押し間違える。
+  // 何個までかは案件の好み（狭い画面か・現場が触るか）なので助言。
+  const rowActions = rowActionsOf(page);
+  const maxActions = knob(rules, "too-many-row-actions", "maxActions", 4);
+  if (enabled(rules, "too-many-row-actions") && rowActions.length >= maxActions) {
+    found.push({
+      rule: "too-many-row-actions",
+      where: `${path}.table.rowActions`,
+      says:
+        `行に ${rowActions.length} 個のボタンを並べています` +
+        `（${rowActions.join(" / ")}）。行の右端は狭いので、横に流れるか押し間違えます。`,
+      add:
+        "よく使う2〜3個だけ行に置き、残りは**選んだ行にまとめて**（`scope: selection`）か" +
+        "詳細画面へ寄せる。",
+      key: "rowActions",
+      node: "table",
+    });
+  }
+
+  // 戻せないボタンなのに、押す前に何も聞かない（**1件ずつ**の話）。
+  //
+  // 一括は上の `bulk-without-confirm` が見ている。1件ずつのボタンは「押し間違えたら
+  // 1件」なので既定では緩めだが、**行のボタンは隣を押しやすい**（削除と編集が並ぶ）。
+  const dangerousTypes: string[] = knob(
+    rules,
+    "destructive-without-confirm",
+    "types",
+    ["delete"],
+  );
+  for (const [index, action] of actions.entries()) {
+    if (!enabled(rules, "destructive-without-confirm")) break;
+    if (str(action.scope) === ActionScopes.selection) continue; // 一括は別の規則
+    if (!dangerousTypes.includes(str(action.type) ?? "")) continue;
+    if (isDict(action.confirm) || isDict(action.prompt)) continue;
+    const inRow = rowActions.includes(str(action.id) ?? "");
+    found.push({
+      rule: "destructive-without-confirm",
+      where: `${path}.actions[${index}].confirm`,
+      says:
+        `「${labelOf(action)}」は押した瞬間に実行されます（確認がありません）。` +
+        (inRow
+          ? "行に並んでいるので、隣のボタンと押し間違えます。"
+          : "消したものは戻りません。"),
+      add: "`confirm: { message: …, danger: true }`（何をするのかを書く）。",
+      key: "confirm",
+      node: "action",
+    });
+  }
+
+  // 押す前に聞くのに、**どれも必須になっていない**（空欄のまま OK を押せる）。
+  //
+  // 聞く形（`prompt`）は「理由を書かせる」ために使うのに、必須が1つも無いと空欄で
+  // 通る＝聞いた意味が無い（記録には空が残る）。
+  //
+  // **任意の項目が在ること自体は言わない**（「却下日」のように埋めなくてよい項目は
+  // 普通に在る）。1つも必須が無いときだけ言う＝聞くことが関門になっていない、の話。
+  for (const [index, action] of actions.entries()) {
+    if (!enabled(rules, "prompt-field-without-required")) break;
+    const prompt = isDict(action.prompt) ? action.prompt : undefined;
+    if (prompt === undefined) continue;
+    const asked = dicts(prompt.fields);
+    if (asked.length === 0) continue;
+    const gated = asked.some(
+      (one) => one.required === true || one.requiredWhen !== undefined,
+    );
+    if (gated) continue;
+    const names = asked
+      .map((one) => str(one.label) ?? str(one.field) ?? "項目")
+      .join(" / ");
+    found.push({
+      rule: "prompt-field-without-required",
+      where: `${path}.actions[${index}].prompt.fields`,
+      says:
+        `「${labelOf(action)}」は押す前に ${names} を聞きますが、**どれも必須に` +
+        `なっていません**＝空欄のまま OK を押せます（聞いた意味が無くなり、記録には` +
+        `空が残ります）。`,
+      add:
+        "聞く意味のある項目に `required: true`。最低の長さが要るなら " +
+        "`validators: [{ type: minLength, value: 10 }]`。",
+      key: "required",
+      node: "field",
+    });
+  }
+
+  // 一括の失敗の言い方が**件数だけ**（どの行が落ちたかを言っていない）。
+  //
+  // `{failedKeys}` は**アプリ側が行を名指しで返したときだけ**埋まる
+  // （`ActionOutcome.rejected` の rows）。返さなければ文字のまま出るので、
+  // **推測**（`guess`）として出し、条件まで言う。
+  for (const { action, index } of bulkActions) {
+    if (!enabled(rules, "error-without-failed-keys")) break;
+    const onError = isDict(action.onError) ? action.onError : undefined;
+    const message = str(onError?.message);
+    if (message === undefined) continue; // 言い方そのものが無い＝上の規則の話
+    if (message.includes("{failedKeys}")) continue;
+    found.push({
+      rule: "error-without-failed-keys",
+      where: `${path}.actions[${index}].onError`,
+      says:
+        `「${labelOf(action)}」の失敗の言い方は件数だけです。**どの行が落ちたか**を` +
+        `言えないので、押した人は全部やり直すか、当たりを付けて探すことになります。`,
+      add:
+        "`{failedKeys}`（失敗した行のキーが並ぶ）を文に入れる。" +
+        "**アプリ側が行を名指しで返したときだけ**埋まるので、返していなければ" +
+        "そのまま文字で出ます（ハンドラが `rejected` に行を入れているか確かめてから）。",
+      key: "onError",
+      node: "action",
+      guess: true,
     });
   }
 

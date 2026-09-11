@@ -11,28 +11,35 @@ export type ProbeLevel = "error" | "caution";
 /**
  * 食い違いの種類（**機械が引く鍵**）。
  *
+ * 印ごとの**一般の直し方**は `spec/probe-kinds.json`（`hatake probe --kinds` で引ける）。
+ * 1件ごとの具体（何件返った・どの項目か）は [ProbeFinding] の `what` / `fix` に書く
+ * ＝同じことを2か所に持たない。**印を足したら表にも足す**（試験が落とす）。
+ *
  * `what` は人が読む文で、中に数が入る（「50 件を頼んで 61 件返っています」）。前回と
  * 比べる（`--since`）ときに文で照合すると、**同じ食い違いが数が変わっただけで
  * 「新しく出た」に見える**＝毎晩「新しい」と言い続ける表になる。なので「どこの・何が」
  * は数を含まない印で持つ。
  */
-export type ProbeKind =
-  | "unreachable"
-  | "no-endpoint"
-  | "refused"
-  | "bad-status"
-  | "not-json"
-  | "list-shape"
-  | "page-size-ignored"
-  | "total-too-small"
-  | "no-rows"
-  | "row-not-object"
-  | "rows-not-object"
-  | "no-key"
-  | "item-missing"
-  | "item-not-object"
-  | "missing-member"
-  | "type-mismatch";
+export const PROBE_KINDS = [
+  "unreachable",
+  "no-endpoint",
+  "refused",
+  "bad-status",
+  "not-json",
+  "list-shape",
+  "page-size-ignored",
+  "total-too-small",
+  "no-rows",
+  "row-not-object",
+  "rows-not-object",
+  "no-key",
+  "item-missing",
+  "item-not-object",
+  "missing-member",
+  "type-mismatch",
+] as const;
+
+export type ProbeKind = (typeof PROBE_KINDS)[number];
 
 /** 食い違い1件。どこを叩いたかは [probe] が足す。 */
 export interface ProbeFinding {
