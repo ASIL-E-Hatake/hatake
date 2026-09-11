@@ -9,17 +9,19 @@
 - [DSL リファレンス（機械可読）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/reference.json): **全キーの索引**。ノードごとのキー・型・既定値・取れる値・どのページ種別で有効か＋`keyIndex`（キー名 → 書ける場所）。仕様書を読む代わりにここを引く。JSON Schema から生成しているので仕様とズレない
 - [例のカタログ（機械可読）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/index.json): 「やりたいこと → 例」。近い例を1つ選んで直すのが一番速い（[人向けの表](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/examples/README.md)）
 - [よくある間違い（機械可読）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/pitfalls.json): 「間違い → なぜ駄目か → 正しい書き方」。書ける場所を間違える系（ページ直下に `columns`／`form` の直下に `fields`）と、**落ちないけど意図と違う**系（`groupBy` に `sort` が無い／`metric` が件数になる）。各項目は CI で検証済み（間違いは本当に落ち、正しい方は本当に通る）
+- [担当の割り振り（機械可読）](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/responsibility.json): **これは hatake で書けるのか**を引く表。区分は4つ＝`definition`（定義で書ける）/ `plugin`（アプリ側に登録して足す）/ `server`（サーバの担当）/ **`outside`（枠組みの外）**。hatake は業務ロジック・ワークフロー・DB・ORM・認証・認可・バックエンド API を**持たない**。「締め処理も作って」「承認フローを組んで」と頼まれたら、**Dart や TypeScript を書き始めずに** `npx hatake where <やりたいこと>` で引き、外なら外だと言う
 - [案件の前書きの書き方](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/project.ja.md): **定義を書く前に読む1枚**（`hatake.project.yaml`）。この案件は何のシステムか・**何ができないか**・業務の言葉と項目名の対応・名前の決めごと。定義の隣に在れば `npx hatake project` で読める。書いていなければ AI は書ける方に倒す（直せないマスタに編集ボタンを付ける）ので、**在るなら最初に読む**
 - [DSL 仕様書](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/dsl-spec.ja.md): 定義の全仕様（読み物）
 - [JSON Schema](https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json): 定義の機械検証用（YAML に `# yaml-language-server: $schema=<この URL>` を書くと補完・検証が効く）
 
 ## MCP サーバ（対応クライアントならこれが一番速い）
-Claude Code / Claude Desktop などに繋ぐと、**このファイルを読まなくても**必要なときに仕様を引ける。道具は `hatake_project`（案件の前書きを読む＝最初にこれ）/ `hatake_reference`（キーを引く）/ `hatake_examples`（近い例を取る）/ `hatake_validate`（検証）/ `hatake_new_page`（雛形）/ `hatake_pitfalls`（よくある間違い）/ `hatake_diff`（直した影響）/ `hatake_explain`（書いた定義を日本語で読み返す・変更を言い直す）/ `hatake_fix`（一意な直しだけ機械にやらせる）/ `hatake_minimize`（既定値と同じ指定を落として短く）/ `hatake_refs`（アプリ側に何を登録すればいいか）/ `hatake_api_shape`（API の形）。
+Claude Code / Claude Desktop などに繋ぐと、**このファイルを読まなくても**必要なときに仕様を引ける。道具は `hatake_project`（案件の前書きを読む＝最初にこれ）/ `hatake_where`（**これはどこの担当か**＝枠組みの外なら書き始めない）/ `hatake_reference`（キーを引く）/ `hatake_examples`（近い例を取る）/ `hatake_validate`（検証）/ `hatake_new_page`（雛形）/ `hatake_pitfalls`（よくある間違い）/ `hatake_diff`（直した影響）/ `hatake_explain`（書いた定義を日本語で読み返す・変更を言い直す）/ `hatake_fix`（一意な直しだけ機械にやらせる）/ `hatake_minimize`（既定値と同じ指定を落として短く）/ `hatake_refs`（アプリ側に何を登録すればいいか）/ `hatake_api_shape`（API の形）。
 - 入れ方: [MCP ガイド](https://github.com/ASIL-E-Hatake/hatake/raw/main/docs/guide/mcp.ja.md)（`claude mcp add hatake -- node <repo>/typescript/dist/mcp.js`）
 
 ## 書いた定義を検証する（CLI）
 定義を書いたら、推測で終わらせずにこれで確認する。問題があれば終了コード 1。
 ```bash
+npx hatake where 締め処理          # これはどこの担当？（定義 / 登録 / サーバ / **枠組みの外**）
 npx hatake project                # 案件の前書き（何のシステムか・用語・名前の決めごと）
 npx hatake project --agents       # その前書きを AGENTS.md / CLAUDE.md に貼る断片にする
 npx hatake validate page.yaml     # strict（知らないキーを弾く）。--json で機械可読

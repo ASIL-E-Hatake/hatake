@@ -86,6 +86,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 
 | 道具 | いつ使うか | 主な引数 |
 |---|---|---|
+| `hatake_where` | **定義で書けないことを頼まれたとき**。どこの担当かを引く（定義 / 登録 / サーバ / **枠組みの外**）。外と出たものはコードを書き始めず、そう言う | `query`（やりたいこと）、`where`（区分で絞る） |
 | `hatake_project` | **いちばん最初**。案件の前書き（この案件は何のシステムか・**何ができないか**・業務の言葉と項目名の対応・名前の決めごと）を読む。書いてある言葉と名前で定義を書く | `source`（前書きの中身そのもの） |
 | `hatake_reference` | キーの型・既定値・書ける場所・取れる値を知りたい。仕様書を読む代わり。**`placeholders: true` で文言に書ける差し込みの一覧**（`{count}` / `{failedKeys}` / `$row.<項目名>` …と、いつ埋まるか） | `name`（キー名/ノード名/ページ種別）、`pageKind`（その画面の分だけに絞る）、`placeholders` |
 | `hatake_examples` | 定義を書き始める前に近い例を探す。`file` を渡すと YAML 全文 | `query`（日本語でよい）、`file` |
@@ -106,6 +107,8 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 ```
 0. 案件の前書きが在れば hatake_project（この案件は何のシステムか・**何ができないか**・
    用語・名前の決めごと）。書いていなければ AI は書ける方に倒すので、ここが最初
+0.5 頼まれたことに**定義で書けないもの**が混ざっていたら hatake_where（締め処理・承認
+   フロー・認証・DB…）。**枠組みの外と出たものは書き始めず、そう言う**
 1. 人から指示文をもらったら hatake_intent（言われたことを1枚にする。定義を書いたあと
    もう一度呼ぶと、**言われていないのに在るもの**が出る）
 2. hatake_examples で近い例を探す

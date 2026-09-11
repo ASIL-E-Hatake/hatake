@@ -19,6 +19,9 @@ export const PITFALLS_FILE = "pitfalls.json";
 /** 実際に転んだ実例のカタログ（spec/ からの相対）。 */
 export const FAILURES_FILE = "failures.json";
 
+/** 担当の割り振り（どこまでを枠組みが持つか）。 */
+export const RESPONSIBILITY_FILE = "responsibility.json";
+
 /**
  * spec/ ディレクトリを返す。[explicit] があればそこだけを見る。
  * 無ければ実行時のカレント → このモジュールの位置、の順に上へ辿る。

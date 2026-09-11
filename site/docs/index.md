@@ -79,4 +79,13 @@ npx hatake validate dept_master.yaml
 
 ## この Framework が持たないもの
 
-業務ロジック、ワークフローエンジン、DB、認証、認可、バックエンド API、ORM。持たないと決めているので、そこは普通に自分のコードで書く。境界は [仕組みと責務分担](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/concepts.ja.md) にある。
+業務ロジック、ワークフローエンジン、DB、認証、認可、バックエンド API、ORM。持たないと決めているので、そこは普通に自分のコードで書く。
+
+この境界は散文ではなく**引ける表**にしてある。「これは定義で書けるのか、自分で書くのか」を1発で。
+
+```bash
+npx hatake where 締め処理        # → 枠組みの外（なぜ持たないか＋画面側でできること）
+npx hatake where 一覧の並べ替え   # → 定義で書ける（書くキーと次に引く道具）
+```
+
+AI に「締め処理も作って」と頼むと、外だと言えないまま Dart を書き始める。それを止めるための表で、MCP なら `hatake_where` として渡る。詳しくは [先に決めること](/project) と [仕組みと責務分担](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/concepts.ja.md)。
