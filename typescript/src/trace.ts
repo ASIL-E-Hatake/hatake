@@ -37,6 +37,11 @@ import {
  * 出どころと役割名は**業務が指定するもの**で、1件ずつ要求に紐づく性質のものではない
  * （並べると毎回同じ行が出て、報告そのものが読まれなくなる）。指したいときは
  * covers に書ける＝**指せるが、無くても言わない**。
+ *
+ * `logic` も入れない。前書きは**案件ぜんたい**の紙で、意図は**画面1枚**の紙なので、
+ * 1枚の突き合わせで「どの要求からも来ていない」と言うと**他の画面の規則まで毎回鳴る**
+ * （受注の締めが、商品照会の報告に並ぶ）。逆向き（言われたのに誰も担当していない）は
+ * 1枚でも言えるので、そちらだけ言う。
  */
 export const ORPHAN_KINDS: TargetKind[] = [
   "field",
@@ -64,7 +69,12 @@ export interface TraceFinding {
 
 export interface TraceResult {
   page: string;
-  /** 定義の中で指せる相手（`field:orderNo` の形。並びは固定）。 */
+  /**
+   * 指せる相手（`field:orderNo` の形。並びは固定）。
+   *
+   * 定義から出るものに加えて、渡されれば**前書きに宣言した業務ロジック**
+   * （`logic:<名前>`）も入る。
+   */
   targets: string[];
   /** 要求＋決めごとの件数。 */
   requirements: number;
@@ -186,12 +196,24 @@ export function traceableParts(page: PageDefinition): TraceablePart[] {
 export const definitionTargets = (page: PageDefinition): string[] =>
   traceableParts(page).map((one) => one.target);
 
-/** 定義と意図を突き合わせる。 */
+/**
+ * 定義と意図を突き合わせる。
+ *
+ * [options.logic] は**案件の前書きに宣言した業務ロジックの名前**（`hatake.project.yaml`
+ * の `logic[].name`）。渡すと `logic:<名前>` を指せる相手に加える＝定義に書けない規則
+ * （締め・引当・承認）についても「言われたのに誰も担当していない」「宣言したのにどの
+ * 要求からも来ていない」を言える。渡さなければ `logic:` は**指せない相手**として扱う
+ * （前書きが無い案件で鳴らないように）。
+ */
 export function traceIntent(
   page: PageDefinition,
   intent?: IntentDocument,
+  options: { logic?: string[] } = {},
 ): TraceResult {
-  const targets = definitionTargets(page);
+  const targets = [
+    ...definitionTargets(page),
+    ...(options.logic ?? []).map((name) => `logic:${name}`),
+  ];
   const known = new Set(targets);
   const findings: TraceFinding[] = [];
 
@@ -213,13 +235,19 @@ export function traceIntent(
     for (const target of one.covers) {
       covered.add(target);
       if (known.has(target)) continue;
+      // 業務ロジックは**定義ではなく前書き**に宣言するので、言い方を変える
+      // （「定義にありません」と言われても、書く場所が違うので直せない）。
+      const isLogic = target.startsWith("logic:");
       findings.push({
         kind: "missing-target",
         id: one.id,
         target,
-        text:
-          `${one.id}「${one.text}」が指している ${target} は定義にありません` +
-          `＝言ったのに入っていない、か、名前が違います。`,
+        text: isLogic
+          ? `${one.id}「${one.text}」が指している ${target} は、案件の前書きに` +
+            "宣言がありません＝**誰も担当していません**（`hatake.project.yaml` の " +
+            "`logic:` に、担当（definition / plugin / server / outside）を書く）。"
+          : `${one.id}「${one.text}」が指している ${target} は定義にありません` +
+            `＝言ったのに入っていない、か、名前が違います。`,
       });
     }
     if (one.covers.length === 0) {

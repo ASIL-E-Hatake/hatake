@@ -53,11 +53,11 @@
           "minLength": 1
         },
         "covers": {
-          "description": "定義のどこに落ちたか。<種類>:<名前> の形で、種類は page / field / filter / column / action / card / repository / role。項目に付いた検証と明細の行の項目は、その項目（field:<項目>）の一部として数える。",
+          "description": "どこに落ちたか。<種類>:<名前> の形で、種類は page / field / filter / column / action / card / repository / role / logic。項目に付いた検証と明細の行の項目は、その項目（field:<項目>）の一部として数える。logic だけは**定義の外**を指す＝案件の前書き（hatake.project.yaml）の logic[].name。「締めたあとは直せない」のような規則は定義に書けないので、これが無いと**言われたのに誰も担当していない**を言えない。",
           "type": "array",
           "items": {
             "type": "string",
-            "pattern": "^(page|field|filter|column|action|card|repository|role):.+$"
+            "pattern": "^(page|field|filter|column|action|card|repository|role|logic):.+$"
           }
         },
         "why": {

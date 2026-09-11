@@ -1867,7 +1867,36 @@ jobs:
             echo "持たないと決めたものが引けない表で通ってしまった"; cat /tmp/rotten2.log; exit 1
           fi
           grep -q 'outside の項目がありません' /tmp/rotten2.log
-          # 5. MCP からも同じ答えが返る（AI が引くのはこちら）。
+          # 5. 依頼文をまとめて仕分ける（**外を先に言う**・当てられなかった行は必ず出す）。
+          mkdir -p /tmp/sort
+          cat > /tmp/sort/ask.md <<'MD'
+          # 受注入力の画面を作ってほしい
+
+          - 受注を一覧で見られるようにする
+          - 締めたあとの受注は直せないようにする
+          - 承認フローを組んでほしい
+          - ぬるぽの設定を足す
+          MD
+          node dist/cli.js where --from /tmp/sort/ask.md > /tmp/sort.log
+          grep -q 'うち 2 件は枠組みの外' /tmp/sort.log
+          grep -q '当てられなかった行' /tmp/sort.log
+          grep -q 'ぬるぽの設定を足す' /tmp/sort.log
+          grep -q '仕分けは\*\*下書き\*\*です' /tmp/sort.log
+          # 外を先に出す（あとに回すと読まれない）。
+          node -e '
+            const text = require("fs").readFileSync("/tmp/sort.log", "utf8");
+            const outside = text.indexOf("[枠組みの外");
+            const inner = text.indexOf("[定義で書ける");
+            if (outside < 0 || inner < 0 || outside > inner) {
+              console.error("枠組みの外が先に出ていない"); process.exit(1);
+            }
+          '
+          # 1行も当てられなければ 1（何も言えていないので）。
+          printf -- '- ぬるぽ\n- ぬるぽ2\n' > /tmp/sort/none.md
+          if node dist/cli.js where --from /tmp/sort/none.md > /tmp/none.log 2>&1; then
+            echo "何も当てられないのに 0 を返した"; cat /tmp/none.log; exit 1
+          fi
+          # 6. MCP からも同じ答えが返る（AI が引くのはこちら）。
           printf '%s\n' \
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
             '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
@@ -1957,7 +1986,56 @@ jobs:
           grep -q 'id: SalesReport' /tmp/new.log
           grep -q 'id: printPdf' /tmp/new.log
           grep -q 'naming.page' /tmp/new.err
-          # 9. AI の設定ファイル（AGENTS.md）に貼る断片。**印の中だけ**を差し替え、
+          # 9. 業務ロジックの置き場（`logic:`）。読み返しに出て、食い違いを言う。
+          grep -q '業務ロジックの置き場:' /tmp/pre.log
+          grep -q 'サーバの担当' /tmp/pre.log
+          grep -q '業務ロジックの名前（定義が呼んでいるか）' /tmp/pre.log
+          # 外（サーバ）の担当と書いたのに、画面のボタンから呼んでいる。
+          cat > /tmp/near/misplaced.yaml <<'YAML'
+          dsl_version: "1.0"
+          page:
+            type: search
+            id: product_search
+            title: 商品照会
+            repository: productRepository
+            key: id
+            table:
+              columns:
+                - { field: code, label: コード }
+            actions:
+              - { id: close, type: plugin, plugin: orderCloseGuard, label: 締め }
+          YAML
+          node dist/cli.js advise /tmp/near/misplaced.yaml --project "$PRE" \
+            > /tmp/logic.log
+          grep -q 'project-logic-misplaced' /tmp/logic.log
+          grep -q '言っていることと書いたものが食い違っています' /tmp/logic.log
+          # 「宣言したのに呼んでいない」は app: のときだけ言う（1画面では言えない）。
+          if grep -q 'project-logic-unused' /tmp/logic.log; then
+            echo "1画面なのに「どの画面からも呼んでいない」と言った"; exit 1
+          fi
+          cat > /tmp/near/app.yaml <<'YAML'
+          dsl_version: "1.0"
+          app:
+            id: sales
+            title: 受注
+            pages:
+              - type: search
+                id: product_search
+                title: 商品照会
+                repository: productRepository
+                key: id
+                table:
+                  columns:
+                    - { field: code, label: コード }
+          YAML
+          node dist/cli.js advise /tmp/near/app.yaml --project "$PRE" > /tmp/logic-app.log
+          grep -q 'project-logic-unused' /tmp/logic-app.log
+          grep -q 'どの画面からも呼んでいません' /tmp/logic-app.log
+          # 貼る断片にも載る（AI が読む1枚に「これは外」が入る）。
+          node dist/cli.js project "$PRE" --agents > /tmp/agents-logic.md
+          grep -q '業務ロジックの置き場' /tmp/agents-logic.md
+          grep -q '画面側に実装しない' /tmp/agents-logic.md
+          # 10. AI の設定ファイル（AGENTS.md）に貼る断片。**印の中だけ**を差し替え、
           #    人が書いた所（ブランチ名など）は触らない。
           node dist/cli.js project "$PRE" --agents > /tmp/agents.md
           grep -q 'hatake:project:begin' /tmp/agents.md
@@ -1996,7 +2074,7 @@ jobs:
           fi
           grep -q 'がありません' /tmp/plain.log
           test "$(cat /tmp/near/plain.md)" = "# AGENTS"
-          # 10. MCP からも同じ1枚が読める（AI が最初に引く道具）。
+          # 11. MCP からも同じ1枚が読める（AI が最初に引く道具）。
           printf '%s\n' \
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
             '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
@@ -2095,6 +2173,45 @@ jobs:
                --require-intent > /dev/null; then
             echo "意図が無いのに --require-intent が通った"; exit 1
           fi
+
+      - name: Who owns the rule that cannot be written in a definition
+        working-directory: typescript
+        run: |
+          set -e
+          PRE=../spec/projects/wholesale.project.yaml
+          DEF=../spec/examples/product_search.yaml
+          mkdir -p /tmp/logic
+          cp "$DEF" /tmp/logic/product_search.yaml
+          cp ../spec/intents/product_search.intent.yaml /tmp/logic/
+          cp "$PRE" /tmp/logic/hatake.project.yaml
+          # 1. 前書きに宣言が無い規則を指したら、**誰も担当していない**と言う。
+          cat > /tmp/logic/x.intent.yaml <<'YAML'
+          intent_version: "1.0"
+          page: product_search
+          asked:
+            - id: R9
+              text: 締めたあとは直せないようにして
+              covers: [logic:noSuchRule]
+          YAML
+          if node dist/cli.js trace /tmp/logic/product_search.yaml \
+               --intent /tmp/logic/x.intent.yaml > /tmp/logic-trace.log 2>&1; then
+            echo "担当の無い規則を見逃した"; cat /tmp/logic-trace.log; exit 1
+          fi
+          grep -q '誰も担当していません' /tmp/logic-trace.log
+          grep -q 'hatake.project.yaml' /tmp/logic-trace.log
+          # 2. 宣言してあれば通る（前書きは隣から黙って拾う）。
+          sed -i 's/logic:noSuchRule/logic:orderCloseGuard/' /tmp/logic/x.intent.yaml
+          node dist/cli.js trace /tmp/logic/product_search.yaml \
+            --intent /tmp/logic/x.intent.yaml > /tmp/logic-ok.log
+          grep -q 'logic:orderCloseGuard' /tmp/logic-ok.log || true
+          if grep -q '誰も担当していません' /tmp/logic-ok.log; then
+            echo "宣言してあるのに担当が無いと言った"; exit 1
+          fi
+          # 3. 同梱の例は**そのまま1対1**（前書きの宣言は「由来の無いもの」に数えない
+          #    ＝前書きは案件ぜんたいの紙で、意図は画面1枚の紙なので）。
+          node dist/cli.js trace /tmp/logic/product_search.yaml --require-intent \
+            > /tmp/logic-pair.log
+          grep -q '要求と定義は1対1です' /tmp/logic-pair.log
 
       - name: Server-side fixtures come from the same boundaries
         working-directory: typescript

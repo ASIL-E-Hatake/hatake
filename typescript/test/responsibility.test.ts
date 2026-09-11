@@ -6,6 +6,9 @@ import {
   parseResponsibility,
   RESPONSIBILITY_NOTE,
   responsibilityLines,
+  SORT_NOTE,
+  sortedLines,
+  sortInstruction,
   WHERE_KINDS,
 } from "../src/index.js";
 import { runCli, type CliIo } from "../src/cli.js";
@@ -205,5 +208,61 @@ describe("CLI", () => {
     const found = JSON.parse(io.stdout.join("\n"));
     expect(found[0].where).toBe("outside");
     expect(found[0].keys).toEqual([]);
+  });
+});
+
+describe("指示文をまとめて仕分ける", () => {
+  const ask = `# 受注入力の画面を作ってほしい
+
+- 受注を一覧で見られるようにする
+- 締めたあとの受注は直せないようにする
+- 承認フローを組んでほしい
+- ぬるぽの設定を足す
+
+\`\`\`yaml
+page:
+  type: crud
+  table:
+    columns: [{ field: code }]
+\`\`\`
+`;
+
+  const sorted = () => sortInstruction(catalog(), ask);
+
+  it("行ごとに担当を当て、外が何件かを数える", () => {
+    const found = sorted();
+    expect(found.outside).toBe(2);
+    expect(found.lines.map((one) => one.text)).toContain(
+      "締めたあとの受注は直せないようにする",
+    );
+  });
+
+  it("当てられなかった行は捨てない（仕分けたつもりで抜けるのを防ぐ）", () => {
+    expect(sorted().unmatched).toContain("ぬるぽの設定を足す");
+  });
+
+  it("囲みの中は見ない（定義の断片があると語がいくらでも当たる）", () => {
+    const texts = sorted().lines.map((one) => one.text);
+    expect(texts.some((one) => one.includes("columns"))).toBe(false);
+    expect(texts.some((one) => one.includes("type: crud"))).toBe(false);
+  });
+
+  it("枠組みの外を先に出し、下書きだと毎回言う", () => {
+    const text = sortedLines(sorted()).join("\n");
+    expect(text).toContain("うち 2 件は枠組みの外");
+    const first = text.indexOf("[枠組みの外");
+    const inner = text.indexOf("[定義で書ける");
+    expect(first).toBeGreaterThan(-1);
+    expect(first).toBeLessThan(inner);
+    expect(text).toContain(SORT_NOTE);
+  });
+
+  it("実際の依頼文で使う言葉で当たる（活用・言い回しの違い）", () => {
+    const found = sortInstruction(
+      catalog(),
+      "- 受注番号と取引先で絞り込める\n- 却下の理由の選択肢を決める\n",
+    );
+    expect(found.unmatched).toEqual([]);
+    expect(found.lines).toHaveLength(2);
   });
 });

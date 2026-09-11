@@ -79,6 +79,36 @@
         }
       }
     },
+    "logic": {
+      "description": "業務ロジックの置き場。定義には**できること**しか書けないので、「締めたあとは直せない」「在庫を引き当てる」はどこにも残らない。ここに**名前と担当と理由だけ**を書く（条件式は書かない＝書けるようにしたら業務ロジックの DSL になり、枠組みが業務を持つことになる）。区分は担当の表（responsibility.json）と同じ閉じた集合。",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["what", "where"],
+        "properties": {
+          "what": {
+            "description": "何の規則か（業務の言葉で1行）。",
+            "type": "string",
+            "minLength": 1
+          },
+          "where": {
+            "description": "誰の担当か。`definition`＝画面の定義で表せる（条件で読み取り専用にする、など）／`plugin`＝アプリ側に登録して足す／`server`＝サーバの担当／`outside`＝枠組みの外（別のシステム・人が決める）。`npx hatake where <やりたいこと>` で引いた区分をそのまま書く。",
+            "enum": ["definition", "plugin", "server", "outside"]
+          },
+          "name": {
+            "description": "その規則の名前。`where: plugin` では**必須**（定義の `plugin:` に書く字と同じにする＝登録されているかを機械が突き合わせられる）。意図の1枚から `covers: [logic:<name>]` で指すにも必要。",
+            "type": "string",
+            "minLength": 1
+          },
+          "why": {
+            "description": "なぜその担当なのか。`where: outside` では**必須**（外に置くと決めた理由が無いと、後から誰も直せない）。",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
     "naming": {
       "description": "名前の決めごと。**書いたものだけ**を見る（書いていない所は見ない＝黙って別の形を当てない）。",
       "type": "object",

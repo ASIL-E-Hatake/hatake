@@ -20,6 +20,7 @@
 import { parse as parseYamlText } from "yaml";
 
 import { FieldTypes } from "./definition.js";
+import { type Where, WHERE_KINDS } from "./responsibility.js";
 import { closestKey } from "./strictKeys.js";
 
 /** この形式の版（定義の `dsl_version` と同じ考えで、後方互換のために持つ）。 */
@@ -65,6 +66,23 @@ export interface ExternalSystem {
   owner?: string;
 }
 
+/**
+ * 業務ロジック1件の置き場。
+ *
+ * 書けるのは**名前と担当と理由だけ**。条件式を書けるようにしたら業務ロジックの DSL に
+ * なり、枠組みが業務を持つことになる（CLAUDE.md の Scope を破る）。
+ */
+export interface LogicRule {
+  /** 何の規則か（業務の言葉で1行）。 */
+  what: string;
+  /** 誰の担当か（担当の表と同じ閉じた集合）。 */
+  where: Where;
+  /** その規則の名前（`plugin` は必須。`covers: [logic:<name>]` から指すのにも要る）。 */
+  name?: string;
+  /** なぜその担当なのか（`outside` は必須）。 */
+  why?: string;
+}
+
 /** 名前の決めごと。**書いたものだけ**入る（空なら見ない）。 */
 export interface NamingRules {
   shapes: Partial<Record<NamingTarget, NameShape>>;
@@ -81,6 +99,8 @@ export interface ProjectDocument {
     external: ExternalSystem[];
   };
   glossary: GlossaryEntry[];
+  /** 業務ロジックの置き場（宣言だけ。実装は持たない）。 */
+  logic: LogicRule[];
   naming: NamingRules;
 }
 
@@ -91,7 +111,15 @@ export class ProjectParseError extends Error {
   }
 }
 
-const TOP_KEYS = ["$comment", "project_version", "system", "glossary", "naming"];
+const TOP_KEYS = [
+  "$comment",
+  "project_version",
+  "system",
+  "glossary",
+  "logic",
+  "naming",
+];
+const LOGIC_KEYS = ["what", "where", "name", "why"];
 const SYSTEM_KEYS = ["what", "users", "premises", "external"];
 const EXTERNAL_KEYS = ["name", "what", "owner"];
 const GLOSSARY_KEYS = ["term", "field", "avoid", "note"];
@@ -162,6 +190,7 @@ export function parseProject(source: string): ProjectDocument {
     version: PROJECT_VERSION,
     system: parseSystem(node.system),
     glossary: parseGlossary(node.glossary),
+    logic: parseLogic(node.logic),
     naming: parseNaming(node.naming),
   };
 }
@@ -232,6 +261,57 @@ function parseGlossary(value: unknown): GlossaryEntry[] {
         );
       }
     }
+  }
+  return found;
+}
+
+/**
+ * 業務ロジックの宣言を読む。
+ *
+ * 縛るのは2つだけで、どちらも**後から効かせるため**:
+ *   ・`plugin` は `name` 必須＝定義の `plugin:` と突き合わせられるようにする
+ *   ・`outside` は `why` 必須＝外に置くと決めた理由が無いと、後から誰も直せない
+ */
+function parseLogic(value: unknown): LogicRule[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) bad("logic は並びで書いてください。");
+  const found = (value as unknown[]).map((one, index) => {
+    const at = `logic[${index}]`;
+    if (!isDict(one)) bad(`${at} は map で書いてください。`);
+    const node = one as Record<string, unknown>;
+    checkKeys(node, LOGIC_KEYS, at);
+    const where = node.where;
+    if (typeof where !== "string" || !WHERE_KINDS.includes(where as Where)) {
+      bad(
+        `${at}.where は ${WHERE_KINDS.join(" / ")} のどれかです` +
+          `（\`npx hatake where <やりたいこと>\` で引いた区分を書いてください）。`,
+      );
+    }
+    const rule: LogicRule = {
+      what: text(node.what, `${at}.what`),
+      where: where as Where,
+      ...(node.name === undefined ? {} : { name: text(node.name, `${at}.name`) }),
+      ...(node.why === undefined ? {} : { why: text(node.why, `${at}.why`) }),
+    };
+    if (rule.where === "plugin" && rule.name === undefined) {
+      bad(
+        `${at}: where が plugin なら name が要ります` +
+          "（定義の `plugin:` に書く字と同じにする＝登録されているかを機械が見られる）。",
+      );
+    }
+    if (rule.where === "outside" && rule.why === undefined) {
+      bad(
+        `${at}: where が outside なら why が要ります` +
+          "（外に置くと決めた理由が無いと、後から誰も直せない）。",
+      );
+    }
+    return rule;
+  });
+  const seen = new Set<string>();
+  for (const rule of found) {
+    if (rule.name === undefined) continue;
+    if (seen.has(rule.name)) bad(`logic の "${rule.name}" が2回出てきます。`);
+    seen.add(rule.name);
   }
   return found;
 }

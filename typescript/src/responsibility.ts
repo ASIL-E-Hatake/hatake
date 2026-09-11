@@ -175,6 +175,122 @@ export function filterAreas(
     .sort((a, b) => order[a.where] - order[b.where]);
 }
 
+/** 指示文の1行と、当たった担当。 */
+export interface SortedLine {
+  /** 指示文の行（印を落としたもの）。 */
+  text: string;
+  /** 当たった担当（外から内の順）。 */
+  areas: Area[];
+}
+
+export interface SortedInstruction {
+  lines: SortedLine[];
+  /** 当てられなかった行（**黙って落とさない**ので、必ず持って返す）。 */
+  unmatched: string[];
+  /** 枠組みの外が当たった行の数。 */
+  outside: number;
+}
+
+/** 行の頭の印（箇条書き・番号・見出し）と、前後の空白を落とす。 */
+const plainLine = (line: string): string =>
+  line
+    .replace(/^\s*(?:[-*+\u30fb]|#{1,6}|\d+[.)])\s*/, "")
+    .replace(/^\s*\[[ x]\]\s*/i, "")
+    .trim();
+
+/**
+ * 指示文を**行ごとに**仕分ける（`where --from`）。
+ *
+ * 1問1答だと、長い依頼文では引き忘れる（そして書ける方に倒す）。「この依頼のうち3件は
+ * 枠組みの外です」と**先に**言えるのが値打ち。
+ *
+ * 当て方は[filterAreas]と同じ**言葉の一致だけ**＝これは下書きで、決めるのは人。だから
+ * 当てられなかった行は捨てずに [unmatched] に入れる（黙って落とすと、仕分けたつもりで
+ * 抜ける）。囲み（```）の中は見ない＝定義の断片が入っていると語がいくらでも当たる。
+ */
+export function sortInstruction(
+  catalog: ResponsibilityCatalog,
+  source: string,
+): SortedInstruction {
+  const lines: SortedLine[] = [];
+  const unmatched: string[] = [];
+  let inFence = false;
+
+  for (const raw of source.split(/\r?\n/)) {
+    if (/^\s*```/.test(raw)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    const text = plainLine(raw);
+    // 1文字の行（区切りや記号だけ）は問いにならない。
+    if (text.length < 2) continue;
+    const areas = filterAreas(catalog, text);
+    if (areas.length === 0) {
+      unmatched.push(text);
+      continue;
+    }
+    lines.push({ text, areas });
+  }
+  return {
+    lines,
+    unmatched,
+    outside: lines.filter((one) => one.areas[0]?.where === "outside").length,
+  };
+}
+
+/**
+ * 人が読む形。**枠組みの外を先に言う**（あとに回すと読まれない）。
+ *
+ * [limit] は1行あたりに出す担当の数。全部出すと壁になるので、残りは数で言う
+ * （黙って切らない）。
+ */
+export function sortedLines(
+  sorted: SortedInstruction,
+  limit = 2,
+): string[] {
+  const out: string[] = [];
+  out.push(
+    `仕分けた行は ${sorted.lines.length} 件` +
+      `${sorted.outside === 0 ? "" : `。**うち ${sorted.outside} 件は枠組みの外**`}` +
+      `${sorted.unmatched.length === 0 ? "" : `（当てられなかった行が ${sorted.unmatched.length} 件）`}。`,
+  );
+  const order = [...sorted.lines].sort(
+    (a, b) =>
+      (a.areas[0]?.where === "outside" ? 0 : 1) -
+      (b.areas[0]?.where === "outside" ? 0 : 1),
+  );
+  for (const line of order) {
+    out.push("");
+    out.push(`・${line.text}`);
+    for (const area of line.areas.slice(0, limit)) {
+      out.push(`    [${WHERE_WORDS[area.where]}] ${area.title}`);
+      if (area.where === "outside" || area.where === "server") {
+        out.push(`      ${area.how}`);
+      } else if (area.keys.length > 0) {
+        out.push(`      書くキー: ${area.keys.join(" / ")}`);
+      }
+    }
+    if (line.areas.length > limit) {
+      out.push(`    （ほかに ${line.areas.length - limit} 件当たっています）`);
+    }
+  }
+  if (sorted.unmatched.length > 0) {
+    out.push("");
+    out.push("当てられなかった行（**表に無いだけかもしれない**ので、人が見ること）:");
+    for (const one of sorted.unmatched) out.push(`  ・${one}`);
+  }
+  out.push("");
+  out.push(SORT_NOTE);
+  out.push(RESPONSIBILITY_NOTE);
+  return out;
+}
+
+/** 仕分けは下書きだと毎回言う（当て方は言葉の一致だけなので）。 */
+export const SORT_NOTE =
+  "※ 仕分けは**下書き**です（当てているのは言葉の一致だけ）。決めるのは人で、" +
+  "外と出た行は**その場で書き始めずに**依頼した人に返してください。";
+
 /** 引いた側が読み間違えないように、毎回添える1行。 */
 export const RESPONSIBILITY_NOTE =
   "※ ここは**担当の表**です（何ができるかの一覧ではありません）。" +
