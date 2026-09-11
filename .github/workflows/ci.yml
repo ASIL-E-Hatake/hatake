@@ -1805,6 +1805,77 @@ jobs:
           grep -q 'staff' /tmp/demo-roles.log
           grep -q 'manager' /tmp/demo-roles.log
 
+      - name: Where the framework stops (the responsibility table)
+        working-directory: typescript
+        run: |
+          set -e
+          # 1. 枠組みの外のことを頼まれたら、外だと言える（いちばん大事な答え）。
+          node dist/cli.js where 締め > /tmp/where.log
+          grep -q '枠組みの外' /tmp/where.log
+          grep -q 'Dart / TypeScript を書き始めない' /tmp/where.log
+          # 2. **載っていない**と**枠組みの外**を混ぜない（引けなかったらそう言って落ちる）。
+          if node dist/cli.js where ぬるぽ > /tmp/miss.log 2>&1; then
+            echo "載っていない問いに答えてしまった"; cat /tmp/miss.log; exit 1
+          fi
+          grep -q '載っていません' /tmp/miss.log
+          grep -q '「枠組みの外」とは違います' /tmp/miss.log
+          # 3. 「持たない」と決めたものは全部引ける（CLAUDE.md の Scope と同じ数）。
+          node dist/cli.js where --where outside --json > /tmp/outside.json
+          node -e '
+            const fs = require("fs");
+            const table = JSON.parse(fs.readFileSync("../spec/responsibility.json", "utf8"));
+            const outside = JSON.parse(fs.readFileSync("/tmp/outside.json", "utf8"));
+            if (outside.length !== table.notProvided.length) {
+              console.error("持たないと決めた " + table.notProvided.length +
+                " 件に対して、引けるのは " + outside.length + " 件");
+              process.exit(1);
+            }
+            // 外だと言う項目に定義のキーが在ってはいけない（書けるなら外ではない）。
+            for (const area of outside) {
+              if (area.keys.length > 0) {
+                console.error(area.id + " は outside なのにキーが在る"); process.exit(1);
+              }
+            }
+            console.log(outside.length + " 件が「枠組みの外」として引ける");
+          '
+          # 4. 腐った表は落とせる（通ることしか確かめない検査は、寝ていても気づけない）。
+          mkdir -p /tmp/rotten-spec
+          cp ../spec/hatake-page.schema.json /tmp/rotten-spec/
+          cat > /tmp/rotten-spec/responsibility.json <<'JSON'
+          {
+            "notProvided": [{ "id": "workflow", "claudeMd": "Workflow Engine" }],
+            "areas": [
+              { "id": "x", "where": "outside", "title": "t", "how": "h",
+                "keys": ["roles"], "words": ["x"] }
+            ]
+          }
+          JSON
+          if node dist/cli.js where x --spec /tmp/rotten-spec > /tmp/rotten.log 2>&1; then
+            echo "外なのにキーが書いてある表で通ってしまった"; cat /tmp/rotten.log; exit 1
+          fi
+          grep -q '外ではありません' /tmp/rotten.log
+          cat > /tmp/rotten-spec/responsibility.json <<'JSON'
+          {
+            "notProvided": [{ "id": "workflow", "claudeMd": "Workflow Engine" }],
+            "areas": [
+              { "id": "x", "where": "server", "title": "t", "how": "h",
+                "keys": [], "words": ["x"] }
+            ]
+          }
+          JSON
+          if node dist/cli.js where x --spec /tmp/rotten-spec > /tmp/rotten2.log 2>&1; then
+            echo "持たないと決めたものが引けない表で通ってしまった"; cat /tmp/rotten2.log; exit 1
+          fi
+          grep -q 'outside の項目がありません' /tmp/rotten2.log
+          # 5. MCP からも同じ答えが返る（AI が引くのはこちら）。
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"hatake_where","arguments":{"query":"承認フロー"}}}' \
+            | node dist/mcp.js > /tmp/mcp-where.log
+          grep -q '枠組みの外' /tmp/mcp-where.log
+          grep -q '書き始めない' /tmp/mcp-where.log
+
       - name: The project preamble, and what is written from it
         working-directory: typescript
         run: |

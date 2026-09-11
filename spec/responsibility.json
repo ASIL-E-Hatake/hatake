@@ -1,0 +1,281 @@
+{
+  "$comment": "担当の割り振り（機械可読）。『これは hatake で書けるのか、それとも自分で書くのか』を引くための表。区分は4つだけ＝definition（定義で書ける）/ plugin（アプリ側に登録して足す）/ server（サーバの担当）/ outside（枠組みの外＝人が決める・別のシステム）。**判断表であって実装ではない**（ワークフローエンジンを作る話ではない）。notProvided は CLAUDE.md の Scope『Framework が提供しないもの』の写しで、そこに書いてある字が CLAUDE.md に無くなったら試験が落ちる＝散文と表が食い違えない。いまは日本語だけ（英語は束『英語』の担当）。引く口は npx hatake where <やりたいこと> と MCP の hatake_where。",
+
+  "notProvided": [
+    { "id": "business-logic", "claudeMd": "Business Logic" },
+    { "id": "workflow", "claudeMd": "Workflow Engine" },
+    { "id": "database", "claudeMd": "Database" },
+    { "id": "orm", "claudeMd": "ORM" },
+    { "id": "authentication", "claudeMd": "Authentication" },
+    { "id": "authorization", "claudeMd": "Authorization" },
+    { "id": "backend-api", "claudeMd": "Backend API" }
+  ],
+
+  "areas": [
+    {
+      "id": "screen-list",
+      "where": "definition",
+      "title": "一覧を出す（並べ替え・ページング・列の幅）",
+      "how": "`table` に `columns` を並べる。並べ替えは `sortable`、1ページの件数は `pagination.pageSize`。",
+      "keys": ["table", "columns", "sortable", "pagination", "width"],
+      "tool": "hatake reference table",
+      "words": ["一覧", "リスト", "テーブル", "並べ替え", "ソート", "ページング", "列", "table", "list"]
+    },
+    {
+      "id": "screen-search",
+      "where": "definition",
+      "title": "条件で絞り込む",
+      "how": "`search.filters` に項目と `operator` を書く。範囲は `operator: between`、選択肢の連動は `optionsFrom`。",
+      "keys": ["search", "filters", "operator", "optionsFrom"],
+      "tool": "hatake reference filter",
+      "words": ["検索", "絞り込み", "条件", "フィルタ", "search", "filter"]
+    },
+    {
+      "id": "screen-form",
+      "where": "definition",
+      "title": "入力の枠を作る（新規・編集・ステップ）",
+      "how": "`form.sections[].fields` に項目を並べる。段階を踏ませるなら `type: wizard` の `steps`。",
+      "keys": ["form", "sections", "fields", "steps", "layout"],
+      "tool": "hatake reference form",
+      "words": ["入力", "フォーム", "登録", "編集", "ウィザード", "form", "input"]
+    },
+    {
+      "id": "input-validation",
+      "where": "definition",
+      "title": "入力を検証する（1項目・項目間・行どうし）",
+      "how": "1項目は `validators`、項目間（開始 ≤ 終了・合計＝明細の和）は `{ type: compare }`、明細の行どうしは `{ type: unique }`。",
+      "keys": ["validators", "required", "requiredWhen"],
+      "tool": "hatake reference validator",
+      "words": ["検証", "バリデーション", "必須", "チェック", "入力チェック", "validation", "validate"]
+    },
+    {
+      "id": "input-normalize",
+      "where": "definition",
+      "title": "入力を整える（全半角・トリム）",
+      "how": "`normalize` に変換の名前を並べる（`[toHankaku, trim]`）。送信時に自動で通る。",
+      "keys": ["normalize"],
+      "tool": "hatake reference normalize",
+      "words": ["全角", "半角", "トリム", "正規化", "整形", "normalize"]
+    },
+    {
+      "id": "display-format",
+      "where": "definition",
+      "title": "見せ方を決める（金額・和暦・マスク）",
+      "how": "`format` に整形の名前、細かい指定は `config`（`{ symbol: \"¥\" }`）。",
+      "keys": ["format", "config"],
+      "tool": "hatake reference format",
+      "words": ["書式", "整形", "金額", "桁区切り", "和暦", "日付", "マスク", "format", "currency"]
+    },
+    {
+      "id": "computed",
+      "where": "definition",
+      "title": "画面の中で計算する（小計・合計・差）",
+      "how": "`computed` に `op` と対象を書く（明細の畳み込みは `aggregate` ＋ `of`、絞るなら `where`）。順番は機械が解く。",
+      "keys": ["computed", "aggregate", "of", "where"],
+      "tool": "hatake reference computed",
+      "words": ["計算", "合計", "小計", "自動計算", "computed", "sum"]
+    },
+    {
+      "id": "conditional",
+      "where": "definition",
+      "title": "条件で出し分ける（見せる・必須にする・押せる）",
+      "how": "`visibleWhen` / `requiredWhen` / `readOnlyWhen` / `enabledWhen` に条件を書く。**画面の中の値**で判断する話に限る。",
+      "keys": ["visibleWhen", "requiredWhen", "readOnlyWhen", "enabledWhen"],
+      "tool": "hatake reference visibleWhen",
+      "words": ["条件", "出し分け", "非表示", "読み取り専用", "押せない", "activate", "when"]
+    },
+    {
+      "id": "navigation",
+      "where": "definition",
+      "title": "画面を繋ぐ（メニュー・遷移・並べて開く）",
+      "how": "`app` に `menu` と `pages` を書き、遷移は `{ type: navigate }` ＋ `params`。並べて開くなら `navigation: tabs`。",
+      "keys": ["app", "menu", "pages", "params", "navigation"],
+      "tool": "hatake reference app",
+      "words": ["遷移", "画面遷移", "メニュー", "タブ", "リンク", "navigation", "menu"]
+    },
+    {
+      "id": "bulk",
+      "where": "definition",
+      "title": "選んだ行にまとめて実行する",
+      "how": "`scope: selection` のボタンに `confirm` と `maxRows`、待たせるなら `batchSize`。件数は `{count}` で埋まる。",
+      "keys": ["scope", "maxRows", "batchSize", "confirm", "prompt"],
+      "tool": "hatake reference scope",
+      "words": ["一括", "まとめて", "複数選択", "選んだ行", "bulk"]
+    },
+    {
+      "id": "report-paper",
+      "where": "definition",
+      "title": "帳票を出す（見出し・小計・紙のサイズ）",
+      "how": "`type: report` に `paper` / `groupBy` / `totals` / `rowsPerPage`。刷る口は `{ type: print }`。",
+      "keys": ["report", "paper", "groupBy", "totals", "rowsPerPage"],
+      "tool": "hatake paper report.yaml",
+      "words": ["帳票", "印刷", "紙", "PDF", "小計", "報告書", "report", "print"]
+    },
+    {
+      "id": "dashboard",
+      "where": "definition",
+      "title": "カードを並べる（件数・金額・グラフ）",
+      "how": "`type: dashboard` の `items` にカード。値は `value.aggregate`、グラフは `chart`。**集計クエリは投げない**＝Repository が返した行の畳み込み。",
+      "keys": ["items", "chart", "value", "span"],
+      "tool": "hatake reference dashboardItem",
+      "words": ["ダッシュボード", "カード", "グラフ", "件数", "集計", "dashboard", "chart"]
+    },
+    {
+      "id": "role-visibility",
+      "where": "definition",
+      "title": "役割で見せ方を変える（表示の出し分けだけ）",
+      "how": "メニュー項目・ボタン・列・項目に `roles`。誰に何が見えるかは `hatake explain --roles --matrix` で読める。",
+      "why": "これは**画面の出し分けだけ**。本当のアクセス制御ではない（`authorization` を見ること）。画面を隠しても API は叩ける。",
+      "keys": ["roles"],
+      "tool": "hatake explain app.yaml --roles --matrix",
+      "words": ["役割", "権限", "ロール", "出し分け", "見せない", "roles"]
+    },
+    {
+      "id": "data-access",
+      "where": "plugin",
+      "title": "データを取ってくる・保存する",
+      "how": "`Repository` を実装して `RepositoryRegistry` に登録する（定義の `repository` の字が鍵）。HTTP でも DB でも社内の口でも自由。REST なら opt-in の `hatake_http` が `hatake openapi` の宣言と1対1で話す。",
+      "why": "枠組みは Repository のインタフェースしか知らない。HTTP も DB も持たない（`database` を見ること）。",
+      "keys": ["repository"],
+      "tool": "hatake refs page.yaml --needs-registration",
+      "words": ["データ取得", "保存", "API 呼び出し", "リポジトリ", "通信", "repository", "http"]
+    },
+    {
+      "id": "custom-action",
+      "where": "plugin",
+      "title": "ボタンで独自の処理をする（CSV・外部連携・独自の保存）",
+      "how": "`{ type: plugin, plugin: <名前> }` と書いて、`ActionRegistry` にその名前で登録する。押す前の可否は `enabledWhen`。",
+      "keys": ["plugin"],
+      "tool": "hatake refs page.yaml --needs-registration",
+      "words": ["ボタン", "独自処理", "プラグイン", "CSV", "連携", "action", "plugin"]
+    },
+    {
+      "id": "custom-validator",
+      "where": "plugin",
+      "title": "独自の検証ルールを足す",
+      "how": "`validators` に自分で決めた名前を書き、`ValidatorRegistry` に登録する（サーバ側も同じ名前で登録すれば同じ判定になる）。",
+      "keys": ["validators"],
+      "tool": "hatake refs page.yaml --needs-registration",
+      "words": ["独自検証", "カスタムバリデータ", "業務チェック", "validator"]
+    },
+    {
+      "id": "custom-field",
+      "where": "plugin",
+      "title": "無いフィールド型・見た目を足す",
+      "how": "`type` に自分の名前を書き、`MaterialRenderer(fieldBuilders: {...})` で描く。整形・変換も同じで `FormatterRegistry` / `ConverterRegistry`。",
+      "why": "**Framework 本体は直さない**（CLAUDE.md の Extensibility）。足りない所は拡張点で足す。",
+      "keys": ["type"],
+      "tool": "hatake reference type",
+      "words": ["独自の型", "色ピッカー", "見た目", "レンダラ", "field", "renderer"]
+    },
+    {
+      "id": "server-validation",
+      "where": "server",
+      "title": "サーバでも同じ検証をする",
+      "how": "Java / TypeScript 版に**同じ定義**を渡して検証する（`FormValidator`）。画面の検証は親切のためで、守るのはサーバ。",
+      "why": "画面の検証は迂回できる（API を直接叩ける）。同じ定義を使えば言うことは1つで済む。",
+      "keys": [],
+      "tool": "hatake fixtures page.yaml",
+      "words": ["サーバ検証", "サーバ側", "二重チェック", "server", "backend"]
+    },
+    {
+      "id": "query-building",
+      "where": "server",
+      "title": "検索条件を SQL / JPA に組み立てる",
+      "how": "定義から `QuerySpec` を作り、サーバ側で自分の ORM に渡す（JPA アダプタは Java 版に同梱）。",
+      "keys": [],
+      "tool": "hatake openapi page.yaml",
+      "words": ["SQL", "クエリ", "JPA", "検索の組み立て", "query"]
+    },
+    {
+      "id": "api-shape",
+      "where": "server",
+      "title": "API の形を決める（DTO・JSON Schema・OpenAPI）",
+      "how": "`hatake openapi` / `hatake dto` / `hatake types` が定義から出す。試験データは `hatake fixtures`（通る形と弾く形）。",
+      "why": "形は定義から機械的に決まるが、**その口を作るのはサーバ**（`backend-api` を見ること）。",
+      "keys": [],
+      "tool": "hatake openapi page.yaml --base-path /api/orders",
+      "words": ["API の形", "DTO", "OpenAPI", "JSON Schema", "型", "api", "dto"]
+    },
+    {
+      "id": "persistence",
+      "where": "server",
+      "title": "実際に保存する（トランザクション・排他・採番）",
+      "how": "Repository の向こう側で自分でやる。画面は「保存してくれ」と言うだけ。",
+      "why": "枠組みは DB を知らない（`database` を見ること）。トランザクションの境界も、二重登録の防ぎ方も業務の決めごと。",
+      "keys": [],
+      "tool": "hatake refs page.yaml --needs-registration",
+      "words": ["保存", "トランザクション", "排他", "楽観ロック", "採番", "重複", "transaction"]
+    },
+    {
+      "id": "business-logic",
+      "where": "outside",
+      "title": "業務ロジック（締め・引当・与信・按分）",
+      "how": "hatake は持たない。画面に出るのは**その結果**だけ＝「締めたら直せない」は `readOnlyWhen` で見せ、判断そのものはサーバか別のシステムに置く。案件の前書きの `premises` に「できないこと」として書いておくと、AI が画面側に実装しない。",
+      "why": "業務ロジックを持つと、枠組みが業務を決めることになる（CLAUDE.md の Scope）。同じ画面でも会社ごとに規則が違うので、持てば必ず合わなくなる。",
+      "keys": [],
+      "tool": "hatake project",
+      "words": ["業務ロジック", "締め", "引当", "在庫", "与信", "按分", "計算ロジック", "business logic"]
+    },
+    {
+      "id": "workflow",
+      "where": "outside",
+      "title": "承認フロー・状態遷移のエンジン",
+      "how": "hatake は持たない。画面でできるのは「いまの状態を見せる・次へ進めるボタンを出す」まで（`enabledWhen` と `{ type: plugin }`）。誰がいつ承認できるかはサーバの担当。",
+      "why": "ワークフローエンジンは業務そのもの（CLAUDE.md の Scope）。既にある仕組み（BPM・社内の承認基盤）に任せるほうが安い。",
+      "keys": [],
+      "tool": "hatake reference enabledWhen",
+      "words": ["承認", "ワークフロー", "申請", "差し戻し", "状態遷移", "ステータス", "workflow", "approval"]
+    },
+    {
+      "id": "database",
+      "where": "outside",
+      "title": "データベース",
+      "how": "hatake は持たない。Repository の向こうで自由に選ぶ（RDB でも API でもファイルでも、枠組みからは同じ）。",
+      "why": "枠組みが DB を知ると、バックエンドを選べなくなる（CLAUDE.md の Backend Agnostic）。",
+      "keys": [],
+      "tool": "hatake refs page.yaml --needs-registration",
+      "words": ["DB", "データベース", "テーブル設計", "SQL", "database"]
+    },
+    {
+      "id": "orm",
+      "where": "outside",
+      "title": "ORM（テーブルとオブジェクトの対応）",
+      "how": "hatake は持たない。Java 版に JPA へ渡すアダプタは在るが、対応づけを決めるのは自分。",
+      "why": "定義は**画面の項目**で、テーブルの列とは別物。1対1にすると画面がテーブルに縛られる。",
+      "keys": [],
+      "tool": "hatake dto page.yaml",
+      "words": ["ORM", "エンティティ", "マッピング", "JPA", "Entity"]
+    },
+    {
+      "id": "authentication",
+      "where": "outside",
+      "title": "認証（ログイン・トークンの発行）",
+      "how": "hatake は持たない。ログイン画面は定義で作れるが、資格を確かめるのはサーバか認証基盤。`hatake_http` は**毎回ヘッダを聞く**口だけ持つ（トークンは期限が切れるので）。",
+      "why": "認証は枠組みの外（CLAUDE.md の Scope）。社内の SSO・OIDC・独自のどれでも繋がるようにするには、持たないのが一番強い。",
+      "keys": [],
+      "tool": "hatake refs page.yaml --needs-registration",
+      "words": ["認証", "ログイン", "パスワード", "トークン", "SSO", "authentication", "login"]
+    },
+    {
+      "id": "authorization",
+      "where": "outside",
+      "title": "認可（誰が何をできるかの決定と実施）",
+      "how": "hatake は持たない。定義の `roles` は**画面の出し分けだけ**で、実施はサーバ。誰にどの役割を配るかもアプリ側（`HatakeScope` に渡す）。",
+      "why": "画面を隠しても API は叩ける。出し分けを認可と呼ぶと、隠したつもりで漏れる。",
+      "keys": [],
+      "tool": "hatake explain app.yaml --roles --matrix",
+      "words": ["認可", "アクセス制御", "権限管理", "誰が見られるか", "authorization", "access control"]
+    },
+    {
+      "id": "backend-api",
+      "where": "outside",
+      "title": "バックエンド API 本体",
+      "how": "hatake は持たない。**形**は定義から出せる（`hatake openapi` / `hatake dto` / `hatake fixtures`）が、口を作って動かすのは自分。宣言どおり返っているかは `hatake probe` で叩いて確かめられる。",
+      "why": "API を持つと枠組みがサーバを選ぶことになる（CLAUDE.md の Backend Agnostic）。形だけ渡して、実装は任せる。",
+      "keys": [],
+      "tool": "hatake probe app.yaml",
+      "words": ["API", "エンドポイント", "サーバ実装", "REST", "backend", "endpoint"]
+    }
+  ]
+}

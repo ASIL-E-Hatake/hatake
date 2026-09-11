@@ -24,6 +24,7 @@
 | 検証を足す／メッセージを変える | [入力検証](guide/validation.ja.md) | 独自ルール・i18n |
 | 独自の型/バリデータ/描画を足す | [Plugin ガイド](../flutter/docs/plugins.ja.md) | 本体を fork せず拡張する |
 | バックエンド（Java / TS）で使う | [バックエンド連携](guide/backend.ja.md) | 詳細は [java](../java/README.md) / [typescript](../typescript/README.md) |
+| **これは hatake で書けるのか知りたい** | [仕組みと責務分担](guide/concepts.ja.md#これはどっちの担当は引ける) | 定義 / 登録 / サーバ / **枠組みの外** の4区分。`npx hatake where <やりたいこと>` |
 | **この案件のことを AI に先に教えたい** | [案件の前書き](guide/project.ja.md) | 何のシステムか・できないこと・用語・名前の決めごとを1枚に。`npx hatake project` |
 | **AI エージェントに定義を書かせる** | [MCP サーバ](guide/mcp.ja.md) | 仕様の引き当て・例の取得・検証を道具として渡す |
 | 対応状況・今後の方針を知る | [ロードマップ](roadmap.ja.md) / [utils ロードマップ](roadmap-utils.ja.md) | 実装状況はここが正 |

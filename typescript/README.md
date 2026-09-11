@@ -52,6 +52,7 @@ npx hatake registry --compare app.json server.json  # 足した登録が画面�
 npx hatake run page.yaml --draft --out s.json   # 定義から下書きのシナリオを起こす
 npx hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所
 npx hatake fixtures page.yaml                   # サーバ側の試験データ（通る形・弾く形）
+npx hatake where 締め処理                        # これはどこの担当？（定義 / 登録 / サーバ / 枠組みの外）
 npx hatake project                              # 案件の前書き（何のシステムか・用語・名前の決めごと）
 npx hatake project --agents --merge AGENTS.md   # その前書きを AI の設定ファイルに貼る（印の中だけ）
 npx hatake project --agents --merge AGENTS.md --check  # 貼った節が古くないか（CI 用）

@@ -21,8 +21,16 @@ import {
   FAILURES_FILE,
   findSpecDir,
   PITFALLS_FILE,
+  RESPONSIBILITY_FILE,
   SCHEMA_FILE,
 } from "./specDir.js";
+import {
+  filterAreas,
+  parseResponsibility,
+  responsibilityLines,
+  type Where,
+  WHERE_KINDS,
+} from "./responsibility.js";
 import {
   describePitfall,
   filterPitfalls,
@@ -225,6 +233,15 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --cover は「まだ試していない所」を定義の分岐から挙げる（落とさない）。
       プラグインの計算・検証は**この道具には無い**ので、値を作らずにそう言う
       （アプリの試験で回す）。
+
+  hatake where [<やりたいこと>] [--where definition|plugin|server|outside] [--json]
+      **これはどこの担当か**を引く（定義で書ける / アプリ側に登録して足す /
+      サーバの担当 / **枠組みの外**）。「締め処理も作って」のように定義で書けない
+      ことを頼まれたとき、外だと言うために使う。
+      枠組みが持たないもの（業務ロジック・ワークフロー・DB・ORM・認証・認可・
+      バックエンド API）は CLAUDE.md の Scope が正で、この表はその写しを持つ
+      （字が食い違ったら試験が落ちる）。**判断表であって実装ではない**。
+      並びは**外から内**（枠組みの外を先に出す＝いちばん大事な答えなので）。
 
   hatake project [<前書き>] [--json]
   hatake project [<前書き>] --agents [--merge AGENTS.md] [--check]
@@ -661,6 +678,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return intent(positional, flags, io);
       case "project":
         return projectCommand(positional, flags, io);
+      case "where":
+        return whereCommand(positional, flags, io);
       case "dto":
         return emit(positional, io, (page) =>
           JSON.stringify(deriveDto(page), null, 2),
@@ -3028,6 +3047,45 @@ function pitfalls(
     for (const line of snippet(pitfall.good).split("\n")) io.out(`    ${line}`);
     io.out("");
   }
+  return 0;
+}
+
+/**
+ * 担当の割り振りを引く（`where`）。
+ *
+ * 当たらなかったら 1 を返す＝**黙って「無い」と言わない**（表に無いことは「枠組みの
+ * 外」とは違う。載っていないだけかもしれないので、そう言って落とす）。
+ */
+function whereCommand(
+  positional: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const raw = readSpec(flags, io, RESPONSIBILITY_FILE);
+  if (raw === null) return 1;
+  const catalog = parseResponsibility(raw);
+
+  const only = str(flags, "where");
+  if (only !== undefined && !WHERE_KINDS.includes(only as Where)) {
+    io.err(`--where は ${WHERE_KINDS.join(" / ")} のどれかです。`);
+    return 1;
+  }
+  const query = positional[0];
+  const found = filterAreas(catalog, query, only as Where | undefined);
+
+  if (flags.json === true) {
+    io.out(JSON.stringify(found, null, 2));
+    return found.length === 0 ? 1 : 0;
+  }
+  if (found.length === 0) {
+    io.err(
+      `"${query}" に当てはまる担当は表に載っていません。` +
+        "載っていないことは「枠組みの外」とは違います（表がまだ足りないのかも" +
+        "しれません）。やりたいことを別の言葉で引いてみてください。",
+    );
+    return 1;
+  }
+  for (const line of responsibilityLines(found, { query })) io.out(line);
   return 0;
 }
 

@@ -52,6 +52,14 @@ import { type FailureCatalog } from "./failures.js";
 import { findWarnings } from "./warnings.js";
 import { ADVICE_NOTE, findAdvice, unwritableAdvice } from "./advise.js";
 import { parseProject } from "./project.js";
+import {
+  filterAreas,
+  parseResponsibility,
+  RESPONSIBILITY_NOTE,
+  responsibilityLines,
+  type Where,
+  WHERE_KINDS,
+} from "./responsibility.js";
 import { findProjectAdvice } from "./projectAdvise.js";
 import { projectLines } from "./projectExplain.js";
 import { type AdvicePick, applyAdvice } from "./adviseApply.js";
@@ -88,7 +96,13 @@ import {
   snippet,
 } from "./pitfalls.js";
 import { scaffold, scaffoldKinds } from "./scaffold.js";
-import { CATALOG_PATH, FAILURES_FILE, PITFALLS_FILE, SCHEMA_FILE } from "./specDir.js";
+import {
+  CATALOG_PATH,
+  FAILURES_FILE,
+  PITFALLS_FILE,
+  RESPONSIBILITY_FILE,
+  SCHEMA_FILE,
+} from "./specDir.js";
 import { toJavaRecords, toTypeScript } from "./types.js";
 
 /** 道具1つ。`run` は文字列を返し、入力がおかしければ例外を投げる。 */
@@ -240,6 +254,10 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
    この案件は何のシステムか・誰が使うか・**何ができないか**・業務の言葉と項目名の
    対応・名前の決めごとが1枚に入っている。読んでから書けば、用語の揺れと命名の
    直しが最初から起きない（前書きは人が書くもので、定義から起こしてはいけない）
+0.5 **頼まれたことに「定義で書けないもの」が混ざっていたら hatake_where**（締め処理・
+   承認フロー・認証・DB…）。**outside と出たものは書き始めず、そう言う**＝画面には
+   結果だけを出し、判断はサーバか別のシステムに置く。hatake は業務ロジックも
+   ワークフローも認証も持たない（持たないと決めている）
 1. **人から指示文をもらったら、まず hatake_intent**（言われたことを1枚にする）。
    1行が1件の下書きになり、text は言われたまま・全部 source: ai-draft の印つき
    ＝人が読んで confirmed: true にするまで「AI がこう読んだ」以上のことは主張しない。
@@ -281,7 +299,8 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 12. 定義が長くなったら hatake_minimize（既定値と同じ指定を落とす。意味は変えない）
 
 原則: Flutter の Widget や API のコードを手で書かず、定義を書く。定義に無い機能は
-DSL の拡張（プラグイン）で足す。`;
+DSL の拡張（プラグイン）で足す。**枠組みの外のこと（業務ロジック・ワークフロー・
+DB・認証・認可・API 本体）は書かずに、外だと言う**（hatake_where で引ける）。`;
 
 const str = (args: Record<string, unknown>, key: string): string | undefined =>
   typeof args[key] === "string" ? (args[key] as string) : undefined;
@@ -352,6 +371,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
     buildReference(readJson(SCHEMA_FILE) as Record<string, unknown>);
   const catalog = () => readJson(...CATALOG_PATH) as ExampleCatalog;
   const pitfalls = () => readJson(PITFALLS_FILE) as PitfallCatalog;
+  const responsibility = () => parseResponsibility(readJson(RESPONSIBILITY_FILE));
 
   return [
     {
@@ -383,6 +403,60 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
       example: { source: EXAMPLE_PROJECT },
       run(args) {
         return projectLines(parseProject(required(args, "source"))).join("\n");
+      },
+    },
+    {
+      name: "hatake_where",
+      title: "これはどこの担当かを引く（定義 / 登録 / サーバ / 枠組みの外）",
+      description:
+        "**頼まれたことが hatake で書けるのかを引く。**区分は4つ＝" +
+        "definition（定義で書ける）/ plugin（アプリ側に登録して足す）/ " +
+        "server（サーバの担当）/ **outside（枠組みの外）**。" +
+        "hatake は業務ロジック・ワークフロー・DB・ORM・認証・認可・バックエンド API を" +
+        "**持たない**と決めている（CLAUDE.md の Scope）。だから「締め処理も作って」" +
+        "「承認フローを組んで」と頼まれたら、まずここを引く。" +
+        "**outside と出たものは Dart / TypeScript を書き始めてはいけない**＝画面には" +
+        "結果だけを出し（readOnlyWhen / enabledWhen）、判断はサーバか別のシステムに置く、" +
+        "と人に言うこと。definition と出たものは、返ってくる keys と次の道具で書ける。" +
+        "答えが見つからないときは**載っていない**と言う（「外」だと決めつけない）。" +
+        "並びは外から内（いちばん大事な答えを先に出す）。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description:
+              "やりたいこと（日本語でよい。「締め処理」「承認フロー」「一覧の並べ替え」）。" +
+              "省略すると全件。",
+          },
+          where: {
+            type: "string",
+            enum: [...WHERE_KINDS],
+            description: "その区分だけに絞る（outside を渡せば「持たないもの」の一覧）。",
+          },
+        },
+      },
+      example: { query: "締め処理" },
+      run(args) {
+        const query = str(args, "query");
+        const only = str(args, "where");
+        if (only !== undefined && !WHERE_KINDS.includes(only as Where)) {
+          throw new Error(`where は ${WHERE_KINDS.join(" / ")} のどれかです。`);
+        }
+        const found = filterAreas(responsibility(), query, only as Where | undefined);
+        if (found.length === 0) {
+          throw new Error(
+            `"${query}" に当てはまる担当は表に載っていません。` +
+              "**載っていないことは「枠組みの外」とは違います**（表が足りないのかも" +
+              "しれない）。別の言葉で引くか、人に聞いてください。",
+          );
+        }
+        return pretty({
+          note: RESPONSIBILITY_NOTE,
+          outside: found.filter((one) => one.where === "outside").length,
+          areas: found,
+          text: responsibilityLines(found, { query }).join("\n"),
+        });
       },
     },
     {

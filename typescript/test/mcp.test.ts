@@ -84,6 +84,7 @@ describe("MCP プロトコル", () => {
     const list = (send("tools/list")?.result as any).tools;
     expect(list.map((t: any) => t.name)).toEqual([
       "hatake_project",
+      "hatake_where",
       "hatake_intent",
       "hatake_reference",
       "hatake_examples",
