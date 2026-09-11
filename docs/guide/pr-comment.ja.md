@@ -69,11 +69,29 @@ jobs:
             npx hatake explain --diff --git "$BASE...HEAD" "$file" \
               --markdown --if-changed > one.md || continue
             [ -s one.md ] || continue
+            # **計算を触った回だけ**依存の図を足す（毎回貼ると読まれない）。
+            # 順番の事故（小計より先に合計を計算している）は触った回に起きるので、
+            # そのときだけ「どこを動かせばいいか」が1枚で見える形を添える。
+            : > graph.md
+            if git diff --unified=0 "$BASE"...HEAD -- "$file" | grep -q 'computed'; then
+              npx hatake diagram "$file" --computed --all --format mermaid > g.mmd
+              {
+                echo "<details><summary>計算の依存（この画面）</summary>"
+                echo
+                echo '```mermaid'
+                cat g.mmd
+                echo '```'
+                echo
+                echo "</details>"
+                echo
+              } > graph.md
+            fi
             {
               echo "<details><summary><b>$file</b></summary>"
               echo
               cat one.md
               echo
+              cat graph.md
               echo "</details>"
               echo
             } >> body.md
@@ -117,6 +135,7 @@ jobs:
 | 終了コード | **変えない** | ここは読むための道具。止めるのは `hatake diff`（壊す変更で 1）と `hatake validate` |
 | 権限 | `pull-requests: write` だけ | コメント以外は書かない |
 | 比べる相手 | `base.sha`...HEAD（枝分かれした所） | `HEAD~1` だと「直前のコミットとの差」になり、PR 全体の変化にならない |
+| 依存の図 | **計算を触った回だけ**貼る（diff に `computed` が出たとき） | 毎回貼ると読まれない。順番の事故は触った回に起きるので、そこだけ貼れば読まれる |
 
 ## 一緒に置くと効くもの
 
@@ -135,6 +154,7 @@ jobs:
 | `explain --diff --markdown` | **画面の言葉で**変化を言う（人が読む） | 変えない |
 | `diff` | API の形を壊すか・確かめてほしい変化か | 壊す変更で 1 |
 | `validate --warn-as-error` | 書いたのに効かない指定 | 警告で 1 |
+| `diagram --computed --all` | **計算の依存**（触った回だけ貼る。赤い線＝順番が逆） | 変えない |
 
 ## 英語で貼る
 

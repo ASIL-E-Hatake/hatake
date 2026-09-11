@@ -78,6 +78,7 @@ npx hatake index app.yaml --role staff       # その役割で開ける画面だ
 npx hatake explain app.yaml --roles --matrix # 役割を横に並べた○×の表
 npx hatake diagram app.yaml --out app.svg    # 画面とメニューと遷移の図（権限も重なる）
 npx hatake diagram app.yaml --role admin     # その役割で通れる道だけ
+npx hatake diagram app.yaml --computed --all # 計算の依存（画面ごとに囲んで1枚に）
 npx hatake probe app.yaml --base http://localhost:8080/api   # 宣言どおり返ってくるか、叩いて見る
 npx hatake attack app.yaml --role staff --base http://localhost:8080/api  # 見えない口が本当に閉じているか
 ```

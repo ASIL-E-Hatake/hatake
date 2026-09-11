@@ -130,7 +130,7 @@ import {
   renderDiagram,
 } from "./diagram.js";
 import { appDiagram } from "./appDiagram.js";
-import { computedGraph } from "./computedGraph.js";
+import { computedGraph, computedGraphs } from "./computedGraph.js";
 import {
   type GraphFormat,
   graphFormats,
@@ -395,7 +395,7 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       入口が定義に無い単票（app: に入っていない定義）は絞れないので、別に言う。
 
   hatake diagram <file> [--out file.svg] [--role admin] [--json]
-              [--format mermaid|dot] [--computed [--page <id>]]
+              [--format mermaid|dot] [--computed [--page <id>] [--all]]
       図解の SVG を出す。app: の定義を渡すと**画面とメニューと遷移**の図を作り
       （どこからも開けない画面も分かる）、図の元データ（rows を持つ JSON）を渡すと
       それを描く。--json で元データだけ（手で直してから描けるように）。
@@ -410,7 +410,9 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
           合計、明細の行から親へ）。順番が逆の線は赤で出る＝計算の順番の警告が
           出たときに**どこを動かせばいいか**が1枚で見える。依存は行を飛ぶ線が出るので
           縦積みの SVG では描けない＝既定は Mermaid（--format dot も選べる）。
-          app: の定義なら --page でどの画面かを選ぶ。
+          app: の定義なら --page でどの画面かを選ぶ。--all で**画面ぜんぶを1枚に**
+          （画面ごとに囲んで出す。10画面ある定義を10回叩くのは続かないので）。
+          **計算が無い画面は囲みも出さない**（空の囲みが並ぶと、在る所が読めない）。
 
   hatake registry <path...> [--json] [--out file]
       アプリの実装を読んで「登録済みのもの」の一覧を作る（validate --registry に
@@ -599,6 +601,7 @@ const VERSION = "0.0.1";
  */
 const BOOLEAN_FLAGS = new Set([
   "json",
+  "all",
   "agents",
   "check",
   "kinds",
@@ -1914,6 +1917,19 @@ function computedDiagram(
   flags: Args["flags"],
   io: CliIo,
 ): number {
+  // 画面ぜんぶを1枚に（10画面ある定義を10回叩くのは続かない）。
+  if (flags.all === true) {
+    const graph = computedGraphs(computedPages(raw));
+    if (graph.nodes.length === 0) {
+      io.out("計算項目のある画面がありません（描くものがありません）。");
+      return 0;
+    }
+    if (flags.json === true) {
+      io.out(JSON.stringify(graph, null, 2));
+      return 0;
+    }
+    return write(renderGraph(graph, format ?? "mermaid"), flags, io);
+  }
   const page = computedPageOf(raw, str(flags, "page"), io);
   if (page === null) return 1;
   const graph = computedGraph(page.node, { title: `${page.title}: 計算の依存` });
@@ -1926,6 +1942,29 @@ function computedDiagram(
     return 0;
   }
   return write(renderGraph(graph, format ?? "mermaid"), flags, io);
+}
+
+/** 定義の中の画面を全部（`app:` でも `page:` でも同じ形にする）。 */
+function computedPages(
+  raw: Record<string, unknown>,
+): { id: string; title?: string; page: Record<string, unknown> }[] {
+  const asDict = (value: unknown): Record<string, unknown> | undefined =>
+    typeof value === "object" && value !== null && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : undefined;
+  const app = asDict(raw.app);
+  const pages =
+    app === undefined
+      ? [asDict(raw.page) ?? raw]
+      : (Array.isArray(app.pages) ? app.pages : []).flatMap((one) => {
+          const node = asDict(one);
+          return node === undefined ? [] : [node];
+        });
+  return pages.map((node) => ({
+    id: typeof node.id === "string" ? node.id : "画面",
+    ...(typeof node.title === "string" ? { title: node.title } : {}),
+    page: node,
+  }));
 }
 
 /**

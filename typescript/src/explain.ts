@@ -97,6 +97,18 @@ const emptyVocabulary = (): Vocabulary => ({
   options: new Map(),
 });
 
+/**
+ * 項目名 → 業務名だけの語彙。
+ *
+ * 図（[computedGraph]）は**素の定義**を見るので解析後のモデルを持っていない。それでも
+ * 条件の言い方は読み返しと同じでなければならない（同じ条件を2つの言葉で言わない）ので、
+ * 語彙だけを渡して [describeCondition] を使い回せる口を出しておく。
+ */
+export const labelVocabulary = (labels: Map<string, string>): Vocabulary => ({
+  labels,
+  options: new Map(),
+});
+
 function learn(vocabulary: Vocabulary, items: (FieldDefinition | FilterDefinition | ColumnDefinition)[]): void {
   for (const item of items) {
     vocabulary.labels.set(item.field, item.label);

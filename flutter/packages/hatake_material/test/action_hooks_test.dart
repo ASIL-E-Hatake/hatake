@@ -248,16 +248,24 @@ void main() {
       expect(find.text('受注詳細'), findsWidgets);
     });
 
-    testWidgets('ハンドラ未登録なら実行もされず、成功も名乗らない', (tester) async {
+    testWidgets('ハンドラ未登録なら、押す前に押せない（成功も名乗らない）',
+        (tester) async {
       await tester.pumpWidget(_host(_Rows([..._rows]), _pluginPage));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('hatake.action.close')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('hatake.confirm.ok')));
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('ハンドラが未登録'), findsOneWidget);
+      // 押してから「未登録です」と言うのではなく、**押す前に**止める
+      // （登録は実行時に引けるので、押すまで気づけない形にしない）。
+      final button = tester.widget<FilledButton>(
+        find.byKey(const Key('hatake.action.close')),
+      );
+      expect(button.onPressed, isNull);
+      final tip = tester.widget<Tooltip>(find.ancestor(
+        of: find.byKey(const Key('hatake.action.close')),
+        matching: find.byType(Tooltip),
+      ));
+      expect(tip.message, contains('まだ繋がっていません'));
+      // 確認も走らないので、成功の文言も出ない。
+      expect(find.byKey(const Key('hatake.confirm.ok')), findsNothing);
       expect(find.text('月締めが終わりました'), findsNothing);
     });
   });

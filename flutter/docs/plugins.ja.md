@@ -42,6 +42,12 @@ HatakeScope(validators: validators, /* ... */);
 `type: plugin` のアクションは、`plugin` キーで引いたハンドラに飛ぶ。ハンドラは
 `ActionContext`（build context・controller・action、行アクションなら対象行）を受け取る。
 
+> **登録を忘れたボタンは、押す前に押せなくなります。** その名前が `ActionRegistry` に
+> 無ければ灰色になり、理由（どのプラグインが無いか）が出ます。押してから「未登録です」と
+> 言うのは最後の砦で、登録は実行時に引けるのだから押す前に言えるはず、という考えです。
+> 開発中の抜けが見えなくなるのが心配なら、道具の側でも言っています
+> （`npx hatake validate --registry hatake-registry.json` の `unknown-plugin`）。
+
 ```dart
 final actions = ActionRegistry({
   'csvExport': (ctx) async {

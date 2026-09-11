@@ -161,16 +161,20 @@ Widget _rowActionButton({
   required Object? rowKey,
   required Map<String, String> labels,
   required VoidCallback onPressed,
+
+  /// まだ繋がっていない理由（`unwiredReason`）。行のボタンでも押す前に言う。
+  String? unwired,
 }) {
   final state = _actionEnabled(action, record: record);
   return _withReason(
     TextButton(
       key: Key('hatake.rowaction.${action.id}.$rowKey'),
-      onPressed: state.enabled ? onPressed : null,
+      onPressed: state.enabled && unwired == null ? onPressed : null,
       child: Text(action.label),
     ),
     state,
     labels,
+    unwired: unwired,
   );
 }
 
@@ -199,12 +203,18 @@ Widget _bulkButton({
   Set<String> roles = const {},
   int failing = 0,
   bool? hasRows,
+
+  /// まだ繋がっていない理由（`unwiredReason`）。渡すと押せなくして理由を出す。
+  String? unwired,
 }) {
   final max = action.maxRows?.forRoles(roles);
   final tooMany = max != null && count > max;
-  return FilledButton(
+  // 繋がっていないときは押せない。**ラベルは触らない**（件数や「行を選んでください」は
+  // それだけで意味がある＝理由は tooltip で足す）。
+  final button = FilledButton(
     key: Key('hatake.action.${action.id}'),
-    onPressed: count == 0 || tooMany || failing > 0 ? null : onPressed,
+    onPressed:
+        unwired != null || count == 0 || tooMany || failing > 0 ? null : onPressed,
     child: Text(switch (count) {
       0 when hasRows == false => '${action.label}（行がありません）',
       0 when hasRows == true => '${action.label}（行を選んでください）',
@@ -214,4 +224,5 @@ Widget _bulkButton({
       _ => '${action.label}（$count 件）',
     }),
   );
+  return unwired == null ? button : Tooltip(message: unwired, child: button);
 }
