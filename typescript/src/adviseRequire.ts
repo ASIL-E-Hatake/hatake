@@ -22,7 +22,7 @@ const str = (v: unknown): string | undefined =>
   typeof v === "string" ? v : undefined;
 
 /** 見る場所1つ（その節点と、そこまでの道）。 */
-interface Spot {
+export interface Spot {
   path: string;
   node: Dict;
 }
@@ -58,11 +58,16 @@ const groupPath = (node: RequireNode, path: string, kind: string): string => {
 };
 
 /** リファレンスのノード名（挙げるキーが本当に書けるかを確かめるのに使う）。 */
-const referenceNode = (node: RequireNode, kind: string): string =>
+export const referenceNode = (node: RequireNode, kind: string): string =>
   node === "page" ? `${kind}Page` : node;
 
-/** その場所の節点を全部（道つきで）。 */
-function nodesOf(page: Dict, path: string, node: RequireNode): Spot[] {
+/**
+ * その場所の節点を全部（道つきで）。
+ *
+ * 外に出してあるのは、**決めごとを既にある定義から起こす側**（[harvestRules]）が同じ歩き方
+ * を使うため。2つ持つと「起こした規則が、当てたら鳴る」という一番みっともない形になる。
+ */
+export function nodesOf(page: Dict, path: string, node: RequireNode): Spot[] {
   switch (node) {
     case "page":
       return [{ path, node: page }];
@@ -111,7 +116,7 @@ function nodesOf(page: Dict, path: string, node: RequireNode): Spot[] {
  * 空で書いてあるものは**書いていない**と見る（`roles: []` は「誰にも見せない」ではなく
  * 「まだ決めていない」なので、決めごととしては未記入）。
  */
-function written(value: unknown): boolean {
+export function written(value: unknown): boolean {
   if (value === undefined || value === null || value === false || value === "") return false;
   if (Array.isArray(value)) return value.length > 0;
   if (isDict(value)) return Object.keys(value).length > 0;

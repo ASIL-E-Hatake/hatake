@@ -13,6 +13,7 @@
 
 import { type Advice, ADVICE_NOTE, type AdviceRender } from "./advise.js";
 import { type AdviceRules, DEFAULT_RULES } from "./adviseRules.js";
+import { silencedNote } from "./adviseOff.js";
 import { type DefinitionChange, type DefinitionDiff } from "./defDiff.js";
 import { type ExplainDocument, type ExplainSection } from "./explain.js";
 import { type AppBrief, type PageBrief } from "./explainBrief.js";
@@ -44,8 +45,13 @@ export function escapeMarkdown(line: string): string {
 const bullets = (lines: string[]): string[] =>
   lines.map((line) => `- ${escapeMarkdown(line)}`);
 
-/** 節1つ。長ければ折りたたむ（見出しは残るので、目次としては読める）。 */
-function section(
+/**
+ * 節1つ。長ければ折りたたむ（見出しは残るので、目次としては読める）。
+ *
+ * 外に出してあるのは、**同じ折りたたみを2つ持たない**ため（設計書の1枚も同じ形で節を
+ * 並べる。片方だけ折りたたむ行数を変えると、同じ内容が紙によって違う見え方になる）。
+ */
+export function mdSection(
   title: string,
   lines: string[],
   depth = 3,
@@ -73,7 +79,15 @@ function section(
 const note = (text: string): string[] => [`> ${escapeMarkdown(text)}`];
 
 const sections = (list: ExplainSection[], lang: Lang = "ja"): string[] =>
-  list.flatMap((one) => section(one.title, one.lines, 3, lang));
+  list.flatMap((one) => mdSection(one.title, one.lines, 3, lang));
+
+/**
+ * 説明の**中身だけ**（題を付けない）。
+ *
+ * 設計書の1枚は自分の題を持つので、説明をそこに差し込むときに題が二重になる。
+ */
+export const explainBodyMarkdown = (document: ExplainDocument): string =>
+  sections(document.sections, document.lang).join("\n").trimEnd();
 
 /** 説明（`explain`）。文書の言語をそのまま使う（飾りだけが言語に依る）。 */
 export function explainMarkdown(document: ExplainDocument): string {
@@ -92,7 +106,11 @@ export function reviewMarkdown(
   options: AdviceRender = {},
 ): string {
   const out = [explainMarkdown(review.explain), ""];
-  out.push(...section("書き足したほうがいい所（助言）", adviceLines(review.advice)));
+  out.push(
+    ...mdSection("書き足したほうがいい所（助言）", adviceMarkdownLines(review.advice)),
+  );
+  // 黙らせたものが在ることは、貼った先でも見えていないといけない。
+  if (review.silenced !== undefined) out.push(...note(silencedNote(review.silenced)));
   if (options.rulesFrom !== undefined) {
     const rules = options.rules ?? DEFAULT_RULES;
     out.push(
@@ -115,7 +133,7 @@ export function reviewMarkdown(
 }
 
 /** 助言1件を1行に畳む（PR 本文では3行に割ると読みにくい）。 */
-const adviceLines = (advice: Advice[]): string[] =>
+export const adviceMarkdownLines = (advice: Advice[]): string[] =>
   advice.length === 0
     ? ["見つかりませんでした。"]
     : advice.map(
@@ -133,7 +151,7 @@ export function explainDiffMarkdown(diff: ExplainDiff): string {
     // 何件変わったかを先に言う（折りたたみの中を開く前に規模が分かる）。
     out.push(`変わったところ **${diff.changes.length} 件**。`, "");
     for (const [title, changes] of groupBySection(diff.changes)) {
-      out.push(...section(title, changes.map(changeLine)));
+      out.push(...mdSection(title, changes.map(changeLine)));
     }
   }
   out.push(...note(EXPLAIN_DIFF_NOTE));

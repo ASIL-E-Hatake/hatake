@@ -44,6 +44,8 @@ npx hatake explain page.yaml --markdown     # paste-ready for a PR body (also wi
 npx hatake fix page.yaml          # apply only uniquely-determined repairs (--write to overwrite)
 npx hatake advise page.yaml        # what is worth adding (advice, not warnings)
 npx hatake advise page.yaml --rules team.json  # judge by the project's own ruler (silence a rule / tune a knob / demand a key)
+npx hatake harvest definitions/ --rules  # take that ruler from the definitions you already have (keys written everywhere become a require draft; a human pastes it)
+npx hatake design page.yaml --intent page.intent.yaml  # print one sheet for review (what was asked + read-back + open questions + advice + acceptance; no hand-written field)
 npx hatake index definitions/ --find "customer search"   # which screen is where
 npx hatake diagram app.yaml --out app.svg  # screens, menu and navigation as a picture
 npx hatake diagram app.yaml --role admin   # only the paths that role can walk
