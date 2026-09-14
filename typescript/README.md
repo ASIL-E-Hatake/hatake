@@ -56,6 +56,8 @@ npx hatake probe --kinds type-mismatch           # 食い違いの印から直�
 npx hatake probe --login login.json --check      # 資格が取れることだけを試す（業務の口は叩かない）
 npx hatake where 締め処理                        # これはどこの担当？（定義 / 登録 / サーバ / 枠組みの外）
 npx hatake where --from 依頼.md                  # 依頼文を行ごとに仕分ける（外を先に言う）
+npx hatake ask page.yaml                        # 決めていないことを問い返す（定義に書けないものだけ）
+npx hatake ask --kinds                          # 何を聞かれるかを先に読む（12種類）
 npx hatake project                              # 案件の前書き（何のシステムか・用語・名前の決めごと）
 npx hatake project --agents --merge AGENTS.md   # その前書きを AI の設定ファイルに貼る（印の中だけ）
 npx hatake project --agents --merge AGENTS.md --check  # 貼った節が古くないか（CI 用）

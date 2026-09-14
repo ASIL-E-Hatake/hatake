@@ -85,6 +85,7 @@ describe("MCP プロトコル", () => {
     expect(list.map((t: any) => t.name)).toEqual([
       "hatake_project",
       "hatake_where",
+      "hatake_ask",
       "hatake_intent",
       "hatake_reference",
       "hatake_examples",

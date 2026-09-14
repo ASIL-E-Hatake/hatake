@@ -58,6 +58,11 @@ logic:
     where: outside
     name: stockAllocation
     why: 在庫は別システムが正。引当の規則もそちらが持っているので、こちらでは触らない
+  # `answers` は「この行で、その問いに答えた」という印（`npx hatake ask` が出す印）。
+  # 付けると次からその問いは出ない＝**答えたら消える**。
+  - what: 受注は更新日時が変わっていたら弾いて、読み直させる（後勝ちにしない）
+    where: server
+    answers: [concurrency]
 
 naming:
   page: snake_case

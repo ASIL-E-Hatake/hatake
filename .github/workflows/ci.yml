@@ -2220,6 +2220,68 @@ jobs:
             | node dist/mcp.js > /tmp/mcp-project.log
           grep -q 'hatake_project' /tmp/mcp-project.log
 
+      - name: The questions only a human can answer (ask)
+        working-directory: typescript
+        run: |
+          set -e
+          PRE=../spec/projects/wholesale.project.yaml
+          DEF=../spec/examples/order_entry.yaml
+          # 1. 問いが出ても**落ちない**（問いは人への依頼で、機械の合否ではない）。
+          node dist/cli.js ask "$DEF" > /tmp/ask.log
+          grep -q '決めてください' /tmp/ask.log
+          grep -q '\[concurrency\]' /tmp/ask.log
+          # 見ていない所を毎回言う（出なかった＝決まっている、にしない）。
+          grep -q '出なかった＝決まっている、ではありません' /tmp/ask.log
+          # 何を見て聞いたかが付く（思いついたことは聞かない）。
+          grep -q 'この定義で聞いた理由' /tmp/ask.log
+          # 2. 表そのものは定義が無くても引ける（書く前に何を聞かれるか分かる）。
+          node dist/cli.js ask --kinds | grep -q '\[rounding\]'
+          # 3. **答えたら消える。** 同梱の前書きは排他に答えている（answers: [concurrency]）。
+          node dist/cli.js ask "$DEF" --project "$PRE" > /tmp/ask-answered.log
+          if grep -q '\[concurrency\]' /tmp/ask-answered.log; then
+            echo "答えたのに問いが残った"; cat /tmp/ask-answered.log; exit 1
+          fi
+          grep -q '件は答えが済んでいます' /tmp/ask-answered.log
+          # 4. 答えたつもりで答えていないのは**落とす**（ここだけは事実の間違い）。
+          mkdir -p /tmp/ask-bad
+          printf 'project_version: "1.0"\nsystem: { what: x }\nlogic:\n' \
+            > /tmp/ask-bad/pre.yaml
+          printf '  - { what: 何かを決めた, where: server, answers: [no-such] }\n' \
+            >> /tmp/ask-bad/pre.yaml
+          if node dist/cli.js ask "$DEF" --project /tmp/ask-bad/pre.yaml \
+               > /tmp/ask-bad.log 2>&1; then
+            echo "知らない印を書いた前書きで通ってしまった"; cat /tmp/ask-bad.log; exit 1
+          fi
+          grep -q 'no-such' /tmp/ask-bad.log
+          # 担当が食い違う答えも受け取らない（排他はサーバの担当）。
+          printf 'project_version: "1.0"\nsystem: { what: x }\nlogic:\n' \
+            > /tmp/ask-bad/where.yaml
+          printf '  - { what: 画面で書く, where: definition, answers: [concurrency] }\n' \
+            >> /tmp/ask-bad/where.yaml
+          if node dist/cli.js ask "$DEF" --project /tmp/ask-bad/where.yaml \
+               > /tmp/ask-where.log 2>&1; then
+            echo "担当が食い違う答えを受け取ってしまった"; cat /tmp/ask-where.log; exit 1
+          fi
+          grep -q 'concurrency' /tmp/ask-where.log
+          # 5. **定義に書けることを問いにしたら落ちる**（助言と2か所で言わないため）。
+          #    表の担当を「一覧を出す」（definition）に書き換えた写しで確かめる。
+          cp -r ../spec /tmp/spec-rotten
+          sed -i 's/"area": "persistence"/"area": "screen-list"/' \
+            /tmp/spec-rotten/question-kinds.json
+          if node dist/cli.js ask --kinds --spec /tmp/spec-rotten \
+               > /tmp/ask-area.log 2>&1; then
+            echo "定義で書ける担当を問いにしても通ってしまった"; cat /tmp/ask-area.log; exit 1
+          fi
+          grep -q '問いではなく助言' /tmp/ask-area.log
+          # 6. MCP からも同じ問いが引ける（AI が書けたあとに呼ぶ道具）。
+          printf '%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"hatake_ask","arguments":{"source":"page: {type: crud, id: x, title: X, repository: r, key: id, table: {columns: [{field: code, label: C}]}}"}}}' \
+            | node dist/mcp.js > /tmp/mcp-ask.log
+          grep -q 'concurrency' /tmp/mcp-ask.log
+          grep -q '出なかった＝決まっている、ではありません' /tmp/mcp-ask.log
+
       - name: What was asked, and what was written (intent / trace)
         working-directory: typescript
         run: |
