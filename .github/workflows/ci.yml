@@ -2241,7 +2241,21 @@ jobs:
           node dist/cli.js project "$PRE" --coverage > /tmp/coverage-bare.log
           grep -q '定義を渡していないので' /tmp/coverage-bare.log
           grep -q 'まだ答えていない数は、定義を渡すと出ます' /tmp/coverage-bare.log
-          # 13. MCP からも同じ1枚が読める（AI が最初に引く道具）。
+          # 13. **前回からの移り変わり**（1回の数では育っているかが分からない）。
+          node dist/cli.js project "$PRE" --coverage "$DEF" --json > /tmp/cov-before.json
+          node dist/cli.js project "$PRE" --coverage ../spec/examples/ \
+            --since /tmp/cov-before.json > /tmp/cov-since.log
+          grep -q '前回からの移り変わり:' /tmp/cov-since.log
+          grep -q '増えたもの:' /tmp/cov-since.log
+          grep -q '増えていないことが悪いとは限りません' /tmp/cov-since.log
+          # 読めない紙は**落とす**（黙って 0 と比べると「全部増えた」と出る）。
+          printf '{"なんか":1}\n' > /tmp/cov-rotten.json
+          if node dist/cli.js project "$PRE" --coverage "$DEF" \
+               --since /tmp/cov-rotten.json > /tmp/cov-bad.log 2>&1; then
+            echo "読めない紙と比べてしまった"; cat /tmp/cov-bad.log; exit 1
+          fi
+          grep -q '前回の棚卸しとして読めません' /tmp/cov-bad.log
+          # 14. MCP からも同じ1枚が読める（AI が最初に引く道具）。
           printf '%s\n' \
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
             '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
@@ -2340,7 +2354,7 @@ jobs:
           node dist/cli.js ask "$DEF" --project /tmp/ask-more/pre.yaml \
             > /tmp/ask-more.log
           grep -q 'この案件の決めごと' /tmp/ask-more.log
-          grep -q 'うち 1 件はこの案件の決めごと' /tmp/ask-more.log
+          grep -q 'うち 1 件は足した問い' /tmp/ask-more.log
           # 定義で書けることは、案件でも問いにできない（助言の担当）。
           sed 's/where: outside/where: definition/' /tmp/ask-more/pre.yaml \
             > /tmp/ask-more/inside.yaml
@@ -2356,8 +2370,47 @@ jobs:
                > /tmp/ask-clash.log 2>&1; then
             echo "組み込みの印を上書きできてしまった"; exit 1
           fi
-          grep -q '組み込みの印と同じ' /tmp/ask-clash.log
-          # 8. MCP からも同じ問いが引ける（AI が書けたあとに呼ぶ道具）。
+          grep -q 'が2つあります' /tmp/ask-clash.log
+          # 8. **触る前に影響を問う**（消す前・名前を変える前）。
+          node dist/cli.js ask "$DEF" --impact price > /tmp/impact.log
+          grep -q '3 か所に響きます' /tmp/impact.log
+          grep -q 'どうしますか' /tmp/impact.log
+          # 明細（subTable）の中まで開く（「明細の単価を消したい」が一番多い相談）。
+          grep -q 'columns\[2\].field' /tmp/impact.log
+          # 見えない所を毎回言う（「他に影響はありません」とは言わない）。
+          grep -q '辿ったのは' /tmp/impact.log
+          # **定義に無い名前は「影響なし」と言わない**（打ち間違いを見て消されると困る）。
+          if node dist/cli.js ask "$DEF" --impact noSuchField > /tmp/impact-none.log 2>&1; then
+            echo "定義に無い名前で通ってしまった"; cat /tmp/impact-none.log; exit 1
+          fi
+          grep -q '影響が無い、ではありません' /tmp/impact-none.log
+          # 9. **PR に貼る形**。囲みの字を1つも出さない（貼った先の囲みと入れ子にならない）。
+          node dist/cli.js ask "$DEF" --markdown > /tmp/ask-md.md
+          grep -q '決めてください' /tmp/ask-md.md
+          grep -q '<details><summary>' /tmp/ask-md.md
+          FENCE=$(printf '\140\140\140')
+          if grep -qF "$FENCE" /tmp/ask-md.md; then
+            echo "貼る形に囲みの字が出た"; cat /tmp/ask-md.md; exit 1
+          fi
+          grep -q '出なかった＝決まっている、ではありません' /tmp/ask-md.md
+          # 10. **会社共通の問い**を別の紙で渡す（案件をまたぐ決めごと）。
+          cat > /tmp/ask-more/team.json <<'JSON'
+          {"kinds":[{"id":"retention","step":"must","where":"outside","trigger":"saves",
+            "ask":"この画面で入れたものは何年残しますか。",
+            "why":"保存期間は業務と法律の決めごとで、定義には書けない。",
+            "ifNot":"消してよいものが分からず、結局ずっと残る。",
+            "answer":"logic に1行。"}]}
+          JSON
+          node dist/cli.js ask "$DEF" --questions /tmp/ask-more/team.json \
+            > /tmp/ask-team.log
+          grep -q '会社の決めごと' /tmp/ask-team.log
+          # 会社の紙と案件の前書きでも、印がぶつかれば落ちる（どちらが正かは決めない）。
+          if node dist/cli.js ask "$DEF" --questions /tmp/ask-more/team.json \
+               --project /tmp/ask-more/pre.yaml > /tmp/ask-both.log 2>&1; then
+            echo "会社と案件で同じ印が通ってしまった"; cat /tmp/ask-both.log; exit 1
+          fi
+          grep -q '会社の決めごと と この案件の決めごと' /tmp/ask-both.log
+          # 11. MCP からも同じ問いが引ける（AI が書けたあとに呼ぶ道具）。
           printf '%s\n' \
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
             '{"jsonrpc":"2.0","method":"notifications/initialized"}' \

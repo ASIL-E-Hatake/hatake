@@ -9,6 +9,7 @@ import {
   parseProject,
   mergeQuestionKinds,
   parseQuestionKinds,
+  questionMarkdown,
   parseResponsibility,
   QUESTION_TRIGGERS,
   questionKindLines,
@@ -94,6 +95,9 @@ const EVERYTHING = `app:
 /** 読むだけの画面（問いが1つも出ない形）。 */
 /** 改行（原本に `\n` を直接書くと、貼る道具で潰れることがあるので組み立てる）。 */
 const BREAK = String.fromCharCode(10);
+
+/** 囲みの字（**この原本にも直接書かない**）。 */
+const FENCE = String.fromCharCode(96).repeat(3);
 
 /** 排他の問いに答えた前書き。 */
 const ANSWERED_CONCURRENCY = `project_version: "1.0"
@@ -408,7 +412,7 @@ describe("案件ごとの問いを足せる", () => {
       }),
     );
     expect(text).toContain("[retention]（この案件の決めごと）");
-    expect(text).toContain("うち 1 件はこの案件の決めごと");
+    expect(text).toContain("うち 1 件は足した問い");
   });
 
   it("定義で書けることは案件でも問いにできない（助言の担当）", () => {
@@ -425,7 +429,7 @@ describe("案件ごとの問いを足せる", () => {
     const clash = PROJECT_ASKS.replace("id: retention", "id: concurrency");
     expect(() =>
       mergeQuestionKinds(kinds(), parseProject(clash).questions.ask),
-    ).toThrow(/組み込みの印と同じ/);
+    ).toThrow(/が2つあります（組み込み と この案件の決めごと）/);
   });
 });
 
@@ -491,5 +495,113 @@ questions:
 `;
     const found = ask(EVERYTHING, both);
     expect(found.answers.problems.join("")).toContain("どちらか片方");
+  });
+});
+
+/** 会社共通の問い（案件をまたぐ紙）。 */
+const TEAM = {
+  kinds: [
+    {
+      id: "retention",
+      step: "must",
+      where: "outside",
+      trigger: "saves",
+      ask: "この画面で入れたものは何年残しますか。",
+      why: "保存期間は業務と法律の決めごとで、定義には書けない。",
+      ifNot: "消してよいものが分からず、結局ずっと残る。",
+      answer: "logic に1行。",
+    },
+  ],
+};
+
+describe("会社共通の問いを別の紙で渡す", () => {
+  const team = () =>
+    parseQuestionKinds(TEAM, { from: "team", requireAllTriggers: false });
+
+  it("読み手は前書きと同じ（紙が変わっても書ける形は変わらない）", () => {
+    const found = team();
+    expect(found[0].from).toBe("team");
+    expect(found[0].where).toBe("outside");
+  });
+
+  it("会社の紙でも、定義で書けることは問いにできない", () => {
+    expect(() =>
+      parseQuestionKinds(
+        { kinds: [{ ...TEAM.kinds[0], where: "definition" }] },
+        { from: "team", requireAllTriggers: false },
+      ),
+    ).toThrow(/問いではなく助言/);
+  });
+
+  it("組み込み → 会社 → 案件の順に重ねる", () => {
+    const table = mergeQuestionKinds(kinds(), team(), []);
+    expect(table.length).toBe(kinds().length + 1);
+    expect(table[table.length - 1].id).toBe("retention");
+  });
+
+  it("**どの組み合わせでも**印がぶつかったら落ちる（どちらが正かは決めない）", () => {
+    // 会社の紙と組み込みがぶつかる。
+    expect(() =>
+      mergeQuestionKinds(
+        kinds(),
+        parseQuestionKinds(
+          { kinds: [{ ...TEAM.kinds[0], id: "erase" }] },
+          { from: "team", requireAllTriggers: false },
+        ),
+      ),
+    ).toThrow(/組み込み と 会社の決めごと/);
+
+    // 会社の紙と案件の前書きがぶつかる（どちらも組み込みではない）。
+    expect(() =>
+      mergeQuestionKinds(
+        kinds(),
+        team(),
+        parseQuestionKinds(TEAM, { from: "project", requireAllTriggers: false }),
+      ),
+    ).toThrow(/会社の決めごと と この案件の決めごと/);
+  });
+
+  it("どこから来た問いかが報告に出る", () => {
+    const catalog = areas();
+    const table = mergeQuestionKinds(kinds(), team());
+    const questions = askQuestions(doc(EVERYTHING), table, catalog);
+    const text = said(questionLines(questions, { total: table.length }));
+    expect(text).toContain("（会社の決めごと）");
+  });
+});
+
+describe("PR に貼る形", () => {
+  const rendered = () => {
+    const catalog = areas();
+    const table = kinds();
+    return questionMarkdown(askQuestions(doc(EVERYTHING), table, catalog), {
+      total: table.length,
+    });
+  };
+
+  it("表と畳んだ塊で出す（そのまま貼れる）", () => {
+    const text = rendered();
+    expect(text).toContain("### 決めてください");
+    expect(text).toContain("| --- | --- | --- | --- |");
+    expect(text).toContain("<details><summary>この定義で聞いた理由</summary>");
+  });
+
+  it("**囲みの字を1つも出さない**（貼った先の囲みと入れ子にならない）", () => {
+    // 前に手引きの断片でこれをやって、塊を抜き出す CI が途中で切れた。
+    expect(rendered()).not.toContain(FENCE);
+  });
+
+  it("見ていない所は貼る形にも入る（数字だけ貼られると「全部見た」に読める）", () => {
+    expect(rendered()).toContain("出なかった＝決まっている、ではありません");
+  });
+
+  it("問いが無いときは、無いと書く（空の表を貼らない）", () => {
+    const table = kinds();
+    const text = questionMarkdown([], {
+      total: table.length,
+      answered: new Set(["concurrency"]),
+    });
+    expect(text).toContain("決めていないこと: ありません");
+    expect(text).toContain("答えた 1件");
   });
 });

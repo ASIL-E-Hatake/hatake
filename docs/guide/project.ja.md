@@ -137,6 +137,33 @@ npx hatake project hatake.project.yaml --coverage definitions/
 いる」に読める）。**総合点は付けない**＝辞書が要らない案件もあるので、少ないことが悪いと
 は限らない。`system` と `premises` は誰も突き合わせていないので、ここにも出てこない。
 
+### 育っているかは、1回の数では分からない
+
+前回の棚卸し（`--json` の出力）を渡すと、移り変わりが出る。
+
+```bash
+npx hatake project hatake.project.yaml --coverage definitions/ --json > .hatake/coverage.json
+npx hatake project hatake.project.yaml --coverage definitions/ --since .hatake/coverage.json
+```
+
+```text
+前回からの移り変わり:
+
+増えたもの:
+  ・画面: 12 → 18
+
+変わっていないもの:
+  ・用語: 3
+  ・答えた問い: 1
+```
+
+「画面だけ増えて用語が3語のまま」は事実として出る。ただし**増えていない＝悪い、とは
+言わない**（その領域が固まっただけかもしれない）。道具が言えるのは数の増減までで、
+良し悪しは読む人が決める。
+
+前回の紙が今の形で読めなければ**落ちる**。黙って 0 と比べると「全部増えた」と出て、
+読んだ人が喜んでしまうので。
+
 ## 業務ロジックの置き場を書く
 
 定義には**できること**しか書けない。「締めたあとの受注は直せない」「在庫を引き当てる」

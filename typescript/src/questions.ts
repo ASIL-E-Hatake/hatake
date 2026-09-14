@@ -46,6 +46,17 @@ export const STEP_WORDS: Record<QuestionStep, string> = {
   should: "決めておくと後で揉めないこと",
 };
 
+/** 問いの出どころ（組み込み以外）。 */
+export const QUESTION_SOURCES = ["project", "team"] as const;
+
+export type QuestionSource = (typeof QUESTION_SOURCES)[number];
+
+/** 出どころの言い方（報告に出る字）。 */
+export const SOURCE_WORDS: Record<QuestionSource, string> = {
+  project: "この案件の決めごと",
+  team: "会社の決めごと",
+};
+
 /** 問いを出せる担当。**枠組みの外側だけ**（内側は助言の担当）。 */
 export const QUESTION_WHERES = ["server", "outside"] as const;
 
@@ -70,8 +81,12 @@ export interface QuestionKind {
   area?: string;
   /** 案件が足した問い: 担当を直に書く。 */
   where?: Where;
-  /** 案件の前書きから来た問いの印（読む側が組み込みと区別できるように）。 */
-  from?: "project";
+  /**
+   * どこから来た問いか（読む側が組み込みと区別できるように）。
+   *
+   * `project`＝案件の前書き／`team`＝会社共通の紙（`--questions`）。組み込みは付かない。
+   */
+  from?: QuestionSource;
 }
 
 /**
@@ -120,8 +135,8 @@ export interface ParseQuestionOptions {
    * 何も出ない、の原因）。案件が足す問いにこれを求めると、1件足すだけで落ちてしまう。
    */
   requireAllTriggers?: boolean;
-  /** 案件の前書きから読むとき（担当は `area` ではなく `where` で書く）。 */
-  from?: "project";
+  /** 組み込み以外から読むとき（担当は `area` ではなく `where` で書く）。 */
+  from?: QuestionSource;
 }
 
 /**
@@ -151,7 +166,7 @@ export function parseQuestionKinds(
     if (seen.has(id)) bad(`印 "${id}" が2回出てきます。`);
     seen.add(id);
     const keys =
-      from === "project" ? [...COMMON_KEYS, "where"] : [...COMMON_KEYS, "area"];
+      from === undefined ? [...COMMON_KEYS, "area"] : [...COMMON_KEYS, "where"];
     for (const key of Object.keys(node)) {
       if (!keys.includes(key)) bad(`${id}: 知らないキー "${key}"。`);
     }
@@ -176,7 +191,7 @@ export function parseQuestionKinds(
       ifNot: text(node.ifNot, `${id}.ifNot`),
       answer: text(node.answer, `${id}.answer`),
     };
-    if (from === "project") {
+    if (from !== undefined) {
       const where = text(node.where, `${id}.where`);
       // 定義やアプリ側で書けるなら、それは問いではなく助言の担当（組み込みと同じ規則）。
       if (!outsideWhere(where)) {
@@ -186,7 +201,7 @@ export function parseQuestionKinds(
         );
       }
       kind.where = where as Where;
-      kind.from = "project";
+      kind.from = from;
     } else {
       kind.area = text(node.area, `${id}.area`);
     }
@@ -205,26 +220,37 @@ export function parseQuestionKinds(
 }
 
 /**
- * 組み込みの問いに、案件が足した問いを重ねる。
+ * 問いを重ねる（組み込み → 会社の紙 → 案件の前書き）。
  *
- * **同じ印は持てない。** 上書きを許すと「この案件では `erase` の意味が違う」が起きて、
- * 答え（`answers: [erase]`）がどちらに対する答えなのか誰にも分からなくなる。
+ * **同じ印は持てない。** どの組み合わせでもぶつかったら落とす＝上書きを許すと
+ * 「この案件では `erase` の意味が違う」が起きて、答え（`answers: [erase]`）が
+ * どちらに対する答えなのか誰にも分からなくなる。**どちらが正かは道具が決めない**。
  */
 export function mergeQuestionKinds(
   builtin: QuestionKind[],
-  extra: QuestionKind[],
+  ...extra: QuestionKind[][]
 ): QuestionKind[] {
-  const known = new Set(builtin.map((kind) => kind.id));
-  for (const kind of extra) {
-    if (known.has(kind.id)) {
-      bad(
-        `案件の問い "${kind.id}" は組み込みの印と同じです` +
-          "（上書きはできません。別の印にしてください）。",
-      );
+  const found = [...builtin];
+  const known = new Map(builtin.map((kind) => [kind.id, kind]));
+  for (const one of extra) {
+    for (const kind of one) {
+      const clash = known.get(kind.id);
+      if (clash !== undefined) {
+        bad(
+          `問いの印 "${kind.id}" が2つあります` +
+            `（${sourceWord(clash)} と ${sourceWord(kind)}）。` +
+            "上書きはできません。別の印にしてください。",
+        );
+      }
+      known.set(kind.id, kind);
+      found.push(kind);
     }
   }
-  return [...builtin, ...extra];
+  return found;
 }
+
+const sourceWord = (kind: QuestionKind): string =>
+  kind.from === undefined ? "組み込み" : SOURCE_WORDS[kind.from];
 
 /** その問いの担当（組み込みは担当の表から、案件のものは書いてあるまま）。 */
 export function whereOf(
@@ -380,9 +406,9 @@ export function askQuestions(
 const factLine = (fact: TriggeredFact): string =>
   fact.page === undefined ? fact.saw : `${fact.page}: ${fact.saw}`;
 
-/** 案件が足した問いには、そう書く（組み込みと混ぜない）。 */
+/** 足した問いには、どこから来たかを書く（組み込みと混ぜない）。 */
 const fromWord = (kind: QuestionKind): string =>
-  kind.from === "project" ? "（この案件の決めごと）" : "";
+  kind.from === undefined ? "" : `（${SOURCE_WORDS[kind.from]}）`;
 
 /** 報告に添える数（見ていない所を毎回言うために要る）。 */
 export interface QuestionRender {
@@ -448,12 +474,65 @@ export function questionLines(
 /** 見ていない所を毎回言う（出なかった＝決まっている、にしないため）。 */
 export const questionNote = (total: number, fromProject = 0): string =>
   `※ この道具が見るのは **${total} 種類だけ**です` +
-  `${fromProject === 0 ? "" : `（うち ${fromProject} 件はこの案件の決めごと）`}。` +
+  `${fromProject === 0 ? "" : `（うち ${fromProject} 件は足した問い＝会社か案件の決めごと）`}。` +
   "出なかった＝決まっている、ではありません（表に無いことは聞きません）。" +
   "**終了コードは変えません**（問いは人への依頼で、機械の合否ではないので）。" +
   "答えが決まったら、案件の前書きの `logic` にその1行を足して `answers: [<印>]` を" +
   "付けてください（既定のままでよいと決めたなら `questions.decided` に理由つきで）" +
   "＝次からその問いは出ません。";
+
+/**
+ * PR にそのまま貼る形（`--markdown`）。
+ *
+ * 決めていないことは**レビューの席でこそ**答えが出る（その場に業務の人が居る）。
+ * 人が叩いたときだけ出るのでは、その席に届かない。
+ *
+ * **囲みの字（```）は1つも書かない。** 貼った先が手引きや PR の断片の中だと、
+ * 囲みが入れ子になって塊を抜き出す側が途中で切れる（実際に落ちた）。表と箇条書きだけで
+ * 足りる形にしてある。
+ */
+export function questionMarkdown(
+  questions: Question[],
+  options: QuestionRender = { total: 0 },
+): string {
+  const answered = options.answered?.size ?? 0;
+  const decided = options.decided?.size ?? 0;
+  const out: string[] = [];
+  if (questions.length === 0) {
+    out.push("### 決めていないこと: ありません");
+    out.push("");
+    out.push(
+      `この定義から出る問いは全部片付いています（答えた ${answered}件・` +
+        `既定のままでよいと決めた ${decided}件）。`,
+    );
+    out.push("");
+    out.push(questionNote(options.total, options.fromProject));
+    return out.join("\n");
+  }
+
+  out.push(`### 決めてください（${questions.length}件）`);
+  out.push("");
+  out.push("| | 決めること | 誰の担当か | 決めないと |");
+  out.push("| --- | --- | --- | --- |");
+  for (const one of questions) {
+    const mark = one.kind.step === "must" ? "**必ず**" : "できれば";
+    out.push(
+      `| ${mark} | ${one.kind.ask}${fromWord(one.kind)} | ` +
+        `${WHERE_WORDS[one.where]} | ${one.kind.ifNot} |`,
+    );
+  }
+  out.push("");
+  out.push("<details><summary>この定義で聞いた理由</summary>");
+  out.push("");
+  for (const one of questions) {
+    out.push(`- **${one.kind.id}** … ${one.facts.map(factLine).join(" / ")}`);
+  }
+  out.push("");
+  out.push("</details>");
+  out.push("");
+  out.push(questionNote(options.total, options.fromProject));
+  return out.join("\n");
+}
 
 /** 表そのものを引く形（`--kinds`。定義が無くても読める）。 */
 export function questionKindLines(

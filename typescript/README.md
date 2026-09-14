@@ -58,8 +58,12 @@ npx hatake where 締め処理                        # これはどこの担当�
 npx hatake where --from 依頼.md                  # 依頼文を行ごとに仕分ける（外を先に言う）
 npx hatake ask page.yaml                        # 決めていないことを問い返す（定義に書けないものだけ）
 npx hatake ask --kinds                          # 何を聞かれるかを先に読む（12種類）
+npx hatake ask page.yaml --impact price         # その項目を触ると、どこが壊れるか
+npx hatake ask app.yaml --markdown              # 決めていないことを PR に貼る形で
+npx hatake ask app.yaml --questions team.json   # 会社共通の問いも足して聞く
 npx hatake project                              # 案件の前書き（何のシステムか・用語・名前の決めごと）
 npx hatake project --coverage definitions/       # 前書きでいま何件言えているか（数えていない所も言う）
+npx hatake project --coverage definitions/ --since 前回.json # 前回からの移り変わり
 npx hatake project --agents --merge AGENTS.md   # その前書きを AI の設定ファイルに貼る（印の中だけ）
 npx hatake project --agents --merge AGENTS.md --check  # 貼った節が古くないか（CI 用）
 npx hatake intent --draft --from 指示.md --definition page.yaml  # 指示文を意図の1枚に

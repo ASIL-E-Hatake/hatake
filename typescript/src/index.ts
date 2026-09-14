@@ -34,6 +34,7 @@ export * from "./projectAgents.js";
 export * from "./responsibility.js";
 export * from "./probeHelp.js";
 export * from "./projectCoverage.js";
+export * from "./questionImpact.js";
 export * from "./questions.js";
 export * from "./questionTriggers.js";
 export * from "./actionFallbacks.js";
