@@ -2315,7 +2315,66 @@ jobs:
           node dist/cli.js advise /tmp/strict/wizard.yaml             --project /tmp/strict/steps.yaml > /tmp/steps.log
           grep -q 'ステップ id "badStep"' /tmp/steps.log
           grep -q 'プラグイン名 "bad_plugin"' /tmp/steps.log
-          # 17. MCP からも同じ1枚が読める（AI が最初に引く道具）。
+          # 17. **揺れを辞書の下書きに**（貼れる形で出す。書き込みはしない）。
+          node dist/cli.js project "$PRE" --drift ../spec/examples/ --draft \
+            > /tmp/drift-draft.yaml
+          grep -q '正しいという意味ではありません' /tmp/drift-draft.yaml
+          grep -q '書き込みません' /tmp/drift-draft.yaml
+          # **貼れる形**＝前書きに貼ると読める（読めない下書きを配らない）。
+          {
+            printf 'project_version: "1.0"\nsystem: { what: x }\n'
+            cat /tmp/drift-draft.yaml
+          } > /tmp/drift-pasted.yaml
+          node dist/cli.js project /tmp/drift-pasted.yaml > /dev/null
+          # 前書きは触られていない。
+          cmp -s "$PRE" /tmp/pre-before.yaml
+          # 18. **増えた揺れだけ**（新しい画面を足した回に出る）。
+          node dist/cli.js project "$PRE" --drift ../spec/examples/ --json \
+            > /tmp/drift-before.json
+          node dist/cli.js project "$PRE" --drift ../spec/examples/ \
+            --since /tmp/drift-before.json > /tmp/drift-since.log
+          grep -q '増えた揺れはありません' /tmp/drift-since.log
+          grep -q -e '「直した」とは限りません' /tmp/drift-since.log
+          # 読めない紙は落とす。
+          printf '{"なんか":1}\n' > /tmp/drift-rotten.json
+          if node dist/cli.js project "$PRE" --drift ../spec/examples/ \
+               --since /tmp/drift-rotten.json > /tmp/drift-bad.log 2>&1; then
+            echo "読めない紙と比べてしまった"; cat /tmp/drift-bad.log; exit 1
+          fi
+          grep -q '前回の揺れとして読めません' /tmp/drift-bad.log
+          # 19. **資料から前書きの下書き**（定義からは起こさない）。
+          mkdir -p /tmp/draft
+          cat > /tmp/draft/memo.md <<'MD'
+          # このシステム
+          卸売の受注。営業が電話で受けた注文を入れる。
+
+          # 使う人
+          - 営業（10人・PC）
+
+          # 用語
+          - 取引先 = partnerCode
+          MD
+          node dist/cli.js project --draft --from /tmp/draft/memo.md > /tmp/draft.yaml
+          grep -q '人が読んで直すまでは正ではありません' /tmp/draft.yaml
+          # 出したものは前書きとして読める（貼れる形）。
+          node dist/cli.js project /tmp/draft.yaml > /tmp/draft-read.log
+          grep -q '卸売の受注' /tmp/draft-read.log
+          grep -q '取引先' /tmp/draft-read.log
+          # **定義を渡したら落とす**（前書きを定義から起こさない、を機械で守る）。
+          if node dist/cli.js project --draft --from ../spec/examples/order_entry.yaml \
+               > /tmp/draft-def.log 2>&1; then
+            echo "定義から前書きを起こしてしまった"; cat /tmp/draft-def.log; exit 1
+          fi
+          grep -q '定義から起こしてはいけません' /tmp/draft-def.log
+          # 20. **縛れる名前の分母は、その案件に出てくる対象**。
+          node dist/cli.js project "$PRE" --coverage ../spec/examples/product_search.yaml \
+            > /tmp/cov-relevant.log
+          grep -q 'この定義に出てくるのは' /tmp/cov-relevant.log
+          # ウィザードもカードも無い定義なので、そこは分母に入らない。
+          if grep -q 'ステップ id' /tmp/cov-relevant.log; then
+            echo "ウィザードが無いのに step を数えた"; cat /tmp/cov-relevant.log; exit 1
+          fi
+          # 21. MCP からも同じ1枚が読める（AI が最初に引く道具）。
           printf '%s\n' \
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
             '{"jsonrpc":"2.0","method":"notifications/initialized"}' \

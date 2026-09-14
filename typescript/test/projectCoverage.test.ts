@@ -227,3 +227,55 @@ describe("前回からの移り変わり", () => {
     expect(text).not.toContain("増えたもの:");
   });
 });
+
+describe("縛れる名前は、その案件に関係ある分だけを分母にする", () => {
+  it("ウィザードもカードも無い定義では、step と card を数えない", () => {
+    const found = projectCoverage(project(), [doc(DEFINITION)]);
+    expect(found.naming.relevant).toBeDefined();
+    expect(found.naming.relevant).not.toContain("step");
+    expect(found.naming.relevant).not.toContain("card");
+    expect(found.naming.relevant).toContain("page");
+    expect(found.naming.relevant).toContain("field");
+  });
+
+  it("ウィザードが在れば step が分母に入る（出てくる所を見る）", () => {
+    const wizard = `page:
+  type: wizard
+  id: order_wizard
+  title: 受注
+  repository: r
+  key: id
+  steps:
+    - id: first
+      title: 基本
+      fields:
+        - { field: orderNo, label: 受注番号 }
+`;
+    const found = projectCoverage(project(), [doc(wizard)]);
+    expect(found.naming.relevant).toContain("step");
+  });
+
+  it("決めてある数も、関係ある分だけ数える", () => {
+    const found = projectCoverage(project(), [doc(DEFINITION)]);
+    // 前書きは page だけ決めてある（他の対象は書いていない）。
+    expect(found.naming.shapes).toBe(1);
+    expect(found.naming.relevantShapes).toBe(1);
+  });
+
+  it("定義を渡さなければ**数えない**（0 とは違う）", () => {
+    const found = projectCoverage(project());
+    expect(found.naming.relevant).toBeUndefined();
+    expect(found.naming.relevantShapes).toBeUndefined();
+    expect(coverageLines(found).join(String.fromCharCode(10))).not.toContain(
+      "この定義に出てくるのは",
+    );
+  });
+
+  it("読む1枚に、関係ある対象の名前が出る", () => {
+    const text = coverageLines(
+      projectCoverage(project(), [doc(DEFINITION)]),
+    ).join(String.fromCharCode(10));
+    expect(text).toContain("この定義に出てくるのは");
+    expect(text).toContain("画面 id");
+  });
+});

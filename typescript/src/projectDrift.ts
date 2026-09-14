@@ -231,3 +231,135 @@ export const DRIFT_NOTE =
   "`avoid`）＝次からその字は揺れとして出ず、`hatake advise --project` が定義と" +
   "突き合わせます。**この道具は前書きを書き換えません**（前書きを定義から起こすと、" +
   "必ず一致して読む値打ちが無くなるので）。";
+
+/**
+ * 揺れを**辞書の下書き**にする（`--drift --draft`）。
+ *
+ * 揺れが見えても、そこから辞書に写すのは手作業。写す形までは機械が作れる ── ただし
+ * **言葉は選ばない**。`term` にはいちばん多い呼び方を**仮に**置き、そう書く
+ * （多いだけで、正しいという意味ではない）。決めるのは人。
+ *
+ * 「同じ言葉が違う項目名に付いている」側は**下書きにしない**。辞書は「1つの言葉 →
+ * 1つの項目名」を書く紙なので、そちらは項目名を揃える話＝注記だけ出す。
+ *
+ * 出すのは**貼れる形**（前書きとして読める YAML）。書き込みはしない。
+ */
+export function driftDraft(found: Drift[]): string {
+  const out: string[] = [
+    "# `hatake project --drift --draft` が出した**下書き**です。",
+    "# term は**いちばん多い呼び方を仮に置いた**だけで、正しいという意味ではありません。",
+    "# 業務の言葉を決めてから、前書きの glossary に貼ってください（この道具は書き込みません）。",
+  ];
+  const labels = found.filter((one) => one.kind === "labels");
+  // 貼るものが無いときに `glossary:` だけ書かない（**中身の無いキーは読めない**＝
+  // 貼った人の所で前書きが落ちる）。
+  if (labels.length === 0) {
+    out.push("# 同じ項目名に違う言葉が付いている所はありませんでした（貼るものはありません）。");
+  } else {
+    out.push("glossary:");
+  }
+  for (const one of labels) {
+    const ranked = byOther(one);
+    const [term, spots] = ranked[0];
+    const rest = ranked.slice(1);
+    out.push(
+      `  # "${one.name}" は ${ranked.length} 通りに呼ばれています` +
+        `（${ranked.map(([word, at]) => `${word} ${at.length}か所`).join(" / ")}）。`,
+    );
+    out.push(`  - term: ${term}   # 仮。${spots.length}か所でいちばん多い呼び方`);
+    out.push(`    field: ${one.name}`);
+    out.push(`    avoid: [${rest.map(([word]) => word).join(", ")}]`);
+  }
+  const fields = found.filter((one) => one.kind === "fields");
+  if (fields.length > 0) {
+    out.push("");
+    out.push("# 下の分は**辞書では直りません**（同じ言葉が違う項目名に付いている）。");
+    out.push("# 辞書は「1つの言葉 → 1つの項目名」を書く紙なので、項目名を揃える話です。");
+    for (const one of fields) {
+      out.push(
+        `#   "${one.name}" … ${byOther(one)
+          .map(([name, at]) => `${name}（${at.length}か所）`)
+          .join(" / ")}`,
+      );
+    }
+  }
+  return out.join("\n");
+}
+
+/** 前回と比べた揺れ。 */
+export interface DriftDiff {
+  /** 増えた揺れ（新しい画面を足した回に出る）。 */
+  added: Drift[];
+  /** 消えた揺れ（**直したとは限らない**＝画面を消しただけかもしれない）。 */
+  gone: { kind: DriftKind; name: string }[];
+  /** 前も今も在る揺れの数。 */
+  same: number;
+}
+
+/** 前回の `--drift --json` として読めるか。 */
+export function parseDriftReport(value: unknown): Drift[] {
+  const list =
+    typeof value === "object" && value !== null && Array.isArray((value as { drift?: unknown }).drift)
+      ? ((value as { drift: unknown[] }).drift)
+      : null;
+  const ok =
+    list !== null &&
+    list.every(
+      (one) =>
+        typeof one === "object" &&
+        one !== null &&
+        typeof (one as Drift).name === "string" &&
+        DRIFT_KINDS.includes((one as Drift).kind),
+    );
+  if (!ok) {
+    // 黙って空と比べると「全部増えた」と出る（前回が読めなかっただけなのに）。
+    throw new Error(
+      "前回の揺れとして読めません（`hatake project --drift --json` の出力を渡してください）。",
+    );
+  }
+  return list as Drift[];
+}
+
+const keyOf = (one: { kind: DriftKind; name: string }): string => `${one.kind}\u0000${one.name}`;
+
+/** 前回と比べる。 */
+export function compareDrift(before: Drift[], after: Drift[]): DriftDiff {
+  const had = new Set(before.map(keyOf));
+  const has = new Set(after.map(keyOf));
+  return {
+    added: after.filter((one) => !had.has(keyOf(one))),
+    gone: before
+      .filter((one) => !has.has(keyOf(one)))
+      .map((one) => ({ kind: one.kind, name: one.name })),
+    same: after.filter((one) => had.has(keyOf(one))).length,
+  };
+}
+
+/** 人が読む形。 */
+export function driftDiffLines(diff: DriftDiff): string[] {
+  const out: string[] = ["前回からの移り変わり:"];
+  if (diff.added.length === 0) {
+    out.push("  ・増えた揺れはありません。");
+  } else {
+    out.push("");
+    out.push(`増えた揺れ（${diff.added.length}件）:`);
+    for (const one of diff.added) {
+      out.push(`  ・[${one.kind}] "${one.name}"`);
+    }
+  }
+  if (diff.gone.length > 0) {
+    out.push("");
+    out.push(`消えた揺れ（${diff.gone.length}件）:`);
+    for (const one of diff.gone) out.push(`  ・[${one.kind}] "${one.name}"`);
+  }
+  out.push("");
+  out.push(`前も今も在る揺れ: ${diff.same}件`);
+  out.push("");
+  out.push(DRIFT_DIFF_NOTE);
+  return out;
+}
+
+/** 消えた＝直した、ではない。 */
+export const DRIFT_DIFF_NOTE =
+  "※ **消えた揺れは「直した」とは限りません**（その画面を消しただけかもしれません）。" +
+  "増えた揺れは**新しい画面を足した回**に出ます ── そこで決めるのが、いちばん軽いです。";
