@@ -30,8 +30,16 @@ export interface Write {
   text: string;
 }
 
-/** そのまま書くと別の意味になる語（引用符で囲む）。 */
-const RESERVED = new Set([
+/**
+ * そのまま書くと別の意味になる語。
+ *
+ * **値に書くときは引用符で囲む**（この表の使い道）。それだけでなく、**キー名にも
+ * 使ってはいけない**: YAML 1.1 の読み手（PyYAML）は `on:` を真偽値の `true` として
+ * 読むので、キーが `on` ではなく `True` になる＝TS 側（YAML 1.2）では通るのに、
+ * スキーマ検証が「知らないキー」で落ちる。**2つの読み手が食い違う**形なので、
+ * spec のスキーマにこの語のキーが無いことを試験で見ている。
+ */
+export const YAML11_WORDS = [
   "",
   "true",
   "false",
@@ -41,7 +49,9 @@ const RESERVED = new Set([
   "off",
   "null",
   "~",
-]);
+] as const;
+
+const RESERVED = new Set<string>(YAML11_WORDS);
 
 /** 流し書きの中で意味を持つ字（1つでも入っていたら引用符で囲む）。 */
 const SPECIAL = /[:#,{}[\]&*!|>'"%@`]/;

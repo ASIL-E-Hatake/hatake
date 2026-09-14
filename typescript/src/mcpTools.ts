@@ -26,6 +26,7 @@ import {
   answeredBy,
   askQuestions,
   checkQuestionAreas,
+  mergeQuestionKinds,
   parseQuestionKinds,
   questionLines,
   questionNote,
@@ -488,7 +489,10 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "推測で埋めると「決まっているように見える嘘の設計」ができる（いちばん質が悪い）。" +
         "1件ごとに『この定義で聞いた理由』（どの画面の何を見たか）が付くので、そのまま" +
         "人に貼れる。答えが決まったら、案件の前書きの logic に1行足して " +
-        "answers: [<印>] を付ける＝**次からその問いは出ない**。" +
+        "answers: [<印>] を付ける＝**次からその問いは出ない**" +
+        "（既定のままでよいと決めたなら questions.decided に理由つきで残す）。" +
+        "案件が前書きの questions.ask に問いを足していれば、それも一緒に返る" +
+        "（印に「この案件の決めごと」と付く）。" +
         "出なかった＝決まっている、ではない（表に無いことは聞かない）。",
       inputSchema: {
         type: "object",
@@ -513,14 +517,15 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           throw new Error("定義（map）として読めません。");
         }
         const given = str(args, "project");
-        const kinds = parseQuestionKinds(readJson(QUESTION_KINDS_FILE));
+        const project = given === undefined ? undefined : parseProject(given);
         const areas = responsibility();
-        checkQuestionAreas(kinds, areas);
-        const answers = answeredBy(
-          given === undefined ? [] : parseProject(given).logic,
-          kinds,
-          areas,
+        // 案件が足した問いを重ねる（印がぶつかったら落ちる＝上書きはできない）。
+        const kinds = mergeQuestionKinds(
+          parseQuestionKinds(readJson(QUESTION_KINDS_FILE)),
+          project?.questions.ask ?? [],
         );
+        checkQuestionAreas(kinds, areas);
+        const answers = answeredBy(project, kinds, areas);
         if (answers.problems.length > 0) {
           throw new Error(
             `前書きの答えが辻褄に合いません: ${answers.problems.join(" / ")}`,
@@ -530,16 +535,20 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           document as Record<string, unknown>,
           kinds,
           areas,
-          { answered: answers.answered },
+          { answered: answers.answered, decided: answers.decided },
         );
+        const fromProject = kinds.filter((one) => one.from === "project").length;
         return pretty({
-          note: questionNote(kinds.length),
+          note: questionNote(kinds.length, fromProject),
           must: questions.filter((one) => one.kind.step === "must").length,
           answered: [...answers.answered],
+          decided: [...answers.decided],
           questions,
           text: questionLines(questions, {
             total: kinds.length,
             answered: answers.answered,
+            decided: answers.decided,
+            fromProject,
           }).join("\n"),
         });
       },
@@ -870,6 +879,13 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
               "用語辞書**も突き合わせる（project- で始まる助言）。これも助言＝名前と" +
               "言葉は好みなので、直すかは業務の判断。",
           },
+          registry: {
+            type: "object",
+            description:
+              "アプリ側で登録済みのものの一覧（hatake_refs で分かる形）。project と" +
+              "一緒に渡すと、**前書きで「アプリ側の担当」と宣言した名前が登録されて" +
+              "いるか**まで見る（project-logic-unregistered）。渡さなければそこは黙る。",
+          },
         },
         required: ["source"],
       },
@@ -892,7 +908,12 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           ...findAdvice(raw, rules),
           ...(preamble === undefined
             ? []
-            : findProjectAdvice(raw, parseProject(preamble), rules)),
+            : findProjectAdvice(raw, parseProject(preamble), rules, {
+                // 登録済みの一覧を渡されたときだけ「宣言したのに登録が無い」を言う。
+                ...(typeof args.registry === "object" && args.registry !== null
+                  ? { registry: args.registry as DefinitionRegistry }
+                  : {}),
+              })),
         ]);
         // 物差しが「その場所に書けないキー」を勧めていたら、助言を出さずに止める。
         // 間違いを教える助言は、無いほうがまし（CLI と同じ判断）。

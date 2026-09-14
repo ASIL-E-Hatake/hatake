@@ -11,6 +11,7 @@
 
 import { type Advice } from "./advise.js";
 import { type AdviceRules, DEFAULT_RULES, enabled } from "./adviseRules.js";
+import { type DefinitionRegistry } from "./refs.js";
 import {
   pageActions,
   rawFormFields,
@@ -55,8 +56,11 @@ export function findProjectAdvice(
   document: Dict,
   project: ProjectDocument,
   rules: AdviceRules = DEFAULT_RULES,
+  options: { registry?: DefinitionRegistry } = {},
 ): Advice[] {
   const raw: Raw[] = [];
+  // 登録済みの一覧を渡されたときだけ言う（知らないのに「登録が無い」は嘘になる）。
+  checkUnregisteredLogic(project, options.registry, raw);
   const app = isDict(document.app) ? document.app : undefined;
   if (app !== undefined) {
     checkMenu(dicts(app.menu), "app.menu", project, raw);
@@ -178,6 +182,51 @@ function checkLogic(
         },
       });
     }
+  }
+}
+
+/**
+ * `plugin` の担当と宣言したのに、**アプリ側に登録が無い**。
+ *
+ * 「担当はアプリ側」と前書きに書き、定義から呼ぶ所も書いたのに**登録を忘れる**と、
+ * 押しても何も起きない画面になる（押すまで気づけない）。定義が呼んでいるかは前から
+ * 見られたので、残っていたのは「登録が在るか」＝材料は `--registry` で来る。
+ *
+ * 決めごと:
+ *   ・**登録済みの一覧を渡されたときだけ言う。** 知らないのに「無い」と言うのは嘘
+ *   ・**定義が呼んでいるかは見ない。** 呼んでいなくても登録漏れは登録漏れで、
+ *     呼んでいない側は [checkUnusedLogic] の担当（2つの別の穴を1つの規則にしない）
+ *   ・**逆は言わない。** 登録が在るのに前書きに宣言が無いのは普通のこと
+ *     （アプリには前書きに書かない登録もある）
+ */
+function checkUnregisteredLogic(
+  project: ProjectDocument,
+  registry: DefinitionRegistry | undefined,
+  raw: Raw[],
+): void {
+  const known = registry?.plugins;
+  if (known === undefined) return;
+  const registered = new Set(known);
+  for (const rule of project.logic) {
+    const name = rule.name;
+    if (name === undefined || rule.where !== "plugin") continue;
+    if (registered.has(name)) continue;
+    raw.push({
+      same: `project-logic-unregistered ${name}`,
+      advice: {
+        rule: "project-logic-unregistered",
+        where: "app",
+        says:
+          `業務ロジック「${rule.what}」は ${name} をアプリ側に登録して足す担当と` +
+          "前書きに書いてありますが、**渡された登録済みの一覧にありません**" +
+          "＝そのボタンは押しても何も起きません。",
+        add:
+          `アプリ側で \`${name}\` を登録する` +
+          "（名前が違うだけなら、前書きか登録のどちらかを直す）。",
+        key: "plugin",
+        node: "action",
+      },
+    });
   }
 }
 

@@ -2212,7 +2212,36 @@ jobs:
           fi
           grep -q 'がありません' /tmp/plain.log
           test "$(cat /tmp/near/plain.md)" = "# AGENTS"
-          # 11. MCP からも同じ1枚が読める（AI が最初に引く道具）。
+          # 11. **宣言した担当がアプリに登録されているか**（渡したときだけ言う）。
+          printf '{"plugins":["somethingElse"]}\n' > /tmp/near/registry.json
+          node dist/cli.js advise "$DEF" --project "$PRE" \
+            --registry /tmp/near/registry.json > /tmp/unreg.log
+          grep -q 'project-logic-unregistered' /tmp/unreg.log
+          grep -q '押しても何も起きません' /tmp/unreg.log
+          # 渡さなければ黙る（知らないのに「登録が無い」は嘘）。
+          node dist/cli.js advise "$DEF" --project "$PRE" > /tmp/noreg.log
+          if grep -q 'project-logic-unregistered' /tmp/noreg.log; then
+            echo "登録済みの一覧が無いのに言った"; cat /tmp/noreg.log; exit 1
+          fi
+          # 登録が在れば言わない。
+          printf '{"plugins":["csvExport"]}\n' > /tmp/near/ok-registry.json
+          node dist/cli.js advise "$DEF" --project "$PRE" \
+            --registry /tmp/near/ok-registry.json > /tmp/reg-ok.log
+          if grep -q 'project-logic-unregistered' /tmp/reg-ok.log; then
+            echo "登録が在るのに言った"; cat /tmp/reg-ok.log; exit 1
+          fi
+          # 12. **決めごとの棚卸し**。数えた所と、数えていない所を両方言う。
+          node dist/cli.js project "$PRE" --coverage ../spec/examples/ \
+            > /tmp/coverage.log
+          grep -q '決めごとの棚卸し' /tmp/coverage.log
+          grep -q '業務ロジックの置き場: 4件' /tmp/coverage.log
+          grep -q '誰も突き合わせていません' /tmp/coverage.log
+          grep -q '総合点は付けません' /tmp/coverage.log
+          # 定義を渡さなければ「数えていない」と言う（0 件とは違う）。
+          node dist/cli.js project "$PRE" --coverage > /tmp/coverage-bare.log
+          grep -q '定義を渡していないので' /tmp/coverage-bare.log
+          grep -q 'まだ答えていない数は、定義を渡すと出ます' /tmp/coverage-bare.log
+          # 13. MCP からも同じ1枚が読める（AI が最初に引く道具）。
           printf '%s\n' \
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
             '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
@@ -2241,7 +2270,7 @@ jobs:
           if grep -q '\[concurrency\]' /tmp/ask-answered.log; then
             echo "答えたのに問いが残った"; cat /tmp/ask-answered.log; exit 1
           fi
-          grep -q '件は答えが済んでいます' /tmp/ask-answered.log
+          grep -q '答えが済んでいるもの' /tmp/ask-answered.log
           # 4. 答えたつもりで答えていないのは**落とす**（ここだけは事実の間違い）。
           mkdir -p /tmp/ask-bad
           printf 'project_version: "1.0"\nsystem: { what: x }\nlogic:\n' \
@@ -2273,7 +2302,62 @@ jobs:
             echo "定義で書ける担当を問いにしても通ってしまった"; cat /tmp/ask-area.log; exit 1
           fi
           grep -q '問いではなく助言' /tmp/ask-area.log
-          # 6. MCP からも同じ問いが引ける（AI が書けたあとに呼ぶ道具）。
+          # 6. **既定のままでよいと決めたら消える**（同梱の前書きは notify を決めている）。
+          node dist/cli.js ask ../spec/examples/roles_app.yaml > /tmp/ask-bulk.log
+          grep -q '\[notify\]' /tmp/ask-bulk.log
+          node dist/cli.js ask ../spec/examples/roles_app.yaml --project "$PRE" \
+            > /tmp/ask-decided.log
+          if grep -q '\[notify\]' /tmp/ask-decided.log; then
+            echo "決めたのに問いが残った"; cat /tmp/ask-decided.log; exit 1
+          fi
+          # 消した件数は黙らない（聞かれなかったのか、決めたから消えたのかが読める）。
+          grep -q '既定のままでよいと決めたもの' /tmp/ask-decided.log
+          # 理由の無い決定は受け取らない（なぜ聞かれなくなったのかが消える）。
+          printf 'project_version: "1.0"\nsystem: { what: x }\nquestions:\n' \
+            > /tmp/ask-bad/nowhy.yaml
+          printf '  decided: [{ id: notify }]\n' >> /tmp/ask-bad/nowhy.yaml
+          if node dist/cli.js ask ../spec/examples/roles_app.yaml \
+               --project /tmp/ask-bad/nowhy.yaml > /tmp/ask-nowhy.log 2>&1; then
+            echo "理由の無い決定で通ってしまった"; cat /tmp/ask-nowhy.log; exit 1
+          fi
+          grep -q 'why' /tmp/ask-nowhy.log
+          # 7. **案件ごとの問いを足せる**（読み手は組み込みと同じ）。
+          mkdir -p /tmp/ask-more
+          cat > /tmp/ask-more/pre.yaml <<'YAML'
+          project_version: "1.0"
+          system: { what: 試験用。 }
+          questions:
+            ask:
+              - id: retention
+                step: must
+                where: outside
+                trigger: saves
+                ask: この画面で入れたものは何年残しますか。
+                why: 保存期間は業務と法律の決めごとで、定義には書けない。
+                ifNot: 消してよいものが分からず、結局ずっと残る。
+                answer: logic に1行（受注は7年保存 / where outside）。
+          YAML
+          node dist/cli.js ask "$DEF" --project /tmp/ask-more/pre.yaml \
+            > /tmp/ask-more.log
+          grep -q 'この案件の決めごと' /tmp/ask-more.log
+          grep -q 'うち 1 件はこの案件の決めごと' /tmp/ask-more.log
+          # 定義で書けることは、案件でも問いにできない（助言の担当）。
+          sed 's/where: outside/where: definition/' /tmp/ask-more/pre.yaml \
+            > /tmp/ask-more/inside.yaml
+          if node dist/cli.js ask "$DEF" --project /tmp/ask-more/inside.yaml \
+               > /tmp/ask-inside.log 2>&1; then
+            echo "定義で書けることを案件の問いにできてしまった"; exit 1
+          fi
+          grep -q '問いではなく助言' /tmp/ask-inside.log
+          # 組み込みと同じ印は使えない（答えがどちらへのものか分からなくなる）。
+          sed 's/id: retention/id: concurrency/' /tmp/ask-more/pre.yaml \
+            > /tmp/ask-more/clash.yaml
+          if node dist/cli.js ask "$DEF" --project /tmp/ask-more/clash.yaml \
+               > /tmp/ask-clash.log 2>&1; then
+            echo "組み込みの印を上書きできてしまった"; exit 1
+          fi
+          grep -q '組み込みの印と同じ' /tmp/ask-clash.log
+          # 8. MCP からも同じ問いが引ける（AI が書けたあとに呼ぶ道具）。
           printf '%s\n' \
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
             '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
