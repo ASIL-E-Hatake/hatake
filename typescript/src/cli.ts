@@ -206,6 +206,7 @@ import {
   type ProjectDocument,
 } from "./project.js";
 import { findProjectAdvice } from "./projectAdvise.js";
+import { driftLines, findDrift, namedSpots } from "./projectDrift.js";
 import { impactLines, impactOf } from "./questionImpact.js";
 import {
   compareCoverage,
@@ -305,6 +306,7 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
   hatake project [<前書き>] [--json]
   hatake project [<前書き>] --agents [--merge AGENTS.md] [--check]
   hatake project <前書き> --coverage [<定義>...] [--since 前回.json] [--json]
+  hatake project <前書き> --drift <定義>... [--json]
       **案件の前書き**（この案件は何のシステムか・使う人・業務の前提・用語・名前の
       決めごと）を読み返す。省略すると hatake.project.yaml を探す。
       前書きは**人が書く**（定義から起こさない＝起こせば必ず一致して読む値打ちが
@@ -329,6 +331,9 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       総合点は付けない（辞書が要らない案件もあるので、少ない＝悪いとは限らない）。
       --since に前回の --json を渡すと**移り変わり**が出る（増えた／変わっていない／
       減った）。読めない紙は落とす＝黙って 0 と比べると「全部増えた」と出るので。
+      --drift は**用語の揺れ**を出す（同じ項目名に違う言葉／同じ言葉が違う項目名に）。
+      辞書に載っている字は出ない（決着済み）。**どちらが正しいかは言わない**（業務の
+      言葉なので人が決める）＝辞書は作らないし、前書きも書き換えない。
 
   hatake intent --draft --from <指示文> [--definition <定義>] [--page <id>]
                         [--out file] [--json]
@@ -427,7 +432,7 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       言う（消せとは言わない＝出し分けの書き忘れの疑いという事実だけ）。
 
   hatake advise <file> [--rules team.json] [--project hatake.project.yaml]
-                       [--registry hatake-registry.json]
+                       [--registry hatake-registry.json] [--project-as-error]
                [--apply picks.json] [--write] [--json]
       **書き足したほうがいい所**を挙げる（並べ替えできる列が無い・絞り込みが無い・
       誰でも消せる・金額に桁区切りが無い…）。これは助言で警告ではないので、
@@ -446,6 +451,10 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       （形が違う名前・型に合わない終わり方・辞書と違う項目名・呼ばないことにした言葉）。
       定義の隣に hatake.project.yaml があれば渡さなくても読む。これも助言＝
       名前と言葉は好みなので、終了コードは変えない。
+      --project-as-error は**案件が決めたときだけ**の旗＝project- で始まる助言が
+      1件でも残っていれば 1 を返す（CI に置く用）。既定では絶対に落ちない＝助言を
+      勝手に落とすと、事実を言う警告まで読まれなくなる。落とすと決めるのは案件の側
+      （物差しの off と同じ考え）。組み込みの助言では落ちない。
 
   hatake index <path...> [--find "顧客 検索"] [--by size] [--role admin]
               [--json] [--out file]
@@ -680,9 +689,11 @@ const BOOLEAN_FLAGS = new Set([
   "no-warn",
   "warn-as-error",
   "caution-as-error",
+  "project-as-error",
   "api-only",
   "computed",
   "coverage",
+  "drift",
   "needs-registration",
   "unused",
   "unused-as-error",
@@ -1659,9 +1670,16 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
   // 間違いを教える助言は、無いほうがまし。
   if (unwritable(advice, flags, io) > 0) return 1;
 
+  // **案件が決めたときだけ**落とす。助言を勝手に落とすのは駄目（好みを押し付ける道具に
+  // なった時点で、事実を言う警告まで読まれなくなる）。けれど案件が「命名の揺れは直す」と
+  // 決めたなら、その案件では落としてよい＝決めるのは案件の側（物差しの `off` と同じ考え）。
+  const strictProject =
+    flags["project-as-error"] === true &&
+    advice.some((one) => one.rule.startsWith("project-"));
+
   if (flags.json === true) {
     io.out(JSON.stringify(advice, null, 2));
-    return 0;
+    return strictProject ? 1 : 0;
   }
   io.out(
     renderAdvice(advice, {
@@ -1672,7 +1690,13 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
         : { projectFrom: projectPath(files[0], flags) }),
     }),
   );
-  return 0;
+  if (strictProject) {
+    io.err(
+      "案件の決めごと（project- で始まる助言）が残っています" +
+        "（--project-as-error を渡したので落としました）。",
+    );
+  }
+  return strictProject ? 1 : 0;
 }
 
 /**
@@ -2336,6 +2360,9 @@ function projectCommand(
   if (flags.coverage === true) {
     return coverage(found, positional.slice(1), flags, io);
   }
+  if (flags.drift === true) {
+    return drift(found, positional.slice(1), flags, io);
+  }
   if (flags.json === true) {
     io.out(JSON.stringify(found, null, 2));
     return 0;
@@ -2416,6 +2443,41 @@ function coverage(
     io.out("");
     io.out(coverageDiffLines(compareCoverage(before, counted)).join("\n"));
   }
+  return 0;
+}
+
+/**
+ * 用語の揺れ（`project --drift <定義>...`）。
+ *
+ * **辞書は作らない。** 出すのは「揺れている」という事実だけで、どちらが正しいかは
+ * 言わない（業務の言葉なので人が決める）。前書きも書き換えない。
+ */
+function drift(
+  project: ProjectDocument,
+  paths: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  if (paths.length === 0) {
+    io.err("揺れを見る定義を指定してください（ディレクトリでも）。");
+    return 1;
+  }
+  const documents: Record<string, unknown>[] = [];
+  for (const file of collectPaths(paths, io, [".yaml", ".yml", ".json"])) {
+    const parsed: unknown = parseYamlText(io.readFile(file));
+    if (typeof parsed !== "object" || parsed === null) {
+      io.err(`${file}: 定義（map）として読めません。`);
+      return 1;
+    }
+    documents.push(parsed as Record<string, unknown>);
+  }
+  const found = findDrift(project, documents);
+  if (flags.json === true) {
+    io.out(JSON.stringify({ drift: found, read: namedSpots(documents).length }, null, 2));
+    return 0;
+  }
+  for (const line of driftLines(found, namedSpots(documents).length)) io.out(line);
+  // 揺れは**事実**だが、直すかは業務の判断＝落とさない（助言と同じ立場）。
   return 0;
 }
 

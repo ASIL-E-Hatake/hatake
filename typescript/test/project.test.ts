@@ -12,6 +12,7 @@ import {
   replaceAgentsSection,
   scaffold,
   toShape,
+  NAMING_TARGETS,
 } from "../src/index.js";
 import { parse as parseYamlText } from "yaml";
 import { runCli, type CliIo } from "../src/cli.js";
@@ -288,6 +289,51 @@ page:
     expect(
       found.filter((advice) => advice.rule === "project-logic-unregistered"),
     ).toEqual([]);
+  });
+
+  it("**縛れる名前は全部見ている**（増やしたのに誰も見ていない対象を作らない）", () => {
+    // 対象ごとに「その形に反する定義」を1枚ずつ作り、1件ずつ出ることを確かめる。
+    // 決めごとは snake_case にして、名前は camelCase（必ず反する形）で書く。
+    const preamble = (target: string) => `project_version: "1.0"
+system:
+  what: 試験用。
+naming:
+  ${target}: snake_case
+`;
+    const sources: Record<string, string> = {
+      page: `page: { type: search, id: badName, title: X, repository: r,
+        table: { columns: [{ field: code, label: C }] } }`,
+      field: `page: { type: search, id: x, title: X, repository: r,
+        table: { columns: [{ field: badName, label: C }] } }`,
+      action: `page: { type: search, id: x, title: X, repository: r,
+        table: { columns: [{ field: code, label: C }] },
+        actions: [{ id: badName, type: plugin, plugin: p, label: B }] }`,
+      repository: `page: { type: search, id: x, title: X, repository: badName,
+        table: { columns: [{ field: code, label: C }] } }`,
+      role: `page: { type: search, id: x, title: X, repository: r,
+        table: { columns: [{ field: code, label: C, roles: [badName] }] } }`,
+      step: `page: { type: wizard, id: x, title: X, repository: r, key: id,
+        steps: [{ id: badName, title: S, fields: [{ field: code, label: C }] }] }`,
+      card: `page: { type: dashboard, id: x, title: X, repository: r,
+        items: [{ id: badName, type: metric, title: T,
+          value: { aggregate: count } }] }`,
+      plugin: `page: { type: search, id: x, title: X, repository: r,
+        table: { columns: [{ field: code, label: C }] },
+        actions: [{ id: a, type: plugin, plugin: badName, label: B }] }`,
+    };
+
+    for (const target of NAMING_TARGETS) {
+      const source = sources[target];
+      expect(source, `${target} の試験用の定義が無い`).toBeTruthy();
+      const found = findProjectAdvice(
+        definition(`dsl_version: "1.0"
+${source}
+`),
+        parseProject(preamble(target)),
+      ).filter((advice) => advice.rule === "project-name-shape");
+      expect(found.length, target).toBe(1);
+      expect(found[0].says, target).toContain("badName");
+    }
   });
 
   it("サーバの担当と書いたのに画面から呼んでいれば言う（食い違い）", () => {

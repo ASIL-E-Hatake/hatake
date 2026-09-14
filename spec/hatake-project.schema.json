@@ -124,6 +124,9 @@
         "action": { "$ref": "#/$defs/shape", "description": "ボタン id の形。" },
         "repository": { "$ref": "#/$defs/shape", "description": "Repository キーの形。" },
         "role": { "$ref": "#/$defs/shape", "description": "役割名の形。" },
+        "step": { "$ref": "#/$defs/shape", "description": "ウィザードのステップ id の形。" },
+        "card": { "$ref": "#/$defs/shape", "description": "ダッシュボードのカード id の形。" },
+        "plugin": { "$ref": "#/$defs/shape", "description": "プラグイン名の形（アプリ側に登録する字）。" },
         "suffix": {
           "description": "「この型の項目は、名前をこう終わらせる」（`date: Date` なら `type: date` の項目は `orderDate`）。キーは項目の型で、知らない型はエラー（黙って効かない設定を作らない）。",
           "type": "object",

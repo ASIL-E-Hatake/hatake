@@ -298,12 +298,42 @@ function checkPage(
     }
   }
 
+  // ウィザードのステップ id（案件が snake_case でも、雛形は camelCase を出す）。
+  dicts(page.steps).forEach((step, index) =>
+    checkShape(
+      str(step.id),
+      "step",
+      { where: `${path}.steps[${index}]`, node: "wizardStep", key: "id" },
+      project,
+      raw,
+    ),
+  );
+
+  // ダッシュボードのカード id。
+  dicts(page.items).forEach((item, index) =>
+    checkShape(
+      str(item.id),
+      "card",
+      { where: `${path}.items[${index}]`, node: "dashboardItem", key: "id" },
+      project,
+      raw,
+    ),
+  );
+
   for (const part of pageActions(page)) {
     const where = `${path}.${part.path.join(".")}`;
     checkShape(
       str(part.node.id),
       "action",
       { where, node: "action", key: "id" },
+      project,
+      raw,
+    );
+    // プラグイン名（アプリ側に登録する字＝人が話す名前でもある）。
+    checkShape(
+      str(part.node.plugin),
+      "plugin",
+      { where, node: "action", key: "plugin" },
       project,
       raw,
     );

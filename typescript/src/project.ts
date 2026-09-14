@@ -41,13 +41,22 @@ export const NAME_SHAPES = [
 
 export type NameShape = (typeof NAME_SHAPES)[number];
 
-/** 形を決められる名前。定義に**業務の名前として**現れるものだけ。 */
+/**
+ * 形を決められる名前。定義に**業務の名前として**現れるものだけ。
+ *
+ * 増やすときの線引き: **その名前で人が話すか**。画面 id・項目名・ボタン id は現場の
+ * 会話に出るので縛る値打ちがある。型の名前（`type: date`）や演算子は枠組みの語彙なので
+ * 入れない（案件が決めるものではない）。
+ */
 export const NAMING_TARGETS = [
   "page",
   "field",
   "action",
   "repository",
   "role",
+  "step",
+  "card",
+  "plugin",
 ] as const;
 
 export type NamingTarget = (typeof NAMING_TARGETS)[number];
@@ -454,6 +463,9 @@ export const NAMING_WORDS: Record<NamingTarget, string> = {
   action: "ボタン id",
   repository: "Repository キー",
   role: "役割名",
+  step: "ステップ id",
+  card: "カード id",
+  plugin: "プラグイン名",
 };
 
 /**
