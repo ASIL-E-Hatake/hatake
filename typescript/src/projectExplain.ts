@@ -73,7 +73,7 @@ export function projectLines(project: ProjectDocument): string[] {
     for (const one of project.questions.decided) {
       out.push(
         `  ・既定のままでよいと決めた: ${one.id}` +
-          `${one.on === undefined ? "" : `（${one.on}）`}`,
+          `${one.date === undefined ? "" : `（${one.date}）`}`,
       );
       out.push(`      ${one.why}`);
     }

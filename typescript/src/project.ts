@@ -150,7 +150,8 @@ const TOP_KEYS = [
   "questions",
 ];
 const QUESTIONS_KEYS = ["ask", "decided"];
-const DECIDED_KEYS = ["id", "why", "on"];
+// `on` は使えない（YAML 1.1 の読み手が真偽値にする＝[YAML11_WORDS]）。
+const DECIDED_KEYS = ["id", "why", "date"];
 const LOGIC_KEYS = ["what", "where", "name", "why", "answers"];
 const SYSTEM_KEYS = ["what", "users", "premises", "external"];
 const EXTERNAL_KEYS = ["name", "what", "owner"];
@@ -271,7 +272,9 @@ function parseQuestions(value: unknown): ProjectQuestions {
       decided.push({
         id,
         why: text(item.why, `${at}.why`),
-        ...(item.on === undefined ? {} : { on: text(item.on, `${at}.on`) }),
+        ...(item.date === undefined
+          ? {}
+          : { date: text(item.date, `${at}.date`) }),
       });
     }
   }

@@ -84,8 +84,13 @@ export interface QuestionKind {
 export interface DecidedQuestion {
   id: string;
   why: string;
-  /** いつ決めたか（`2026-09-14`。省略できる）。 */
-  on?: string;
+  /**
+   * いつ決めたか（`2026-09-14`。省略できる）。
+   *
+   * `on` ではない＝YAML 1.1 の読み手（PyYAML）は `on:` を真偽値として読むので、
+   * キー名に使うと**読み手によって別のキーになる**（[YAML11_WORDS]）。
+   */
+  date?: string;
 }
 
 /** 案件の前書きのうち、問い返しが見る所だけ。 */

@@ -202,8 +202,8 @@
                 "type": "string",
                 "minLength": 1
               },
-              "on": {
-                "description": "いつ決めたか（`2026-09-14`）。",
+              "date": {
+                "description": "いつ決めたか（`2026-09-14`）。`on` という名前にはできない（YAML 1.1 の読み手は `on:` を真偽値として読むので、読み手によって別のキーになる）。",
                 "type": "string",
                 "minLength": 1
               }
