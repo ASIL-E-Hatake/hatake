@@ -65,6 +65,9 @@ npx hatake project                              # 案件の前書き（何のシ
 npx hatake project --coverage definitions/       # 前書きでいま何件言えているか（数えていない所も言う）
 npx hatake project --coverage definitions/ --since 前回.json # 前回からの移り変わり
 npx hatake project --drift definitions/         # 用語の揺れ（辞書は作らない・書き換えない）
+npx hatake project --drift definitions/ --draft # 揺れを glossary の下書きに（貼るのは人）
+npx hatake project --drift definitions/ --since 前回.json # 増えた揺れだけ
+npx hatake project --draft --from 要件メモ.md    # 資料から前書きの下書き（定義からは起こさない）
 npx hatake project --agents --merge AGENTS.md   # その前書きを AI の設定ファイルに貼る（印の中だけ）
 npx hatake project --agents --merge AGENTS.md --check  # 貼った節が古くないか（CI 用）
 npx hatake intent --draft --from 指示.md --definition page.yaml  # 指示文を意図の1枚に

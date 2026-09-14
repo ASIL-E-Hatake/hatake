@@ -19,7 +19,12 @@ import {
   searchFilters,
   tableColumns,
 } from "./pageParts.js";
-import { NAMING_TARGETS, type ProjectDocument } from "./project.js";
+import {
+  NAMING_TARGETS,
+  NAMING_WORDS,
+  type NamingTarget,
+  type ProjectDocument,
+} from "./project.js";
 import { type Where, WHERE_KINDS, WHERE_WORDS } from "./responsibility.js";
 
 type Dict = Record<string, unknown>;
@@ -53,6 +58,15 @@ export interface ProjectCoverage {
     shapes: number;
     /** 決められる対象の数。 */
     targets: number;
+    /**
+     * **その案件の定義に実際に出てくる**対象（定義を渡したときだけ）。
+     *
+     * ウィザードの無い案件で `step` を決めても意味が無いので、分母はこちら。
+     * 渡していなければ「数えていない」＝この欄を出さない（0 とは違う）。
+     */
+    relevant?: NamingTarget[];
+    /** そのうち形を決めてある数。 */
+    relevantShapes?: number;
     /** 型ごとの終わり方の数。 */
     suffix: number;
   };
@@ -70,6 +84,40 @@ export interface ProjectCoverage {
     /** まだ答えていない問い（定義を渡したときだけ数えられる）。 */
     open?: number;
   };
+}
+
+/**
+ * その定義に**実際に出てくる**縛れる対象。
+ *
+ * 見るのは「その名前を書く場所が在るか」だけ（中身の良し悪しではない）。
+ * 対象を足したらここも足す＝[NAMING_TARGETS] を網羅した Record で持つので、
+ * 足して忘れると型が落ちる。
+ */
+const TARGET_IN_DEFINITION: Record<NamingTarget, (page: Dict) => boolean> = {
+  page: () => true,
+  field: (page) =>
+    tableColumns(page).length + searchFilters(page).length + rawFormFields(page).length > 0,
+  action: (page) => dicts(page.actions).length > 0,
+  repository: (page) => str(page.repository) !== undefined,
+  role: (page) => countKey(page, "roles") > 0,
+  step: (page) => dicts(page.steps).length > 0,
+  card: (page) => dicts(page.items).length > 0,
+  plugin: (page) =>
+    dicts(page.actions).some((action) => str(action.plugin) !== undefined),
+};
+
+/** その画面の中で、そのキーを書いている所を数える。 */
+function countKey(node: unknown, key: string): number {
+  if (Array.isArray(node)) {
+    return node.reduce<number>((sum, one) => sum + countKey(one, key), 0);
+  }
+  if (!isDict(node)) return 0;
+  let found = node[key] === undefined ? 0 : 1;
+  for (const [name, value] of Object.entries(node)) {
+    if (name === key) continue;
+    found += countKey(value, key);
+  }
+  return found;
 }
 
 /** 定義に出てくる項目名を集める（助言と同じ walk）。 */
@@ -110,6 +158,11 @@ export function projectCoverage(
   options: { open?: number } = {},
 ): ProjectCoverage {
   const fields = fieldNames(documents);
+  const pages = pagesOf(documents);
+  // 定義に出てくる対象だけを分母にする（ウィザードが無いのに step を数えない）。
+  const relevant = NAMING_TARGETS.filter((target) =>
+    pages.some((page) => TARGET_IN_DEFINITION[target](page)),
+  );
   const named = project.glossary
     .map((entry) => entry.field)
     .filter((one): one is string => one !== undefined);
@@ -137,6 +190,14 @@ export function projectCoverage(
       ).length,
       targets: NAMING_TARGETS.length,
       suffix: Object.keys(project.naming.suffix).length,
+      ...(documents.length === 0
+        ? {}
+        : {
+            relevant,
+            relevantShapes: relevant.filter(
+              (target) => project.naming.shapes[target] !== undefined,
+            ).length,
+          }),
     },
     logic: { total: project.logic.length, byWhere },
     questions: {
@@ -180,6 +241,13 @@ export function coverageLines(coverage: ProjectCoverage): string[] {
     `名前の決めごと: ${coverage.naming.shapes}/${coverage.naming.targets} の対象に形を決めた` +
       `（型ごとの終わり方 ${coverage.naming.suffix}件）`,
   );
+  if (coverage.naming.relevant !== undefined) {
+    out.push(
+      `  この定義に出てくるのは ${coverage.naming.relevant.length} 対象` +
+        `（${coverage.naming.relevant.map((one) => NAMING_WORDS[one]).join(" / ")}）。` +
+        `そのうち決めてあるのは ${coverage.naming.relevantShapes ?? 0}`,
+    );
+  }
 
   out.push("");
   out.push(`業務ロジックの置き場: ${coverage.logic.total}件`);

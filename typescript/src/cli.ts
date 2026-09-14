@@ -206,7 +206,16 @@ import {
   type ProjectDocument,
 } from "./project.js";
 import { findProjectAdvice } from "./projectAdvise.js";
-import { driftLines, findDrift, namedSpots } from "./projectDrift.js";
+import { draftLines, draftProject } from "./projectDraft.js";
+import {
+  compareDrift,
+  driftDiffLines,
+  driftDraft,
+  driftLines,
+  findDrift,
+  namedSpots,
+  parseDriftReport,
+} from "./projectDrift.js";
 import { impactLines, impactOf } from "./questionImpact.js";
 import {
   compareCoverage,
@@ -306,7 +315,8 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
   hatake project [<前書き>] [--json]
   hatake project [<前書き>] --agents [--merge AGENTS.md] [--check]
   hatake project <前書き> --coverage [<定義>...] [--since 前回.json] [--json]
-  hatake project <前書き> --drift <定義>... [--json]
+  hatake project <前書き> --drift <定義>... [--draft] [--since 前回.json] [--json]
+  hatake project --draft --from 資料.md [--out file] [--json]
       **案件の前書き**（この案件は何のシステムか・使う人・業務の前提・用語・名前の
       決めごと）を読み返す。省略すると hatake.project.yaml を探す。
       前書きは**人が書く**（定義から起こさない＝起こせば必ず一致して読む値打ちが
@@ -331,9 +341,17 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       総合点は付けない（辞書が要らない案件もあるので、少ない＝悪いとは限らない）。
       --since に前回の --json を渡すと**移り変わり**が出る（増えた／変わっていない／
       減った）。読めない紙は落とす＝黙って 0 と比べると「全部増えた」と出るので。
+      --draft --from <資料> は**前書きの下書き**を起こす（提案書・要件メモから）。
+      拾うのは**見出しのある所だけ**で、書いてある字のまま（要約しない）。
+      **定義を渡したら落とす**＝前書きを定義から起こすと、必ず一致して読む値打ちが
+      無くなるので。拾えなかった行は捨てずに出す。
       --drift は**用語の揺れ**を出す（同じ項目名に違う言葉／同じ言葉が違う項目名に）。
       辞書に載っている字は出ない（決着済み）。**どちらが正しいかは言わない**（業務の
       言葉なので人が決める）＝辞書は作らないし、前書きも書き換えない。
+      --draft は**貼れる形**（glossary の下書き YAML）で出す。term には多い呼び方を
+      **仮に**置いてそう書く（多いだけで正しいという意味ではない）。書き込みはしない。
+      --since に前回の --json を渡すと**増えた揺れ**が出る（新しい画面を足した回に出る
+      ＝そこで決めるのがいちばん軽い）。消えた揺れは「直した」とは限らないので、そう書く。
 
   hatake intent --draft --from <指示文> [--definition <定義>] [--page <id>]
                         [--out file] [--json]
@@ -2343,6 +2361,10 @@ function projectCommand(
   flags: Args["flags"],
   io: CliIo,
 ): number {
+  // 下書きは**前書きがまだ無いとき**に使う道なので、読む前に捌く。
+  // `--drift --draft`（揺れを辞書の下書きに）は前書きが要るので、こちらには来ない。
+  if (flags.draft === true && flags.drift !== true) return draftCommand(flags, io);
+
   const found =
     positional[0] === undefined
       ? projectOf(undefined, flags, io)
@@ -2447,6 +2469,35 @@ function coverage(
 }
 
 /**
+ * 資料から前書きの下書きを起こす（`project --draft --from <資料>`）。
+ *
+ * 入力は**人が書いた資料だけ**。定義を渡されたら落とす＝前書きを定義から起こすと、
+ * 必ず一致して読む値打ちが無くなる（注記ではなく機械で守る）。
+ */
+function draftCommand(flags: Args["flags"], io: CliIo): number {
+  const from = str(flags, "from");
+  if (from === undefined) {
+    io.err(
+      "--draft は --from <資料> と一緒に使ってください" +
+        "（提案書・要件メモのような**人が書いた紙**を渡します）。",
+    );
+    return 1;
+  }
+  if (flags.drift === true) {
+    io.err("--draft は、前書きを起こす側（--from）と揺れの下書き（--drift）で" +
+      "意味が違います。どちらかにしてください。");
+    return 1;
+  }
+  const draft = draftProject(io.readFile(from));
+  if (flags.json === true) {
+    io.out(JSON.stringify(draft, null, 2));
+    return 0;
+  }
+  const text = draftLines(draft).join("\n");
+  return output(text, flags, io);
+}
+
+/**
  * 用語の揺れ（`project --drift <定義>...`）。
  *
  * **辞書は作らない。** 出すのは「揺れている」という事実だけで、どちらが正しいかは
@@ -2472,11 +2523,25 @@ function drift(
     documents.push(parsed as Record<string, unknown>);
   }
   const found = findDrift(project, documents);
+  // **貼れる形**で出す（書き込みはしない＝貼るのは人）。
+  if (flags.draft === true) {
+    io.out(driftDraft(found));
+    return 0;
+  }
   if (flags.json === true) {
     io.out(JSON.stringify({ drift: found, read: namedSpots(documents).length }, null, 2));
     return 0;
   }
   for (const line of driftLines(found, namedSpots(documents).length)) io.out(line);
+
+  // 前回と比べる（増えた揺れは**新しい画面を足した回**に出る＝そこで決めるのが軽い）。
+  // 読めない紙は落とす＝黙って空と比べると「全部増えた」と出る。
+  const since = str(flags, "since");
+  if (since !== undefined) {
+    const before = parseDriftReport(JSON.parse(io.readFile(since)));
+    io.out("");
+    io.out(driftDiffLines(compareDrift(before, found)).join("\n"));
+  }
   // 揺れは**事実**だが、直すかは業務の判断＝落とさない（助言と同じ立場）。
   return 0;
 }

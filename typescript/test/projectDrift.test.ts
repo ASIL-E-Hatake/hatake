@@ -2,8 +2,13 @@ import { readFileSync } from "node:fs";
 import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
 import {
+  compareDrift,
+  DRIFT_DIFF_NOTE,
   DRIFT_NOTE,
+  driftDiffLines,
+  driftDraft,
   driftLines,
+  parseDriftReport,
   findDrift,
   namedSpots,
   parseProject,
@@ -266,5 +271,136 @@ describe("案件が決めたときだけ落とす（--project-as-error）", () =
     ).toBe(1);
     const parsed = JSON.parse(io.stdout.join("")) as { rule: string }[];
     expect(parsed.some((one) => one.rule.startsWith("project-"))).toBe(true);
+  });
+});
+
+describe("揺れを辞書の下書きにする", () => {
+  const draft = () => driftDraft(findDrift(bare(), [doc(DEFINITION)]));
+
+  it("**貼れる形**で出す（前書きに貼ると読める）", () => {
+    // 下書きは glossary の断片なので、前書きに貼って読めることを確かめる。
+    const pasted = `project_version: "1.0"
+system:
+  what: 試験用。
+${draft()}
+`;
+    const project = parseProject(pasted);
+    expect(project.glossary.length).toBeGreaterThan(0);
+    const amount = project.glossary.find((one) => one.field === "amount");
+    expect(amount?.term).toBe("金額");
+    expect(amount?.avoid).toEqual(["支給額"]);
+  });
+
+  it("term は**仮**だと書く（多いだけで、正しいという意味ではない）", () => {
+    const text = draft();
+    expect(text).toContain("正しいという意味ではありません");
+    expect(text).toContain("仮。");
+    expect(text).toContain("書き込みません");
+  });
+
+  it("避ける言葉に、選んだ言葉は入らない", () => {
+    const project = parseProject(`project_version: "1.0"
+system:
+  what: 試験用。
+${draft()}
+`);
+    for (const entry of project.glossary) {
+      expect(entry.avoid, entry.term).not.toContain(entry.term);
+    }
+  });
+
+  it("同じ言葉が違う項目名に付いている側は、下書きにしない（辞書では直らない）", () => {
+    const text = draft();
+    // 「受注番号」は orderNo と id の両方に付いているが、glossary の項目にはしない。
+    expect(text).toContain("辞書では直りません");
+    const pasted = parseProject(`project_version: "1.0"
+system:
+  what: 試験用。
+${text}
+`);
+    expect(pasted.glossary.map((one) => one.term)).not.toContain("受注番号");
+  });
+
+  it("揺れが無ければ、無いと書く（空の glossary を作らない）", () => {
+    const text = driftDraft([]);
+    expect(text).toContain("ありませんでした");
+    expect(() =>
+      parseProject(`project_version: "1.0"
+system:
+  what: 試験用。
+${text}
+`),
+    ).not.toThrow();
+  });
+});
+
+describe("揺れの移り変わり", () => {
+  const before = () => findDrift(bare(), [doc(DEFINITION)]);
+  const after = () =>
+    findDrift(bare(), [
+      doc(
+        DEFINITION.replace(
+          "          - { field: amount, label: 支給額 }",
+          "          - { field: amount, label: 支給額 }\n          - { field: memo, label: 備考 }",
+        ).replace(
+          "          - { field: customer, label: 顧客 }",
+          "          - { field: customer, label: 顧客 }\n          - { field: memo, label: メモ }",
+        ),
+      ),
+    ]);
+
+  it("増えた揺れを出す（新しい画面を足した回に効く）", () => {
+    const diff = compareDrift(before(), after());
+    expect(diff.added.map((one) => one.name)).toContain("memo");
+    expect(diff.gone).toEqual([]);
+    expect(diff.same).toBeGreaterThan(0);
+  });
+
+  it("消えた揺れを「直した」と言わない（画面を消しただけかもしれない）", () => {
+    const diff = compareDrift(after(), before());
+    expect(diff.gone.map((one) => one.name)).toContain("memo");
+    const text = driftDiffLines(diff).join(String.fromCharCode(10));
+    expect(text).toContain(DRIFT_DIFF_NOTE);
+    expect(text).toContain("「直した」とは限りません");
+  });
+
+  it("増えていなければ、そう言う", () => {
+    const text = driftDiffLines(compareDrift(before(), before())).join(
+      String.fromCharCode(10),
+    );
+    expect(text).toContain("増えた揺れはありません");
+  });
+
+  it("読めない紙は**落とす**（黙って空と比べると「全部増えた」と出る）", () => {
+    expect(() => parseDriftReport({ なんか: 1 })).toThrow(/読めません/);
+    expect(() => parseDriftReport({ drift: [{ kind: "nope", name: "x" }] })).toThrow(
+      /読めません/,
+    );
+    // 自分の出力は読める（往復できる）。
+    expect(() =>
+      parseDriftReport(JSON.parse(JSON.stringify({ drift: before() }))),
+    ).not.toThrow();
+  });
+
+  it("CLI から前回を渡すと、移り変わりが出る", () => {
+    const io1 = fakeIo({
+      "pre.yaml": `project_version: "1.0"\nsystem:\n  what: 試験用。\n`,
+      "def.yaml": DEFINITION,
+    });
+    expect(
+      runCli(["project", "pre.yaml", "--drift", "def.yaml", "--json"], io1),
+    ).toBe(0);
+    const io2 = fakeIo({
+      "pre.yaml": `project_version: "1.0"\nsystem:\n  what: 試験用。\n`,
+      "def.yaml": DEFINITION,
+      "before.json": io1.stdout.join(""),
+    });
+    expect(
+      runCli(
+        ["project", "pre.yaml", "--drift", "def.yaml", "--since", "before.json"],
+        io2,
+      ),
+    ).toBe(0);
+    expect(io2.stdout.join(String.fromCharCode(10))).toContain("増えた揺れはありません");
   });
 });
