@@ -21,9 +21,18 @@ import {
   FAILURES_FILE,
   findSpecDir,
   PITFALLS_FILE,
+  QUESTION_KINDS_FILE,
   RESPONSIBILITY_FILE,
   SCHEMA_FILE,
 } from "./specDir.js";
+import {
+  answeredBy,
+  askQuestions,
+  checkQuestionAreas,
+  parseQuestionKinds,
+  questionKindLines,
+  questionLines,
+} from "./questions.js";
 import {
   filterAreas,
   parseResponsibility,
@@ -250,6 +259,21 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --from で**指示文をまとめて仕分ける**（行ごとに区分を当て、外が混ざっていたら
       先に言う）。当て方は言葉の一致だけ＝**下書き**なので、当てられなかった行は
       捨てずに一覧に出す（黙って落とすと、仕分けたつもりで抜ける）。囲みの中は見ない。
+
+  hatake ask <file> [--project hatake.project.yaml] [--json]
+  hatake ask --kinds [--json]
+      **人が決めないと決まらないこと**を、画面から問い返す（排他・採番・論理削除・
+      端数・サーバ側の検証・止めるのは誰か…）。雑な依頼から起こした定義は、書ける
+      ことが全部書いてあるので**空欄が無い**＝決まっていないようには見えない。
+      載っているのは**定義に書けないこと**だけ（書けることは validate と advise の
+      担当＝同じことを2か所で言わない）。だから各件に「誰の担当か」が付く
+      （担当の表の server / outside しか書けない）。
+      1件ごとに**この定義で聞いた理由**（どの画面の何を見たか）を出す＝思いついた
+      ことは聞かない。**終了コードは変えない**（問いは人への依頼で、機械の合否では
+      ないので）。
+      答えが決まったら前書きの logic に1行足して answers: [<印>] を付ける＝
+      次からその問いは出ない（知らない印・担当の食い違いは落とす）。
+      --kinds は表そのものを引く（定義が無くても読める＝書く前に何を聞かれるか分かる）。
 
   hatake project [<前書き>] [--json]
   hatake project [<前書き>] --agents [--merge AGENTS.md] [--check]
@@ -705,6 +729,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return projectCommand(positional, flags, io);
       case "where":
         return whereCommand(positional, flags, io);
+      case "ask":
+        return askCommand(positional, flags, io);
       case "dto":
         return emit(positional, io, (page) =>
           JSON.stringify(deriveDto(page), null, 2),
@@ -3191,6 +3217,79 @@ function whereCommand(
     return 1;
   }
   for (const line of responsibilityLines(found, { query })) io.out(line);
+  return 0;
+}
+
+/**
+ * 人が決めないと決まらないことを問い返す（`ask`）。
+ *
+ * 終了コードで落とすのは**問いが出たとき**ではなく、前書きの答えが辻褄の合わない
+ * ときだけ（知らない印・担当の食い違い）。前者は人への依頼で、後者は事実の間違い。
+ */
+function askCommand(
+  files: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const rawKinds = readSpec(flags, io, QUESTION_KINDS_FILE);
+  if (rawKinds === null) return 1;
+  const rawAreas = readSpec(flags, io, RESPONSIBILITY_FILE);
+  if (rawAreas === null) return 1;
+  const catalog = parseResponsibility(rawAreas);
+  const kinds = parseQuestionKinds(rawKinds);
+  // 「定義に書けること」が混ざっていないかを、引く前に確かめる。
+  checkQuestionAreas(kinds, catalog);
+
+  if (flags.kinds === true) {
+    if (flags.json === true) {
+      io.out(JSON.stringify({ kinds }, null, 2));
+      return 0;
+    }
+    for (const line of questionKindLines(kinds, catalog)) io.out(line);
+    return 0;
+  }
+
+  if (files.length !== 1) {
+    io.err(
+      "問い返す定義ファイルを1つ指定してください（表だけ見るなら --kinds）。",
+    );
+    return 1;
+  }
+  const document = parseYamlText(io.readFile(files[0]));
+  if (typeof document !== "object" || document === null) {
+    io.err("定義（map）として読めません。");
+    return 1;
+  }
+  const project = projectOf(files[0], flags, io);
+  const answers = answeredBy(project?.logic ?? [], kinds, catalog);
+  if (answers.problems.length > 0) {
+    // 答えたつもりで答えていないのは事実の間違いなので、問いを出す前に言う
+    // （黙って拾わないと、消えたはずの問いが出続ける／答えていない問いが消える）。
+    for (const one of answers.problems) io.err(one);
+    return 1;
+  }
+  const questions = askQuestions(
+    document as Record<string, unknown>,
+    kinds,
+    catalog,
+    { answered: answers.answered },
+  );
+  if (flags.json === true) {
+    io.out(
+      JSON.stringify(
+        { questions, kinds: kinds.length, answered: [...answers.answered] },
+        null,
+        2,
+      ),
+    );
+    return 0;
+  }
+  for (const line of questionLines(questions, {
+    total: kinds.length,
+    answered: answers.answered,
+  })) {
+    io.out(line);
+  }
   return 0;
 }
 

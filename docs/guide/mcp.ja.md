@@ -87,6 +87,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 | 道具 | いつ使うか | 主な引数 |
 |---|---|---|
 | `hatake_where` | **定義で書けないことを頼まれたとき**。どこの担当かを引く（定義 / 登録 / サーバ / **枠組みの外**）。外と出たものはコードを書き始めず、そう言う | `query`（やりたいこと）、`where`（区分で絞る） |
+| `hatake_ask` | **書けたあと**：定義に書けないのに決まっていないこと（排他・採番・論理削除・端数・サーバ側の検証・止めるのは誰か）を問いにして返す。**返った問いは人に投げる**＝当てて書くと嘘の設計になる | `source`、`project`（前書き＝もう答えた問いは出ない） |
 | `hatake_intent` | 言われたことを1枚にして、定義と突き合わせる。**`project` も渡すと、定義に書けない規則（締め・引当）も `covers: [logic:<名前>]` で指せる**＝言われたのに誰も担当していない、が出る | `instruction` / `source` / `intent` / `page` / `project` |
 | `hatake_project` | **いちばん最初**。案件の前書き（この案件は何のシステムか・**何ができないか**・業務の言葉と項目名の対応・名前の決めごと）を読む。書いてある言葉と名前で定義を書く | `source`（前書きの中身そのもの） |
 | `hatake_reference` | キーの型・既定値・書ける場所・取れる値を知りたい。仕様書を読む代わり。**`placeholders: true` で文言に書ける差し込みの一覧**（`{count}` / `{failedKeys}` / `$row.<項目名>` …と、いつ埋まるか） | `name`（キー名/ノード名/ページ種別）、`pageKind`（その画面の分だけに絞る）、`placeholders` |
@@ -117,6 +118,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 3. 新規なら hatake_new_page で雛形（前書きが在れば project も渡す）
 4. 迷ったキーだけ hatake_reference で引く
 5. 書けたら必ず hatake_validate → 問題が出たら hatake_fix → hatake_explain で読み返す
+5.5 hatake_ask を1回（**定義に書けないのに決まっていないこと**。問いは人に投げる）
    → さらに hatake_advise を1回（**書いていない所**は検証に出てこない。`draft` に値の下書きが付く。
      前書きが在れば project も渡す＝名前と用語の食い違いが project- で始まる助言に出る）
    → 当てると決めたものは hatake_apply_advice（書く場所は機械のほうが正確）

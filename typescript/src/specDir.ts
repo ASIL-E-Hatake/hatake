@@ -25,6 +25,9 @@ export const RESPONSIBILITY_FILE = "responsibility.json";
 /** 食い違いの印から直し方を引く表（probe / attack の kind）。 */
 export const PROBE_KINDS_FILE = "probe-kinds.json";
 
+/** 人が決めないと決まらないことの表（ask の印）。 */
+export const QUESTION_KINDS_FILE = "question-kinds.json";
+
 /**
  * spec/ ディレクトリを返す。[explicit] があればそこだけを見る。
  * 無ければ実行時のカレント → このモジュールの位置、の順に上へ辿る。

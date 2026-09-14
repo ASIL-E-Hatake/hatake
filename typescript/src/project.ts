@@ -81,6 +81,13 @@ export interface LogicRule {
   name?: string;
   /** なぜその担当なのか（`outside` は必須）。 */
   why?: string;
+  /**
+   * この1行で答えた問いの印（`hatake ask` が出す印）。
+   *
+   * 書くと次からその問いは出ない＝**答えたら消える**。消えることで、問いが実在の穴を
+   * 指していた証拠になる（知らない印・担当の食い違いは道具が落とす）。
+   */
+  answers?: string[];
 }
 
 /** 名前の決めごと。**書いたものだけ**入る（空なら見ない）。 */
@@ -119,7 +126,7 @@ const TOP_KEYS = [
   "logic",
   "naming",
 ];
-const LOGIC_KEYS = ["what", "where", "name", "why"];
+const LOGIC_KEYS = ["what", "where", "name", "why", "answers"];
 const SYSTEM_KEYS = ["what", "users", "premises", "external"];
 const EXTERNAL_KEYS = ["name", "what", "owner"];
 const GLOSSARY_KEYS = ["term", "field", "avoid", "note"];
@@ -292,6 +299,9 @@ function parseLogic(value: unknown): LogicRule[] {
       where: where as Where,
       ...(node.name === undefined ? {} : { name: text(node.name, `${at}.name`) }),
       ...(node.why === undefined ? {} : { why: text(node.why, `${at}.why`) }),
+      ...(node.answers === undefined
+        ? {}
+        : { answers: strings(node.answers, `${at}.answers`) }),
     };
     if (rule.where === "plugin" && rule.name === undefined) {
       bad(

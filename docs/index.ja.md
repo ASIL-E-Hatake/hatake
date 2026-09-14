@@ -26,6 +26,7 @@
 | バックエンド（Java / TS）で使う | [バックエンド連携](guide/backend.ja.md) | 詳細は [java](../java/README.md) / [typescript](../typescript/README.md) |
 | **これは hatake で書けるのか知りたい** | [仕組みと責務分担](guide/concepts.ja.md#これはどっちの担当は引ける) | 定義 / 登録 / サーバ / **枠組みの外** の4区分。`npx hatake where <やりたいこと>` |
 | **この案件のことを AI に先に教えたい** | [案件の前書き](guide/project.ja.md) | 何のシステムか・できないこと・用語・名前の決めごとを1枚に。`npx hatake project` |
+| **決まっていないことを洗い出したい** | [決めていないことを問い返す](guide/ask.ja.md) | 定義に書けない決めごと（排他・採番・論理削除・端数）を人に聞く。`npx hatake ask <定義>` |
 | **AI エージェントに定義を書かせる** | [MCP サーバ](guide/mcp.ja.md) | 仕様の引き当て・例の取得・検証を道具として渡す |
 | 対応状況・今後の方針を知る | [ロードマップ](roadmap.ja.md) / [utils ロードマップ](roadmap-utils.ja.md) | 実装状況はここが正 |
 | 思想・背景を読む | [紹介記事](blog/introducing-hatake.md) | 読み物 |
@@ -39,6 +40,7 @@
 | [入力検証](guide/validation.ja.md) | 実行順・空値の扱い・独自ルール・メッセージ差し替え |
 | [バックエンド連携](guide/backend.ja.md) | サーバ検証・`QuerySpec`・JPA アダプタ |
 | [案件の前書き](guide/project.ja.md) | 定義の手前に置く1枚。書くもの／書かないもの、名前と用語の突き合わせ |
+| [決めていないことを問い返す](guide/ask.ja.md) | 警告・助言と混ぜない3つ目。**定義に書けないこと**だけを問いにする。答えたら消える |
 | [MCP サーバ](guide/mcp.ja.md) | エージェントへの繋ぎ方・道具5つ・使う順番 |
 
 ## cookbook（写経用サンプル）

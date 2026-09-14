@@ -22,6 +22,14 @@ import { renderMatrix, roleMatrix, sightSummary } from "./roleMatrix.js";
 import { roleSights } from "./roleSight.js";
 import { bulkByRole } from "./roleBulk.js";
 import { PLACEHOLDER_CONTEXTS } from "./placeholders.js";
+import {
+  answeredBy,
+  askQuestions,
+  checkQuestionAreas,
+  parseQuestionKinds,
+  questionLines,
+  questionNote,
+} from "./questions.js";
 import { roleInventory } from "./roles.js";
 import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
 import {
@@ -100,6 +108,7 @@ import {
   CATALOG_PATH,
   FAILURES_FILE,
   PITFALLS_FILE,
+  QUESTION_KINDS_FILE,
   RESPONSIBILITY_FILE,
   SCHEMA_FILE,
 } from "./specDir.js";
@@ -282,6 +291,12 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
    roles や maxRows.byRole を書くときは先に hatake_explain の roles: true で
    **定義に出てくる役割**を引く
    （役割名を想像で書くと、画面は出るのに誰にも見えない）
+5.5 **書けたら hatake_ask を1回**（定義を渡す）。ここで返るのは**定義に書けないのに、
+   画面が在るなら決まっていないと嘘になること**（同時に直したらどうするか・消したものを
+   残すか・端数・サーバでも検証するか・止めるのは誰か）。検証も助言も**定義に書けること**
+   しか見ないので、ここだけが抜ける。**問いは人に投げる**＝AI が勝手に決めて書かない
+   （答えは業務の判断で、当てると嘘の設計書ができる）。答えが決まったら、前書きの
+   logic に1行足して answers: [<印>] を付ける＝次からその問いは出ない
 6. **書けたら hatake_run で動かす**（draft: true で下書きのシナリオを作り、そのまま
    回す）。validate は「書ける」ことしか言わず、explain は「そう書いてある」ことしか
    言わない＝**その値でいくらになるか・何が必須になるか・押せるか**は動かさないと
@@ -456,6 +471,76 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           outside: found.filter((one) => one.where === "outside").length,
           areas: found,
           text: responsibilityLines(found, { query }).join("\n"),
+        });
+      },
+    },
+    {
+      name: "hatake_ask",
+      title: "人が決めないと決まらないことを問い返す（定義に書けないものだけ）",
+      description:
+        "**書いた定義を渡すと、人が決めないと決まらないことを問いにして返す。**" +
+        "雑な依頼から画面を起こすと、書けることは全部書けるので**空欄が無い**＝" +
+        "決まっていないようには見えない。そのまま出来上がった画面が動いた後にこう" +
+        "言われる: 「同時に直したらどうなるの」「消したものは残ってるの」「この端数は" +
+        "切り捨て？」。**全部、定義に書けないこと**なので、validate も advise も言えない" +
+        "（あの2つは定義に書けることしか見ない）。" +
+        "**返ってきた問いは人に投げること。当てて書いてはいけない**＝答えは業務の判断で、" +
+        "推測で埋めると「決まっているように見える嘘の設計」ができる（いちばん質が悪い）。" +
+        "1件ごとに『この定義で聞いた理由』（どの画面の何を見たか）が付くので、そのまま" +
+        "人に貼れる。答えが決まったら、案件の前書きの logic に1行足して " +
+        "answers: [<印>] を付ける＝**次からその問いは出ない**。" +
+        "出なかった＝決まっている、ではない（表に無いことは聞かない）。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description: "定義（YAML。page: でも app: でもよい）。",
+          },
+          project: {
+            type: "string",
+            description:
+              "案件の前書き（hatake.project.yaml の中身）。logic に answers を" +
+              "書いてあれば、その問いは出ない（もう答えたものなので）。",
+          },
+        },
+        required: ["source"],
+      },
+      example: { source: EXAMPLE_CRUD },
+      run(args) {
+        const document: unknown = parseYamlText(required(args, "source"));
+        if (typeof document !== "object" || document === null) {
+          throw new Error("定義（map）として読めません。");
+        }
+        const given = str(args, "project");
+        const kinds = parseQuestionKinds(readJson(QUESTION_KINDS_FILE));
+        const areas = responsibility();
+        checkQuestionAreas(kinds, areas);
+        const answers = answeredBy(
+          given === undefined ? [] : parseProject(given).logic,
+          kinds,
+          areas,
+        );
+        if (answers.problems.length > 0) {
+          throw new Error(
+            `前書きの答えが辻褄に合いません: ${answers.problems.join(" / ")}`,
+          );
+        }
+        const questions = askQuestions(
+          document as Record<string, unknown>,
+          kinds,
+          areas,
+          { answered: answers.answered },
+        );
+        return pretty({
+          note: questionNote(kinds.length),
+          must: questions.filter((one) => one.kind.step === "must").length,
+          answered: [...answers.answered],
+          questions,
+          text: questionLines(questions, {
+            total: kinds.length,
+            answered: answers.answered,
+          }).join("\n"),
         });
       },
     },
