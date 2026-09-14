@@ -31,6 +31,11 @@
     "computedOps",
     "aggregates"
   ],
+  "_comment_sources": "`sources` は「これは動いているアプリ／サーバの申告です」と名乗る字。書き出す側（Dart の registrySnapshotJson / Java の RegistrySnapshot.toJson）が `$source` に入れ、受け取る側（hatake registry --from-app）はこの字が無い紙を受け取らない。手で書いた一覧は「登録していない」と「書き忘れた」の区別が付かないので、申告として扱うと**無い種類について道具が断定する**（「出す口が1つも登録されていない」など）。字が3版で食い違うと、書いた紙を読めなくなるのでここで固定する。",
+  "sources": {
+    "app": "registrySnapshot",
+    "server": "RegistrySnapshot"
+  },
   "runtimeKinds": [
     "repositories",
     "plugins",

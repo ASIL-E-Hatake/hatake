@@ -55,8 +55,10 @@ npx hatake paper report.yaml       # 帳票を「刷ったらどう見えるか�
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか（Repository / プラグイン名 / 出す口）
 npx hatake wire app.yaml --base /api  # その配線（Flutter の HatakeScope）の下書き。中身は TODO で空ける
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読んで「登録済み」の一覧を作る
+npx hatake registry --from-app snapshot.json  # **動いているアプリ／サーバの申告**を読む（registrySnapshot が書いた紙。印（$source）の無い紙は受け取らない＝手書きの一覧を申告として扱うと、無い種類について道具が断定する）
 ```
 `validate` は**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション／存在しないページへの遷移／`sort` の無い `groupBy`／条件で使えない演算子／`field` の無い集計など）。エラーではないが**画面を見ても気づけない**類なので、警告が出たら直す。`--warn-as-error` で CI を落とせる。
+**黙って効かない書き方**も見る（遷移のパラメータ `$row.<項目名>` が画面に無い項目／`enabledWhen` が永久に成り立たない／組み込みでない紙は A4 として刷られる）。申告（`--registry` に `$source` つきの紙）を渡したときだけ「出す口（exportSink / printSink）が1つも登録されていない」まで言う＝手で書いた一覧では「登録していない」と「書き忘れた」の区別が付かないので言わない。
 未知キーは場所と直し方まで出る: `page.table.columns[0]: 知らないキー "witdh"（width の間違い？）`
 **定義の外との食い違い**も見られる。`repository:` や `plugin:` の名前がアプリ側で登録されていなければ、画面は出るのにデータが来ない／押しても何も起きない。`refs` で「何を登録すればいいか」を出し、`registry` で「実装が何を登録しているか」を読み、`validate --registry <file>` で突き合わせると名前の食い違いを機械で拾える（定義の隣に `hatake-registry.json` を置けば `--registry` は省ける）。`registry` は**その場に書いてある文字列しか読めない**ので、読めない登録があれば終了コード 1 で報告する（黙って落とすと嘘の一覧になるため）。
 助言は好みなので、**1画面のための例外**は定義の中に書ける（`# advise-off: <規則名>` ＝その画面だけ止める。画面の外に書けば定義ぜんたい。`#` の後ろに理由）。知らない規則名はエラーにする（止めたつもりで止まっていないのが一番困る）。黙らせた件数は必ず出るので、消えた助言は見落とせない。**止められるのは助言だけで、警告は止められない。**

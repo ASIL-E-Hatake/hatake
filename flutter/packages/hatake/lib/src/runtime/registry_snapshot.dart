@@ -83,6 +83,13 @@ Map<String, List<String>> registrySnapshot(HatakeScope scope) {
   };
 }
 
+/// 申告であることの印。`hatake registry --from-app` はこの字が無い紙を受け取らない。
+///
+/// 手で書いた一覧は「登録していない」と「書き忘れた」の区別が付かないので、申告として
+/// 扱うと**無い種類について道具が断定する**ようになる（「出す口が1つも無い」など）。
+/// 字は `spec/conformance/registry_snapshot.json` の `sources` で3版が固定している。
+const String registrySnapshotSource = 'registrySnapshot';
+
 /// [registrySnapshot] を `hatake-registry.json` としてそのまま書ける文字列にする。
 ///
 /// ```dart
@@ -92,6 +99,7 @@ String registrySnapshotJson(HatakeScope scope) {
   return const JsonEncoder.withIndent('  ').convert({
     r'$comment': '動いているアプリが申告した「登録済みのもの」の一覧'
         '（registrySnapshot）。hatake validate --registry にそのまま渡せる。',
+    r'$source': registrySnapshotSource,
     ...registrySnapshot(scope),
   });
 }

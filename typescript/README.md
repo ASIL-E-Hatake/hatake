@@ -49,6 +49,7 @@ npx hatake refs app.yaml --unused              # 逆向き：登録したのに�
 npx hatake paper report.yaml                   # 帳票を「刷ったらどう見えるか」に開く（文字で）
 npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「登録済み」の一覧を作る
 npx hatake registry --compare app.json server.json  # 足した登録が画面とサーバで同じか
+npx hatake registry --from-app snapshot.json --out hatake-registry.json  # 動いているアプリの申告を読む
 npx hatake run page.yaml --draft --out s.json   # 定義から下書きのシナリオを起こす
 npx hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所
 npx hatake fixtures page.yaml                   # サーバ側の試験データ（通る形・弾く形）

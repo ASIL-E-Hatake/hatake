@@ -116,6 +116,23 @@ void main() {
       };
       expect(declared, kinds);
     });
+
+    test('申告であることの印は spec と一致する（受け取る側が見る字）', () {
+      // `hatake registry --from-app` はこの字が無い紙を受け取らない。字が食い違うと、
+      // 書き出した紙を道具が「申告ではない」と言う＝書き出す意味が無くなる。
+      final sources = fixture['sources'] as Map<String, dynamic>;
+      expect(registrySnapshotSource, sources['app']);
+      final written = jsonDecode(
+        registrySnapshotJson(
+          HatakeScope(
+            repositories: const RepositoryRegistry({}),
+            renderer: const MaterialRenderer(),
+            child: const SizedBox.shrink(),
+          ),
+        ),
+      ) as Map<String, dynamic>;
+      expect(written[r'$source'], sources['app']);
+    });
   });
 
   group('registrySnapshot', () {

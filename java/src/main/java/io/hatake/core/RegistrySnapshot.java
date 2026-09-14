@@ -25,6 +25,14 @@ public final class RegistrySnapshot {
     private RegistrySnapshot() {
     }
 
+    /**
+     * 申告であることの印。{@code hatake registry --from-app} はこの字が無い紙を
+     * 受け取らない（手で書いた一覧は「登録していない」と「書き忘れた」の区別が
+     * 付かないので、申告として扱うと<b>無い種類について道具が断定する</b>）。
+     * 字は {@code spec/conformance/registry_snapshot.json} の sources で3版が固定する。
+     */
+    public static final String SOURCE = "RegistrySnapshot";
+
     /** 申告する種類（{@code spec/conformance/registry_snapshot.json} の serverKinds）。 */
     public static final List<String> KINDS =
             List.of("validators", "converters", "computedOps", "aggregates", "formatters");
@@ -65,6 +73,7 @@ public final class RegistrySnapshot {
         List<String> lines = new ArrayList<>();
         lines.add("  \"$comment\": \"動いているサーバが申告した「登録済みのもの」の一覧"
                 + "（RegistrySnapshot）。hatake registry --compare にそのまま渡せる。\"");
+        lines.add("  " + quote("$source") + ": " + quote(SOURCE));
         for (Map.Entry<String, List<String>> entry : snapshot.entrySet()) {
             List<String> names = new ArrayList<>();
             for (String name : entry.getValue()) {

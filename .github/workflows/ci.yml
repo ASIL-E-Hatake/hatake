@@ -412,6 +412,128 @@ jobs:
             echo "目盛りを上げたのに言った"; exit 1
           fi
 
+      - name: Things that quietly do nothing, and what a running app declares
+        working-directory: typescript
+        run: |
+          set -e
+          mkdir -p /tmp/silent
+          # 1. **遷移のパラメータが、この画面に無い項目を指している**。
+          cat > /tmp/silent/route.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns:
+                - { field: orderNo, label: 受注番号 }
+            actions:
+              - id: detail
+                type: navigate
+                label: 詳細
+                page: order_detail
+                params: { id: $row.ordreNo }
+          YAML
+          node dist/cli.js validate /tmp/silent/route.yaml > /tmp/silent/route.log 2>&1
+          grep -q 'route-param-unknown-field' /tmp/silent/route.log \
+            || node dist/cli.js validate /tmp/silent/route.yaml --json \
+                 | grep -q 'route-param-unknown-field'
+          node dist/cli.js validate /tmp/silent/route.yaml --json > /tmp/silent/route.json
+          grep -q '渡る値だけが空' /tmp/silent/route.json
+          # 綴り違いに見えないものは**言わない**（行は Repository から来るので）。
+          sed 's|\$row.ordreNo|$row.warehouseCode|' /tmp/silent/route.yaml \
+            > /tmp/silent/route-ok.yaml
+          if node dist/cli.js validate /tmp/silent/route-ok.yaml --json \
+               | grep -q 'route-param-unknown-field'; then
+            echo "近い名前が無いのに言ってしまった"; exit 1
+          fi
+          # 2. **enabledWhen が永久に偽**。
+          cat > /tmp/silent/never.yaml <<'YAML'
+          page:
+            type: detail
+            id: order_detail
+            title: 受注詳細
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - { field: orderNo, label: 受注番号 }
+                    - { field: status, label: 状態 }
+            actions:
+              - id: approve
+                type: plugin
+                plugin: approveOrder
+                label: 承認
+                enabledWhen:
+                  all:
+                    - { field: status, operator: equals, value: 受付 }
+                    - { field: status, operator: equals, value: 承認済 }
+          YAML
+          node dist/cli.js validate /tmp/silent/never.yaml --json > /tmp/silent/never.json
+          grep -q 'enabledwhen-never-true' /tmp/silent/never.json
+          grep -q '永久に成り立ちません' /tmp/silent/never.json
+          # any なら言わない（1つ成り立てばよい）。
+          sed 's|  all:|  any:|' /tmp/silent/never.yaml > /tmp/silent/never-any.yaml
+          if node dist/cli.js validate /tmp/silent/never-any.yaml --json \
+               | grep -q 'enabledwhen-never-true'; then
+            echo "any の中を永久に偽と言ってしまった"; exit 1
+          fi
+          # 3. **知らない紙**（登録の話ではなく、A4 として刷られるという事実）。
+          cat > /tmp/silent/paper.yaml <<'YAML'
+          page:
+            type: report
+            id: sales_report
+            title: 売上明細
+            repository: salesRepository
+            table:
+              columns:
+                - { field: code, label: コード, width: 80 }
+            report:
+              paper: { size: B4 }
+          YAML
+          node dist/cli.js validate /tmp/silent/paper.yaml --json > /tmp/silent/paper.json
+          grep -q 'unknown-paper-size' /tmp/silent/paper.json
+          grep -q 'A4 として刷られます' /tmp/silent/paper.json
+          sed 's|size: B4|size: A4|' /tmp/silent/paper.yaml > /tmp/silent/paper-ok.yaml
+          if node dist/cli.js validate /tmp/silent/paper-ok.yaml --json \
+               | grep -q 'unknown-paper-size'; then
+            echo "組み込みの紙に言ってしまった"; exit 1
+          fi
+          # 4. **申告**（registry --from-app）と、出す口が無いことまで言えること。
+          cat > /tmp/silent/export.yaml <<'YAML'
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            table:
+              columns:
+                - { field: orderNo, label: 受注番号 }
+            actions:
+              - { id: csv, type: export, label: CSV出力, scope: selection }
+          YAML
+          printf '%s' '{"$source":"registrySnapshot","repositories":["orderRepository"]}' \
+            > /tmp/silent/snap.json
+          node dist/cli.js registry --from-app /tmp/silent/snap.json > /tmp/silent/snap.log
+          grep -q '名乗っていない紙は受けない' /tmp/silent/snap.log
+          node dist/cli.js validate /tmp/silent/export.yaml \
+            --registry /tmp/silent/snap.json --json > /tmp/silent/export.json
+          grep -q 'sink-not-declared' /tmp/silent/export.json
+          # **手で書いた一覧では言わない**（登録していないのか書き忘れたのか分からない）。
+          printf '%s' '{"repositories":["orderRepository"]}' > /tmp/silent/hand.json
+          if node dist/cli.js validate /tmp/silent/export.yaml \
+               --registry /tmp/silent/hand.json --json | grep -q 'sink-not-declared'; then
+            echo "手書きの一覧で断定してしまった"; exit 1
+          fi
+          # 印の無い紙は --from-app が受け取らない。
+          if node dist/cli.js registry --from-app /tmp/silent/hand.json \
+               > /tmp/silent/hand.log 2>&1; then
+            echo "印の無い紙を申告として受け取ってしまった"; exit 1
+          fi
+          grep -q '申告ではありません' /tmp/silent/hand.log
+
       - name: A mismatch kind can be looked up, and credentials can be checked alone
         working-directory: typescript
         run: |
@@ -2829,6 +2951,8 @@ jobs:
           # 3. 片側にしか無くて当然のものは、**理由つきで「見なかった」**に落とす。
           grep -q 'plugins … 押したときの処理は画面の側にしかない' /tmp/cmp.log
           # 4. 実行時に申告する側（Dart / Java）が、この種類を出せること。
+          #    と、**申告であることの印**が3版で同じ字であること（字が違うと、書いた紙を
+          #    受け取る側が「申告ではありません」と言う＝書き出す意味が無くなる）。
           node -e '
             const fs = require("fs");
             const spec = JSON.parse(
@@ -2837,15 +2961,32 @@ jobs:
               "../flutter/packages/hatake/lib/src/runtime/registry_snapshot.dart", "utf8");
             const java = fs.readFileSync(
               "../java/src/main/java/io/hatake/core/RegistrySnapshot.java", "utf8");
+            const ts = fs.readFileSync("src/registryFromApp.ts", "utf8");
             for (const kind of spec.answerKinds) {
               if (!dart.includes("RegistryKinds." + kind)) {
                 console.error("Dart が申告しない種類: " + kind); process.exit(1);
               }
-              if (!java.includes("\"" + kind + "\"")) {
+              if (!java.includes(JSON.stringify(kind))) {
                 console.error("Java が申告しない種類: " + kind); process.exit(1);
               }
             }
-            console.log("答えを決める種類は3版で申告できる");
+            const quoted = String.fromCharCode(34, 39);
+            const mark = (text, name) =>
+              new RegExp("[" + quoted + "]" + name + "[" + quoted + "]").test(text);
+            if (!mark(dart, spec.sources.app)) {
+              console.error("Dart の印が spec と違う: " + spec.sources.app);
+              process.exit(1);
+            }
+            if (!mark(java, spec.sources.server)) {
+              console.error("Java の印が spec と違う: " + spec.sources.server);
+              process.exit(1);
+            }
+            for (const one of [spec.sources.app, spec.sources.server]) {
+              if (!ts.includes(JSON.stringify(one))) {
+                console.error("TypeScript が受け取れない印: " + one); process.exit(1);
+              }
+            }
+            console.log("答えを決める種類は3版で申告でき、申告の印も3版で同じ");
           '
 
       - name: The tutorial's definition and its output are real
