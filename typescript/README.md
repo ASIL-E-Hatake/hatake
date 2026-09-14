@@ -64,6 +64,7 @@ npx hatake ask app.yaml --questions team.json   # 会社共通の問いも足し
 npx hatake project                              # 案件の前書き（何のシステムか・用語・名前の決めごと）
 npx hatake project --coverage definitions/       # 前書きでいま何件言えているか（数えていない所も言う）
 npx hatake project --coverage definitions/ --since 前回.json # 前回からの移り変わり
+npx hatake project --drift definitions/         # 用語の揺れ（辞書は作らない・書き換えない）
 npx hatake project --agents --merge AGENTS.md   # その前書きを AI の設定ファイルに貼る（印の中だけ）
 npx hatake project --agents --merge AGENTS.md --check  # 貼った節が古くないか（CI 用）
 npx hatake intent --draft --from 指示.md --definition page.yaml  # 指示文を意図の1枚に
@@ -81,6 +82,7 @@ npx hatake advise page.yaml                  # 書き足したほうがいい所
 npx hatake advise page.yaml --rules team.json # 案件ごとの決めごとで見る
 npx hatake advise page.yaml --project hatake.project.yaml # 案件の名前・用語の決めごとで見る
 npx hatake advise app.yaml --project p.yaml --registry r.json # 宣言した担当がアプリに登録されているかも
+npx hatake advise app.yaml --project p.yaml --project-as-error # 案件が決めたときだけ落とす
 npx hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
 npx hatake index app.yaml --role staff       # その役割で開ける画面だけ（棚卸し）
 npx hatake explain app.yaml --roles --matrix # 役割を横に並べた○×の表

@@ -2255,7 +2255,67 @@ jobs:
             echo "読めない紙と比べてしまった"; cat /tmp/cov-bad.log; exit 1
           fi
           grep -q '前回の棚卸しとして読めません' /tmp/cov-bad.log
-          # 14. MCP からも同じ1枚が読める（AI が最初に引く道具）。
+          # 14. **用語の揺れ**。数えるだけで、辞書は作らないし前書きも書き換えない。
+          cp "$PRE" /tmp/pre-before.yaml
+          node dist/cli.js project "$PRE" --drift ../spec/examples/ > /tmp/drift.log
+          grep -q '揺れている所が' /tmp/drift.log
+          grep -q 'どちらの言葉が正しいかは言いません' /tmp/drift.log
+          grep -q '前書きを書き換えません' /tmp/drift.log
+          # 前書きは触られていない（書き換えない、を機械で確かめる）。
+          cmp -s "$PRE" /tmp/pre-before.yaml
+          # 定義を渡さなければ、そう言う。
+          if node dist/cli.js project "$PRE" --drift > /tmp/drift-bare.log 2>&1; then
+            echo "定義なしで通ってしまった"; exit 1
+          fi
+          grep -q '定義を指定して' /tmp/drift-bare.log
+          # 15. **案件が決めたときだけ落とす**（既定では絶対に落ちない）。
+          mkdir -p /tmp/strict
+          printf 'project_version: "1.0"\nsystem: { what: x }\nnaming: { page: snake_case }\n' \
+            > /tmp/strict/pre.yaml
+          cat > /tmp/strict/def.yaml <<'YAML'
+          page:
+            type: search
+            id: badName
+            title: X
+            repository: r
+            table:
+              columns: [{ field: code, label: コード, sortable: true }]
+          YAML
+          node dist/cli.js advise /tmp/strict/def.yaml --project /tmp/strict/pre.yaml \
+            > /tmp/strict.log
+          grep -q 'project-name-shape' /tmp/strict.log
+          if ! node dist/cli.js advise /tmp/strict/def.yaml \
+                 --project /tmp/strict/pre.yaml --project-as-error \
+                 > /tmp/strict-err.log 2>&1; then
+            grep -q -e '--project-as-error を渡したので落としました' /tmp/strict-err.log
+          else
+            echo "旗を渡したのに落ちなかった"; exit 1
+          fi
+          # 決めごとに合っていれば、旗を渡しても落ちない（組み込みの助言では落とさない）。
+          sed -i 's/id: badName/id: good_name/' /tmp/strict/def.yaml
+          node dist/cli.js advise /tmp/strict/def.yaml --project /tmp/strict/pre.yaml \
+            --project-as-error > /dev/null
+          # 16. **縛れる名前が増えた**（ステップ id・カード id・プラグイン名）。
+          printf 'project_version: "1.0"\nsystem: { what: x }\n' > /tmp/strict/steps.yaml
+          printf 'naming: { step: snake_case, card: snake_case, plugin: camelCase }\n' \
+            >> /tmp/strict/steps.yaml
+          cat > /tmp/strict/wizard.yaml <<'YAML'
+          page:
+            type: wizard
+            id: x
+            title: X
+            repository: r
+            key: id
+            steps:
+              - id: badStep
+                title: S
+                fields: [{ field: code, label: C }]
+            actions: [{ id: a, type: plugin, plugin: bad_plugin, label: B }]
+          YAML
+          node dist/cli.js advise /tmp/strict/wizard.yaml             --project /tmp/strict/steps.yaml > /tmp/steps.log
+          grep -q 'ステップ id "badStep"' /tmp/steps.log
+          grep -q 'プラグイン名 "bad_plugin"' /tmp/steps.log
+          # 17. MCP からも同じ1枚が読める（AI が最初に引く道具）。
           printf '%s\n' \
             '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{}}}' \
             '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
@@ -2781,6 +2841,47 @@ jobs:
           BASE="$BASE" DEFS=definitions GITHUB_OUTPUT=/tmp/out2.txt bash run.sh
           grep -q 'changed=false' /tmp/out2.txt
           [ ! -s body.md ]
+          # **項目を消したのに、まだ使われている**回（一覧から金額の列を消したが、
+          # 合計の計算がその項目を見ている）。レビューで止まるのはここだけ。
+          BASE=$(git rev-parse HEAD)
+          cat > definitions/order.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - { field: orderNo, label: 受注番号 }
+                    - { field: amount, label: 金額, type: number }
+                    - { field: total, label: 合計, computed: { op: sum, fields: [amount] } }
+          YAML
+          git add -A && git commit -qm "add form"
+          BASE2=$(git rev-parse HEAD)
+          cat > definitions/order.yaml <<'YAML'
+          page:
+            type: form
+            id: order_entry
+            title: 受注入力
+            repository: orderRepository
+            key: orderNo
+            form:
+              sections:
+                - fields:
+                    - { field: orderNo, label: 受注番号 }
+                    - { field: total, label: 合計, computed: { op: sum, fields: [amount] } }
+          YAML
+          git add -A && git commit -qm "drop amount column"
+          BASE="$BASE2" DEFS=definitions GITHUB_OUTPUT=/tmp/out3.txt bash run.sh
+          grep -q 'はまだ使われています' body.md
+          grep -q 'computed' body.md
+          # 貼る形に囲みの字は出さない（この断片自体が手引きの囲みの中に在るので）。
+          FENCE=$(printf '\140\140\140')
+          if grep -qF "$FENCE" body.md; then
+            echo "PR に貼る本文へ囲みの字が出た"; cat body.md; exit 1
+          fi
 
       - name: Reading the definition back in English (explain --lang en)
         working-directory: typescript

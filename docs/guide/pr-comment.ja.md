@@ -87,12 +87,36 @@ jobs:
                 echo
               } > graph.md
             fi
+            # **項目を消した回だけ**、その名前がまだどこで使われているかを足す。
+            # 消した本人は「もう使っていない」つもりなので、残っていることはレビューで
+            # しか止まらない。名前は diff の消えた行から拾い、**変更後の定義にまだ在る
+            # ものだけ**が残る（消し切っていれば ask --impact が 1 を返して飛ばされる）。
+            : > impact.md
+            GONE=$(git diff --unified=0 "$BASE"...HEAD -- "$file" \
+                     | grep '^-' | grep -oE 'field: [A-Za-z0-9_]+' \
+                     | sed 's/field: //' | sort -u || true)
+            for name in $GONE; do
+              npx hatake ask "$file" --impact "$name" > gone.txt 2>/dev/null || continue
+              {
+                echo "<details><summary>\"$name\" はまだ使われています</summary>"
+                echo
+                # 囲みの字は書かない（この断片が手引きの囲みの中に在るので、
+                # 入れ子になって塊が途中で切れる）。形を保つのは <pre> で足りる。
+                echo "<pre>"
+                cat gone.txt
+                echo "</pre>"
+                echo
+                echo "</details>"
+                echo
+              } >> impact.md
+            done
             {
               echo "<details><summary><b>$file</b></summary>"
               echo
               cat one.md
               echo
               cat graph.md
+              cat impact.md
               echo "</details>"
               echo
             } >> body.md
@@ -133,6 +157,8 @@ jobs:
 | コメントの数 | **1つだけ**（目印で探して書き換える） | 押すたびに増えると、最後のどれが正しいのか読む人に分からない |
 | 変化が無いとき | **貼らない**（`--if-changed`） | キーの並べ替え・既定値の明示だけで通知が飛ぶと、次から読まれない |
 | 消えたファイル | 外す（`--diff-filter=d`） | 消えた定義は説明できない（変更後が無い） |
+| 消えた項目 | **消した回だけ**「まだ使われている」を貼る（`ask --impact`） | 消した本人は「もう使っていない」つもりなので、残りはレビューでしか止まらない。消し切っていれば `ask --impact` が 1 を返すので、何も貼らない |
+| 貼る形 | 囲みの字を書かず `<pre>` にする | この断片は**手引きの囲みの中**に在る。囲みを書くと入れ子になって、載せた断片を抜き出す側が途中で切れる（実際に落ちた） |
 | 終了コード | **変えない** | ここは読むための道具。止めるのは `hatake diff`（壊す変更で 1）と `hatake validate` |
 | 権限 | `pull-requests: write` だけ | コメント以外は書かない |
 | 比べる相手 | `base.sha`...HEAD（枝分かれした所） | `HEAD~1` だと「直前のコミットとの差」になり、PR 全体の変化にならない |
