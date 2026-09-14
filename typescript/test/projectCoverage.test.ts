@@ -2,8 +2,12 @@ import { readFileSync } from "node:fs";
 import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
 import {
+  compareCoverage,
   COVERAGE_NOTE,
+  coverageDiffLines,
   coverageLines,
+  DIFF_NOTE,
+  parseCoverage,
   parseProject,
   projectCoverage,
   projectLines,
@@ -160,5 +164,66 @@ describe("決めごとの棚卸し", () => {
     expect(text).toContain("問い返しを読むのは `hatake ask");
     // 決めたことが守られているかは誰も見ていない、も言う。
     expect(text).toContain("決めたことが本当に守られているか");
+  });
+});
+
+describe("前回からの移り変わり", () => {
+  const before = () => projectCoverage(project());
+  const after = () => projectCoverage(project(), [doc(DEFINITION)]);
+
+  it("増えた・変わらない・減ったを分ける", () => {
+    const diff = compareCoverage(before(), after());
+    expect(diff.grew.map((one) => one.what)).toContain("画面");
+    expect(diff.same.map((one) => one.what)).toContain("用語");
+    expect(diff.shrank).toEqual([]);
+  });
+
+  it("減ったものは分けて出す（事実として強い）", () => {
+    const diff = compareCoverage(after(), before());
+    expect(diff.shrank.map((one) => one.what)).toContain("画面");
+    const text = coverageDiffLines(diff).join(String.fromCharCode(10));
+    expect(text).toContain("減ったもの:");
+    expect(text).toContain("画面: 1 → 0");
+  });
+
+  it("良し悪しは言わない（増えていない＝悪い、ではない）", () => {
+    const text = coverageDiffLines(compareCoverage(before(), after())).join(
+      String.fromCharCode(10),
+    );
+    expect(text).toContain(DIFF_NOTE);
+    expect(text).toContain("増えていないことが悪いとは限りません");
+  });
+
+  it("読めない紙は**落とす**（黙って 0 と比べると「全部増えた」と出る）", () => {
+    expect(() => parseCoverage({ なんか: 1 })).toThrow(/読めません/);
+    expect(() => parseCoverage(null)).toThrow(/読めません/);
+    // 自分の出力は読める（往復できる）。
+    expect(() =>
+      parseCoverage(JSON.parse(JSON.stringify(after()))),
+    ).not.toThrow();
+  });
+
+  it("CLI から前回を渡すと、移り変わりが出る", () => {
+    const io = fakeIo({ "pre.yaml": PREAMBLE, "def.yaml": DEFINITION });
+    expect(
+      runCli(["project", "pre.yaml", "--coverage", "def.yaml", "--json"], io),
+    ).toBe(0);
+    const first = io.stdout.join("");
+
+    const io2 = fakeIo({
+      "pre.yaml": PREAMBLE,
+      "def.yaml": DEFINITION,
+      "before.json": first,
+    });
+    expect(
+      runCli(
+        ["project", "pre.yaml", "--coverage", "def.yaml", "--since", "before.json"],
+        io2,
+      ),
+    ).toBe(0);
+    const text = io2.stdout.join(String.fromCharCode(10));
+    expect(text).toContain("前回からの移り変わり:");
+    // 同じ定義なので、何も増えていない。
+    expect(text).not.toContain("増えたもの:");
   });
 });

@@ -31,8 +31,10 @@ import {
   checkQuestionAreas,
   mergeQuestionKinds,
   parseQuestionKinds,
+  type QuestionKind,
   questionKindLines,
   questionLines,
+  questionMarkdown,
 } from "./questions.js";
 import {
   filterAreas,
@@ -204,7 +206,14 @@ import {
   type ProjectDocument,
 } from "./project.js";
 import { findProjectAdvice } from "./projectAdvise.js";
-import { coverageLines, projectCoverage } from "./projectCoverage.js";
+import { impactLines, impactOf } from "./questionImpact.js";
+import {
+  compareCoverage,
+  coverageDiffLines,
+  coverageLines,
+  parseCoverage,
+  projectCoverage,
+} from "./projectCoverage.js";
 import {
   AGENTS_BEGIN,
   AGENTS_END,
@@ -262,8 +271,10 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       先に言う）。当て方は言葉の一致だけ＝**下書き**なので、当てられなかった行は
       捨てずに一覧に出す（黙って落とすと、仕分けたつもりで抜ける）。囲みの中は見ない。
 
-  hatake ask <file> [--project hatake.project.yaml] [--json]
+  hatake ask <file> [--project hatake.project.yaml] [--questions team.json]
+                    [--markdown] [--json]
   hatake ask --kinds [--json]
+  hatake ask <file> --impact <項目名> [--json]
       **人が決めないと決まらないこと**を、画面から問い返す（排他・採番・論理削除・
       端数・サーバ側の検証・止めるのは誰か…）。雑な依頼から起こした定義は、書ける
       ことが全部書いてあるので**空欄が無い**＝決まっていないようには見えない。
@@ -279,11 +290,21 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       （理由は必須＝なぜ聞かれなくなったのかが消えると、後から誰も直せない）。
       案件ごとの問いは前書きの questions.ask に足せる（読み手は組み込みと同じ＝
       担当は server か outside だけ・引き金は決まった9つ・印は組み込みとぶつけられない）。
+      --questions は**会社共通の問い**を1枚で渡す（案件をまたぐ決めごと。前書きに写すと
+      写した先が古くなる）。並びは組み込み → 会社 → 案件で、**どこで印がぶつかっても
+      落ちる**（どちらが正かは道具が決めない）。
+      --markdown は**PR にそのまま貼る形**（決めていないことはレビューの席でこそ答えが
+      出る）。囲みの字は1つも出さない＝貼った先の囲みと入れ子にならない。
       --kinds は表そのものを引く（定義が無くても読める＝書く前に何を聞かれるか分かる）。
+      --impact <項目名> は**触る前に問う**＝その項目を消す／名前を変えると定義のどこが
+      壊れるかを辿って「どうしますか」を返す（キー・列・絞り込み・入力欄・計算・条件・
+      遷移のパラメータ・帳票）。辿るのは**この定義の中だけ**で、サーバ・プラグインの
+      中身・アプリのハンドラは見えないと毎回言う。**定義に無い名前は「影響なし」とは
+      言わず、無いと言って 1**（打ち間違いを見て消されると困るので）。
 
   hatake project [<前書き>] [--json]
   hatake project [<前書き>] --agents [--merge AGENTS.md] [--check]
-  hatake project <前書き> --coverage [<定義>...] [--json]
+  hatake project <前書き> --coverage [<定義>...] [--since 前回.json] [--json]
       **案件の前書き**（この案件は何のシステムか・使う人・業務の前提・用語・名前の
       決めごと）を読み返す。省略すると hatake.project.yaml を探す。
       前書きは**人が書く**（定義から起こさない＝起こせば必ず一致して読む値打ちが
@@ -306,6 +327,8 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       いるのは何個か」「辞書にあるのに定義に無い項目名」「まだ答えていない問い」まで出る。
       **数えていないものは毎回言う**（system と premises は誰も突き合わせていない）＝
       総合点は付けない（辞書が要らない案件もあるので、少ない＝悪いとは限らない）。
+      --since に前回の --json を渡すと**移り変わり**が出る（増えた／変わっていない／
+      減った）。読めない紙は落とす＝黙って 0 と比べると「全部増えた」と出るので。
 
   hatake intent --draft --from <指示文> [--definition <定義>] [--page <id>]
                         [--out file] [--json]
@@ -2384,6 +2407,15 @@ function coverage(
     return 0;
   }
   io.out(coverageLines(counted).join("\n"));
+
+  // 前回と比べる（1回の数では育っているかが分からない）。読めない紙は**落とす**
+  // ＝黙って 0 と比べると「全部増えた」と出る。
+  const since = str(flags, "since");
+  if (since !== undefined) {
+    const before = parseCoverage(JSON.parse(io.readFile(since)));
+    io.out("");
+    io.out(coverageDiffLines(compareCoverage(before, counted)).join("\n"));
+  }
   return 0;
 }
 
@@ -3341,17 +3373,24 @@ function askCommand(
   flags: Args["flags"],
   io: CliIo,
 ): number {
+  // 触る前に影響を問う（表も担当の表も要らない＝定義だけで辿れる）。
+  const impact = str(flags, "impact");
+  if (impact !== undefined) return impactCommand(files, impact, flags, io);
+
   const rawKinds = readSpec(flags, io, QUESTION_KINDS_FILE);
   if (rawKinds === null) return 1;
   const rawAreas = readSpec(flags, io, RESPONSIBILITY_FILE);
   if (rawAreas === null) return 1;
   const catalog = parseResponsibility(rawAreas);
   const builtin = parseQuestionKinds(rawKinds);
+  // 会社共通の紙（案件をまたぐ問い）。案件の前書きより先に重ねる＝並びは
+  // 組み込み → 会社 → 案件で、どこでぶつかっても落ちる。
+  const team = teamQuestions(flags, io);
 
   if (flags.kinds === true) {
-    // 表だけ見るときも案件の問いを混ぜる（渡されたときだけ＝定義が無いので隣は探せない）。
+    // 表だけ見るときも足した問いを混ぜる（渡されたときだけ＝定義が無いので隣は探せない）。
     const only = projectOf(undefined, flags, io);
-    const table = mergeQuestionKinds(builtin, only?.questions.ask ?? []);
+    const table = mergeQuestionKinds(builtin, team, only?.questions.ask ?? []);
     checkQuestionAreas(table, catalog);
     if (flags.json === true) {
       io.out(JSON.stringify({ kinds: table }, null, 2));
@@ -3373,8 +3412,8 @@ function askCommand(
     return 1;
   }
   const project = projectOf(files[0], flags, io);
-  // 案件が足した問いを重ねる（印がぶつかったら落ちる＝上書きはできない）。
-  const kinds = mergeQuestionKinds(builtin, project?.questions.ask ?? []);
+  // 足した問いを重ねる（印がぶつかったら落ちる＝上書きはできない）。
+  const kinds = mergeQuestionKinds(builtin, team, project?.questions.ask ?? []);
   // 「定義に書けること」が混ざっていないかを、引く前に確かめる（案件の問いも同じ規則）。
   checkQuestionAreas(kinds, catalog);
   const answers = answeredBy(project, kinds, catalog);
@@ -3390,7 +3429,18 @@ function askCommand(
     catalog,
     { answered: answers.answered, decided: answers.decided },
   );
-  const fromProject = kinds.filter((kind) => kind.from === "project").length;
+  const fromProject = kinds.filter((kind) => kind.from !== undefined).length;
+  if (flags.markdown === true) {
+    io.out(
+      questionMarkdown(questions, {
+        total: kinds.length,
+        answered: answers.answered,
+        decided: answers.decided,
+        fromProject,
+      }),
+    );
+    return 0;
+  }
   if (flags.json === true) {
     io.out(
       JSON.stringify(
@@ -3416,6 +3466,56 @@ function askCommand(
     io.out(line);
   }
   return 0;
+}
+
+/**
+ * 会社共通の問い（`--questions team.json`）。
+ *
+ * 会社の決めごとは案件をまたぐ（保存期間・稟議番号の採番規則）。前書きに写すと、
+ * 写した先が古くなって必ず食い違うので、**1枚を渡せる**ようにしてある。読み手は
+ * 前書きの中と同じ＝紙が変わっても書ける形は変わらない。
+ */
+function teamQuestions(flags: Args["flags"], io: CliIo): QuestionKind[] {
+  const path = str(flags, "questions");
+  if (path === undefined) return [];
+  const raw: unknown = path.endsWith(".json")
+    ? JSON.parse(io.readFile(path))
+    : parseYamlText(io.readFile(path));
+  return parseQuestionKinds(raw, { from: "team", requireAllTriggers: false });
+}
+
+/**
+ * その項目を触ると、どこが壊れるか（`ask --impact <項目名>`）。
+ *
+ * **定義のどこにも無い名前は 1 を返す**＝打ち間違いを「影響なし」と読ませない
+ * （それを見て消す人が出る）。影響が在るときは 0（問いは人への依頼なので落とさない）。
+ */
+function impactCommand(
+  files: string[],
+  field: string,
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  if (files.length !== 1) {
+    io.err("--impact は定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const document = parseYamlText(io.readFile(files[0]));
+  if (typeof document !== "object" || document === null) {
+    io.err("定義（map）として読めません。");
+    return 1;
+  }
+  const raw = document as Record<string, unknown>;
+  const found = impactOf(raw, field);
+  if (flags.json === true) {
+    io.out(JSON.stringify({ field, impacts: found }, null, 2));
+    return found.length === 0 ? 1 : 0;
+  }
+  for (const line of impactLines(raw, field)) {
+    if (found.length === 0) io.err(line);
+    else io.out(line);
+  }
+  return found.length === 0 ? 1 : 0;
 }
 
 /** `--out` があればファイルへ、無ければ標準出力へ（どちらも末尾は改行1つ）。 */

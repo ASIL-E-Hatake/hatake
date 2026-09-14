@@ -211,3 +211,102 @@ export const COVERAGE_NOTE =
   "業務の前提（`premises`）は**誰も突き合わせていません**（人と AI が読むだけ）ので、" +
   "ここには出ません。数が少ないことが悪いとも限りません（辞書が要らない案件もあります）" +
   "＝総合点は付けません。";
+
+/** 前回と比べた1件。 */
+export interface CoverageChange {
+  /** 何の数か（人が読む言葉）。 */
+  what: string;
+  before: number;
+  after: number;
+}
+
+/** 前回と比べた結果。 */
+export interface CoverageDiff {
+  /** 増えたもの。 */
+  grew: CoverageChange[];
+  /** 減ったもの（**事実として強い**ので分ける）。 */
+  shrank: CoverageChange[];
+  /** 変わらなかったもの。 */
+  same: CoverageChange[];
+}
+
+/** 比べる数（ここに無いものは比べない＝増やすときはここに足す）。 */
+const COUNTED: { what: string; of: (one: ProjectCoverage) => number }[] = [
+  { what: "画面", of: (one) => one.pages },
+  { what: "定義の項目", of: (one) => one.fields },
+  { what: "用語", of: (one) => one.glossary.terms },
+  { what: "項目名を名指しした用語", of: (one) => one.glossary.named },
+  { what: "名前の決めごと", of: (one) => one.naming.shapes },
+  { what: "業務ロジックの置き場", of: (one) => one.logic.total },
+  { what: "答えた問い", of: (one) => one.questions.answered },
+  { what: "既定のままでよいと決めた問い", of: (one) => one.questions.decided },
+  { what: "この案件で足した問い", of: (one) => one.questions.added },
+];
+
+/** 前回の棚卸し（`--coverage --json` の出力）として読めるか。 */
+export function parseCoverage(value: unknown): ProjectCoverage {
+  const ok =
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as ProjectCoverage).pages === "number" &&
+    typeof (value as ProjectCoverage).glossary === "object" &&
+    typeof (value as ProjectCoverage).questions === "object";
+  if (!ok) {
+    // 黙って 0 と比べると「全部増えた」と出る（前回が読めなかっただけなのに）。
+    throw new Error(
+      "前回の棚卸しとして読めません（`hatake project --coverage --json` の出力を渡してください）。",
+    );
+  }
+  return value as ProjectCoverage;
+}
+
+/**
+ * 前回と比べる。
+ *
+ * **良し悪しは言わない。** 「増えていない」は事実だが、悪いとは限らない（用語が
+ * 増えないのは、その領域が固まったからかもしれない）。読む人が決める。
+ */
+export function compareCoverage(
+  before: ProjectCoverage,
+  after: ProjectCoverage,
+): CoverageDiff {
+  const diff: CoverageDiff = { grew: [], shrank: [], same: [] };
+  for (const one of COUNTED) {
+    const change = { what: one.what, before: one.of(before), after: one.of(after) };
+    if (change.after > change.before) diff.grew.push(change);
+    else if (change.after < change.before) diff.shrank.push(change);
+    else diff.same.push(change);
+  }
+  return diff;
+}
+
+/** 人が読む形。 */
+export function coverageDiffLines(diff: CoverageDiff): string[] {
+  const out: string[] = ["前回からの移り変わり:"];
+  const line = (one: CoverageChange): string =>
+    `  ・${one.what}: ${one.before} → ${one.after}`;
+  if (diff.shrank.length > 0) {
+    out.push("");
+    out.push("減ったもの:");
+    for (const one of diff.shrank) out.push(line(one));
+  }
+  if (diff.grew.length > 0) {
+    out.push("");
+    out.push("増えたもの:");
+    for (const one of diff.grew) out.push(line(one));
+  }
+  const stuck = diff.same.filter((one) => one.after > 0 || one.before > 0);
+  if (stuck.length > 0) {
+    out.push("");
+    out.push("変わっていないもの:");
+    for (const one of stuck) out.push(`  ・${one.what}: ${one.after}`);
+  }
+  out.push("");
+  out.push(DIFF_NOTE);
+  return out;
+}
+
+/** 増えていない＝悪い、ではない（道具は良し悪しを言わない）。 */
+export const DIFF_NOTE =
+  "※ **増えていないことが悪いとは限りません**（その領域が固まっただけかもしれません）。" +
+  "道具が言えるのは数の増減だけで、良し悪しは読む人が決めます。";

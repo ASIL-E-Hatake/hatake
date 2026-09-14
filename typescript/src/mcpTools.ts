@@ -22,6 +22,7 @@ import { renderMatrix, roleMatrix, sightSummary } from "./roleMatrix.js";
 import { roleSights } from "./roleSight.js";
 import { bulkByRole } from "./roleBulk.js";
 import { PLACEHOLDER_CONTEXTS } from "./placeholders.js";
+import { impactLines, impactOf } from "./questionImpact.js";
 import {
   answeredBy,
   askQuestions,
@@ -493,7 +494,12 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "（既定のままでよいと決めたなら questions.decided に理由つきで残す）。" +
         "案件が前書きの questions.ask に問いを足していれば、それも一緒に返る" +
         "（印に「この案件の決めごと」と付く）。" +
-        "出なかった＝決まっている、ではない（表に無いことは聞かない）。",
+        "出なかった＝決まっている、ではない（表に無いことは聞かない）。" +
+        "**impact に項目名を渡すと、別の問い**＝その項目を消す／名前を変えると" +
+        "定義のどこが壊れるかを辿って返す（キー・列・絞り込み・入力欄・計算・条件・" +
+        "遷移のパラメータ・帳票。明細の中まで開く）。**定義に無い名前は「影響なし」" +
+        "とは言わない**（打ち間違いを見て消されると困るので、無いと言う）。辿るのは" +
+        "この定義の中だけで、サーバ・プラグインの中身・アプリのハンドラは見えない。",
       inputSchema: {
         type: "object",
         properties: {
@@ -505,7 +511,14 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             type: "string",
             description:
               "案件の前書き（hatake.project.yaml の中身）。logic に answers を" +
-              "書いてあれば、その問いは出ない（もう答えたものなので）。",
+              "書いてあれば、その問いは出ない（もう答えたものなので）。" +
+              "questions.ask に足した案件ごとの問いも一緒に返る。",
+          },
+          impact: {
+            type: "string",
+            description:
+              "**触る前に聞く**ときだけ渡す項目名（`price`）。渡すと問い返しではなく" +
+              "「その項目を触ると定義のどこが壊れるか」を返す（消す前・名前を変える前に）。",
           },
         },
         required: ["source"],
@@ -515,6 +528,21 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         const document: unknown = parseYamlText(required(args, "source"));
         if (typeof document !== "object" || document === null) {
           throw new Error("定義（map）として読めません。");
+        }
+        // 触る前の問いは、表も担当の表も要らない（定義だけで辿れる）。
+        const field = str(args, "impact");
+        if (field !== undefined) {
+          const raw = document as Record<string, unknown>;
+          const impacts = impactOf(raw, field);
+          if (impacts.length === 0) {
+            // 「影響なし」と読ませない＝それを見て消す人が出る。
+            throw new Error(impactLines(raw, field).join(" "));
+          }
+          return pretty({
+            field,
+            impacts,
+            text: impactLines(raw, field).join("\n"),
+          });
         }
         const given = str(args, "project");
         const project = given === undefined ? undefined : parseProject(given);
