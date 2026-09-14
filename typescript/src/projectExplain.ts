@@ -64,6 +64,21 @@ export function projectLines(project: ProjectDocument): string[] {
     }
   }
 
+  if (project.questions.ask.length > 0 || project.questions.decided.length > 0) {
+    out.push("");
+    out.push("問い返し（決めていないことを聞く側の決めごと）:");
+    for (const kind of project.questions.ask) {
+      out.push(`  ・この案件で必ず聞く: ${kind.ask}（${kind.id}）`);
+    }
+    for (const one of project.questions.decided) {
+      out.push(
+        `  ・既定のままでよいと決めた: ${one.id}` +
+          `${one.on === undefined ? "" : `（${one.on}）`}`,
+      );
+      out.push(`      ${one.why}`);
+    }
+  }
+
   const shapes = NAMING_TARGETS.filter(
     (target) => project.naming.shapes[target] !== undefined,
   );
@@ -102,15 +117,26 @@ function boundaryLines(project: ProjectDocument): string[] {
   ) {
     watched.push("名前の決めごと");
   }
+  // 問い返しは**問いが出るか出ないか**が見られる（答えの中身は誰も見ていない）。
+  if (project.questions.ask.length > 0 || project.questions.decided.length > 0) {
+    watched.push("問い返し（足した問い・もう聞かないと決めた問い）");
+  }
   return [
     watched.length === 0
       ? "機械が見るもの: ありません（glossary も naming も書いていないので、" +
         "この前書きは読み物だけです）。"
       : `機械が見るもの: ${watched.join(" / ")}` +
         "。`hatake advise <定義> --project <この1枚>` が定義と突き合わせて**助言**に出します" +
-        "（好みなので終了コードは変えません）。",
+        "（好みなので終了コードは変えません）。" +
+        // 問い返しを見るのは別の道具（同じ1枚でも、読む口が違う）。
+        `${
+          project.questions.ask.length > 0 || project.questions.decided.length > 0
+            ? "問い返しを読むのは `hatake ask <定義> --project <この1枚>` です。"
+            : ""
+        }`,
     "機械が見ないもの: この案件は何か・使う人・業務の前提・外の相手" +
-      `${project.logic.length === 0 ? "" : "・業務ロジックの中身（規則そのもの）"}。` +
+      `${project.logic.length === 0 ? "" : "・業務ロジックの中身（規則そのもの）"}` +
+      `${project.questions.decided.length === 0 ? "" : "・決めたことが本当に守られているか"}。` +
       "**人と AI が読むだけ**で、誰も突き合わせていません（定義に書きようがないので）。",
   ];
 }

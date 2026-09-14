@@ -130,6 +130,87 @@
           "additionalProperties": { "type": "string", "minLength": 1 }
         }
       }
+    },
+    "questions": {
+      "description": "案件ごとの問い返し（`npx hatake ask`）。組み込みの問いは「業務システムで大抵決めていないこと」なので、この案件でしか出ない決めごとはここに足す。**読み手は組み込みと同じ**＝形を緩められない。",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ask": {
+          "description": "この案件で必ず決めること（足す問い）。印は組み込みとぶつけられない（上書きはできない＝答えがどちらに対するものか分からなくなる）。",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "step", "where", "trigger", "ask", "why", "ifNot", "answer"],
+            "properties": {
+              "id": {
+                "description": "この問いの印（`answers` / `decided` から指す字）。",
+                "type": "string",
+                "minLength": 1
+              },
+              "step": {
+                "description": "`must`＝必ず決めること／`should`＝決めておくと後で揉めないこと。2段だけ（3段にすると真ん中が読まれない）。",
+                "enum": ["must", "should"]
+              },
+              "where": {
+                "description": "誰の担当か。**`server` か `outside` だけ**（定義やアプリ側で書けることは、問いではなく助言の担当）。",
+                "enum": ["server", "outside"]
+              },
+              "trigger": {
+                "description": "どの事実で聞くか。**閉じた集合**（定義から拾える事実だけ＝思いついたことは聞かない）。saves＝保存できる画面／creates＝新規のボタン／deletes＝削除／bulk＝選んだ行にまとめて実行／validates＝必須か検証／roles＝役割で出し分け／fractions＝端数が出る計算（avg / product）／conditions＝状態で出し分け／report＝帳票。",
+                "enum": ["saves", "creates", "deletes", "bulk", "validates", "roles", "fractions", "conditions", "report"]
+              },
+              "ask": {
+                "description": "聞く文（そのまま人に投げられる1文）。",
+                "type": "string",
+                "minLength": 1
+              },
+              "why": {
+                "description": "なぜ定義に書けないのか（＝なぜ助言ではなく問いなのか）。",
+                "type": "string",
+                "minLength": 1
+              },
+              "ifNot": {
+                "description": "決めないと何が起きるか。",
+                "type": "string",
+                "minLength": 1
+              },
+              "answer": {
+                "description": "答えをどう書くか（`logic` に足す1行の例）。",
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "decided": {
+          "description": "**既定のままでよい**と決めた問い（もう聞かない）。答え（`logic` の `answers`）は「何かを決めて書いた」とき、こちらは「何も書かないと決めた」とき。両方に書くことはできない。",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "why"],
+            "properties": {
+              "id": {
+                "description": "決めた問いの印（`npx hatake ask --kinds` で引ける字）。",
+                "type": "string",
+                "minLength": 1
+              },
+              "why": {
+                "description": "**必須**。なぜ既定のままでよいのか（理由が無いと「なぜ聞かれなくなったのか」が消えて、後から誰も直せない）。",
+                "type": "string",
+                "minLength": 1
+              },
+              "on": {
+                "description": "いつ決めたか（`2026-09-14`）。",
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
     }
   },
   "$defs": {

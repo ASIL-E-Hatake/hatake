@@ -64,6 +64,14 @@ logic:
     where: server
     answers: [concurrency]
 
+questions:
+  # `decided` は「既定のままでよい」と決めた印（`npx hatake ask` の問いが消える）。
+  # 理由は必須＝なぜ聞かれなくなったのかが消えると、後から誰も直せない。
+  decided:
+    - id: notify
+      why: 却下は同じ画面を見ている担当が拾うので、外へ知らせる口は要らない
+      on: "2026-09-14"
+
 naming:
   page: snake_case
   field: camelCase

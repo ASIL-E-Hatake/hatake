@@ -7,6 +7,7 @@ import {
   checkQuestionAreas,
   factsOf,
   parseProject,
+  mergeQuestionKinds,
   parseQuestionKinds,
   parseResponsibility,
   QUESTION_TRIGGERS,
@@ -129,17 +130,17 @@ const READ_ONLY = `page:
 `;
 
 const ask = (source: string, project?: string) => {
-  const table = kinds();
+  const preamble = project === undefined ? undefined : parseProject(project);
   const catalog = areas();
-  const answers = answeredBy(
-    project === undefined ? [] : parseProject(project).logic,
-    table,
-    catalog,
-  );
+  const table = mergeQuestionKinds(kinds(), preamble?.questions.ask ?? []);
+  checkQuestionAreas(table, catalog);
+  const answers = answeredBy(preamble, table, catalog);
   return {
+    table,
     answers,
     questions: askQuestions(doc(source), table, catalog, {
       answered: answers.answered,
+      decided: answers.decided,
     }),
   };
 };
@@ -362,12 +363,133 @@ describe("hatake ask（問い返しの口）", () => {
     });
     expect(runCli(["ask", "near/page.yaml"], io)).toBe(0);
     expect(said(io.stdout)).not.toContain("[concurrency]");
-    expect(said(io.stdout)).toContain("1 件は答えが済んでいます");
+    expect(said(io.stdout)).toContain("答えが済んでいるもの 1件");
   });
 
   it("答えの辻褄が合っていなければ落とす（ここだけは事実の間違い）", () => {
     const io = fakeIo({ "page.yaml": EVERYTHING, "pre.yaml": ANSWERED_NOTHING });
     expect(runCli(["ask", "page.yaml", "--project", "pre.yaml"], io)).toBe(1);
     expect(said(io.stderr)).toContain("no-such-question");
+  });
+});
+
+/** 案件が足した問い（保存できる画面で必ず聞く）。 */
+const PROJECT_ASKS = `project_version: "1.0"
+system:
+  what: 試験用。
+questions:
+  ask:
+    - id: retention
+      step: must
+      where: outside
+      trigger: saves
+      ask: この画面で入れたものは何年残しますか。
+      why: 保存期間は業務と法律の決めごとで、定義には書けない。
+      ifNot: 消してよいものが分からず、誰も消せなくなる。
+      answer: logic に1行（what 受注は7年保存 / where outside）。
+`;
+
+describe("案件ごとの問いを足せる", () => {
+  it("足した問いが、組み込みと一緒に出る（案件の決めごとだと分かる印つき）", () => {
+    const found = ask(EVERYTHING, PROJECT_ASKS);
+    const mine = found.questions.find((one) => one.kind.id === "retention");
+    expect(mine?.kind.from).toBe("project");
+    expect(mine?.where).toBe("outside");
+    expect(mine?.facts[0].trigger).toBe("saves");
+    expect(found.questions.length).toBe(kinds().length + 1);
+  });
+
+  it("読む人には「この案件の決めごと」と見える（組み込みと混ぜない）", () => {
+    const found = ask(EVERYTHING, PROJECT_ASKS);
+    const text = said(
+      questionLines(found.questions, {
+        total: found.table.length,
+        fromProject: 1,
+      }),
+    );
+    expect(text).toContain("[retention]（この案件の決めごと）");
+    expect(text).toContain("うち 1 件はこの案件の決めごと");
+  });
+
+  it("定義で書けることは案件でも問いにできない（助言の担当）", () => {
+    const rotten = PROJECT_ASKS.replace("where: outside", "where: definition");
+    expect(() => parseProject(rotten)).toThrow(/問いではなく助言/);
+  });
+
+  it("引き金は組み込みと同じ閉じた集合（案件の紙にだけ緩い形は書けない）", () => {
+    const rotten = PROJECT_ASKS.replace("trigger: saves", "trigger: whenever");
+    expect(() => parseProject(rotten)).toThrow(/という引き金はありません/);
+  });
+
+  it("組み込みと同じ印は使えない（答えがどちらに対するものか分からなくなる）", () => {
+    const clash = PROJECT_ASKS.replace("id: retention", "id: concurrency");
+    expect(() =>
+      mergeQuestionKinds(kinds(), parseProject(clash).questions.ask),
+    ).toThrow(/組み込みの印と同じ/);
+  });
+});
+
+describe("既定のままでよいと決めたら、もう聞かない", () => {
+  const decided = (id: string, extra = "") => `project_version: "1.0"
+system:
+  what: 試験用。
+questions:
+  decided:
+    - id: ${id}
+      why: 後工程は同じ画面を見るので要らない
+      on: "2026-09-14"
+${extra}`;
+
+  it("決めた問いは出ない（答えとは別の道で消える）", () => {
+    const before = ids(EVERYTHING);
+    const after = ids(EVERYTHING, decided("notify"));
+    expect(before).toContain("notify");
+    expect(after).not.toContain("notify");
+    expect(after.length).toBe(before.length - 1);
+  });
+
+  it("決めた件数は必ず出す（黙って消すと「聞かれなかった」と区別が付かない）", () => {
+    const found = ask(EVERYTHING, decided("notify"));
+    const text = said(
+      questionLines(found.questions, {
+        total: found.table.length,
+        decided: found.answers.decided,
+      }),
+    );
+    expect(text).toContain("既定のままでよいと決めたもの 1件");
+  });
+
+  it("理由は必須（なぜ聞かれなくなったのかが消えると、後から直せない）", () => {
+    const rotten = `project_version: "1.0"
+system:
+  what: 試験用。
+questions:
+  decided:
+    - id: notify
+`;
+    expect(() => parseProject(rotten)).toThrow(/why/);
+  });
+
+  it("知らない印は黙って捨てない", () => {
+    const found = ask(EVERYTHING, decided("no-such-question"));
+    expect(found.answers.problems.join("")).toContain("no-such-question");
+    expect(found.answers.decided.size).toBe(0);
+  });
+
+  it("答えと「決めた」を両方書いたら言う（どちらが本当か分からない）", () => {
+    const both = `project_version: "1.0"
+system:
+  what: 試験用。
+logic:
+  - what: 受注は更新日時で弾く
+    where: server
+    answers: [concurrency]
+questions:
+  decided:
+    - id: concurrency
+      why: 既定でよい
+`;
+    const found = ask(EVERYTHING, both);
+    expect(found.answers.problems.join("")).toContain("どちらか片方");
   });
 });

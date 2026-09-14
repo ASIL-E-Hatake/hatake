@@ -29,6 +29,7 @@ import {
   answeredBy,
   askQuestions,
   checkQuestionAreas,
+  mergeQuestionKinds,
   parseQuestionKinds,
   questionKindLines,
   questionLines,
@@ -203,6 +204,7 @@ import {
   type ProjectDocument,
 } from "./project.js";
 import { findProjectAdvice } from "./projectAdvise.js";
+import { coverageLines, projectCoverage } from "./projectCoverage.js";
 import {
   AGENTS_BEGIN,
   AGENTS_END,
@@ -273,10 +275,15 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       ないので）。
       答えが決まったら前書きの logic に1行足して answers: [<印>] を付ける＝
       次からその問いは出ない（知らない印・担当の食い違いは落とす）。
+      **既定のままでよい**と決めたなら、前書きの questions.decided に理由つきで残す
+      （理由は必須＝なぜ聞かれなくなったのかが消えると、後から誰も直せない）。
+      案件ごとの問いは前書きの questions.ask に足せる（読み手は組み込みと同じ＝
+      担当は server か outside だけ・引き金は決まった9つ・印は組み込みとぶつけられない）。
       --kinds は表そのものを引く（定義が無くても読める＝書く前に何を聞かれるか分かる）。
 
   hatake project [<前書き>] [--json]
   hatake project [<前書き>] --agents [--merge AGENTS.md] [--check]
+  hatake project <前書き> --coverage [<定義>...] [--json]
       **案件の前書き**（この案件は何のシステムか・使う人・業務の前提・用語・名前の
       決めごと）を読み返す。省略すると hatake.project.yaml を探す。
       前書きは**人が書く**（定義から起こさない＝起こせば必ず一致して読む値打ちが
@@ -294,6 +301,11 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --check は書かずに**古くなっていないか**だけを見る（違えば 1。CI に置く用＝
       生成物なのに古い節が貼ってあると、AI はそれを読む）。
       ブランチ名やコミット規約は**印の外**に手で書く（生成で消えない）。
+      --coverage は**この前書きでいま何件言えているか**を数える（用語・名前の決めごと・
+      業務ロジックの置き場・問い返し）。定義も渡すと「定義の項目のうち辞書が名指しして
+      いるのは何個か」「辞書にあるのに定義に無い項目名」「まだ答えていない問い」まで出る。
+      **数えていないものは毎回言う**（system と premises は誰も突き合わせていない）＝
+      総合点は付けない（辞書が要らない案件もあるので、少ない＝悪いとは限らない）。
 
   hatake intent --draft --from <指示文> [--definition <定義>] [--page <id>]
                         [--out file] [--json]
@@ -392,6 +404,7 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       言う（消せとは言わない＝出し分けの書き忘れの疑いという事実だけ）。
 
   hatake advise <file> [--rules team.json] [--project hatake.project.yaml]
+                       [--registry hatake-registry.json]
                [--apply picks.json] [--write] [--json]
       **書き足したほうがいい所**を挙げる（並べ替えできる列が無い・絞り込みが無い・
       誰でも消せる・金額に桁区切りが無い…）。これは助言で警告ではないので、
@@ -646,6 +659,7 @@ const BOOLEAN_FLAGS = new Set([
   "caution-as-error",
   "api-only",
   "computed",
+  "coverage",
   "needs-registration",
   "unused",
   "unused-as-error",
@@ -916,6 +930,21 @@ const REGISTRY_FILE = "hatake-registry.json";
  * エラーにしない（一覧を渡せない場所でも `validate` は動く必要がある）。
  * ただし明示されたのに読めないのは指定間違いなので投げる。
  */
+/**
+ * 登録済みの一覧を「渡されたときだけ」の形で返す。
+ *
+ * `{ registry: undefined }` と `{}` は型の上では同じだが、**渡していない**ことを
+ * 呼ばれた側が見分けられるように、無いときはキーごと落とす。
+ */
+const registryOf = (
+  file: string,
+  flags: Args["flags"],
+  io: CliIo,
+): { registry?: DefinitionRegistry } => {
+  const found = loadRegistry(file, flags, io);
+  return found === undefined ? {} : { registry: found };
+};
+
 function loadRegistry(
   file: string,
   flags: Args["flags"],
@@ -1596,7 +1625,11 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
       // 案件の決めごと（名前・用語）は、前書きが在るときだけ。
       ...(project === undefined
         ? []
-        : findProjectAdvice(document as Record<string, unknown>, project, rules)),
+        : findProjectAdvice(document as Record<string, unknown>, project, rules, {
+            // 登録済みの一覧が在れば「宣言したのに登録が無い」まで言える
+            // （渡されていなければ、そこは黙る＝知らないことを言わない）。
+            ...registryOf(files[0], flags, io),
+          })),
     ],
   );
   // 物差しが「その場所に書けないキー」を勧めていたら、助言を出す前に止める。
@@ -1752,7 +1785,15 @@ function review(
     rules,
     ...(project === undefined
       ? {}
-      : { extra: findProjectAdvice(raw, project, rules) }),
+      : {
+          extra: findProjectAdvice(
+            raw,
+            project,
+            rules,
+            // ファイル名が無い（標準入力）なら隣を探せないので、渡されたときだけ。
+            file === undefined ? {} : registryOf(file, flags, io),
+          ),
+        }),
   });
   if (unwritable(document.advice, flags, io) > 0) return 1;
   if (flags.json === true) {
@@ -2269,11 +2310,80 @@ function projectCommand(
   if (flags.agents === true) {
     return agents(found, positional[0], flags, io);
   }
+  if (flags.coverage === true) {
+    return coverage(found, positional.slice(1), flags, io);
+  }
   if (flags.json === true) {
     io.out(JSON.stringify(found, null, 2));
     return 0;
   }
   io.out(projectLines(found).join("\n"));
+  return 0;
+}
+
+/**
+ * 決めごとの棚卸し（`project --coverage [<定義>...]`）。
+ *
+ * 前書きは足していく紙なので、育っているかが見えないと放置される。定義も渡すと
+ * 「定義の項目のうち辞書が名指ししているのは何個か」「まだ答えていない問いは何件か」
+ * まで出る（渡さなければ**数えていない**と言う＝0 とは違う）。
+ */
+function coverage(
+  project: ProjectDocument,
+  paths: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const files = collectPaths(paths, io, [".yaml", ".yml", ".json"]);
+  const documents: Record<string, unknown>[] = [];
+  for (const file of files) {
+    const parsed: unknown = parseYamlText(io.readFile(file));
+    if (typeof parsed !== "object" || parsed === null) {
+      io.err(`${file}: 定義（map）として読めません。`);
+      return 1;
+    }
+    documents.push(parsed as Record<string, unknown>);
+  }
+
+  // まだ答えていない数は、問いを起こさないと分からない（表が要る）。定義を渡して
+  // いなければ数えない＝0 件と言うと「全部答えた」に読めるので、そこは黙る。
+  let open: number | undefined;
+  if (documents.length > 0) {
+    const rawKinds = readSpec(flags, io, QUESTION_KINDS_FILE);
+    const rawAreas = readSpec(flags, io, RESPONSIBILITY_FILE);
+    if (rawKinds === null || rawAreas === null) return 1;
+    const catalog = parseResponsibility(rawAreas);
+    const kinds = mergeQuestionKinds(
+      parseQuestionKinds(rawKinds),
+      project.questions.ask,
+    );
+    checkQuestionAreas(kinds, catalog);
+    const answers = answeredBy(project, kinds, catalog);
+    if (answers.problems.length > 0) {
+      for (const one of answers.problems) io.err(one);
+      return 1;
+    }
+    // 同じ問いが2枚の定義で出ても1件（数えるのは**まだ答えていない問いの種類**）。
+    const still = new Set<string>();
+    for (const document of documents) {
+      for (const one of askQuestions(document, kinds, catalog, {
+        answered: answers.answered,
+        decided: answers.decided,
+      })) {
+        still.add(one.kind.id);
+      }
+    }
+    open = still.size;
+  }
+
+  const counted = projectCoverage(project, documents, {
+    ...(open === undefined ? {} : { open }),
+  });
+  if (flags.json === true) {
+    io.out(JSON.stringify(counted, null, 2));
+    return 0;
+  }
+  io.out(coverageLines(counted).join("\n"));
   return 0;
 }
 
@@ -3236,16 +3346,18 @@ function askCommand(
   const rawAreas = readSpec(flags, io, RESPONSIBILITY_FILE);
   if (rawAreas === null) return 1;
   const catalog = parseResponsibility(rawAreas);
-  const kinds = parseQuestionKinds(rawKinds);
-  // 「定義に書けること」が混ざっていないかを、引く前に確かめる。
-  checkQuestionAreas(kinds, catalog);
+  const builtin = parseQuestionKinds(rawKinds);
 
   if (flags.kinds === true) {
+    // 表だけ見るときも案件の問いを混ぜる（渡されたときだけ＝定義が無いので隣は探せない）。
+    const only = projectOf(undefined, flags, io);
+    const table = mergeQuestionKinds(builtin, only?.questions.ask ?? []);
+    checkQuestionAreas(table, catalog);
     if (flags.json === true) {
-      io.out(JSON.stringify({ kinds }, null, 2));
+      io.out(JSON.stringify({ kinds: table }, null, 2));
       return 0;
     }
-    for (const line of questionKindLines(kinds, catalog)) io.out(line);
+    for (const line of questionKindLines(table, catalog)) io.out(line);
     return 0;
   }
 
@@ -3261,7 +3373,11 @@ function askCommand(
     return 1;
   }
   const project = projectOf(files[0], flags, io);
-  const answers = answeredBy(project?.logic ?? [], kinds, catalog);
+  // 案件が足した問いを重ねる（印がぶつかったら落ちる＝上書きはできない）。
+  const kinds = mergeQuestionKinds(builtin, project?.questions.ask ?? []);
+  // 「定義に書けること」が混ざっていないかを、引く前に確かめる（案件の問いも同じ規則）。
+  checkQuestionAreas(kinds, catalog);
+  const answers = answeredBy(project, kinds, catalog);
   if (answers.problems.length > 0) {
     // 答えたつもりで答えていないのは事実の間違いなので、問いを出す前に言う
     // （黙って拾わないと、消えたはずの問いが出続ける／答えていない問いが消える）。
@@ -3272,12 +3388,19 @@ function askCommand(
     document as Record<string, unknown>,
     kinds,
     catalog,
-    { answered: answers.answered },
+    { answered: answers.answered, decided: answers.decided },
   );
+  const fromProject = kinds.filter((kind) => kind.from === "project").length;
   if (flags.json === true) {
     io.out(
       JSON.stringify(
-        { questions, kinds: kinds.length, answered: [...answers.answered] },
+        {
+          questions,
+          kinds: kinds.length,
+          fromProject,
+          answered: [...answers.answered],
+          decided: [...answers.decided],
+        },
         null,
         2,
       ),
@@ -3287,6 +3410,8 @@ function askCommand(
   for (const line of questionLines(questions, {
     total: kinds.length,
     answered: answers.answered,
+    decided: answers.decided,
+    fromProject,
   })) {
     io.out(line);
   }

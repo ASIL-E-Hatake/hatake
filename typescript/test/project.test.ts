@@ -230,6 +230,66 @@ page:
     expect(single.filter((advice) => advice.rule === "project-logic-unused")).toEqual([]);
   });
 
+  it("宣言したのにアプリ側に登録が無ければ言う（登録済みの一覧を渡したときだけ）", () => {
+    const source = `dsl_version: "1.0"
+page:
+  type: search
+  id: product_search
+  title: 商品照会
+  repository: productRepository
+  key: id
+  table:
+    columns:
+      - { field: code, label: コード }
+`;
+    // 渡さなければ黙る（知らないのに「登録が無い」は嘘）。
+    expect(
+      findProjectAdvice(definition(source), project()).filter(
+        (advice) => advice.rule === "project-logic-unregistered",
+      ),
+    ).toEqual([]);
+
+    // 渡して、その名前が無ければ言う（呼んでいなくても登録漏れは登録漏れ）。
+    const found = findProjectAdvice(definition(source), project(), undefined, {
+      registry: { plugins: ["somethingElse"] },
+    });
+    const one = found.find(
+      (advice) => advice.rule === "project-logic-unregistered",
+    );
+    expect(one?.says).toContain("csvExport");
+    expect(one?.says).toContain("押しても何も起きません");
+
+    // 登録が在れば言わない。
+    expect(
+      findProjectAdvice(definition(source), project(), undefined, {
+        registry: { plugins: ["csvExport"] },
+      }).filter((advice) => advice.rule === "project-logic-unregistered"),
+    ).toEqual([]);
+  });
+
+  it("サーバ・外の担当は登録を見ない（アプリに登録するものではない）", () => {
+    const found = findProjectAdvice(
+      definition(`dsl_version: "1.0"
+page:
+  type: search
+  id: product_search
+  title: 商品照会
+  repository: productRepository
+  key: id
+  table:
+    columns:
+      - { field: code, label: コード }
+`),
+      project(),
+      undefined,
+      { registry: { plugins: ["csvExport"] } },
+    );
+    // orderCloseGuard（server）と stockAllocation（outside）は名前が在るが言わない。
+    expect(
+      found.filter((advice) => advice.rule === "project-logic-unregistered"),
+    ).toEqual([]);
+  });
+
   it("サーバの担当と書いたのに画面から呼んでいれば言う（食い違い）", () => {
     const found = findProjectAdvice(
       definition(`dsl_version: "1.0"

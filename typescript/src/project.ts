@@ -20,6 +20,11 @@
 import { parse as parseYamlText } from "yaml";
 
 import { FieldTypes } from "./definition.js";
+import {
+  type DecidedQuestion,
+  parseQuestionKinds,
+  type QuestionKind,
+} from "./questions.js";
 import { type Where, WHERE_KINDS } from "./responsibility.js";
 import { closestKey } from "./strictKeys.js";
 
@@ -97,6 +102,21 @@ export interface NamingRules {
   suffix: Record<string, string>;
 }
 
+/**
+ * 案件ごとの問い返し。
+ *
+ * 組み込みの問い（`spec/question-kinds.json`）は「業務システムで大抵決めていないこと」で、
+ * 現場の決めごとは会社ごとに違う（稟議番号の採番規則・保存期間）。渡せないと「合わない
+ * から使わない」になるので、**足せる**ようにした。ただし読み手は組み込みと同じ
+ * （[parseQuestionKinds]）＝案件の紙にだけ緩い形は書けない。
+ */
+export interface ProjectQuestions {
+  /** この案件で必ず決めること（足す問い）。 */
+  ask: QuestionKind[];
+  /** 既定のままでよいと決めたもの（もう聞かない）。 */
+  decided: DecidedQuestion[];
+}
+
 export interface ProjectDocument {
   version: string;
   system: {
@@ -109,6 +129,8 @@ export interface ProjectDocument {
   /** 業務ロジックの置き場（宣言だけ。実装は持たない）。 */
   logic: LogicRule[];
   naming: NamingRules;
+  /** 案件ごとの問い返し（足す問いと、既定のままでよいと決めたもの）。 */
+  questions: ProjectQuestions;
 }
 
 export class ProjectParseError extends Error {
@@ -125,7 +147,10 @@ const TOP_KEYS = [
   "glossary",
   "logic",
   "naming",
+  "questions",
 ];
+const QUESTIONS_KEYS = ["ask", "decided"];
+const DECIDED_KEYS = ["id", "why", "on"];
 const LOGIC_KEYS = ["what", "where", "name", "why", "answers"];
 const SYSTEM_KEYS = ["what", "users", "premises", "external"];
 const EXTERNAL_KEYS = ["name", "what", "owner"];
@@ -199,7 +224,58 @@ export function parseProject(source: string): ProjectDocument {
     glossary: parseGlossary(node.glossary),
     logic: parseLogic(node.logic),
     naming: parseNaming(node.naming),
+    questions: parseQuestions(node.questions),
   };
+}
+
+/**
+ * 案件ごとの問い返し。
+ *
+ * 足す問いは**組み込みと同じ読み手**を通す（形が違うと、案件の紙にだけ緩い問いが書ける
+ * ことになる）。`decided` の `why` を必須にしてあるのは `where: outside` と同じ考えで、
+ * 理由の無い決定は後から誰も直せないから＝「なぜ聞かれなくなったのか」が消える。
+ */
+function parseQuestions(value: unknown): ProjectQuestions {
+  if (value === undefined) return { ask: [], decided: [] };
+  if (!isDict(value)) bad("questions は map で書いてください。");
+  const node = value as Record<string, unknown>;
+  checkKeys(node, QUESTIONS_KEYS, "questions");
+
+  let ask: QuestionKind[] = [];
+  if (node.ask !== undefined) {
+    if (!Array.isArray(node.ask)) bad("questions.ask は並びで書いてください。");
+    try {
+      ask = parseQuestionKinds(node.ask, {
+        from: "project",
+        requireAllTriggers: false,
+      });
+    } catch (error) {
+      bad(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  const decided: DecidedQuestion[] = [];
+  if (node.decided !== undefined) {
+    if (!Array.isArray(node.decided)) {
+      bad("questions.decided は並びで書いてください。");
+    }
+    const seen = new Set<string>();
+    for (const [index, one] of (node.decided as unknown[]).entries()) {
+      const at = `questions.decided[${index}]`;
+      if (!isDict(one)) bad(`${at} は map で書いてください。`);
+      const item = one as Record<string, unknown>;
+      checkKeys(item, DECIDED_KEYS, at);
+      const id = text(item.id, `${at}.id`);
+      if (seen.has(id)) bad(`${at}: "${id}" が2回出てきます。`);
+      seen.add(id);
+      decided.push({
+        id,
+        why: text(item.why, `${at}.why`),
+        ...(item.on === undefined ? {} : { on: text(item.on, `${at}.on`) }),
+      });
+    }
+  }
+  return { ask, decided };
 }
 
 function parseSystem(value: unknown): ProjectDocument["system"] {
