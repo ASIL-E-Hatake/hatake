@@ -1962,3 +1962,198 @@ ${maxRows}
     expect(found.map((w) => w.rule)).toContain("maxrows-above-page-size");
   });
 });
+
+/**
+ * 黙って効かないもの（4件）。
+ *
+ * どれも strict もスキーマも通り、画面は出る。**押すまで・刷るまで気づけない**類なので
+ * 静的に言う。言い過ぎないための線も一緒に見る（正しい定義に毎回出る警告は、読まれない）。
+ */
+describe("遷移のパラメータが、この画面に無い項目を指している", () => {
+  const page = (param: string) => `
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+      - { field: customer, label: 顧客名 }
+  actions:
+    - id: detail
+      type: navigate
+      label: 詳細
+      page: order_detail
+      params: { id: ${param} }
+`;
+
+  it("綴り違いに見えるものは言う（遷移は起きて、渡る値だけが空になる）", () => {
+    const found = warningsOf(page("$row.ordreNo"));
+    const one = found.find((w) => w.rule === "route-param-unknown-field");
+    expect(one?.path).toBe("page.actions[0].params.id");
+    expect(one?.message).toContain("orderNo");
+    expect(one?.message).toContain("渡る値だけが空");
+  });
+
+  it("書いてある項目なら言わない", () => {
+    expect(rulesOf(page("$row.orderNo"))).not.toContain("route-param-unknown-field");
+  });
+
+  it("**近い名前が無ければ黙る**（行は Repository から来るので、定義に無い値も在りうる）", () => {
+    // 一覧に出していない値を渡すのは普通の書き方。ここで言うと正しい定義が毎回鳴る。
+    expect(rulesOf(page("$row.warehouseCode"))).not.toContain(
+      "route-param-unknown-field",
+    );
+  });
+
+  it("差し込みでない値は見ない", () => {
+    expect(rulesOf(page("fixed"))).not.toContain("route-param-unknown-field");
+  });
+});
+
+describe("enabledWhen が永久に成り立たない", () => {
+  const page = (condition: string) => `
+page:
+  type: detail
+  id: order_detail
+  title: 受注詳細
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号 }
+          - { field: status, label: 状態 }
+  actions:
+    - id: approve
+      type: plugin
+      plugin: approveOrder
+      label: 承認
+      enabledWhen: ${condition}
+`;
+
+  it("同じ項目に違う値を2つ書いていれば言う", () => {
+    const found = warningsOf(
+      page("{ all: [{ field: status, operator: equals, value: 受付 }, " +
+        "{ field: status, operator: equals, value: 承認済 }] }"),
+    );
+    const one = found.find((w) => w.rule === "enabledwhen-never-true");
+    expect(one?.message).toContain("永久に成り立ちません");
+    expect(one?.message).toContain("受付");
+    expect(one?.fix).toContain("any");
+  });
+
+  it("「空」と「空でない」を同時に求めていれば言う", () => {
+    const found = warningsOf(
+      page("{ all: [{ field: status, operator: isEmpty }, " +
+        "{ field: status, operator: isNotEmpty }] }"),
+    );
+    expect(found.map((w) => w.rule)).toContain("enabledwhen-never-true");
+  });
+
+  it("any の中は見ない（1つ成り立てばよい）", () => {
+    expect(
+      rulesOf(
+        page("{ any: [{ field: status, operator: equals, value: 受付 }, " +
+          "{ field: status, operator: equals, value: 承認済 }] }"),
+      ),
+    ).not.toContain("enabledwhen-never-true");
+  });
+
+  it("この画面に無い項目を見ていれば言う（綴り違いに見えるときだけ）", () => {
+    const found = warningsOf(
+      page("{ field: statuss, operator: equals, value: 受付 }"),
+    );
+    const one = found.find((w) => w.rule === "enabledwhen-never-true");
+    expect(one?.message).toContain("status");
+    expect(one?.message).toContain("永久に押せません");
+  });
+
+  it("**無い項目の isEmpty は言わない**（それは永久に真であって、偽ではない）", () => {
+    expect(
+      rulesOf(page("{ field: statuss, operator: isEmpty }")),
+    ).not.toContain("enabledwhen-never-true");
+  });
+
+  it("素直な条件には何も言わない", () => {
+    expect(
+      rulesOf(page("{ field: status, operator: equals, value: 受付 }")),
+    ).not.toContain("enabledwhen-never-true");
+  });
+});
+
+describe("知らない紙の名前", () => {
+  const page = (size: string) => `
+page:
+  type: report
+  id: sales_report
+  title: 売上明細
+  repository: salesRepository
+  table:
+    columns:
+      - { field: code, label: コード, width: 80 }
+  report:
+    paper: { size: ${size} }
+    totals: []
+`;
+
+  it("組み込みでない紙は、A4 として刷られると言う", () => {
+    const found = warningsOf(page("B4"));
+    const one = found.find((w) => w.rule === "unknown-paper-size");
+    expect(one?.path).toBe("page.report.paper.size");
+    expect(one?.message).toContain("A4 として刷られます");
+  });
+
+  it("綴り違いなら近い名前を添える", () => {
+    const found = warningsOf(page("A44"));
+    expect(found.find((w) => w.rule === "unknown-paper-size")?.fix).toContain("A4");
+  });
+
+  it("組み込みの紙には言わない", () => {
+    for (const size of ["A4", "A3", "B5", "letter"]) {
+      expect(rulesOf(page(size)), size).not.toContain("unknown-paper-size");
+    }
+  });
+});
+
+describe("出す口が1つも登録されていない", () => {
+  const yaml = `
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  actions:
+    - { id: csv, type: export, label: CSV出力, scope: selection }
+`;
+  const document = () => parseYaml(yaml) as Record<string, unknown>;
+
+  it("**申告**（動いているアプリ）なら、口が無いことを言える", () => {
+    const found = findWarnings(document(), {
+      registry: { repositories: ["orderRepository"] },
+      registryFromApp: true,
+    });
+    const one = found.find((w) => w.rule === "sink-not-declared");
+    expect(one?.message).toContain("exportSink");
+    expect(one?.message).toContain("何も起きません");
+  });
+
+  it("手で書いた一覧では言わない（書き忘れと区別が付かない）", () => {
+    const found = findWarnings(document(), {
+      registry: { repositories: ["orderRepository"] },
+    });
+    expect(found.map((w) => w.rule)).not.toContain("sink-not-declared");
+  });
+
+  it("申告に口が在れば言わない", () => {
+    const found = findWarnings(document(), {
+      registry: { repositories: ["orderRepository"], sinks: ["exportSink"] },
+      registryFromApp: true,
+    });
+    expect(found.map((w) => w.rule)).not.toContain("sink-not-declared");
+  });
+});

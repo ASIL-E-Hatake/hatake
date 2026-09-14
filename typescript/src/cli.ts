@@ -109,6 +109,12 @@ import {
   renderFilled,
 } from "./wiringFilled.js";
 import { looseTodos, usesInCode } from "./registryUse.js";
+import {
+  isAppSnapshot,
+  parseAppSnapshot,
+  snapshotDocument,
+  snapshotLines,
+} from "./registryFromApp.js";
 import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
 import {
@@ -541,6 +547,17 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       として報告し、終了コード 1 にする（黙って落とすと一覧が嘘になるため）。
       役割は HatakeScope(knownRoles:) に書いた**語彙**を読む（いま配られている
       roles: は読まない＝ログイン状態なので突き合わせに使えない）。
+
+  hatake registry --from-app <申告.json> [--json] [--out hatake-registry.json]
+      **動いているアプリ／サーバの申告**を読んで、validate --registry に渡せる形に
+      する。走査（上）は「その場に書いてある文字列」しか読めないが、申告には
+      読めないものが無い（書き出すのは registrySnapshot / RegistrySnapshot の1行）。
+      **印（$source）の無い紙は受け取らない**＝手で書いた一覧は「登録していない」と
+      「書き忘れた」の区別が付かないので、申告として扱うと道具が無い種類について
+      断定するようになる。印が在る一覧を --registry に渡すと、validate は
+      「出す口が1つも登録されていない」まで言える。
+      **印の中身が本当かは見ない**（書けば名乗れる）。言えるのは「名乗っていない紙は
+      受けない」まで。
 
   hatake registry --compare <画面の一覧.json> <サーバの一覧.json> [--json]
       **利用者が足したもの**が画面とサーバで同じかを見る。組み込みが3版で同じ答えを
@@ -997,7 +1014,11 @@ function warningsIn(
   try {
     const document = parseYamlText(source);
     return typeof document === "object" && document !== null
-      ? findWarnings(document as Record<string, unknown>, { registry })
+      ? findWarnings(document as Record<string, unknown>, {
+          registry,
+          // 一覧が申告（$source つき）なら、**無い種類は本当に無い**と言える。
+          registryFromApp: registryWasSnapshot,
+        })
       : [];
   } catch {
     return []; // 解析が通っている前提なので、ここには来ない
@@ -1030,18 +1051,31 @@ const registryOf = (
   return found === undefined ? {} : { registry: found };
 };
 
+/**
+ * 読んだ一覧が**動いているアプリの申告**だったか（`$source` の印）。
+ *
+ * 一覧を読む所は1つなので、ここに覚えておいて警告に渡す。手で書いた一覧では
+ * 「無い種類」について何も言えない＝印が在るときだけ、そこを言う。
+ */
+let registryWasSnapshot = false;
+
 function loadRegistry(
   file: string,
   flags: Args["flags"],
   io: CliIo,
 ): DefinitionRegistry | undefined {
+  registryWasSnapshot = false;
   const explicit = str(flags, "registry");
   if (explicit !== undefined) {
-    return JSON.parse(io.readFile(explicit)) as DefinitionRegistry;
+    const raw: unknown = JSON.parse(io.readFile(explicit));
+    registryWasSnapshot = isAppSnapshot(raw);
+    return raw as DefinitionRegistry;
   }
   for (const candidate of [join(dirname(file), REGISTRY_FILE), REGISTRY_FILE]) {
     try {
-      return JSON.parse(io.readFile(candidate)) as DefinitionRegistry;
+      const raw: unknown = JSON.parse(io.readFile(candidate));
+      registryWasSnapshot = isAppSnapshot(raw);
+      return raw as DefinitionRegistry;
     } catch {
       // 無ければ次の候補へ。全部無ければ「外との辻褄は見ない」。
     }
@@ -2415,6 +2449,8 @@ function loadFailures(
  */
 function registry(files: string[], flags: Args["flags"], io: CliIo): number {
   if (flags.compare === true) return registryCompare(files, flags, io);
+  const fromApp = str(flags, "from-app");
+  if (fromApp !== undefined) return registryFromApp(fromApp, flags, io);
   if (files.length === 0) {
     io.err("ソースのファイルかディレクトリを指定してください。");
     return 1;
@@ -2897,6 +2933,31 @@ function fixtures(files: string[], flags: Args["flags"], io: CliIo): number {
     for (const line of fixtureLines(file)) io.out(line);
   }
   for (const line of file.notes) io.err(`・${line}`);
+  return 0;
+}
+
+/**
+ * 動いているアプリ／サーバの申告を読む（`registry --from-app <試験の出力>`）。
+ *
+ * 走査（`registry <ソース>`）と違って**読めないものが無い**のが値打ち。代わりに、
+ * 印（`$source`）の無い紙は受け取らない＝手で書いた一覧を申告として扱うと、
+ * 「無い種類」について道具が断定するようになる。
+ */
+function registryFromApp(
+  path: string,
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const snapshot = parseAppSnapshot(JSON.parse(io.readFile(path)));
+  const document = snapshotDocument(snapshot);
+  if (str(flags, "out") !== undefined) {
+    return output(JSON.stringify(document, null, 2), flags, io);
+  }
+  if (flags.json === true) {
+    io.out(JSON.stringify(document, null, 2));
+    return 0;
+  }
+  for (const line of snapshotLines(snapshot)) io.out(line);
   return 0;
 }
 

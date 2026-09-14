@@ -38,7 +38,8 @@ import {
   type DefinitionRegistry,
   type RefKind,
 } from "./refs.js";
-import { paperName, paperSize } from "./papers.js";
+import { paperName, PAPERS, paperSize } from "./papers.js";
+import { rawFormFields, searchFilters, tableColumns } from "./pageParts.js";
 import {
   ACTION_PLACEHOLDERS,
   namesOf,
@@ -73,6 +74,27 @@ const num = (v: unknown): number | undefined =>
 const str = (v: unknown): string | undefined =>
   typeof v === "string" ? v : undefined;
 
+/**
+ * その画面に書いてある項目名の全部（列・絞り込み・入力欄・ウィザードの各ステップ）。
+ *
+ * 歩き方は助言と同じ1本道（[pageParts]）を使う。2つ持つと、片方だけ増えたときに
+ * 「定義に在るのに無いと言う」警告ができる＝道具が嘘をつく側に倒れる。
+ */
+function pageFieldNames(page: Dict): Set<string> {
+  const names = new Set<string>();
+  for (const part of [
+    ...tableColumns(page),
+    ...searchFilters(page),
+    ...rawFormFields(page),
+  ]) {
+    const field = str(part.node.field);
+    if (field !== undefined) names.add(field);
+  }
+  const key = str(page.key);
+  if (key !== undefined) names.add(key);
+  return names;
+}
+
 /** 組み込みの行アクション。宣言しなくても効く。 */
 const BUILT_IN_ROW_ACTIONS = new Set(["edit", "delete"]);
 
@@ -87,6 +109,14 @@ export interface WarningOptions {
    * 見ない＝定義の中だけで閉じた検査になる（今までと同じ）。
    */
   registry?: DefinitionRegistry;
+  /**
+   * その一覧が**動いているアプリの申告**か（`registry --from-app`）。
+   *
+   * 手で書いた一覧は「書き忘れ」と「登録していない」の区別が付かないので、**無い種類**
+   * については何も言えない。申告なら**空の種類は本当に空**なので、「一括は在るのに
+   * 出す口が1つも無い」と言える。区別を持たないと、手書きの一覧で誤報が出る。
+   */
+  registryFromApp?: boolean;
 }
 
 export function findWarnings(
@@ -128,6 +158,9 @@ export function findWarnings(
   }
   if (options.registry !== undefined) {
     checkRegistry(document, options.registry, found);
+    if (options.registryFromApp === true) {
+      checkSinksDeclared(document, options.registry, found);
+    }
   }
   return found;
 }
@@ -248,6 +281,40 @@ const REF_KINDS: Record<
  * 一覧が無ければ判断できないので、**渡されたカテゴリだけ**を見る。組み込みの名前は
  * 自動で足すので、渡すのは自分で登録したものだけでよい。
  */
+/**
+ * 出す口（`exportSink` / `printSink`）が**1つも登録されていない**。
+ *
+ * [checkRegistry] は「渡されていない種類は見ない」ので、`sinks` のキーごと無い一覧では
+ * 黙る＝**1つも登録していないアプリ**が、いちばん困っているのに何も言われない。
+ * 申告（`registry --from-app`）なら空は本当に空なので、そこだけ言える。
+ *
+ * 押すと何が起きるか: Framework は文書（CSV の文字列・紙の中身）までしか作らないので、
+ * 口が無ければ**ボタンは出るのに何も起きない**。一括（`scope: selection`）で気づくのが
+ * 遅れるのは、選んで押すまで誰も試さないため。
+ */
+function checkSinksDeclared(
+  document: Dict,
+  registry: DefinitionRegistry,
+  found: DefinitionWarning[],
+): void {
+  const declared = new Set(registry.sinks ?? []);
+  const seen = new Set<string>();
+  for (const ref of collectRefs(document)) {
+    if (ref.kind !== "sinks" || declared.has(ref.name) || seen.has(ref.name)) continue;
+    seen.add(ref.name);
+    warn(
+      found,
+      "sink-not-declared",
+      ref.path,
+      `${ref.name} を使うボタンがありますが、動いているアプリの申告に出す口が` +
+        `1つもありません。Framework は中身（CSV の文字列・紙の中身）までしか作らないので、` +
+        `**ボタンは出るのに何も起きません**。`,
+      `HatakeScope に \`${ref.name}\` を渡してください` +
+        "（何も起きないボタンは、押した人には壊れて見えます）。",
+    );
+  }
+}
+
 function checkRegistry(
   document: Dict,
   registry: DefinitionRegistry,
@@ -445,6 +512,8 @@ function checkPage(
   checkDeadActions(page, actions, `${path}.actions`, found, tabsOpen);
   checkSelection(page, actions, path, found, appRoles);
   checkPlaceholders(actions, `${path}.actions`, found);
+  checkRouteParams(page, actions, `${path}.actions`, found);
+  checkNeverTrue(page, actions, `${path}.actions`, found);
   checkPrompt(actions, `${path}.actions`, found);
   checkTable(page, actionIds, path, found);
   checkSearch(page, path, found);
@@ -1014,6 +1083,160 @@ function checkPlaceholders(
   });
 }
 
+/**
+ * 遷移のパラメータ（`$row.<項目名>` / `$record.<項目名>`）が、その画面に無い項目を
+ * 指している。
+ *
+ * ここは**文言と違って開いた形**（項目名を書ける）なので、書き間違えても誰も言わない。
+ * 遷移そのものは起きて、**渡る値だけが空**になる＝開いた先が「該当なし」になる。
+ * 押した人から見ると「たまに開かない画面」で、原因に辿り着けない。
+ *
+ * 行や1件は Repository から来るので、**定義に書いていない項目が実際には在る**ことが
+ * ある（一覧に出していない値を渡すのは普通の書き方）。だから**綴り違いに見えるときだけ**
+ * 言う（近い名前が無ければ黙る）。ここを緩くしないと、正しい定義に毎回警告が出る。
+ */
+function checkRouteParams(
+  page: Dict,
+  actions: Dict[],
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  const names = pageFieldNames(page);
+  if (names.size === 0) return;
+  actions.forEach((action, i) => {
+    for (const [node, holder] of [
+      ["params", action],
+      ["onSuccess.params", isDict(action.onSuccess) ? action.onSuccess : undefined],
+    ] as [string, Dict | undefined][]) {
+      const params = isDict(holder?.params) ? holder.params : undefined;
+      if (params === undefined) continue;
+      for (const [key, raw] of Object.entries(params)) {
+        const value = str(raw);
+        const matched = value === undefined ? null : /^\$(row|record)\.(.+)$/.exec(value);
+        if (matched === null) continue;
+        const field = matched[2];
+        if (names.has(field)) continue;
+        const near = closestKey(field, [...names]);
+        if (near === null) continue;
+        warn(
+          found,
+          "route-param-unknown-field",
+          `${path}[${i}].${node}.${key}`,
+          `遷移のパラメータ "${value}" の ${field} が、この画面のどこにもありません` +
+            `（${near} の間違いではないですか？）。遷移は起きて、**渡る値だけが空**に` +
+            `なります＝開いた先が「該当なし」になります。`,
+          `${near} に直してください` +
+            "（一覧に出していないだけで行が持っている値なら、そのままで合っています）。",
+        );
+      }
+    }
+  });
+}
+
+/**
+ * `enabledWhen` が**永久に偽**＝そのボタンは出るのに、どうやっても押せない。
+ *
+ * 押せないボタンは「壊れている」に見えるが、定義としては通る。言えるのは3つだけ:
+ *   ・同じ項目に `equals` で違う値を2つ（`all` の中）… 両方は成り立たない
+ *   ・同じ項目に `isEmpty` と `isNotEmpty`（`all` の中）… 同上
+ *   ・その画面に無い項目を見ている（綴り違いに見えるときだけ）
+ * `any` の中は1つ成り立てばよいので見ない。`isEmpty` は**無い項目で真**になるので、
+ * 3つ目からは外す（無い項目 + isEmpty は「永久に偽」ではなく「永久に真」）。
+ */
+function checkNeverTrue(
+  page: Dict,
+  actions: Dict[],
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  const names = pageFieldNames(page);
+  actions.forEach((action, i) => {
+    const condition = isDict(action.enabledWhen) ? action.enabledWhen : undefined;
+    if (condition === undefined) return;
+    const label = str(action.label) ?? str(action.id) ?? "ボタン";
+    const at = `${path}[${i}].enabledWhen`;
+    const clash = contradiction(condition);
+    if (clash !== null) {
+      warn(
+        found,
+        "enabledwhen-never-true",
+        at,
+        `「${label}」の \`enabledWhen\` は**永久に成り立ちません**（${clash}）。` +
+          "ボタンは出ますが、どうやっても押せません。",
+        "`all` は全部を満たす条件です。どれか1つでよいなら `any` に、" +
+          "どちらかが要らないなら消してください。",
+      );
+      return;
+    }
+    if (names.size === 0) return;
+    for (const leaf of leaves(condition)) {
+      const field = str(leaf.field);
+      if (field === undefined || names.has(field)) continue;
+      // 無い項目は値が来ないので `isEmpty` は**真**になる＝「永久に偽」ではない。
+      if (leaf.operator === "isEmpty") continue;
+      const near = closestKey(field, [...names]);
+      if (near === null) continue;
+      warn(
+        found,
+        "enabledwhen-never-true",
+        `${at}.field`,
+        `「${label}」の \`enabledWhen\` が見ている "${field}" が、この画面のどこにも` +
+          `ありません（${near} の間違いではないですか？）。値が来ないので条件は` +
+          `成り立たず、ボタンは出るのに**永久に押せません**。`,
+        `${near} に直してください。`,
+      );
+      return;
+    }
+  });
+}
+
+/** 条件の葉を全部（`all` / `any` / `not` を潜る）。 */
+function leaves(condition: Dict): Dict[] {
+  const out: Dict[] = [];
+  const walk = (node: Dict): void => {
+    for (const key of ["all", "any"]) {
+      for (const one of list(node[key])) if (isDict(one)) walk(one);
+    }
+    if (isDict(node.not)) walk(node.not);
+    if (str(node.field) !== undefined) out.push(node);
+  };
+  walk(condition);
+  return out;
+}
+
+/**
+ * `all` の中で噛み合わない組（在れば人に見せる1行）。
+ *
+ * `any` は見ない（1つ成り立てばよいので、噛み合わない組が在っても構わない）。
+ */
+function contradiction(condition: Dict): string | null {
+  for (const one of list(condition.all)) {
+    if (isDict(one)) {
+      const nested = contradiction(one);
+      if (nested !== null) return nested;
+    }
+  }
+  const same = list(condition.all).filter(isDict);
+  for (let a = 0; a < same.length; a++) {
+    for (let b = a + 1; b < same.length; b++) {
+      const field = str(same[a].field);
+      if (field === undefined || field !== str(same[b].field)) continue;
+      const [x, y] = [same[a], same[b]];
+      if (
+        x.operator === "equals" &&
+        y.operator === "equals" &&
+        String(x.value) !== String(y.value)
+      ) {
+        return `${field} が "${String(x.value)}" と "${String(y.value)}" の両方`;
+      }
+      const ops = [x.operator, y.operator];
+      if (ops.includes("isEmpty") && ops.includes("isNotEmpty")) {
+        return `${field} が「空」と「空でない」の両方`;
+      }
+    }
+  }
+  return null;
+}
 
 function checkTarget(
   page: string | undefined,
@@ -1957,6 +2180,8 @@ function checkReport(page: Dict, path: string, found: DefinitionWarning[]): void
     );
   }
 
+  checkPaper(report, path, found);
+
   const table = isDict(page.table) ? page.table : undefined;
   checkPaperFits(report, list(table?.columns).filter(isDict), path, found);
 
@@ -1979,6 +2204,36 @@ function checkReport(page: Dict, path: string, found: DefinitionWarning[]): void
       "その項目を table.columns に足すか、列にある項目で合計してください。",
     );
   });
+}
+
+/**
+ * 知らない紙の名前。
+ *
+ * `paper.size` は**開いた文字列**（Renderer が独自の紙を知っていてよい）。けれど
+ * 刷る側（`hatake_print`）に紙を登録する口は無く、**知らない名前は A4 として刷る**。
+ * つまり「B4 と書いたのに A4 で出る」が黙って起きる ── 紙が違うと列が溢れるので、
+ * 気づくのは刷ったあと。
+ *
+ * だから言うのは**事実**だけ（「登録されていません」とは言わない＝登録する口が無いのに
+ * 登録しろと言うことになる）。近い名前は、綴り違いのときだけ添える。
+ */
+function checkPaper(report: Dict, path: string, found: DefinitionWarning[]): void {
+  const paper = isDict(report.paper) ? report.paper : undefined;
+  const size = str(paper?.size);
+  if (size === undefined || PAPERS[size] !== undefined) return;
+  const near = closestKey(size, Object.keys(PAPERS));
+  warn(
+    found,
+    "unknown-paper-size",
+    `${path}.report.paper.size`,
+    `"${size}" は組み込みの紙ではありません（${Object.keys(PAPERS).join(" / ")}）。` +
+      `刷る側が知らない紙は **A4 として刷られます**＝書いたつもりの大きさになりません` +
+      `（列が溢れても、刷るまで分かりません）。`,
+    near === null
+      ? `組み込みの紙（${Object.keys(PAPERS).join(" / ")}）にするか、` +
+        "Renderer がその紙を知っていることを確かめてください。"
+      : `もしかして "${near}" ですか。`,
+  );
 }
 
 /**

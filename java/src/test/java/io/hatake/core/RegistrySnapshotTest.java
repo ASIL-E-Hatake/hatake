@@ -34,6 +34,19 @@ class RegistrySnapshotTest {
         assertEquals(expected, RegistrySnapshot.KINDS);
     }
 
+    /**
+     * 申告であることの印。{@code hatake registry --from-app} はこの字が無い紙を
+     * 受け取らないので、字が食い違うと書き出した紙が読まれなくなる。
+     */
+    @Test
+    @SuppressWarnings("unchecked")
+    void sourceMarkerMatchesSpec() throws IOException {
+        Map<String, Object> sources = (Map<String, Object>) fixture().get("sources");
+        assertEquals(sources.get("server"), RegistrySnapshot.SOURCE);
+        String json = RegistrySnapshot.toJson(Map.of());
+        assertTrue(json.contains("\"$source\": \"" + RegistrySnapshot.SOURCE + "\""), json);
+    }
+
     @Test
     void reportsOnlyWhatWasAdded() {
         ValidatorRegistry validators = new ValidatorRegistry(

@@ -53,6 +53,7 @@ npx hatake minimize page.yaml     # drop defaults; meaning is unchanged
 npx hatake failures <key>         # real failures: what was written, what the tools said
 npx hatake refs page.yaml --needs-registration     # what the application must register (repositories, plugins, sinks)
 npx hatake wire app.yaml --base /api               # a draft of the wiring (Flutter HatakeScope); the bodies stay TODO
+npx hatake registry --from-app snapshot.json  # read what a RUNNING app/server declared (written by registrySnapshot). A sheet without the $source marker is rejected: a hand-written list cannot tell "not registered" from "forgot to write it down"
 npx hatake registry lib/main.dart --out hatake-registry.json  # what the application does register
 ```
 `validate` also warns about definitions that **parse but do not do what they say** (a row action with no matching declaration, navigation to a page that does not exist, `groupBy` without `sort`, an operator a condition cannot understand, an aggregate with no field). These are not errors, but you cannot spot them by looking at the screen — fix what it reports. `--warn-as-error` fails CI on them.
