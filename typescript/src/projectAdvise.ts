@@ -28,6 +28,24 @@ import {
   toShape,
 } from "./project.js";
 
+/**
+ * 前書きから来る助言の規則名（全部）。
+ *
+ * 引ける形で置いてあるのは、**規則名を止められる側**（定義の隣の `advise-off`）が
+ * 「その名前は規則か」を確かめるため。組み込みの物差し（[BUILTIN_RULES]）と違って
+ * こちらは表を持たないので、名前がここにしか無いと、止める側は知らない名前を弾けない。
+ * この下の `rule:` と食い違っていないことは試験が見ている（片方だけ足すと落ちる）。
+ */
+export const PROJECT_ADVICE_RULES = [
+  "project-glossary-name",
+  "project-glossary-word",
+  "project-logic-misplaced",
+  "project-logic-unregistered",
+  "project-logic-unused",
+  "project-name-shape",
+  "project-name-suffix",
+];
+
 type Dict = Record<string, unknown>;
 
 const isDict = (v: unknown): v is Dict =>

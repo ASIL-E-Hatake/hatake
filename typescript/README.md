@@ -78,6 +78,7 @@ npx hatake explain --diff old.yaml page.yaml # 何を変えたのか、画面の
 npx hatake explain page.yaml --review        # レビュー用の1枚（説明＋助言）
 npx hatake explain page.yaml --lang en       # 英語で（ラベルは業務の言葉なので訳さない）
 npx hatake harvest definitions/              # 繰り返し転んでいる所を実例カタログの候補に
+npx hatake harvest definitions/ --rules      # 既にある定義から案件の決めごと（物差し）を起こす
 npx hatake minimize page.yaml                # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake fix page.yaml                     # 直し方が一意な問題だけ直す（--write で上書き）
 npx hatake fix page.yaml --todo              # 直せなかった分を「次の1往復で渡す形」にする
@@ -86,6 +87,8 @@ npx hatake advise page.yaml --rules team.json # 案件ごとの決めごとで�
 npx hatake advise page.yaml --project hatake.project.yaml # 案件の名前・用語の決めごとで見る
 npx hatake advise app.yaml --project p.yaml --registry r.json # 宣言した担当がアプリに登録されているかも
 npx hatake advise app.yaml --project p.yaml --project-as-error # 案件が決めたときだけ落とす
+# 定義の中に「# advise-off: <規則名>」を書くと、その画面だけ助言を止められる（理由も書ける）
+npx hatake design page.yaml --intent page.intent.yaml  # 設計書を1枚に刷る（レビューに出す紙）
 npx hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
 npx hatake index app.yaml --role staff       # その役割で開ける画面だけ（棚卸し）
 npx hatake explain app.yaml --roles --matrix # 役割を横に並べた○×の表

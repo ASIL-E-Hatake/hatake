@@ -16,6 +16,13 @@ import {
   type AdviceRender,
   findAdvice,
 } from "./advise.js";
+import {
+  adviceRuleNames,
+  applyAdviseOff,
+  parseAdviseOff,
+  type SilencedAdvice,
+  silencedLines,
+} from "./adviseOff.js";
 import { withDrafts } from "./adviseDraft.js";
 import { type AdviceRules, DEFAULT_RULES } from "./adviseRules.js";
 import { type ExplainDocument, renderExplain } from "./explain.js";
@@ -29,6 +36,13 @@ export interface ReviewDocument {
   advice: Advice[];
   /** 助言をこの画面に絞ったか（app の1枚を読んだとき）。 */
   page?: string;
+  /**
+   * 定義の隣の印（`# advise-off:`）で黙らせたもの。印が無ければ `undefined`。
+   *
+   * 消した件数はこの1枚にも出す。`advise` では出るのにここで出ないと、レビューする人は
+   * 「助言はゼロ件だった」と読む（黙らせたことが見えないのが、いちばんまずい）。
+   */
+  silenced?: SilencedAdvice;
 }
 
 /**
@@ -58,14 +72,19 @@ export function reviewSource(
     ...findAdvice(raw, options.rules ?? DEFAULT_RULES),
     ...(options.extra ?? []),
   ]);
-  const advice =
+  const mine =
     options.page === undefined
       ? all
       : all.filter((one) => one.page === options.page);
+  const off = applyAdviseOff(
+    mine,
+    parseAdviseOff(source, adviceRuleNames(options.rules ?? DEFAULT_RULES)),
+  );
   return {
     explain,
-    advice,
+    advice: off.kept,
     ...(options.page === undefined ? {} : { page: options.page }),
+    ...(off.marks.length === 0 ? {} : { silenced: off }),
   };
 }
 
@@ -88,6 +107,9 @@ export function renderReview(
     }
   }
   out.push("");
+  if (review.silenced !== undefined) {
+    for (const line of silencedLines(review.silenced)) out.push(line);
+  }
   if (options.rulesFrom !== undefined) {
     const rules = options.rules ?? DEFAULT_RULES;
     out.push(

@@ -600,6 +600,36 @@ function checkBuiltins(
     });
   }
 
+  // 聞くだけ聞いて、終わったことを何も言わないボタン。
+  //
+  // 値を入れて OK を押した人がいちばん知りたいのは「それで、効いたのか」。`onSuccess`
+  // が無いと、画面は**黙って元に戻る**（Renderer は既定の言い方を出すが、業務の言葉では
+  // ない）。入力を求めておいて結果を言わないのは、現場の信用をいちばん早く落とす。
+  //
+  // 見るのは**成功の言い方だけ**。失敗の言い方は一括の規則
+  // （`bulk-without-error-message`）が見ているので、同じ場所で2件言わない。
+  // 「聞いた項目が文言の中で触れられているか」までは見ない＝差し込みは4つしか無く、
+  // 項目名を書いても埋まらないので、機械が当てにいくと必ず外す。
+  for (const { action, index } of actions.map((one, index) => ({ action: one, index }))) {
+    if (!enabled(rules, "prompt-without-success-message")) break;
+    const prompt = isDict(action.prompt) ? action.prompt : undefined;
+    if (prompt === undefined) continue;
+    if (dicts(prompt.fields).length === 0) continue;
+    const onSuccess = isDict(action.onSuccess) ? action.onSuccess : undefined;
+    if (str(onSuccess?.message) !== undefined) continue;
+    found.push({
+      rule: "prompt-without-success-message",
+      where: `${path}.actions[${index}].onSuccess`,
+      says:
+        `「${labelOf(action)}」は押す前に値を聞きますが、**終わったことを業務の言葉で` +
+        `言いません**＝入れた人は、その値が効いたのかどうか画面から分かりません` +
+        `（同じ操作を2回する元になります）。`,
+      add: "`onSuccess: { message: '…しました' }`（`{count}` は一括で埋まります）。",
+      key: "onSuccess",
+      node: "action",
+    });
+  }
+
   // 一括の失敗の言い方が**件数だけ**（どの行が落ちたかを言っていない）。
   //
   // `{failedKeys}` は**アプリ側が行を名指しで返したときだけ**埋まる

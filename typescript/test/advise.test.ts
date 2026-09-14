@@ -859,3 +859,66 @@ ${body}
     );
   });
 });
+
+describe("聞くだけ聞いて、終わったことを言わないボタン", () => {
+  const page = (tail: string) => `page:
+  type: crud
+  id: order_master
+  title: 受注
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+  actions:
+    - id: reject
+      type: plugin
+      plugin: rejectOrder
+      label: 却下
+      prompt:
+        title: 却下の理由
+        fields:
+          - { field: reason, label: 理由, type: text, required: true }
+${tail}`;
+
+  it("値を聞くのに onSuccess が無ければ言う", () => {
+    const found = findAdvice(parseRaw(page("")));
+    const one = found.find((advice) => advice.rule === "prompt-without-success-message");
+    expect(one?.says).toContain("効いたのかどうか");
+    expect(one?.where).toBe("page.actions[0].onSuccess");
+    // 挙げるキーは、その場所に本当に書けるもの。
+    expect(unwritableAdvice(found, reference)).toEqual([]);
+  });
+
+  it("終わったことを言っていれば言わない", () => {
+    const said = page("      onSuccess: { message: 却下しました }\n");
+    expect(rules(said)).not.toContain("prompt-without-success-message");
+  });
+
+  it("値を聞かないボタンには言わない（聞いていないので、そもそも話が違う）", () => {
+    const plain = `page:
+  type: crud
+  id: order_master
+  title: 受注
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+  actions:
+    - { id: save, type: save, label: 保存 }
+`;
+    expect(rules(plain)).not.toContain("prompt-without-success-message");
+  });
+
+  it("物差しで切れる（好みなので）", () => {
+    const found = findAdvice(parseRaw(page("")), {
+      off: ["prompt-without-success-message"],
+      options: {},
+      require: [],
+    });
+    expect(found.map((one) => one.rule)).not.toContain(
+      "prompt-without-success-message",
+    );
+  });
+});

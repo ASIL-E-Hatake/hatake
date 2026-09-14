@@ -230,6 +230,100 @@ jobs:
           grep -q 'この画面でできないこと' /tmp/review.log
           grep -q '警告ではありません' /tmp/review.log
 
+      - name: One sheet for review, and a ruler taken from the definitions
+        working-directory: typescript
+        run: |
+          set -e
+          DEF=../spec/examples/product_search.yaml
+          INTENT=../spec/intents/product_search.intent.yaml
+          # 1. **設計書を1枚に刷る**（言ったこと・読み返し・未決・助言・終わりの判定）。
+          node dist/cli.js design "$DEF" --intent "$INTENT" > /tmp/design.md
+          for H in "## 言ったこと（要求）" "## 読み返し" "## 決まっていないこと" \
+                   "## 書き足したほうがいい所（助言）" "## 終わりの判定" \
+                   "## この紙が見ていないもの"; do
+            grep -q "$H" /tmp/design.md || { echo "節が無い: $H"; exit 1; }
+          done
+          # **刷り直して1バイトも変わらない**（日付を入れない＝古くならない）。
+          node dist/cli.js design "$DEF" --intent "$INTENT" > /tmp/design2.md
+          cmp -s /tmp/design.md /tmp/design2.md
+          # 2. **渡していない紙の節は消さない**（空にすると「要求が無い」と読める）。
+          node dist/cli.js design "$DEF" > /tmp/design-alone.md
+          grep -q "## 言ったこと（要求）" /tmp/design-alone.md
+          grep -q "渡されていません" /tmp/design-alone.md
+          grep -q "## 終わりの判定" /tmp/design-alone.md
+          # 3. **定義の隣の印**で、その画面だけ助言を止める。
+          mkdir -p /tmp/off
+          # 行末に $ を付けない（チェックアウトが CRLF だと行末が CR で当たらない）。
+          sed 's|^  key: id|  key: id\n  # advise-off: key-not-in-table # 現場は商品コードで話す|' \
+            "$DEF" > /tmp/off/p.yaml
+          node dist/cli.js advise "$DEF" > /tmp/advise-before.log
+          grep -q 'key-not-in-table' /tmp/advise-before.log
+          node dist/cli.js advise /tmp/off/p.yaml > /tmp/advise-after.log
+          # 助言の見出し（`# <場所> [<規則>]`）が消えていること。規則名そのものは
+          # 「黙らせました」の行に残るので、そこだけを見ても確かめられない。
+          if grep -q -e '^# .*\[key-not-in-table\]' /tmp/advise-after.log; then
+            echo "印が効いていない"; cat /tmp/advise-after.log; exit 1
+          fi
+          grep -q '書き足したほうがいい所は見つかりませんでした' /tmp/advise-after.log
+          # **黙らせた件数は必ず出る**（消えた助言を見落とせない）。
+          grep -q '1 件を黙らせました' /tmp/advise-after.log
+          grep -q '現場は商品コードで話す' /tmp/advise-after.log
+          # 知らない規則名は落とす（止めたつもりで止まっていない、を作らない）。
+          sed 's|advise-off: key-not-in-table|advise-off: key-not-in-tabel|' \
+            /tmp/off/p.yaml > /tmp/off/typo.yaml
+          if node dist/cli.js advise /tmp/off/typo.yaml > /tmp/off-bad.log 2>&1; then
+            echo "知らない規則名を通してしまった"; cat /tmp/off-bad.log; exit 1
+          fi
+          grep -q '規則ではない名前' /tmp/off-bad.log
+          # 4. **聞くだけ聞いて終わったことを言わないボタン**を助言で言う。
+          cat > /tmp/prompt.yaml <<'YAML'
+          page:
+            type: crud
+            id: order_master
+            title: 受注
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns:
+                - { field: orderNo, label: 受注番号 }
+            actions:
+              - id: reject
+                type: plugin
+                plugin: rejectOrder
+                label: 却下
+                prompt:
+                  title: 却下の理由
+                  fields:
+                    - { field: reason, label: 理由, type: text, required: true }
+          YAML
+          node dist/cli.js advise /tmp/prompt.yaml > /tmp/prompt-advice.log
+          grep -q 'prompt-without-success-message' /tmp/prompt-advice.log
+          # 終わったことを言っていれば言わない。
+          node dist/cli.js validate /tmp/prompt.yaml > /dev/null
+          printf '      onSuccess: { message: 却下しました }\n' >> /tmp/prompt.yaml
+          node dist/cli.js advise /tmp/prompt.yaml > /tmp/prompt-said.log
+          if grep -q 'prompt-without-success-message' /tmp/prompt-said.log; then
+            echo "言っているのに助言が出た"; cat /tmp/prompt-said.log; exit 1
+          fi
+          # 5. **物差しを、既にある定義から起こす**。
+          node dist/cli.js harvest ../spec/examples --rules > /tmp/harvest-rules.log
+          grep -q '起こせた決めごと' /tmp/harvest-rules.log
+          grep -q '人が読んで直すまでは正ではありません' /tmp/harvest-rules.log
+          node dist/cli.js harvest ../spec/examples --rules --json \
+            > /tmp/harvest-rules.json
+          node -e "const r=require('/tmp/harvest-rules.json');
+            const {rulesDraft}=require('./dist/harvestRules.js');
+            require('fs').writeFileSync('/tmp/taken-rules.json',
+              JSON.stringify(rulesDraft(r),null,2));
+            if(r.candidates.length===0){console.error('候補が1件も無い');process.exit(1)}"
+          # **起こした物差しをそのまま渡して、同じ定義に当てても鳴らない**。
+          node dist/cli.js advise ../spec/examples/product_search.yaml \
+            --rules /tmp/taken-rules.json > /tmp/taken.log
+          grep -q '物差しは /tmp/taken-rules.json を使いました' /tmp/taken.log
+          if grep -q -e '-needs-' /tmp/taken.log; then
+            echo "起こした物差しが、起こした元の定義で鳴った"; cat /tmp/taken.log; exit 1
+          fi
+
       - name: What the screen says before and after the press (advice)
         working-directory: typescript
         run: |

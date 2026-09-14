@@ -97,6 +97,7 @@ import {
   type HarvestInput,
   renderHarvest,
 } from "./harvest.js";
+import { harvestRules, renderHarvestRules } from "./harvestRules.js";
 import { minimizeSource, renderMinimize } from "./minimize.js";
 import { wireApp } from "./wire.js";
 import { mergeWiring, renderWireMerge } from "./wireMerge.js";
@@ -110,6 +111,13 @@ import {
 import { looseTodos, usesInCode } from "./registryUse.js";
 import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
+import {
+  adviceRuleNames,
+  applyAdviseOff,
+  parseAdviseOff,
+  silencedLines,
+} from "./adviseOff.js";
+import { designMarkdown, type DesignParts } from "./design.js";
 import {
   type AdvicePick,
   applyAdvice,
@@ -423,6 +431,12 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       定義そのものは持ち出さない（ファイル名・場所・回数だけ）。--repro を付けると
       **最小の再現**（その診断が出続ける形まで削った下書き）も作る。ラベルは記号に
       置き換えるが、id や項目名は残るので、出力に定義の本文が入る。
+      --rules は**案件の決めごと**を起こす（転び方ではなく、もう定義に書いてある
+      決めごと＝「この案件では全部の列に width を書いている」）。**全部に書いて
+      あるものだけ**を起こし、8割の所は「決めごとではなく揺れ」として理由つきで
+      並べる。起こした物差しは**同じ定義の山に当てて確かめる**（1件でも鳴ったら
+      候補から落とす）。出すのは --rules にそのまま渡せる下書きまでで、**書き込ま
+      ない**（貼るのは人）。なぜそう決めたかと、画面種別の絞りは人が足す欄。
 
   hatake minimize <file> [--json] [--out file]
       **意味を変えずに**定義を短くする。既定値と同じ指定・空の指定を落とす。落とすたびに
@@ -449,6 +463,17 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --registry を渡すと「**アプリが配るのに、定義が出し分けに使っていない役割**」も
       言う（消せとは言わない＝出し分けの書き忘れの疑いという事実だけ）。
 
+  hatake design <file> [--page <id>] [--intent i.yaml] [--project p.yaml]
+                       [--rules team.json] [--out 設計書.md]
+      **設計書を1枚に刷る**（レビューに出す紙）。言ったこと（意図）・読み返し・
+      決まっていないこと・書き足したほうがいい所・終わりの判定を、この順で1枚に
+      並べる。**手で書く欄は無い**＝人が書くのは意図の1枚と前書きだけで、この紙は
+      いつでも刷り直せる（だから刷った日付も入れない＝同じ入力なら1バイトも変わらない）。
+      **渡していない紙の節は消さない**＝「渡されていません」と書く（空にすると、
+      読んだ人は「要求が無い」「未決が無い」と読む）。
+      **終了コードは動かさない**（レビューに出す紙で、合否ではない）。合否は
+      hatake validate と hatake trace の担当。
+
   hatake advise <file> [--rules team.json] [--project hatake.project.yaml]
                        [--registry hatake-registry.json] [--project-as-error]
                [--apply picks.json] [--write] [--json]
@@ -473,6 +498,12 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       1件でも残っていれば 1 を返す（CI に置く用）。既定では絶対に落ちない＝助言を
       勝手に落とすと、事実を言う警告まで読まれなくなる。落とすと決めるのは案件の側
       （物差しの off と同じ考え）。組み込みの助言では落ちない。
+      定義の中に「# advise-off: <規則名>」と書くと、**その画面だけ**その助言を止める
+      （画面の外に書けば定義ぜんたい）。同じ行の # の後ろに理由を書ける。知らない規則名は
+      落とす＝止めたつもりで止まっていないのが一番困るので。**黙らせた件数は必ず出す**
+      ＝消えた助言が見えないと、助言ゼロが「きれいな定義」に見える。1件も黙らせて
+      いない印は「効いていません」と言う（消し忘れ・場所違いが見える）。
+      止められるのは助言だけで、警告（書いたのに効かない＝事実）は止められない。
 
   hatake index <path...> [--find "顧客 検索"] [--by size] [--role admin]
               [--json] [--out file]
@@ -840,6 +871,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return fix(positional, flags, io);
       case "advise":
         return advise(positional, flags, io);
+      case "design":
+        return design(positional, flags, io);
       case "index":
         return screenIndex(positional, flags, io);
       case "diagram":
@@ -1368,6 +1401,10 @@ function harvest(paths: string[], flags: Args["flags"], io: CliIo): number {
   }
 
   const min = Math.max(1, Number.parseInt(str(flags, "min") ?? "2", 10) || 2);
+
+  // 集めるものが違う（転び方ではなく**決めごと**）ので、道をここで分ける。
+  if (flags.rules === true) return harvestedRules(inputs, min, flags, io);
+
   const result = harvestFailures(inputs, {
     min,
     repro: flags.repro === true,
@@ -1386,6 +1423,38 @@ function harvest(paths: string[], flags: Args["flags"], io: CliIo): number {
   for (const entry of result.unreadable) {
     io.err(`     ${entry.file}  ${entry.reason}`);
   }
+  return 1;
+}
+
+/**
+ * 案件の決めごとを、既にある定義から起こす（`harvest --rules`）。
+ *
+ * 出すのは下書きだけで、書き込まない（貼るのは人）。読めない定義が1件でもあれば、
+ * 結果は**不完全**なので 1 を返す（転び方を集めるほうと同じ扱い）。
+ */
+function harvestedRules(
+  inputs: HarvestInput[],
+  min: number,
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  // スキーマが在れば**必須のキー**を候補から外す。無ければ外さないと言う（黙らない）。
+  const schema = optionalSpec(flags, io, SCHEMA_FILE);
+  const reference =
+    schema === null
+      ? undefined
+      : buildReference(schema as Record<string, unknown>);
+  const result = harvestRules(inputs, { min, ...(reference === undefined ? {} : { reference }) });
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+  } else {
+    io.out(renderHarvestRules(result, { min, checkedRequired: reference !== undefined }));
+  }
+  if (result.unreadable.length === 0) return 0;
+  io.err(
+    `読めなかった定義が ${result.unreadable.length} 件あります（走査は**不完全**です）:`,
+  );
+  for (const entry of result.unreadable) io.err(`     ${entry.file}  ${entry.reason}`);
   return 1;
 }
 
@@ -1688,19 +1757,34 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
   // 間違いを教える助言は、無いほうがまし。
   if (unwritable(advice, flags, io) > 0) return 1;
 
+  // 定義の隣の印（`# advise-off:`）で、その画面だけ黙らせる。**黙らせたものは
+  // 捨てずに持っておく**＝何件消したかを最後に必ず言うため。
+  const off = applyAdviseOff(advice, parseAdviseOff(source, adviceRuleNames(rules)));
+  const kept = off.kept;
+
   // **案件が決めたときだけ**落とす。助言を勝手に落とすのは駄目（好みを押し付ける道具に
   // なった時点で、事実を言う警告まで読まれなくなる）。けれど案件が「命名の揺れは直す」と
   // 決めたなら、その案件では落としてよい＝決めるのは案件の側（物差しの `off` と同じ考え）。
   const strictProject =
     flags["project-as-error"] === true &&
-    advice.some((one) => one.rule.startsWith("project-"));
+    kept.some((one) => one.rule.startsWith("project-"));
 
   if (flags.json === true) {
-    io.out(JSON.stringify(advice, null, 2));
+    // 印が無ければ今までと同じ並び（助言の配列）。**印を書いた定義でだけ**
+    // 黙らせたものが付く＝読む側は、消えた助言があることを見落とせない。
+    io.out(
+      JSON.stringify(
+        off.marks.length === 0
+          ? kept
+          : { advice: kept, silenced: off.silenced, marks: off.marks, idle: off.idle },
+        null,
+        2,
+      ),
+    );
     return strictProject ? 1 : 0;
   }
   io.out(
-    renderAdvice(advice, {
+    renderAdvice(kept, {
       rulesFrom: str(flags, "rules"),
       rules,
       ...(project === undefined
@@ -1708,6 +1792,7 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
         : { projectFrom: projectPath(files[0], flags) }),
     }),
   );
+  for (const line of silencedLines(off)) io.out(line);
   if (strictProject) {
     io.err(
       "案件の決めごと（project- で始まる助言）が残っています" +
@@ -1715,6 +1800,136 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
     );
   }
   return strictProject ? 1 : 0;
+}
+
+/**
+ * 設計書を1枚に刷る（`design`）。
+ *
+ * 集めるだけで、新しいことは何も言わない。**言えないものは「渡されていません」と書く**
+ * ＝節を消すと、読んだ人は「無い」と読む（要求が無い／未決が無い、に化ける）。
+ *
+ * 終了コードは動かさない。読めない定義はここまで来ない（explain が落ちる）ので、
+ * 「刷れたのに中身が嘘」という形にはならない。
+ */
+function design(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("設計書を刷る定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const source = io.readFile(files[0]);
+  const wanted = str(flags, "page");
+  const explain = explainSource(source, { page: wanted });
+  const raw = rawDocument(source);
+  const rules = loadAdviceRules(flags, io);
+  const project = projectOf(files[0], flags, io);
+
+  const parts: DesignParts = {
+    from: files[0],
+    explain,
+    ...intentPart(files[0], source, wanted, flags, io),
+    ...questionPart(raw, project, flags, io),
+    advice: [],
+    ...(project === undefined
+      ? {}
+      : { projectFrom: projectPath(files[0], flags) }),
+    ...(str(flags, "rules") === undefined ? {} : { rulesFrom: str(flags, "rules") }),
+  };
+
+  // 助言は `advise` とまったく同じ道を通す（1枚に載せるために別の数え方をすると、
+  // 道具ごとに違うことを言う）。画面を1枚に絞ったなら助言もその画面だけ。
+  const all = withDrafts(raw, [
+    ...findAdvice(raw, rules),
+    ...(project === undefined
+      ? []
+      : findProjectAdvice(raw, project, rules, { ...registryOf(files[0], flags, io) })),
+  ]);
+  const mine = wanted === undefined ? all : all.filter((one) => one.page === wanted);
+  const off = applyAdviseOff(mine, parseAdviseOff(source, adviceRuleNames(rules)));
+  parts.advice = off.kept;
+  if (off.marks.length > 0) parts.silenced = off;
+
+  return output(designMarkdown(parts), flags, io);
+}
+
+/**
+ * 言ったことの側。
+ *
+ * 意図は**画面1枚ごと**の紙なので、app の定義で画面を決めていないときは選べない。
+ * そこを「渡されていません」で片付けると嘘になる（紙は在るかもしれない）ので、
+ * 選べなかったことをそのまま書く。
+ */
+function intentPart(
+  file: string,
+  source: string,
+  wanted: string | undefined,
+  flags: Args["flags"],
+  io: CliIo,
+): Partial<Pick<DesignParts, "intent" | "intentNote">> {
+  const pages = isAppSource(source)
+    ? parseAppSource(source).pages
+    : [parsePageYaml(source, { strict: true })];
+  const page =
+    wanted === undefined
+      ? pages.length === 1
+        ? pages[0]
+        : undefined
+      : pages.find((one) => one.id === wanted);
+  if (page === undefined) {
+    return {
+      intentNote:
+        `画面が ${pages.length} 枚あるので、どの画面の話かが決まりません` +
+        "（意図は**画面1枚ごと**の紙です）。`--page <id>` を渡すと、その画面の要求と" +
+        `突き合わせます（${pages.map((one) => `\`${one.id}\``).join(" / ")}）。`,
+    };
+  }
+  const document = intentOf(file, page.id, flags, io);
+  if (document === undefined) return {};
+  const preamble = projectOf(file, flags, io);
+  return {
+    intent: {
+      from: str(flags, "intent") ?? `${page.id}.intent.yaml`,
+      document,
+      trace: traceIntent(page, document, { logic: logicNames(preamble) }),
+    },
+  };
+}
+
+/** 決まっていないことの側。表が見つからなければ**数えない**（0 件とは違う）。 */
+function questionPart(
+  raw: Record<string, unknown>,
+  project: ProjectDocument | undefined,
+  flags: Args["flags"],
+  io: CliIo,
+): Partial<Pick<DesignParts, "questions">> {
+  const rawKinds = optionalSpec(flags, io, QUESTION_KINDS_FILE);
+  const rawAreas = optionalSpec(flags, io, RESPONSIBILITY_FILE);
+  if (rawKinds === null || rawAreas === null) return {};
+  const catalog = parseResponsibility(rawAreas);
+  const kinds = mergeQuestionKinds(
+    parseQuestionKinds(rawKinds),
+    teamQuestions(flags, io),
+    project?.questions.ask ?? [],
+  );
+  checkQuestionAreas(kinds, catalog);
+  const answers = answeredBy(project, kinds, catalog);
+  // 答えたつもりで答えていないのは事実の間違い。紙に載せる前に投げる（ask と同じ）。
+  if (answers.problems.length > 0) {
+    throw new Error(answers.problems.join("\n"));
+  }
+  return {
+    questions: {
+      list: askQuestions(raw, kinds, catalog, {
+        answered: answers.answered,
+        decided: answers.decided,
+      }),
+      render: {
+        total: kinds.length,
+        answered: answers.answered,
+        decided: answers.decided,
+        fromProject: kinds.filter((kind) => kind.from !== undefined).length,
+      },
+    },
+  };
 }
 
 /**

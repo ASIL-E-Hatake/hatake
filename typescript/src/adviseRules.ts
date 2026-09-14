@@ -47,6 +47,8 @@ export const BUILTIN_RULES: Record<string, Record<string, "number" | "strings">>
   "destructive-without-confirm": { types: "strings" },
   // 押す前に聞くのに、その項目を必須にしていない（空欄で OK を押せる）。
   "prompt-field-without-required": {},
+  // 押す前に聞くのに、終わったことを何も言わない（入れた値が効いたか分からない）。
+  "prompt-without-success-message": {},
   // 一括の失敗の言い方が件数だけ（どの行が落ちたかを言っていない）。
   "error-without-failed-keys": {},
   // 金額らしい名前なのに見せ方が無い。words = 金額らしいと見なす語。
