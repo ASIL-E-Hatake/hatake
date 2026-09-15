@@ -117,6 +117,7 @@ import {
 } from "./registryFromApp.js";
 import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
+import { renderRules, rulesCatalog } from "./rules.js";
 import {
   adviceRuleNames,
   applyAdviseOff,
@@ -479,6 +480,16 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       読んだ人は「要求が無い」「未決が無い」と読む）。
       **終了コードは動かさない**（レビューに出す紙で、合否ではない）。合否は
       hatake validate と hatake trace の担当。
+
+  hatake rules [<規則名>] [--kind warning|advice] [--json]
+      **警告と助言の規則そのもの**を引く（id・何を見ているか・何が起きるか・直し方・
+      対照表への繋ぎ・助言のつまみ）。立ち位置は hatake reference と同じ＝仕様書を
+      読まなくても引ける。定義は要らない（書く前に何を言われるかが分かる）。
+      **警告と助言は混ぜない**＝警告は「書いたのに効かない」＝事実で、CI で落として
+      よい。助言は「書いていないから不便かも」＝好みで、終了コードを変えない。
+      ここに出るのは**規則そのもの**の話で、1件ごとの「どこで・何が」は validate と
+      advise が定義を見て言う（綴り違いの候補・件数・紙の実寸はその場でしか出せない）。
+      **人が決めること**（排他・採番・端数…）はどちらにも出てこない＝hatake ask の担当。
 
   hatake advise <file> [--rules team.json] [--project hatake.project.yaml]
                        [--registry hatake-registry.json] [--project-as-error]
@@ -888,6 +899,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return fix(positional, flags, io);
       case "advise":
         return advise(positional, flags, io);
+      case "rules":
+        return rules(positional, flags, io);
       case "design":
         return design(positional, flags, io);
       case "index":
@@ -1964,6 +1977,33 @@ function questionPart(
       },
     },
   };
+}
+
+/**
+ * 警告と助言の規則そのものを引く（`rules`）。
+ *
+ * 定義を読まないので、**書く前に**引ける。終了コードは動かさない（引くだけの道具）。
+ */
+function rules(positional: string[], flags: Args["flags"], io: CliIo): number {
+  if (positional.length > 1) {
+    io.err("引く規則名は1つだけ指定してください（省略すると全部出ます）。");
+    return 1;
+  }
+  const catalog = rulesCatalog(positional[0]);
+  const kind = str(flags, "kind");
+  if (kind !== undefined && kind !== "warning" && kind !== "advice") {
+    io.err(`--kind に書けるのは warning か advice です（"${kind}" は知りません）。`);
+    return 1;
+  }
+  const mine = {
+    warnings: kind === "advice" ? [] : catalog.warnings,
+    advice: kind === "warning" ? [] : catalog.advice,
+  };
+  if (flags.json === true) {
+    io.out(JSON.stringify(mine, null, 2));
+    return 0;
+  }
+  return output(renderRules(mine), flags, io);
 }
 
 /**

@@ -42,6 +42,8 @@ npx hatake new report --id sales_report --title 売上明細表 > page.yaml
 npx hatake types page.yaml --lang java --package io.example.api --out gen/
 npx hatake reference rowsPerPage             # このキー、どこに書くの？型は？既定値は？
 npx hatake examples 帳票                      # 近い例を探す
+npx hatake rules                             # 警告と助言の規則そのもの（定義は要らない）
+npx hatake rules groupby-without-sort        # 言われた規則名が何かを引く
 npx hatake refs page.yaml --needs-registration # アプリ側に何を登録すればいいか
 npx hatake wire app.yaml --base /api           # その配線（Flutter）の下書きを出す
 npx hatake wire app.yaml --merge lib/wiring.dart --write  # 2回目以降：足りない登録だけを足す

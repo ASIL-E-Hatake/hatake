@@ -534,6 +534,82 @@ jobs:
           fi
           grep -q '申告ではありません' /tmp/silent/hand.log
 
+      - name: Every rule can be looked up, and the table cannot drift
+        working-directory: typescript
+        run: |
+          set -e
+          # 1. 定義を渡さずに引ける（書く前に読める＝reference と同じ立ち位置）。
+          node dist/cli.js rules --json > /tmp/rules.json
+          node -e '
+            const all = require("/tmp/rules.json");
+            if (all.warnings.length < 80) {
+              console.error("警告が少なすぎる: " + all.warnings.length); process.exit(1);
+            }
+            if (all.advice.length < 15) {
+              console.error("助言が少なすぎる: " + all.advice.length); process.exit(1);
+            }
+            for (const one of [...all.warnings, ...all.advice]) {
+              for (const key of ["what", "happens", "fix"]) {
+                if (!one[key] || one[key].length < 5) {
+                  console.error("空の欄: " + one.rule + "." + key); process.exit(1);
+                }
+              }
+            }
+            console.log("引ける規則: 警告 " + all.warnings.length
+              + " / 助言 " + all.advice.length);
+          '
+          # 2. 1件だけ引ける。対照表への繋ぎもそのまま叩ける。
+          node dist/cli.js rules groupby-without-sort > /tmp/rule-one.log
+          grep -q '並びの決まっていないグループ' /tmp/rule-one.log
+          grep -q 'hatake pitfalls groupby-without-sort' /tmp/rule-one.log
+          node dist/cli.js pitfalls groupby-without-sort > /dev/null
+          # 3. 知らない名前は**空ではなく落とす**（引けなかったのか無いのか分かるように）。
+          if node dist/cli.js rules no-such-rule > /tmp/rule-bad.log 2>&1; then
+            echo "知らない規則名を通してしまった"; exit 1
+          fi
+          grep -q 'という規則はありません' /tmp/rule-bad.log
+          # 4. **警告が実際に出す直し方は、表の字**（呼び出し側に同じ字を2つ置かない）。
+          cat > /tmp/rule-dup.yaml <<'YAML'
+          page:
+            type: crud
+            id: p
+            title: 受注
+            repository: orderRepository
+            key: id
+            table:
+              columns:
+                - { field: id, label: ID }
+            actions:
+              - { id: a, type: delete, label: 削除 }
+              - { id: a, type: delete, label: 削除2 }
+          YAML
+          node dist/cli.js validate /tmp/rule-dup.yaml --json > /tmp/rule-dup.json
+          node -e '
+            const found = require("/tmp/rule-dup.json")[0].warnings
+              .find((w) => w.rule === "duplicate-action-id");
+            const table = require("/tmp/rules.json").warnings
+              .find((r) => r.rule === "duplicate-action-id");
+            if (!found || found.fix !== table.fix) {
+              console.error("1件ごとの直し方が表と違う"); process.exit(1);
+            }
+            console.log("直し方は表から来ている");
+          '
+          # 5. **表に無い規則は足せない**（足したら試験が落ちることを、ここで実際に見る）。
+          cp src/warnings.ts /tmp/warnings.bak
+          sed -i '0,/"duplicate-action-id",/s//"duplicate-action-id-NEW",/' src/warnings.ts
+          if npx vitest run test/rules.test.ts > /tmp/rule-drift.log 2>&1; then
+            cp /tmp/warnings.bak src/warnings.ts
+            echo "表に無い規則を足したのに通ってしまった"; exit 1
+          fi
+          cp /tmp/warnings.bak src/warnings.ts
+          grep -q '完全に一致' /tmp/rule-drift.log
+          # 6. MCP からも同じ1枚が引ける。
+          printf '%s\n%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"hatake_rules","arguments":{"rule":"groupby-without-sort"}}}' \
+            | node dist/mcp.js > /tmp/rules-mcp.log
+          grep -q '並びの決まっていないグループ' /tmp/rules-mcp.log
+
       - name: A mismatch kind can be looked up, and credentials can be checked alone
         working-directory: typescript
         run: |

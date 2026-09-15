@@ -33,6 +33,7 @@ import {
   questionNote,
 } from "./questions.js";
 import { roleInventory } from "./roles.js";
+import { RULES_NOTE, rulesCatalog } from "./rules.js";
 import { explainSource, isAppSource, parseAppSource } from "./explainSource.js";
 import {
   describeChange,
@@ -306,6 +307,9 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 7. **帳票（type: report）を書いたら hatake_print_preview**（刷ったらどう見えるかを文字で返す。
    列の並び・小計の位置・切れた文字は、explain では分からない）
 8. 直し方が分からない・書く前に落とし穴を知りたいときは hatake_pitfalls
+   **規則名を言われて「それは何か」が分からないときは hatake_rules**（警告と助言の
+   規則そのものを引く。定義は要らないので、書く前に読んでもよい）。警告（書いたのに
+   効かない＝事実）と助言（書いていないと不便かも＝好み）は別物なので、混ぜて読まない
 9. バックエンドの形が要るなら hatake_api_shape
    （format: fixtures で**サーバ側の試験データ**も出る＝通る形と弾かれる形。
    境界は hatake_run --draft と同じ所で作るので、画面とサーバが同じ境界で試される）
@@ -1116,6 +1120,44 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           ...(preamble === undefined
             ? {}
             : { naming: parseProject(preamble).naming }),
+        });
+      },
+    },
+    {
+      name: "hatake_rules",
+      title: "警告と助言の規則を引く",
+      description:
+        "**警告と助言の規則そのもの**を引く（id・何を見ているか・何が起きるか・" +
+        "直し方・対照表への繋ぎ・助言のつまみ）。hatake_validate や hatake_advise に " +
+        "`groupby-without-sort` と言われて「それは何か」を知りたいとき、" +
+        "または**書く前に**何を言われるかを読むときに使う（定義は要らない）。" +
+        "**警告と助言は別物**＝警告は「書いたのに効かない」＝事実で、CI で落としてよい。" +
+        "助言は「書いていないから不便かも」＝好みで、終了コードを変えない。" +
+        "ここに出るのは規則そのものの話で、1件ごとの「どこで・何が」は " +
+        "hatake_validate / hatake_advise が定義を見て言う。" +
+        "**人が決めること**（排他・採番・端数…）はどちらにも出てこない＝hatake_ask の担当。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          rule: {
+            type: "string",
+            description: "規則名（groupby-without-sort）。省略で全部。",
+          },
+          kind: {
+            type: "string",
+            enum: ["warning", "advice"],
+            description: "絞るなら。省略で両方。",
+          },
+        },
+      },
+      example: { rule: "groupby-without-sort" },
+      run(args) {
+        const kind = str(args, "kind");
+        const catalog = rulesCatalog(str(args, "rule"));
+        return pretty({
+          warnings: kind === "advice" ? [] : catalog.warnings,
+          advice: kind === "warning" ? [] : catalog.advice,
+          note: RULES_NOTE,
         });
       },
     },

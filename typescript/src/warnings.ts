@@ -47,6 +47,7 @@ import {
 } from "./placeholders.js";
 import { roleNames } from "./roles.js";
 import { closestKey } from "./strictKeys.js";
+import { WARNING_RULES } from "./warningRules.js";
 import { COMPARE_OPERATORS } from "./validators.js";
 
 /** 構造の間違い1つ。`pitfall` があれば対照表（spec/pitfalls.json）を引ける。 */
@@ -173,104 +174,68 @@ export function findWarnings(
  */
 const REF_KINDS: Record<
   RefKind,
-  { rule: string; what: string; happens: string; fix: string; missing?: string }
+  { rule: string; what: string; missing?: string }
 > = {
   repositories: {
     rule: "unknown-repository",
     what: "Repository",
-    happens: "画面は出ますがデータが来ません（実行時に引き先が見つからない）。",
-    fix: "アプリ側の `RepositoryRegistry` に同じ名前で登録するか、定義の名前を直してください。",
   },
   sinks: {
     rule: "unregistered-sink",
     what: "出力先",
-    happens: "ボタンは出ますが、押すと「出力先が未登録です」と言われます。",
-    fix: "`HatakeScope` に登録してください（CSV は `exportSink`、印刷は `printSink`）。"
-      + "Framework は文書までを作り、ファイルを書く・刷るのはアプリの担当です。",
   },
   plugins: {
     rule: "unknown-plugin",
     what: "プラグイン",
-    happens: "ボタンは出ますが、押しても何も起きません。",
-    fix: "アプリ側のアクション登録に同じ名前で足すか、定義の名前を直してください。",
   },
   pages: {
     rule: "unknown-page-ref",
     what: "ページ",
-    happens: "遷移しても開けません。",
-    fix: "そのページを `app.pages` に足すか、id を直してください。",
   },
   fieldTypes: {
     rule: "unknown-field-type",
     what: "項目の型",
-    happens: "組み込みでも登録済みでもないので、ただのテキスト入力になります。",
-    fix: "`fieldBuilders` に登録するか、組み込みの型を使ってください。",
   },
   columnTypes: {
     rule: "unknown-column-type",
     what: "列の型",
-    happens: "組み込みでも登録済みでもないので、素の文字列として出ます。",
-    fix: "組み込みの列型を使うか、登録済み一覧に足してください。",
   },
   actionTypes: {
     rule: "unknown-action-type",
     what: "アクションの型",
-    happens: "押しても何も起きません。",
-    fix: "組み込みの型か `type: plugin`（＋`plugin:`）を使ってください。",
   },
   validators: {
     rule: "unknown-validator",
     what: "バリデータ",
-    happens: "その検証は**黙って行われません**（今まで弾いていた値が通ります）。",
-    fix: "`ValidatorRegistry` に登録するか、組み込みの型を使ってください。",
   },
   formatters: {
     rule: "unknown-formatter",
     what: "フォーマッタ",
-    happens: "整形されず、素の値がそのまま出ます。",
-    fix: "`FormatterRegistry` に登録するか、組み込みの名前を使ってください。",
   },
   converters: {
     rule: "unknown-converter",
     what: "コンバータ",
-    happens: "その正規化は**黙って行われません**（全角のまま保存されます）。",
-    fix: "`ConverterRegistry` に登録するか、組み込みの名前を使ってください。",
   },
   computedOps: {
     rule: "unknown-computed-op",
     what: "計算の op",
-    happens: "計算されず、その項目が空になります。",
-    fix: "`ComputedRegistry` に登録するか、組み込みの op を使ってください。",
   },
   aggregates: {
     rule: "unknown-aggregate",
     what: "集約",
-    happens: "集計されず、値が空になります。",
-    fix: "`AggregateRegistry` に登録するか、組み込みの集約を使ってください。",
   },
   dashboardItemTypes: {
     rule: "unknown-dashboard-item-type",
     what: "カードの型",
-    happens: "そのカードは出ません。",
-    fix: "`dashboardItemBuilders` に登録するか、組み込みの型を使ってください。",
   },
   roles: {
     rule: "role-not-in-app",
     what: "役割",
     missing: "アプリが配る役割の中にありません",
-    happens:
-      "その役割で出し分けている所は**誰にも見えません**（列もボタンも出ません）。" +
-      "役割ごとの件数（`maxRows` / `batchSize` の `byRole`）に書いてあるなら、" +
-      "その数は誰にも効きません。",
-    fix:
-      "定義の役割名をアプリが配る名前に合わせるか、アプリ側の語彙に足してください" +
-      "（`HatakeScope(knownRoles:)`）。**アプリ側の綴り違い**のこともあります。",
   },
   chartKinds: {
     rule: "unknown-chart-kind",
     what: "グラフの種類",
-    happens: "グラフが描かれません。",
-    fix: "組み込みの種類を使うか、登録済み一覧に足してください。",
   },
 };
 
@@ -336,28 +301,52 @@ function checkRegistry(
       (r) => r.kind === ref.kind && r.name === ref.name,
     ).length - 1;
     const kind = REF_KINDS[ref.kind];
+    // 何が起きるか・どう直すかは**規則の表**が持つ（同じ字を2つ置かない）。
+    const doc = WARNING_RULES[kind.rule];
     const near = closestKey(ref.name, known);
     warn(
       found,
       kind.rule,
       ref.path,
       `${kind.what} "${ref.name}" は${kind.missing ?? "登録されていません"}。` +
-        kind.happens +
+        doc.happens +
         (others > 0 ? `（他 ${others} 箇所から参照）` : ""),
-      near === null ? kind.fix : `もしかして "${near}" ですか。${kind.fix}`,
+      near === null ? undefined : `もしかして "${near}" ですか。${doc.fix}`,
     );
   }
 }
 
+/**
+ * 警告を1件足す。
+ *
+ * `fix` と `pitfall` は**規則の表**（[WARNING_RULES]）が正。`fix` を渡すのは、その1件
+ * でしか言えないことがあるときだけ（綴り違いの候補・件数・紙の実寸）。同じ字を呼び出し
+ * 側と表の両方に置くと、片方だけ直したときにどちらが正か分からなくなる。
+ *
+ * 表に無い規則名は**投げる**。黙って通すと「表に載らない警告」ができて、`hatake rules`
+ * が嘘をつく（引けない規則が出てくる）。試験でも同じことを見ているが、ここでも止める。
+ */
 function warn(
   found: DefinitionWarning[],
   rule: string,
   path: string,
   message: string,
-  fix: string,
-  pitfall?: string,
+  fix?: string,
 ): void {
-  found.push({ rule, path, message, fix, ...(pitfall ? { pitfall } : {}) });
+  const doc = WARNING_RULES[rule];
+  if (doc === undefined) {
+    throw new Error(
+      `規則 "${rule}" が warningRules.ts の表にありません` +
+        "（表に無い警告は hatake rules で引けません）。",
+    );
+  }
+  found.push({
+    rule,
+    path,
+    message,
+    fix: fix ?? doc.fix,
+    ...(doc.pitfall === undefined ? {} : { pitfall: doc.pitfall }),
+  });
 }
 
 /**
@@ -386,7 +375,6 @@ function checkAccess(document: Dict, pages: Dict[], found: DefinitionWarning[]):
       `app.pages[${index}]`,
       `画面 "${id}" を開ける人が居ません。入口はありますが、権限が食い違っています` +
         `（${entries.map((one) => describeEntry(one, access)).join(" / ")}）。`,
-      "入口の roles を見直してください（入口側を広げるか、その手前の画面を開ける人に合わせる）。",
     );
   });
 }
@@ -421,7 +409,6 @@ function checkApp(
         "duplicate-page-id",
         `app.pages[${i}].id`,
         `ページ id "${id}" が重複しています。id でページを引くので、後ろの1枚は開けません。`,
-        "どちらかの id を変えてください。",
       );
     }
     seen.add(id);
@@ -454,7 +441,6 @@ function checkApp(
         "unknown-home",
         "app.home",
         `初期ルート "${home}" に当たるメニュー項目もページもありません。先頭のページが開きます。`,
-        "menu の id か pages の id を書いてください。",
       );
     }
   }
@@ -487,7 +473,6 @@ function walkMenu(
         "unknown-page",
         `${at}.page`,
         `メニューが開こうとしているページ "${page}" が pages にありません。選んでも何も出ません。`,
-        "pages に定義するか、既にある id に直してください。",
       );
     }
     walkMenu(list(item.items), `${at}.items`, pageIds, found);
@@ -539,7 +524,6 @@ function checkActions(
           "duplicate-action-id",
           `${at}.id`,
           `アクション id "${id}" が重複しています。id で引くので、後ろの1つは使われません。`,
-          "どちらかの id を変えてください。",
         );
       }
       seen.add(id);
@@ -586,8 +570,6 @@ function checkSelection(
         `${path}.actions[${i}].scope`,
         `「${label}」は選んだ行に対して実行するボタンですが、この画面には表が` +
           `ありません。選ぶ手段が無いので、押せないままになります。`,
-        "一覧のある画面（`search` / `crud` / `master`）に置くか、`scope` を外して" +
-          "画面全体に対する操作にしてください。",
       );
       return;
     }
@@ -599,9 +581,6 @@ function checkSelection(
         `「${label}」は行には出ません（選んだ行に対して実行するボタンなので、押した行` +
           `ではなくチェックした行に実行することになります）。一覧の上の一括ボタンとして` +
           `出ます。`,
-        "`table.rowActions` からこの id を外してください（一覧の上に出ます）。" +
-          "押した行1件に実行するボタンにするなら `scope: selection` を外してください" +
-          "（行のボタンはその行のレコードを受け取ります）。",
       );
     }
     const type = str(action.type) ?? "";
@@ -612,9 +591,6 @@ function checkSelection(
         `${path}.actions[${i}].type`,
         `「${label}」は選んだ行に対して実行できません（\`${type}\` は画面全体の操作です）。` +
           `押しても実行されません。`,
-        "一括の中身は業務なので `type: plugin`（＋`plugin:`）で書き、" +
-          "選んだ行はハンドラが受け取ってください。",
-        "bulk-delete",
       );
     }
   });
@@ -656,8 +632,6 @@ function checkMaxRows(
         `「${label}」に1回の上限（\`maxRows\`）が書いてありますが、このボタンは` +
           `**選んだ行に対して実行するボタンではありません**（\`scope: selection\` が` +
           `ありません）。数える対象が無いので、上限は効きません。`,
-        "選んだ行にまとめて実行するなら `scope: selection` を足してください。" +
-          "画面全体に対する操作なら `maxRows` を消してください（件数の概念がありません）。",
       );
       return;
     }
@@ -744,9 +718,6 @@ function checkPrompt(
       `${path}[${i}].prompt`,
       `「${label}」は実行前に入力を聞きますが、\`${type}\` は聞いた値を` +
         `受け取れません。入力は捨てられます。`,
-      "入力を使うなら `type: plugin`（＋`plugin:`）にしてください" +
-        "（ハンドラが `ActionContext.input` で受け取ります）。" +
-        "聞く必要が無いなら `confirm` です。",
     );
   });
 }
@@ -775,7 +746,6 @@ function checkDeadActions(
       `${path}[${dead.index}].${dead.at}`,
       dead.what,
       dead.fix,
-      dead.pitfall,
     );
   }
   // 遷移の開き方（`open`）が効かない所。
@@ -806,7 +776,6 @@ function checkDeadActions(
         at,
         `「${label}」に開き方（\`open\`）が書いてありますが、遷移のボタンでは` +
           `ありません（\`type: navigate\` ではない）。開く先が無いので、何も起きません。`,
-        "`type: navigate`（＋`page`）にするか、`open` を消してください。",
       );
       return;
     }
@@ -865,8 +834,6 @@ function checkBatchSize(
         at,
         `「${label}」に区切り（\`batchSize\`）が書いてありますが、選んだ行に対して` +
           `実行するボタンではありません。区切るものが無いので、何も起きません。`,
-        "`scope: selection` を書いてください（区切りは一括のときだけ効きます）。" +
-          "1件ずつのボタンなら、区切りは要りません。",
       );
       return;
     }
@@ -1251,7 +1218,6 @@ function checkTarget(
     "unknown-page",
     path,
     `遷移先のページ "${page}" が pages にありません。押しても何も起きません。`,
-    "pages に定義するか、既にある id に直してください。",
   );
 }
 
@@ -1281,8 +1247,6 @@ function checkTable(
         "rowactions-as-objects",
         at,
         "rowActions の要素が文字列ではありません。行アクションとして扱われません。",
-        "アクション id の文字列を並べてください（実体は actions に書く）。",
-        "rowactions-as-objects",
       );
       return;
     }
@@ -1373,7 +1337,6 @@ function checkForm(page: Dict, path: string, found: DefinitionWarning[]): void {
             "duplicate-field",
             `${at}.field`,
             `項目 "${name}" が2回書かれています（${first} と同じ）。同じ値を2箇所で編集することになります。`,
-            "片方を消すか、別の項目名にしてください。",
           );
         } else {
           seen.set(name, at);
@@ -1402,8 +1365,6 @@ function checkFieldEntry(
       "required-as-validator-only",
       `${path}.validators[${i}]`,
       "validators の要素がオブジェクトではありません。検証は足されません。",
-      "`- { type: email }` の形で書いてください。",
-      "required-as-validator-only",
     );
   });
   for (const key of ["visibleWhen", "enabledWhen", "requiredWhen", "readOnlyWhen"]) {
@@ -1417,7 +1378,6 @@ function checkFieldEntry(
       "requiredwhen-with-required",
       `${path}.requiredWhen`,
       "`required: true` があるので常に必須です。`requiredWhen` は効きません。",
-      "条件付きにしたいなら `required: true` を消してください（両方なら常に必須）。",
     );
   }
   if (field.readOnly === true && isDict(field.readOnlyWhen)) {
@@ -1426,7 +1386,6 @@ function checkFieldEntry(
       "readonlywhen-with-readonly",
       `${path}.readOnlyWhen`,
       "`readOnly: true` があるので常に読み取り専用です。`readOnlyWhen` は効きません。",
-      "条件付きにしたいなら `readOnly: true` を消してください。",
     );
   }
   // 明細（subTable）の行の項目も同じ規則で見る（親子は行の中で閉じている）。
@@ -1522,8 +1481,6 @@ function checkComputed(
         `${at}.where`,
         "`where` は**明細の行を絞る**指定ですが、この計算は同じレコードの項目を" +
           `畳んでいます（\`fields\`）。「${label}」は絞られずに計算されます。`,
-        "行を絞りたいなら `field: <明細の項目名>` で明細を畳む形にしてください。" +
-          "レコードの状態で計算を変えたいなら、それは計算ではなく `visibleWhen` の話です。",
       );
     }
     // `sort` / `limit` も**行に対する**指定。畳む行が無いので、書いても何も起きない
@@ -1540,8 +1497,6 @@ function checkComputed(
         `${at}.${onRows[0]}`,
         `\`${onRows.join("` / `")}\` は**明細の行**を並べる／切る指定ですが、この計算は` +
           `同じレコードの項目を畳んでいます（\`fields\`）。「${label}」には効きません。`,
-        "行を並べたいなら `field: <明細の項目名>` で明細を畳む形にしてください" +
-          "（同じレコードの項目には順番も上限もありません）。",
       );
     }
     checkComputedOrder(field, computed, at, found, siblingDefs);
@@ -1555,8 +1510,6 @@ function checkComputed(
       `${at}.fields`,
       "`field`（明細の行をまとめる）と `fields`（同じレコードの項目を畳む）の両方が" +
         "書かれています。**`field` が勝つ**ので `fields` は効きません。",
-      "行をまとめるなら `fields` を消してください。同じレコードの項目を畳むなら " +
-        "`field` と `of` を消してください。",
     );
   }
 
@@ -1575,7 +1528,6 @@ function checkComputed(
       "computed-aggregate-without-of",
       `${at}.of`,
       `${op} で${folding}項目（\`of\`）がありません。「${label}」は空欄になります。`,
-      "`of: <行の項目名>` を書いてください（`count` だけは要りません）。",
     );
   }
 
@@ -1620,8 +1572,6 @@ function checkComputed(
       `${at}.field`,
       `"${target}" は別のテーブルに持つ明細（\`source\` つき）です。行は**ページ送りで** ` +
         `別に取るので、ここには揃っていません。「${label}」は 0 になります。`,
-      "全部を足した数が要るなら、サーバ側で計算して1つの項目として返してください" +
-        "（画面に出ている行だけを足しても、業務の合計にはなりません）。",
     );
     return;
   }
@@ -1669,8 +1619,6 @@ function checkSort(
       `${at}.sort.field`,
       "並べる項目（`field`）が書かれていないので、**並べ替えは効きません**（行の順の" +
         `まま採ります）。「${label}」は「上位」に見えて上位ではない値になります。`,
-      "`sort: { field: <行の項目名>, ascending: false }` の形で書いてください" +
-        "（`ascending: false` が大きい順）。",
     );
     return;
   }
@@ -1843,8 +1791,6 @@ function checkComputedOrder(
         `${at}.fields[${i}]`,
         `「${label}」の計算が**自分自身**（"${own}"）を使っています。計算は書いた順に` +
           "1回なので、いつも1つ前の値（はじめは空）を使うことになります。",
-        "使うのは別の項目です（前回の値が要るなら、それは計算ではなくレコードに" +
-          "持つ値です）。",
       );
       return;
     }
@@ -1891,7 +1837,6 @@ function checkCompare(
           "compare-without-field",
           at,
           "比べる相手（`field`）がありません。この検証は何も判定しません。",
-          "`field: <相手の項目名>` を書いてください（`operator` の既定は gte）。",
         );
         return;
       }
@@ -1901,7 +1846,6 @@ function checkCompare(
           "compare-with-itself",
           `${at}.field`,
           `自分（"${target}"）と比べています。いつも同じ値なので、判定は変わりません。`,
-          "比べたい**別の**項目名を書いてください。",
         );
       } else if (siblings.size > 0 && !siblings.has(target)) {
         const near = closestKey(target, [...siblings]);
@@ -1938,7 +1882,6 @@ function checkCompare(
           `${at}.of`,
           `${aggregate} で畳む項目（\`of\`）がありません。相手の値が null になるので、` +
             "この検証は**黙って通ります**。",
-          "`of: <行の項目名>` を書いてください（`count` だけは要りません）。",
         );
       }
 
@@ -1954,8 +1897,6 @@ function checkCompare(
           `${at}.where`,
           "`where` は**明細の行を絞る**指定ですが、この検証は明細を畳んでいません" +
             `（\`aggregate\` がありません）。「${label}」は絞られていない値と比べられます。`,
-          "明細を畳んで比べるなら `aggregate: sum` と `of: <行の項目名>` を足して" +
-            "ください。1つの項目と比べるだけなら `where` を消してください。",
         );
         return;
       }
@@ -1996,8 +1937,6 @@ function checkUnique(
           `\`unique\` は明細の**行どうし**が重ならないことを見る検証ですが、` +
             `「${label}」は明細（\`type: subTable\`）ではありません。見る行が無いので、` +
             "この検証は**黙って通ります**。",
-          "明細の項目に書いてください（1つの値が他と重ならないことは、画面の中だけでは" +
-            "決められません＝サーバの仕事です）。",
         );
         return;
       }
@@ -2008,8 +1947,6 @@ function checkUnique(
           `${at}.type`,
           `「${label}」は別のテーブルに持つ明細（\`source\` つき）です。行は**ページ` +
             `送りで**別に取るので、ここには揃っていません。この検証は**黙って通ります**。`,
-          "全部の行で重なりを見るなら、サーバ側で見てください（画面に出ている行だけを" +
-            "見ても、重なっていないとは言えません）。",
         );
         return;
       }
@@ -2020,7 +1957,6 @@ function checkUnique(
           "unique-without-of",
           at,
           "重なりを見る項目（`of`）がありません。この検証は何も判定しません。",
-          "`of: <行の項目名>` を書いてください（例: `{ type: unique, of: item }`）。",
         );
         return;
       }
@@ -2059,7 +1995,6 @@ function checkOptions(
       "option-when-without-optionsfrom",
       `${path}.options`,
       "選択肢に `when` があるのに `optionsFrom` が無いので、どの項目と連動するのか決まりません。全部の選択肢がそのまま出ます。",
-      "`optionsFrom: <親の項目名>` を足してください。",
     );
   }
   if (parent !== undefined && siblings.size > 0 && !siblings.has(parent)) {
@@ -2080,7 +2015,6 @@ function checkOptions(
       "optionssource-parentkey-without-optionsfrom",
       `${path}.optionsSource.parentKey`,
       "絞り込みに使う親の値が決まらないので、`parentKey` が効きません（全件を引きます）。",
-      "`optionsFrom: <親の項目名>` を足してください（親の値が `parentKey` の名前で Repository に渡ります）。",
     );
   }
   if (list(field.options).length > 0) {
@@ -2089,7 +2023,6 @@ function checkOptions(
       "options-and-optionssource",
       `${path}.optionsSource`,
       "`options` と `optionsSource` の両方があります。引いてくる方が勝つので、書いた `options` は出ません。",
-      "どちらかにしてください（静的な選択肢だけなら `optionsSource` を消す）。",
     );
   }
 }
@@ -2117,7 +2050,6 @@ function checkCondition(
     `条件は演算子 "${operator}" を理解しません。常に false になり、この項目は出てきません。`,
     `使えるのは ${ConditionOperators.join(" / ")}`
       + "（`between` は検索専用。範囲は all + gte/lte で書く）。",
-    operator === "between" ? "between-in-condition" : undefined,
   );
 }
 
@@ -2137,7 +2069,6 @@ function checkDashboard(
         "unknown-action",
         `${at}.action`,
         `カードが指しているアクション "${action}" が actions にありません。押しても何も起きません。`,
-        "actions に足すか、既にある id に直してください。",
       );
     }
     if (isDict(raw.value)) checkAggregate(raw.value, `${at}.value`, found);
@@ -2160,7 +2091,6 @@ function checkAggregate(
     "aggregate-without-field",
     `${path}.aggregate`,
     `"${aggregate}" は畳み込む項目が要りますが field がありません。結果は null になります。`,
-    "field（チャートなら valueField）を書いてください。count なら field は不要です。",
   );
 }
 
@@ -2175,8 +2105,6 @@ function checkReport(page: Dict, path: string, found: DefinitionWarning[]): void
       "groupby-without-sort",
       `${path}.report.groupBy`,
       "グループはコントロールブレイクなので、行がその順で届かないとグループが分裂し、小計が何度も出ます。",
-      "report.sort に印刷したい並びを書いてください（並べ替えは Repository の責務）。",
-      "groupby-without-sort",
     );
   }
 
@@ -2201,7 +2129,6 @@ function checkReport(page: Dict, path: string, found: DefinitionWarning[]): void
       "total-without-column",
       `${path}.report.totals[${i}].field`,
       `合計の対象 "${field}" が table.columns にありません。合計は列の下に出るので、どこにも表示されません。`,
-      "その項目を table.columns に足すか、列にある項目で合計してください。",
     );
   });
 }
@@ -2291,9 +2218,6 @@ function checkPaperFits(
           `（幅の指定がある ${declared.length} 列で ${pt(fixed)}pt` +
           (flex > 0 ? ` ＋ 指定の無い ${flex} 列に最低 ${MIN_FLEX_WIDTH}pt ずつ` : "") +
           `）。刷ると全体が縮められて、どの列も読めなくなります。`,
-        "列の width を減らす・列を減らす・paper.orientation を landscape にする、" +
-          "のどれかです（width は紙の上ではポイント＝1/72 inch。画面の px を" +
-          "そのまま書くと広すぎます）。",
       );
     }
   }
@@ -2307,8 +2231,6 @@ function checkPaperFits(
       `1枚 ${rows} 行だと1行あたり ${pt(paper.height / rows)}pt しか取れません` +
         `（${name}の高さ ${pt(paper.height)}pt ÷ ${rows} 行。表題と余白を除くと更に狭くなります）。` +
         `文字がつぶれて、刷っても読めません。`,
-      "rowsPerPage を減らしてください（A4 縦なら 30〜40 行が目安）。" +
-        "どうしても載せたいなら、大きい紙か横向きにします。",
     );
   }
 }

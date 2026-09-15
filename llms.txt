@@ -31,6 +31,7 @@ npx hatake new <kind> --id <id> --title <title>   # 雛形（crud/search/master/
 npx hatake reference <キー名>      # そのキーの型・既定値・書ける場所（--page-kind で絞る）
 npx hatake examples <やりたいこと> # 近い例を引く
 npx hatake pitfalls <キー名>       # よくある間違い → 正しい書き方
+npx hatake rules [<規則名>]        # **警告と助言の規則そのもの**（id・何が起きるか・直し方・対照表への繋ぎ・助言のつまみ）。定義は要らないので書く前に読める。警告（書いたのに効かない＝事実）と助言（書いていないと不便かも＝好み）は別物
 npx hatake failures <キー名>       # 実際に転んだ実例（なぜそう書くか付き）
 npx hatake explain page.yaml       # この定義は何をする画面か（日本語で読み返す）
 npx hatake explain page.yaml --brief        # 1行の要約（app なら画面一覧の表）
@@ -58,6 +59,7 @@ npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読ん�
 npx hatake registry --from-app snapshot.json  # **動いているアプリ／サーバの申告**を読む（registrySnapshot が書いた紙。印（$source）の無い紙は受け取らない＝手書きの一覧を申告として扱うと、無い種類について道具が断定する）
 ```
 `validate` は**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション／存在しないページへの遷移／`sort` の無い `groupBy`／条件で使えない演算子／`field` の無い集計など）。エラーではないが**画面を見ても気づけない**類なので、警告が出たら直す。`--warn-as-error` で CI を落とせる。
+警告名を言われて「それは何か」が分からないときは `hatake rules <規則名>` で引く（仕様書を読まなくてよい。知らない名前は空ではなくエラーになる＝引けなかったのか無いのかが分かる）。
 **黙って効かない書き方**も見る（遷移のパラメータ `$row.<項目名>` が画面に無い項目／`enabledWhen` が永久に成り立たない／組み込みでない紙は A4 として刷られる）。申告（`--registry` に `$source` つきの紙）を渡したときだけ「出す口（exportSink / printSink）が1つも登録されていない」まで言う＝手で書いた一覧では「登録していない」と「書き忘れた」の区別が付かないので言わない。
 未知キーは場所と直し方まで出る: `page.table.columns[0]: 知らないキー "witdh"（width の間違い？）`
 **定義の外との食い違い**も見られる。`repository:` や `plugin:` の名前がアプリ側で登録されていなければ、画面は出るのにデータが来ない／押しても何も起きない。`refs` で「何を登録すればいいか」を出し、`registry` で「実装が何を登録しているか」を読み、`validate --registry <file>` で突き合わせると名前の食い違いを機械で拾える（定義の隣に `hatake-registry.json` を置けば `--registry` は省ける）。`registry` は**その場に書いてある文字列しか読めない**ので、読めない登録があれば終了コード 1 で報告する（黙って落とすと嘘の一覧になるため）。
