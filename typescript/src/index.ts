@@ -109,6 +109,8 @@ export * from "./wireTodo.js";
 export * from "./wiringFilled.js";
 export * from "./registryUse.js";
 export * from "./registryFromApp.js";
+export * from "./warningRules.js";
+export * from "./rules.js";
 export * from "./httpProbe.js";
 export * from "./restTarget.js";
 export * from "./probeShape.js";

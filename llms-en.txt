@@ -53,6 +53,7 @@ npx hatake minimize page.yaml     # drop defaults; meaning is unchanged
 npx hatake failures <key>         # real failures: what was written, what the tools said
 npx hatake refs page.yaml --needs-registration     # what the application must register (repositories, plugins, sinks)
 npx hatake wire app.yaml --base /api               # a draft of the wiring (Flutter HatakeScope); the bodies stay TODO
+npx hatake rules [<rule id>]  # the RULES THEMSELVES (warnings and advice): what each one watches, what happens if you leave it, how to fix it, the pitfall it links to. No definition needed, so you can read it before you write. Warnings are facts (CI may fail on them); advice is taste (never changes the exit code)
 npx hatake registry --from-app snapshot.json  # read what a RUNNING app/server declared (written by registrySnapshot). A sheet without the $source marker is rejected: a hand-written list cannot tell "not registered" from "forgot to write it down"
 npx hatake registry lib/main.dart --out hatake-registry.json  # what the application does register
 ```

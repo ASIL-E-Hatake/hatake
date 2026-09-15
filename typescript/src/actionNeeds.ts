@@ -50,11 +50,15 @@ interface Dead {
   fix: string;
 }
 
-/** `type` 1つぶんの「効く条件」。 */
+/**
+ * `type` 1つぶんの「効く条件」。
+ *
+ * 対照表（`pitfalls`）への繋ぎはここに持たない＝**規則の表**（`warningRules.ts`）が
+ * 1か所で持つ。2か所に書くと、片方だけ直したときにどちらが正か分からなくなる。
+ */
 export interface ActionCase {
   type: string;
   rule: string;
-  pitfall?: string;
   /** 空振りしているなら、何が起きるか・どうするかを返す。 */
   dead(action: Dict, page: Dict, label: string): Dead | undefined;
 }
@@ -204,7 +208,6 @@ export const ACTION_CASES: ActionCase[] = [
   {
     type: ActionTypes.print,
     rule: "print-without-report",
-    pitfall: "print-without-report",
     dead: (_action, page, label) =>
       isDict(page.report)
         ? undefined
@@ -241,7 +244,6 @@ export const ACTION_CASES: ActionCase[] = [
 export interface DeadAction extends Dead {
   rule: string;
   index: number;
-  pitfall?: string;
 }
 
 /**
@@ -258,12 +260,7 @@ export function deadActions(page: Dict, actions: Dict[]): DeadAction[] {
     const label = str(action.label) ?? str(action.id) ?? "ボタン";
     const dead = one.dead(action, page, label);
     if (dead === undefined) return;
-    found.push({
-      ...dead,
-      rule: one.rule,
-      index,
-      ...(one.pitfall === undefined ? {} : { pitfall: one.pitfall }),
-    });
+    found.push({ ...dead, rule: one.rule, index });
   });
   return found;
 }

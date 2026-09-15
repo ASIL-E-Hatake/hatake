@@ -98,6 +98,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 | `hatake_apply_advice` | **助言を当てると決めたとき**：選んだものを定義に書き込む（書く場所は機械が決める。**値は渡す側が決める**）。`changed` に「何が変わったか」が画面の言葉で返る | `source`、`picks`（`[{ rule, value }]`。value は advise の `draft` をそのまま渡せる）、`rules` |
 | `hatake_new_page` | 新しい画面の出発点。そのまま検証を通る雛形が出る | `kind`、`id`、`title`、`repository`、`project`（案件の名前の決めごとの形で出す） |
 | `hatake_pitfalls` | よくある間違い → なぜ駄目か → 正しい書き方。書く前に眺める / 落ちて直せないとき | `query`、`lang`（ja/en） |
+| `hatake_rules` | **警告と助言の規則そのもの**（何を見ているか・何が起きるか・直し方・対照表への繋ぎ・助言のつまみ）。規則名を言われて「それは何か」が分からないとき / 書く前に何を言われるかを読むとき。定義は要らない | `rule`、`kind`（warning/advice） |
 | `hatake_diff` | **既にある定義を直したとき**：契約（api）を壊すか＋画面・権限・アプリ構成の**確かめてほしい**変化 | `before`、`after` |
 | `hatake_explain` | **検証を通したあと**：書いた定義が何をする画面かを日本語で読み返す（意図と違っていないか）。直したものを人に伝えるときは `before` も渡す。**`roles: true` で定義に出てくる役割の一覧**（`roles` を書く前に引く） | `source`、`before`（直す前＝変更を画面の言葉で言い直す）、`page`（app のとき1枚だけ）、`brief`（1行だけ）、`roles`（役割の棚卸し） |
 | `hatake_fix` | **検証で問題が出たとき**：直し方が一意なものだけ直す（綴り違い・入れる値が決まっている指定）。直さなかったものは理由つきで返る | `source`、`registry` |
@@ -126,6 +127,8 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
    → roles を書くなら先に hatake_explain の roles: true（**役割名を想像で書かない**）
 6. 書けたら hatake_run で動かす（draft: true で下書きのシナリオを作ってそのまま回す）
 7. 直し方が分からない / 書く前に落とし穴を知りたいときは hatake_pitfalls
+   規則名（`groupby-without-sort`）が何かを引くなら hatake_rules
+   （**警告と助言は別物**＝警告は事実、助言は好み。混ぜて読まない）
 8. バックエンドの形が要るなら hatake_api_shape
 9. 既にある定義を直したときは hatake_diff（壊していないか・確かめてほしい変化はないか）
    直した内容を人に伝えるときは hatake_explain に before を渡す（変更を画面の言葉で）
