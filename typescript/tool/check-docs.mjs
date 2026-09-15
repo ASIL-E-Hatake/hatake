@@ -361,7 +361,9 @@ async function main(argv) {
     }
     return statSync(path).isDirectory() ? markdownFiles(path) : [path];
   });
-  const files = (given.length > 0 ? given : markdownFiles(DOCS)).filter(
+  // **渡されたなら、渡された所だけ**を読む（1枚も無くても既定の docs に落ちない
+  // ＝落ちると「渡した所を読んでいないのに、食い違っていませんと言う」になる）。
+  const files = (argv.length > 0 ? given : markdownFiles(DOCS)).filter(
     (one) => argv.length > 0 || !isProposal(one),
   );
   if (files.length === 0) {
