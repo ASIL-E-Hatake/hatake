@@ -407,8 +407,9 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
       "役割ごとの件数（`maxRows` / `batchSize` の `byRole`）に書いてあるなら、" +
       "その数は誰にも効きません。",
     fix:
-      "定義の役割名をアプリが配る名前に合わせるか、アプリ側の語彙に足してください" +
-      "（`HatakeScope(knownRoles:)`）。**アプリ側の綴り違い**のこともあります。",
+      "定義の役割名を、配る役割の名前に合わせてください。配る役割そのものを増やすなら " +
+      "`app.roles` に足す（定義1枚で閉じる）か、アプリ側の語彙" +
+      "（`HatakeScope(knownRoles:)`）に足します。**アプリ側の綴り違い**のこともあります。",
   },
   "route-param-unknown-field": {
     what: "この画面に無い項目を指す遷移のパラメータ",

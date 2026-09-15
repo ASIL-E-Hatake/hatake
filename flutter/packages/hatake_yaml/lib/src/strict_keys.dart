@@ -18,7 +18,7 @@ import 'unknown_key.dart';
 /// そして「このノードに何が書けるか」を引く道具（リファレンス生成）に使うため。
 const Map<String, Set<String>> strictKeyTable = {
   '': {'dsl_version', 'page', 'app'},
-  'app': {'id', 'title', 'home', 'navigation', 'theme', 'menu', 'pages'},
+  'app': {'id', 'title', 'home', 'navigation', 'roles', 'theme', 'menu', 'pages'},
   'theme': {
     'primaryColor',
     'secondaryColor',

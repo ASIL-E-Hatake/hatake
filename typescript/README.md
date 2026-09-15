@@ -56,6 +56,8 @@ npx hatake run page.yaml --draft --out s.json   # 定義から下書きのシナ
 npx hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所
 npx hatake run page.yaml --scenario s.json --cover --draft --out more.json  # 残った分岐から次の1件を起こす
 npx hatake same old.yaml new.yaml            # 書き方が違うだけか（意味は同じか）
+npx hatake run page.yaml --widget-draft --out page_test.dart  # 画面の試験（Dart）の下書き
+npx hatake trace --diff old.yaml new.yaml    # その変更はどの要求から来たか
 npx hatake fixtures page.yaml                   # サーバ側の試験データ（通る形・弾く形）
 npx hatake probe --kinds type-mismatch           # 食い違いの印から直し方を引く（通信しない）
 npx hatake probe --login login.json --check      # 資格が取れることだけを試す（業務の口は叩かない）

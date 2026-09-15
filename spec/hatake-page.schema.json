@@ -87,6 +87,14 @@
           ],
           "default": "single"
         },
+        "roles": {
+          "type": "array",
+          "description": "Every role this app may hand out (the vocabulary, not a gate). Writing it lets the tools check role names with the definition alone: a role used on a menu item, action, column, field, filter or card that is not listed here is a typo, and anything gated on it is visible to nobody. Absent = the vocabulary is unknown, so that check needs the application registry (`HatakeScope(knownRoles:)`) instead. Listing a role here grants nothing: display gating is `roles` on each item, and enforcement is the server.",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
         "theme": {
           "$ref": "#/$defs/theme"
         },
@@ -1100,7 +1108,10 @@
         },
         "scope": {
           "type": "string",
-          "enum": ["page", "selection"],
+          "enum": [
+            "page",
+            "selection"
+          ],
           "default": "page",
           "description": "What the action runs on. 'page' (default) acts on the screen; 'selection' acts on the rows the user checked, and makes the table selectable."
         },

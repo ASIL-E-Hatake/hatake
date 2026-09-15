@@ -137,10 +137,18 @@ export function findWarnings(
   // 並べて開くアプリか（`open: tab` が効くかどうかの判定に使う）。単票の定義には
   // `app` が無いので、そこでは常に「並べない」＝タブは在り得ない。
   const tabsOpen = str(app?.navigation) === AppNavigations.tabs;
-  const appRoles = new Set([
-    ...roleNames(document),
-    ...(options.registry?.roles ?? []),
-  ]);
+  // **配りうる役割の語彙**。出どころは2つで、どちらも「アプリが配る」と言っている:
+  //   ・定義の宣言（`app.roles`）… 定義1枚で綴りを確かめられる
+  //   ・アプリ側の一覧（`--registry` の `roles`）… 動いているものに聞いた結果
+  const declared = list(app?.roles).filter(
+    (one): one is string => typeof one === "string",
+  );
+  const vocabulary = [...declared, ...(options.registry?.roles ?? [])];
+  // 語彙がどちらからも分からなければ、**出てくる名前を語彙とみなす**（今までと同じ）
+  // ＝綴り違いは言えないが、「どこにも出てこない役割」だけは言える。
+  const appRoles = new Set(
+    vocabulary.length > 0 ? vocabulary : roleNames(document),
+  );
 
   if (app !== undefined) {
     const pages = list(app.pages).filter(isDict);
@@ -157,9 +165,15 @@ export function findWarnings(
     // 単票の定義では他のページを知らないので、遷移先の存在は確かめられない。
     checkPage(page, "page", null, found, appRoles, tabsOpen);
   }
-  if (options.registry !== undefined) {
-    checkRegistry(document, options.registry, found);
-    if (options.registryFromApp === true) {
+  // 役割の語彙が**定義に書いてある**なら、一覧を渡されていなくても綴りを確かめられる
+  // （`app.roles` を宣言した時点で「配る役割はこれで全部」と言っているので）。
+  const registry =
+    declared.length === 0
+      ? options.registry
+      : { ...options.registry, roles: vocabulary };
+  if (registry !== undefined) {
+    checkRegistry(document, registry, found);
+    if (options.registryFromApp === true && options.registry !== undefined) {
       checkSinksDeclared(document, options.registry, found);
     }
   }

@@ -78,6 +78,7 @@ public final class AppParser {
                 dslVersion,
                 app.get("home") instanceof String h ? h : null,
                 app.get("navigation") instanceof String n ? n : "single",
+                strList(app.get("roles")),
                 menu,
                 pages);
     }

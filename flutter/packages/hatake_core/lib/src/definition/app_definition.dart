@@ -39,6 +39,16 @@ class AppDefinition extends Equatable {
   /// 上書きできる（同じ定義を PC ではタブ、タブレットでは遷移で出す）。
   final String navigation;
 
+  /// このアプリが配りうる役割の**語彙**（`app.roles`）。
+  ///
+  /// 書いてあると、**定義1枚だけで**役割名の綴りを確かめられる（どこかの `roles` に
+  /// 書いた名前がここに無ければ打ち間違いで、そこで出し分けているものは誰にも
+  /// 見えない）。書いていなければ語彙は分からないので、その検査はアプリ側の一覧
+  /// （`HatakeScope(knownRoles:)`）が要る。
+  ///
+  /// ここに並べても**何も与えない**＝出し分けは各所の `roles`、実際の権限はサーバ。
+  final List<String> roles;
+
   const AppDefinition({
     required this.id,
     required this.title,
@@ -46,6 +56,7 @@ class AppDefinition extends Equatable {
     this.home,
     this.theme,
     this.navigation = AppNavigation.single,
+    this.roles = const [],
     this.menu = const [],
     this.pages = const [],
   });
@@ -60,5 +71,5 @@ class AppDefinition extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, title, dslVersion, home, theme, navigation, menu, pages];
+      [id, title, dslVersion, home, theme, navigation, roles, menu, pages];
 }

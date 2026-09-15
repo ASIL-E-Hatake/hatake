@@ -8,13 +8,19 @@
 #   ・一括（`scope: selection`）は役割で件数を変えられる（`maxRows.byRole`）。
 #     1回の操作が件数ぶん動くので、慣れていない役割は少なく。
 #
-# 誰が何を見られるかは `npx hatake explain roles_app.yaml --roles` で数えられる
-# （役割名は定義の中だけの取り決めなので、綴りを間違えても画面は出る）。
+# 誰が何を見られるかは `npx hatake explain roles_app.yaml --roles` で数えられる。
+# **`app.roles` に配りうる役割を並べておくと、綴り違いを定義1枚で言える**
+# （どこかの `roles` に書いた名前がここに無ければ、それは打ち間違いで、そこで
+# 出し分けているものは誰にも見えない）。並べても何も与えない＝出し分けは各所の
+# `roles`、実際の権限はサーバ。
 dsl_version: "1.0"
 app:
   id: hr_admin
   title: 人事管理
   home: hrDashboard
+  # このアプリが配りうる役割の語彙。ここに無い名前をどこかに書いたら、hatake validate が
+  # 「誰にも見えません」と言う（アプリ側の一覧を渡さなくても言える）。
+  roles: [hr, manager, executive]
   menu:
     - { id: hrDashboard, label: ダッシュボード, icon: insights, page: hr_dashboard }
     - { id: employees, label: 社員, icon: people, page: employee_search }

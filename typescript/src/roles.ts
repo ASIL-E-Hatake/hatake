@@ -98,7 +98,10 @@ export function roleSpots(document: Dict): RoleSpot[] {
     const roles = list(value.roles).filter(
       (one): one is string => typeof one === "string",
     );
-    if (roles.length > 0) {
+    // `app.roles` は**語彙の宣言**で、出し分けに使っている所ではない（棚卸しに混ぜると
+    // 「1か所しか出てこない役割」の数え方が狂う＝宣言した全部が1か所に見える）。
+    const isVocabulary = path.length === 1 && path[0] === "app";
+    if (roles.length > 0 && !isVocabulary) {
       // メニューのグループは `group` に名前が入る（`label` ではない）。
       const label =
         str(value.label) ??

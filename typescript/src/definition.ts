@@ -667,6 +667,17 @@ export interface AppDefinition {
    * PC ではタブ、タブレットでは遷移で出す）。
    */
   navigation: string;
+  /**
+   * このアプリが配りうる役割の**語彙**（`app.roles`）。
+   *
+   * 書いてあると、**定義1枚だけで**役割名の綴りを確かめられる（どこかの `roles` に
+   * 書いた名前がここに無ければ打ち間違いで、そこで出し分けているものは誰にも
+   * 見えない）。書いていなければ語彙は分からないので、その検査はアプリ側の一覧
+   * （`--registry` の `roles` / `HatakeScope(knownRoles:)`）が要る。
+   *
+   * ここに並べても**何も与えない**＝出し分けは各所の `roles`、実際の権限はサーバ。
+   */
+  roles: string[];
   /** Look and feel. Undefined = the renderer's default. */
   theme?: ThemeDefinition;
   menu: MenuItem[];

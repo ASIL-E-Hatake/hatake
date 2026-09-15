@@ -704,6 +704,89 @@ jobs:
           fi
           grep -q '比べられません' /tmp/p0/same-bad.log
 
+      - name: The first widget test, where a change came from, and the role vocabulary
+        working-directory: typescript
+        run: |
+          set -e
+          mkdir -p /tmp/p0b
+          # 1. **画面の試験の下書きは、コミットしてあるものと一致する**（生成物）。
+          #    通ることは flutter のジョブが見る（test/ なので flutter test の対象）。
+          EX=../flutter/packages/hatake_example
+          node dist/cli.js run "$EX/assets/customer_master.yaml" --widget-draft \
+            --assets assets/customer_master.yaml --out /tmp/p0b/drafted.dart \
+            > /tmp/p0b/draft.log 2>&1
+          diff -u --strip-trailing-cr \
+            "$EX/test/drafted_customer_master_test.dart" /tmp/p0b/drafted.dart
+          # **キーの字を1つも書かない**（規約は Dart 側の1か所にしか無い）。
+          grep -q 'HatakeFind\.' /tmp/p0b/drafted.dart
+          if grep -q -e 'hatake\.form\.' -e 'Key(' /tmp/p0b/drafted.dart; then
+            echo "下書きがキーの字を書いている"; exit 1
+          fi
+          # 期待は枠組みが必ずそうする所だけ、と毎回言う。
+          grep -q '業務として正しいか' /tmp/p0b/draft.log
+          grep -q '押した先の画面' /tmp/p0b/draft.log
+          # 2. **その変更はどの要求から来たか**。
+          DEF=../spec/examples/product_search.yaml
+          INTENT=../spec/intents/product_search.intent.yaml
+          awk '/label: 価格/ { print; print "      - { field: stock, label: 在庫数 }"; next } { print }' \
+            "$DEF" > /tmp/p0b/after.yaml
+          node dist/cli.js trace --diff "$DEF" /tmp/p0b/after.yaml --intent "$INTENT" \
+            > /tmp/p0b/trace.log
+          grep -q 'column:stock' /tmp/p0b/trace.log
+          grep -q 'どの要求からも来ていません' /tmp/p0b/trace.log
+          # 由来が無くても**既定では落とさない**（後から意図に足すこともある）。
+          node dist/cli.js trace --diff "$DEF" /tmp/p0b/after.yaml --intent "$INTENT" \
+            > /dev/null
+          # --require-intent なら落ちる（CI に置く用）。
+          if node dist/cli.js trace --diff "$DEF" /tmp/p0b/after.yaml \
+               --intent "$INTENT" --require-intent > /tmp/p0b/trace-bad.log 2>&1; then
+            echo "由来の無い変更を通してしまった"; exit 1
+          fi
+          grep -q '由来の無い変更が 1 件' /tmp/p0b/trace-bad.log
+          # 同じ定義どうしなら、足された相手も消えた相手も無い。
+          node dist/cli.js trace --diff "$DEF" "$DEF" --intent "$INTENT" \
+            --require-intent > /tmp/p0b/trace-same.log
+          grep -q '足された相手も、消えた相手もありません' /tmp/p0b/trace-same.log
+          # 3. **app.roles（配りうる役割の語彙）**。
+          #    同梱の例が宣言していて、警告ゼロで通る。
+          node dist/cli.js validate --warn-as-error ../spec/examples/roles_app.yaml
+          node -e '
+            const { parseAppYaml } = require("./dist/index.js");
+            const yaml = require("fs").readFileSync(
+              "../spec/examples/roles_app.yaml", "utf8");
+            const roles = parseAppYaml(yaml).roles;
+            if (roles.length === 0) { console.error("app.roles が読めていない"); process.exit(1); }
+            console.log("配りうる役割: " + roles.join(" / "));
+          '
+          # **一覧を渡さなくても綴り違いを言う**（定義1枚で閉じる）。
+          sed 's|roles: \[hr\], width: 140|roles: [hrr], width: 140|' \
+            ../spec/examples/roles_app.yaml > /tmp/p0b/typo.yaml
+          node dist/cli.js validate /tmp/p0b/typo.yaml --json > /tmp/p0b/typo.json
+          grep -q 'role-not-in-app' /tmp/p0b/typo.json
+          grep -q 'hrr' /tmp/p0b/typo.json
+          # 宣言していなければ黙る（語彙が分からないので言えない）。
+          sed '/roles: \[hr, manager, executive\]/d' /tmp/p0b/typo.yaml \
+            > /tmp/p0b/nodecl.yaml
+          if node dist/cli.js validate /tmp/p0b/nodecl.yaml --json \
+               | grep -q 'role-not-in-app'; then
+            echo "語彙が分からないのに綴り違いと言ってしまった"; exit 1
+          fi
+          # 3版が同じキーを読む（strict の鍵表と、読む側）。
+          node -e '
+            const fs = require("fs");
+            for (const [name, path] of [
+              ["Dart", "../flutter/packages/hatake_yaml/lib/src/strict_keys.dart"],
+              ["Java", "../java/src/main/java/io/hatake/core/StrictKeys.java"],
+              ["Dart(parser)", "../flutter/packages/hatake_yaml/lib/src/app_parser.dart"],
+              ["Java(parser)", "../java/src/main/java/io/hatake/core/AppParser.java"],
+            ]) {
+              if (!fs.readFileSync(path, "utf8").includes("roles")) {
+                console.error(name + " が app.roles を知らない"); process.exit(1);
+              }
+            }
+            console.log("app.roles は3版が読む");
+          '
+
       - name: A mismatch kind can be looked up, and credentials can be checked alone
         working-directory: typescript
         run: |
