@@ -368,10 +368,26 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
       "（ハンドラが `ActionContext.input` で受け取ります）。" +
       "聞く必要が無いなら `confirm` です。",
   },
+  "readonlywhen-never-true": {
+    what: "永久に読み取り専用にならない条件",
+    happens:
+      "守るつもりだった値が、いつでも編集できます（画面を見ても「編集していい項目」に見えます）。",
+    fix:
+      "`all` は全部を満たす条件です。どれか1つでよいなら `any` に、" +
+      "どちらかが要らないなら消してください。項目名が違うなら直してください。",
+  },
   "readonlywhen-with-readonly": {
     what: "常に読み取り専用なのに書いた条件",
     happens: "`readOnly: true` が勝つので、`readOnlyWhen` は効きません。",
     fix: "条件付きにしたいなら `readOnly: true` を消してください。",
+  },
+  "requiredwhen-never-true": {
+    what: "永久に必須にならない条件",
+    happens:
+      "その項目は空のまま保存できます（必須にしたつもりの値が、あとから空で見つかります）。",
+    fix:
+      "`all` は全部を満たす条件です。どれか1つでよいなら `any` に、" +
+      "どちらかが要らないなら消してください。項目名が違うなら直してください。",
   },
   "required-as-validator-only": {
     what: "オブジェクトでない validators の要素",
@@ -488,6 +504,15 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
     fix:
       "明細の項目に書いてください（1つの値が他と重ならないことは、画面の中だけでは" +
       "決められません＝サーバの仕事です）。",
+  },
+  "visiblewhen-never-true": {
+    what: "永久に成り立たない出し分けの条件",
+    happens:
+      "その項目は**永久に出ません**（入力欄が無いのと同じ）。画面を見ても「そういう仕様」に" +
+      "見えるので、いちばん気づきにくい形です。",
+    fix:
+      "`all` は全部を満たす条件です。どれか1つでよいなら `any` に、" +
+      "どちらかが要らないなら消してください。項目名が違うなら直してください。",
   },
   "unknown-action": {
     what: "カードが指す存在しないアクション",

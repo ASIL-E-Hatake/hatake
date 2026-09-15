@@ -65,6 +65,7 @@ import {
 } from "./scenario.js";
 import { draftScenario } from "./scenarioDraft.js";
 import { coverScenario } from "./scenarioCover.js";
+import { coverDraftLines, draftForCover } from "./scenarioCoverDraft.js";
 import { renderExplain } from "./explain.js";
 import {
   explainSource,
@@ -118,6 +119,7 @@ import {
 import { fixSource, fixTodo, renderFix, renderFixTodo } from "./fix.js";
 import { type Advice, findAdvice, renderAdvice, unwritableAdvice } from "./advise.js";
 import { renderRules, rulesCatalog } from "./rules.js";
+import { sameLines, sameSources } from "./same.js";
 import {
   adviceRuleNames,
   applyAdviseOff,
@@ -280,6 +282,11 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       行を2つ・条件が成立した形）。**期待はいまの答えを写す**ので、業務として
       正しいかは人が見る。
       --cover は「まだ試していない所」を定義の分岐から挙げる（落とさない）。
+      --scenario と --cover に --draft を足すと、**まだ試していない分岐から次に書く
+      1件を起こす**（--out でシナリオに書ける）。起こした形は**実際に回して、その
+      分岐が本当に埋まることを確かめてから**配る＝当たっていない下書きを配ると
+      --cover が永久にゼロにならないので。組み合わせの条件（all / any / not）と
+      明細の行に対する条件は**どれを動かすかが意図**なので起こさず、理由つきで並べる。
       プラグインの計算・検証は**この道具には無い**ので、値を作らずにそう言う
       （アプリの試験で回す）。
 
@@ -691,6 +698,16 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
   hatake dto <file> [--json]
       API の形（DtoSpec）を出す。
 
+  hatake same <old file> <new file> [--json]
+      **書き方が違っても同じ画面か**を見る。AI に直させると差分は爆発するが（キーの
+      並び・既定値の明示・囲みの書き方）、意味は変わっていないことが多い。見ているのは
+      **解析後のモデル**なので、並べ替えと既定値の明示は差にならない。
+      違うなら**どこが違うか**を道つきで出す（同じか違うかだけではレビューに使えない）。
+      **等価な条件の書き換えは見ない**（all: [x] と x はモデルが違うので「違う」と言う）
+      ＝条件の代数を入れると、道具が「同じ」と言った所を人が確かめられなくなる。
+      同じなら 0、違えば 1（差分が意味を変えていないことを CI で言える）。
+      **同じ＝正しい、ではない**（両方とも同じように間違っていることはある）。
+
   hatake diff <old file> <new file> [--json] [--markdown] [--caution-as-error] [--api-only]
   hatake diff --git <range> <file> [--json] [--markdown] [--caution-as-error] [--api-only]
       定義を変えたときの影響範囲。API の形（壊すか）と、画面・権限・アプリ構成の
@@ -876,6 +893,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
             2,
           ),
         );
+      case "same":
+        return same(positional, flags, io);
       case "diff":
         return diff(positional, flags, io);
       case "refs":
@@ -1121,7 +1140,9 @@ function run(files: string[], flags: Args["flags"], io: CliIo): number {
   const page = scenarioPageOf(io.readFile(files[0]), str(flags, "page"), io);
   if (page === null) return 1;
 
-  if (flags.draft === true) {
+  // `--cover --draft` は**回したあと**に起こす（まだ試していない分岐が要る）ので、
+  // シナリオを渡されているときはこちらには来ない。
+  if (flags.draft === true && str(flags, "scenario") === undefined) {
     const { file, todo } = draftScenario(page);
     const text = `${JSON.stringify(file, null, 2)}\n`;
     const out = str(flags, "out");
@@ -1146,6 +1167,13 @@ function run(files: string[], flags: Args["flags"], io: CliIo): number {
     );
     return 1;
   }
+  if (flags.draft === true && flags.cover !== true) {
+    io.err(
+      "--scenario と --draft を一緒に渡すときは --cover も付けてください" +
+        "（まだ試していない分岐から起こす、という意味になります）。",
+    );
+    return 1;
+  }
   let file: ScenarioFile;
   try {
     file = JSON.parse(io.readFile(scenarioFile)) as ScenarioFile;
@@ -1163,6 +1191,25 @@ function run(files: string[], flags: Args["flags"], io: CliIo): number {
   const cover =
     flags.cover === true ? coverScenario(page, file.cases, answers) : undefined;
   const failed = results.filter((one) => one.mismatches.length > 0);
+
+  // **まだ試していない所から「次に書く1件」を起こす。** 回してからでないと、どの分岐が
+  // 残っているか分からないのでここに置く。
+  if (cover !== undefined && flags.draft === true) {
+    const drafted = draftForCover(page, cover, file.cases, answers);
+    const text = `${JSON.stringify(drafted.file, null, 2)}\n`;
+    const out = str(flags, "out");
+    if (out !== undefined) {
+      io.writeFile(out, text);
+      io.out(`書きました: ${out}（${drafted.file.cases.length} 件）`);
+    } else if (flags.json === true) {
+      io.out(JSON.stringify(drafted, null, 2));
+      return 0;
+    } else {
+      io.out(text);
+    }
+    for (const line of coverDraftLines(drafted)) io.err(line);
+    return 0;
+  }
 
   if (flags.json === true) {
     io.out(
@@ -1977,6 +2024,26 @@ function questionPart(
       },
     },
   };
+}
+
+/**
+ * 書き方が違っても同じ画面かを見る（`same`）。
+ *
+ * 終了コードは**同じなら 0、違えば 1**。「意味を変えていない直し」を CI で言うための
+ * 道具なので、ここは落とす筋（`diff` が後方互換を見るのと同じ立ち位置）。
+ */
+function same(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 2) {
+    io.err("比べる定義を2つ指定してください（hatake same <前> <後>）。");
+    return 1;
+  }
+  const result = sameSources(io.readFile(files[0]), io.readFile(files[1]));
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+  } else {
+    for (const line of sameLines(result, [files[0], files[1]])) io.out(line);
+  }
+  return result.same ? 0 : 1;
 }
 
 /**

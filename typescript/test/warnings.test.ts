@@ -2157,3 +2157,122 @@ page:
     expect(found.map((w) => w.rule)).not.toContain("sink-not-declared");
   });
 });
+
+/**
+ * 出し分けの条件が永久に偽（`visibleWhen` / `requiredWhen` / `readOnlyWhen`）。
+ *
+ * ボタンの `enabledWhen` と同じ穴の残り半分。見つけ方は使い回すが、**言い方は節点ごと**
+ * （永久に出ない／永久に必須にならない／永久に読み取り専用にならない）なので規則も分ける。
+ */
+describe("出し分けの条件が永久に偽", () => {
+  const page = (key: string, condition: string) => `
+page:
+  type: crud
+  id: order_master
+  title: 受注
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号 }
+          - { field: status, label: 状態 }
+          - field: note
+            label: 備考
+            ${key}: ${condition}
+`;
+
+  const CONTRADICTION =
+    "{ all: [{ field: status, operator: equals, value: 受付 }, " +
+    "{ field: status, operator: equals, value: 承認済 }] }";
+
+  it("節点ごとに別の規則で、別の言い方をする", () => {
+    for (const [key, rule, says] of [
+      ["visibleWhen", "visiblewhen-never-true", "永久に成り立ちません"],
+      ["requiredWhen", "requiredwhen-never-true", "永久に成り立ちません"],
+      ["readOnlyWhen", "readonlywhen-never-true", "永久に成り立ちません"],
+    ] as const) {
+      const found = warningsOf(page(key, CONTRADICTION));
+      const one = found.find((w) => w.rule === rule);
+      expect(one?.message, key).toContain(says);
+      expect(one?.message, key).toContain("備考");
+      expect(one?.path, key).toBe(`page.form.sections[0].fields[2].${key}`);
+    }
+  });
+
+  it("**何が起きるかは節点ごとに違う**（重さを測れるように）", async () => {
+    const { WARNING_RULES } = await import("../src/index.js");
+    expect(WARNING_RULES["visiblewhen-never-true"].happens).toContain("永久に出ません");
+    expect(WARNING_RULES["requiredwhen-never-true"].happens).toContain("空のまま保存");
+    expect(WARNING_RULES["readonlywhen-never-true"].happens).toContain("編集できます");
+  });
+
+  it("この画面に無い項目を見ていれば言う（綴り違いに見えるときだけ）", () => {
+    const found = warningsOf(
+      page("visibleWhen", "{ field: statuss, operator: equals, value: 受付 }"),
+    );
+    expect(found.find((w) => w.rule === "visiblewhen-never-true")?.message).toContain(
+      "status",
+    );
+    // 近い名前が無ければ黙る（レコードは Repository から来る）。
+    expect(
+      rulesOf(page("visibleWhen", "{ field: warehouseCode, operator: equals, value: A }")),
+    ).not.toContain("visiblewhen-never-true");
+  });
+
+  it("**知らない演算子では言わない**（別の規則が同じことを言っている）", () => {
+    const found = rulesOf(
+      page("visibleWhen", "{ field: statuss, operator: startsWith, value: 受 }"),
+    );
+    expect(found).toContain("condition-operator-unsupported");
+    expect(found).not.toContain("visiblewhen-never-true");
+  });
+
+  it("any の中は見ないし、素直な条件には何も言わない", () => {
+    expect(
+      rulesOf(
+        page("visibleWhen",
+          "{ any: [{ field: status, operator: equals, value: 受付 }, " +
+          "{ field: status, operator: equals, value: 承認済 }] }"),
+      ),
+    ).not.toContain("visiblewhen-never-true");
+    expect(
+      rulesOf(page("visibleWhen", "{ field: status, operator: equals, value: 受付 }")),
+    ).not.toContain("visiblewhen-never-true");
+  });
+
+  it("**永久に真は言わない**（条件が要らなかっただけで、事故ではない）", () => {
+    // 同じ項目に同じ値を2つ＝常に成り立つ。画面は意図どおりに動く。
+    expect(
+      rulesOf(
+        page("visibleWhen",
+          "{ all: [{ field: status, operator: equals, value: 受付 }, " +
+          "{ field: status, operator: equals, value: 受付 }] }"),
+      ),
+    ).not.toContain("visiblewhen-never-true");
+  });
+
+  it("ウィザードのステップの中の項目も見る", () => {
+    const wizard = `
+page:
+  type: wizard
+  id: order_wizard
+  title: 受注入力
+  repository: orderRepository
+  steps:
+    - id: s1
+      title: 基本
+      fields:
+          - { field: status, label: 状態 }
+          - field: note
+            label: 備考
+            visibleWhen: ${CONTRADICTION}
+`;
+    const found = warningsOf(wizard);
+    expect(found.find((w) => w.rule === "visiblewhen-never-true")?.path).toBe(
+      "page.steps[0].fields[1].visibleWhen",
+    );
+  });
+});
