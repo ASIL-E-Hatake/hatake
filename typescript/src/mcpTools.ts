@@ -61,6 +61,7 @@ import {
 } from "./refs.js";
 import { type FailureCatalog } from "./failures.js";
 import { findWarnings } from "./warnings.js";
+import { buildCheckSheet } from "./checkSheet.js";
 import { ADVICE_NOTE, findAdvice, unwritableAdvice } from "./advise.js";
 import { parseProject } from "./project.js";
 import {
@@ -281,20 +282,27 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 4. キーの型・既定値・書ける場所に迷ったら hatake_reference で引く（仕様書は読まなくていい）
    文言に差し込み（{count} など）を書くなら hatake_reference の placeholders: true
    （**閉じた集合**なので、項目名を書いても埋まらない＝そのまま文字で出る）
-5. 書けたら必ず hatake_validate にかける（知らないキーは黙って捨てられるので、書いた気になって効いていない事故が起きる）
-   問題が出たら hatake_fix に通す（綴り違いのような**一意な直し**は自分で書き直さない。別の所を壊す）
-   そのあと hatake_explain で読み返す（**書いたものが意図どおりか**は、警告では分からない）
-   さらに hatake_advise を1回（**書いていない所**は検証に出てこない＝並べ替えできない一覧・
-   誰でも消せる画面・確認の無い一括。好みなので直すかは業務の判断）
-   前書きが在れば hatake_advise に project も渡す（案件の名前の決めごと・用語辞書との
-   食い違いが project- で始まる助言に出る）
-   当てると決めたものは hatake_apply_advice に渡す（**書く場所は機械のほうが正確**。
-   値＝確認の文・件数・見せる相手は業務の決めごとなので、こちらで決めて value に渡す。
-   助言に draft が付いていれば、中身を見てそのまま value に渡してよい）
+5. **書けたら hatake_check を1回**（これが1往復で4本ぶん）。事実（検証）・読み返し・
+   好み（助言）・人が決めること を1回で回して、**欄を分けたまま**返す。4本を別々に
+   呼んだのと同じ結果なので、順番を覚えなくてよい。前書きが在れば project も渡す
+   （案件の名前の決めごと・用語辞書との食い違いも同じ紙に出る）。
+   **欄ごとに次の相手が違う**:
+   ・事実（書いたのに効かない）→ hatake_fix に通す（綴り違いのような**一意な直し**は
+     自分で書き直さない。別の所を壊す）
+   ・好み（書いていないと不便かも）→ 当てると決めたものだけ hatake_apply_advice に渡す
+     （**書く場所は機械のほうが正確**。値＝確認の文・件数・見せる相手は業務の決めごとな
+     ので、こちらで決めて value に渡す。助言に draft が付いていれば、中身を見てそのまま
+     value に渡してよい）
+   ・人が決めること → **人に投げる**（下の 5.5）
+   1つだけ見たいときは単体で呼ぶ: hatake_validate（知らないキーは黙って捨てられるので、
+   書いた気になって効いていない事故が起きる）/ hatake_explain（**書いたものが意図どおり
+   か**は警告では分からない）/ hatake_advise（**書いていない所**は検証に出てこない＝
+   並べ替えできない一覧・誰でも消せる画面・確認の無い一括）
    roles や maxRows.byRole を書くときは先に hatake_explain の roles: true で
    **定義に出てくる役割**を引く
    （役割名を想像で書くと、画面は出るのに誰にも見えない）
-5.5 **書けたら hatake_ask を1回**（定義を渡す）。ここで返るのは**定義に書けないのに、
+5.5 **人が決めること**（hatake_check の4番目の欄。単体で呼ぶなら hatake_ask）。
+   ここで返るのは**定義に書けないのに、
    画面が在るなら決まっていないと嘘になること**（同時に直したらどうするか・消したものを
    残すか・端数・サーバでも検証するか・止めるのは誰か）。検証も助言も**定義に書けること**
    しか見ないので、ここだけが抜ける。**問いは人に投げる**＝AI が勝手に決めて書かない
@@ -793,6 +801,137 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           );
         }
         return pretty(found);
+      },
+    },
+    {
+      name: "hatake_check",
+      title: "定義を1往復で見る（事実・読み返し・好み・人が決めること）",
+      description:
+        "**書けたらまずこれ**。hatake_validate（事実）・hatake_explain（読み返し）・" +
+        "hatake_advise（好み）・hatake_ask（人が決めること）を**1回で**回して、" +
+        "**欄を分けたまま**1枚で返す。4本を別々に呼ぶのと同じ結果なので、" +
+        "呼ぶ順番を覚えなくてよい（往復も文脈も4分の1になる）。" +
+        "**欄は混ぜていない**＝facts は事実（書いたのに効かない。直す）、readback は" +
+        "読み返し（そう書いてある、と言い直しただけ。良し悪しは言わない）、" +
+        "preferences は好み（書いていないと不便かも。直さなくてもよい）、" +
+        "questions は**人が決めること**（定義に書けないので、AI が決めて書いてはいけない）。" +
+        "next にこの紙を読んだあとの1手が入っている（欄ごとに相手が違う＝" +
+        "事実は hatake_fix、好みは hatake_apply_advice、問いは人）。" +
+        "**動かしてはいない**＝その値でいくらになるか・押せるかは hatake_run の担当。" +
+        "画面の外との辻褄（登録していない Repository やプラグイン）は registry を" +
+        "渡したときだけ見る。1つの欄だけ深く見たいときは、その道具を単体で呼ぶ。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          source: {
+            type: "string",
+            description: "定義の中身そのもの（ファイルパスではない）。page: でも app: でも。",
+          },
+          page: {
+            type: "string",
+            description:
+              "app のとき、1枚のページ id に絞る。絞ると読み返しが**全文**になる" +
+              "（絞らない app では1行ずつ＝全部の全文は重すぎるので）。",
+          },
+          registry: {
+            type: "object",
+            description:
+              "アプリ側で登録済みのものの一覧（hatake_refs で分かる形）。渡すと" +
+              "**画面の外との辻褄**も見る（登録していない Repository・プラグイン・" +
+              "出す口）。渡さなければそこは黙る＝見ていないと紙に書く。",
+          },
+          rules: {
+            type: "object",
+            description:
+              "案件の助言の物差し（off / options / require）。hatake_advise と同じ形。",
+          },
+          project: {
+            type: "string",
+            description:
+              "案件の前書き（hatake.project.yaml の中身）。渡すと名前の決めごと・" +
+              "用語辞書との食い違い（project- で始まる助言）と、前書きで答えた問いが効く。",
+          },
+          explain: {
+            type: "boolean",
+            description: "既定 true。false で読み返しの欄を落とす（落とした理由は紙に出る）。",
+          },
+          advise: {
+            type: "boolean",
+            description: "既定 true。false で好みの欄を落とす。",
+          },
+          ask: {
+            type: "boolean",
+            description: "既定 true。false で人が決めることの欄を落とす。",
+          },
+        },
+        required: ["source"],
+      },
+      example: { source: EXAMPLE_CRUD },
+      run(args) {
+        const source = required(args, "source");
+        let kind: string;
+        try {
+          kind = /^\s*app\s*:/m.test(source)
+            ? `app（${parseAppYaml(source, { strict: true }).pages.length} ページ）`
+            : parsePageYaml(source, { strict: true }).kind;
+        } catch (error) {
+          // 読めない定義は**読み返せない**ので、ここで止める。問題の出し方は
+          // hatake_validate と同じ（同じ直し方を2通り言わない）。
+          const hints =
+            error instanceof UnknownKeysError
+              ? pitfallsForKeys(
+                  pitfalls(),
+                  error.keys.map((k) => k.key),
+                ).map((pitfall) => describePitfall(pitfall))
+              : [];
+          return pretty({
+            ok: false,
+            ...problem(error),
+            ...(hints.length > 0 ? { hints } : {}),
+            note:
+              "読めない定義は読み返せないので、ほかの欄も作っていません" +
+              "（直したらもう一度かけてください）。",
+          });
+        }
+        const preamble = str(args, "project");
+        const project = preamble === undefined ? undefined : parseProject(preamble);
+        const only = str(args, "page");
+        const registry =
+          typeof args.registry === "object" && args.registry !== null
+            ? (args.registry as DefinitionRegistry)
+            : undefined;
+        const sheet = buildCheckSheet({
+          from: "渡された定義",
+          kind,
+          source,
+          ...(only === undefined ? {} : { page: only }),
+          ...(registry === undefined ? {} : { registry }),
+          rules:
+            typeof args.rules === "object" && args.rules !== null
+              ? parseAdviceRules(args.rules)
+              : DEFAULT_RULES,
+          ...(project === undefined ? {} : { project }),
+          questions: {
+            // 案件が足した問いを重ねる（印がぶつかったら落ちる＝上書きはできない）。
+            kinds: mergeQuestionKinds(
+              parseQuestionKinds(readJson(QUESTION_KINDS_FILE)),
+              project?.questions.ask ?? [],
+            ),
+            areas: responsibility(),
+          },
+          drop: {
+            ...(args.explain === false
+              ? { readback: "explain: false で落としました。" }
+              : {}),
+            ...(args.advise === false
+              ? { preferences: "advise: false で落としました。" }
+              : {}),
+            ...(args.ask === false
+              ? { questions: "ask: false で落としました。" }
+              : {}),
+          },
+        });
+        return pretty({ ok: true, ...sheet });
       },
     },
     {

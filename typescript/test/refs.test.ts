@@ -44,6 +44,8 @@ describe("定義が外に要求しているもの", () => {
         kind: "repositories",
         name: "customerRepository",
         path: "page.repository",
+        // どの画面の話かは**構造で**持つ（道の文字を読み解かせないため）。
+        page: "customer_master",
         // Repository に組み込みは無いので、必ずアプリ側で登録が要る。
         builtIn: false,
       },

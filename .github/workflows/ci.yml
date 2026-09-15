@@ -787,6 +787,151 @@ jobs:
             console.log("app.roles は3版が読む");
           '
 
+      - name: One sheet for what is unwired, advice that gets fixed, one round trip
+        working-directory: typescript
+        run: |
+          set -e
+          mkdir -p /tmp/p0c
+          EX=../flutter/packages/hatake_example/assets
+          # 1. **繋がっていない所を1枚で**。デモは全部繋がっているので 0 か所。
+          node dist/cli.js gaps "$EX/sales_app.yaml" --unwired-as-error \
+            > /tmp/p0c/gaps.log
+          grep -q '繋がっていない所はありませんでした' /tmp/p0c/gaps.log
+          # **一覧を渡されていない種類は「見なかった」**（登録していないと断定しない）。
+          grep -q '見なかった種類' /tmp/p0c/gaps.log
+          # 登録を1つ消したら、**押す所ごとに**出る（否定側＝落ちることを見る）。
+          sed 's/"approveOrders",//' "$EX/hatake-registry.json" \
+            > /tmp/p0c/registry.json
+          if node dist/cli.js gaps "$EX/sales_app.yaml" \
+               --registry /tmp/p0c/registry.json --unwired-as-error \
+               > /tmp/p0c/gaps-bad.log; then
+            echo "登録を消したのに、繋がっていないと言わなかった"; exit 1
+          fi
+          grep -q 'approveOrders' /tmp/p0c/gaps-bad.log
+          grep -q 'order_search' /tmp/p0c/gaps-bad.log
+          # **警告と同じ物差し**で数えている（足りない登録の数が一致する）。
+          node dist/cli.js validate "$EX/sales_app.yaml" \
+            --registry /tmp/p0c/registry.json --json > /tmp/p0c/validate.json
+          node dist/cli.js gaps "$EX/sales_app.yaml" \
+            --registry /tmp/p0c/registry.json --json > /tmp/p0c/gaps.json
+          node -e '
+            const fs = require("fs");
+            const warned = JSON.parse(fs.readFileSync("/tmp/p0c/validate.json", "utf8"))
+              .flatMap((one) => one.warnings ?? [])
+              .filter((one) => one.rule === "unknown-plugin").length;
+            const gaps = JSON.parse(fs.readFileSync("/tmp/p0c/gaps.json", "utf8"));
+            const group = gaps.groups.find((one) => one.rule === "unknown-plugin");
+            if (warned === 0 || group === undefined) {
+              console.error("どちらかが何も言っていない"); process.exit(1);
+            }
+            if (group.names.length !== warned) {
+              console.error("警告 " + warned + " 件に対して一覧は " +
+                group.names.length + " 件（物差しが2つある）");
+              process.exit(1);
+            }
+            if (group.rows.length < group.names.length) {
+              console.error("押す所は登録の数より少なくならない"); process.exit(1);
+            }
+            console.log("繋がっていない登録 " + warned + " 件 / 押す所 " +
+              group.rows.length + " か所");
+          '
+          # 2. **助言の効き目**（直った / 黙らせた を混ぜない）。
+          printf '%s\n' 'page:' '  type: search' '  id: order_search' \
+            '  title: 受注照会' '  repository: orderRepository' '  table:' \
+            '    columns:' '      - { field: code, label: コード }' \
+            '      - { field: customer, label: 顧客 }' \
+            '      - { field: amount, label: 金額 }' > /tmp/p0c/before.yaml
+          sed 's|{ field: code, label: コード }|{ field: code, label: コード, sortable: true }|' \
+            /tmp/p0c/before.yaml > /tmp/p0c/fixed.yaml
+          printf '%s\n' '# advise-off: no-sortable-column # 並べ替えは使わない' \
+            > /tmp/p0c/silenced.yaml
+          cat /tmp/p0c/before.yaml >> /tmp/p0c/silenced.yaml
+          node dist/cli.js advise --effect /tmp/p0c/before.yaml /tmp/p0c/fixed.yaml \
+            --json > /tmp/p0c/effect-fixed.json
+          node dist/cli.js advise --effect /tmp/p0c/before.yaml \
+            /tmp/p0c/silenced.yaml --min 1 --json > /tmp/p0c/effect-off.json
+          node -e '
+            const fs = require("fs");
+            const pick = (path) => {
+              const report = JSON.parse(fs.readFileSync(path, "utf8"));
+              const one = report.rules.find((r) => r.rule === "no-sortable-column");
+              if (one === undefined) {
+                console.error(path + " でその規則が数えられていない"); process.exit(1);
+              }
+              return { one, report };
+            };
+            const fixed = pick("/tmp/p0c/effect-fixed.json");
+            if (fixed.one.fixed !== 1 || fixed.one.verdict !== "効いている") {
+              console.error("直したのに効いていると言わない"); process.exit(1);
+            }
+            const off = pick("/tmp/p0c/effect-off.json");
+            if (off.one.silenced !== 1) {
+              console.error("黙らせたのに数えていない"); process.exit(1);
+            }
+            if (off.one.fixed !== 0) {
+              console.error("**黙らせたものを直ったに入れている**"); process.exit(1);
+            }
+            if (!off.report.drop.includes("no-sortable-column")) {
+              console.error("1回も直っていないのに切る候補に出ない"); process.exit(1);
+            }
+            console.log("効き目: 直った " + fixed.one.fixed + " / 黙らせた " +
+              off.one.silenced);
+          '
+          # 終了コードは動かさない（助言は好み。効き目の話も好みの話）。
+          node dist/cli.js advise --effect /tmp/p0c/before.yaml /tmp/p0c/before.yaml \
+            --min 1 > /dev/null
+          # 3. **1往復で1本**が、4本を別々に呼んだのと同じ数を言う。
+          PAGE=$EX/customer_master.yaml
+          node dist/cli.js check "$PAGE" --json > /tmp/p0c/check.json
+          node dist/cli.js validate "$PAGE" --json > /tmp/p0c/check-validate.json
+          node dist/cli.js advise "$PAGE" --json > /tmp/p0c/check-advise.json
+          node dist/cli.js ask "$PAGE" --json > /tmp/p0c/check-ask.json
+          node -e '
+            const fs = require("fs");
+            const read = (name) =>
+              JSON.parse(fs.readFileSync("/tmp/p0c/" + name, "utf8"));
+            const sheet = read("check.json");
+            const warned = read("check-validate.json")
+              .flatMap((one) => one.warnings ?? []);
+            const advice = read("check-advise.json");
+            const ask = read("check-ask.json");
+            const same = (what, a, b) => {
+              if (JSON.stringify(a) !== JSON.stringify(b)) {
+                console.error(what + " が別々に呼んだときと違う（数え方が2つある）");
+                console.error(JSON.stringify(a).slice(0, 200));
+                console.error(JSON.stringify(b).slice(0, 200));
+                process.exit(1);
+              }
+            };
+            same("事実", sheet.facts.warnings, warned);
+            same("好み", sheet.preferences.advice, advice);
+            same("人が決めること", sheet.questions.list, ask.questions);
+            // 欄を混ぜていない（言えないことも JSON で届く）。
+            if (!sheet.note.includes("欄は混ぜていません")) {
+              console.error("言えないことが JSON に無い"); process.exit(1);
+            }
+            if (sheet.next.length === 0) {
+              console.error("次の1手が空"); process.exit(1);
+            }
+            console.log("1往復: 事実 " + warned.length + " / 好み " + advice.length +
+              " / 問い " + ask.questions.length);
+          '
+          # **事実の欄は旗で落とせない**（落とせるのは残り3つだけ）。
+          node dist/cli.js check "$PAGE" --no-explain --no-advise --no-ask --json \
+            > /tmp/p0c/check-thin.json
+          node -e '
+            const sheet = JSON.parse(
+              require("fs").readFileSync("/tmp/p0c/check-thin.json", "utf8"));
+            if (sheet.facts === undefined) {
+              console.error("事実の欄が落ちた"); process.exit(1);
+            }
+            if (sheet.omitted.length !== 3) {
+              console.error("落とした欄が理由つきで残っていない"); process.exit(1);
+            }
+          '
+          # 警告で落とすのは --warn-as-error のときだけ（好みと問いでは落ちない）。
+          node dist/cli.js check "$PAGE" > /dev/null
+
       - name: A mismatch kind can be looked up, and credentials can be checked alone
         working-directory: typescript
         run: |

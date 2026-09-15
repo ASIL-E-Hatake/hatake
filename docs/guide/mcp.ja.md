@@ -93,6 +93,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 | `hatake_project` | **いちばん最初**。案件の前書き（この案件は何のシステムか・**何ができないか**・業務の言葉と項目名の対応・名前の決めごと）を読む。書いてある言葉と名前で定義を書く | `source`（前書きの中身そのもの） |
 | `hatake_reference` | キーの型・既定値・書ける場所・取れる値を知りたい。仕様書を読む代わり。**`placeholders: true` で文言に書ける差し込みの一覧**（`{count}` / `{failedKeys}` / `$row.<項目名>` …と、いつ埋まるか） | `name`（キー名/ノード名/ページ種別）、`pageKind`（その画面の分だけに絞る）、`placeholders` |
 | `hatake_examples` | 定義を書き始める前に近い例を探す。`file` を渡すと YAML 全文 | `query`（日本語でよい）、`file` |
+| `hatake_check` | **書けたらまずこれ**：検証（事実）・読み返し・助言（好み）・問い（人が決めること）を**1回で**回して、**欄を分けたまま**1枚で返す。4本を別々に呼ぶのと同じ結果なので、呼ぶ順番を覚えなくてよい。`next` に欄ごとの次の1手が入っている（事実は `hatake_fix`、好みは `hatake_apply_advice`、問いは人）。**動かしてはいない**＝値の話は `hatake_run` | `source`、`page`（絞ると読み返しが全文になる）、`registry`、`rules`、`project`、`explain` / `advise` / `ask`（false で欄を落とす。**事実の欄は落とせない**） |
 | `hatake_validate` | 書いたら/直したら必ず通す。知らないキーを全部まとめて指摘＋綴りの提案 | `source`（中身そのもの）、`strict`（既定 true）、`registry`（アプリ側で登録済みのもの＝外との辻褄も見る） |
 | `hatake_advise` | **検証を通したあと**：書いて**いない**から不便かもしれない所を挙げる（並べ替えできない一覧・誰でも消せる画面・確認の無い一括）。好みなので直すかは業務の判断。**`draft` に書く値の下書きが付く** | `source`、`page`（app のとき1枚だけ）、`rules`（案件の物差し＝`off` / `options` / `require`）、`project`（案件の前書き＝名前と用語も突き合わせる）、`registry`（`project` と一緒に渡すと、宣言した担当がアプリに登録されているかも見る） |
 | `hatake_apply_advice` | **助言を当てると決めたとき**：選んだものを定義に書き込む（書く場所は機械が決める。**値は渡す側が決める**）。`changed` に「何が変わったか」が画面の言葉で返る | `source`、`picks`（`[{ rule, value }]`。value は advise の `draft` をそのまま渡せる）、`rules` |
@@ -119,12 +120,15 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 2. hatake_examples で近い例を探す
 3. 新規なら hatake_new_page で雛形（前書きが在れば project も渡す）
 4. 迷ったキーだけ hatake_reference で引く
-5. 書けたら必ず hatake_validate → 問題が出たら hatake_fix → hatake_explain で読み返す
-5.5 hatake_ask を1回（**定義に書けないのに決まっていないこと**。問いは人に投げる）
-   → さらに hatake_advise を1回（**書いていない所**は検証に出てこない。`draft` に値の下書きが付く。
-     前書きが在れば project も渡す＝名前と用語の食い違いが project- で始まる助言に出る）
-   → 当てると決めたものは hatake_apply_advice（書く場所は機械のほうが正確）
-   → roles を書くなら先に hatake_explain の roles: true（**役割名を想像で書かない**）
+5. **書けたら hatake_check を1回**（これで4本ぶん＝事実・読み返し・好み・人が決めること。
+   前書きが在れば project も渡す）。欄ごとに次の相手が違う:
+   → 事実（書いたのに効かない）は hatake_fix に通す（**一意な直し**は自分で書き直さない）
+   → 好み（書いていないと不便かも）は、当てると決めたものだけ hatake_apply_advice
+     （書く場所は機械のほうが正確。値は渡す側が決める）
+   → 問い（定義に書けない）は**人に投げる**＝当てて書くと嘘の設計になる
+   1つだけ深く見たいときは単体で呼ぶ（hatake_validate / hatake_explain /
+   hatake_advise / hatake_ask）。roles を書くなら先に hatake_explain の
+   roles: true（**役割名を想像で書かない**）
 6. 書けたら hatake_run で動かす（draft: true で下書きのシナリオを作ってそのまま回す）
 7. 直し方が分からない / 書く前に落とし穴を知りたいときは hatake_pitfalls
    規則名（`groupby-without-sort`）が何かを引くなら hatake_rules
@@ -141,6 +145,8 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
 `before` を渡すと、変更を画面の言葉で言い直します（「枠「請求先」は、区分 が 法人 のときだけ出るようになりました」）。`hatake_diff` が返すのは機械の言葉（`ui / column-format-changed / …`）なので、**人に報告するとき**はこちらを使う。判定（壊すか）は `hatake_diff`、言い直し（何が変わったか）は `hatake_explain`、で分けてあります。`brief: true` は1行の要約で、PR 本文や画面一覧に貼る用。
 
 `hatake_diff` は変更を **area**（api / ui / access / app）と **impact**（breaking / caution / safe）で返します。`compatible: false` は呼び出し側の修正が要る話、`quiet: false` は「壊れないが人に確かめてほしい」話（列やボタンや選択肢が消えた・権限が変わった・ページやメニューが消えた）。エージェントには**後者を黙って進めず列挙させる**ようにしてあります。
+
+`hatake_check` は上の4本を1回で回すだけで、**新しい判断はしません**（別の数え方をした瞬間に、道具ごとに違うことを言う紙になる）。欄を分けたまま返すのが肝で、混ぜると「助言を直さないと CI が赤い」になり、そうなると事実の側まで読まれなくなります。終了コードを動かすのは事実の欄だけです。
 
 `hatake_validate` と `hatake_advise` は**別の物差し**です。前者は「書いたのに効かない」＝事実なので直す。後者は「書いていないから不便かもしれない」＝**好み**なので、直すかどうかは業務の判断。AI にとって大事なのは、**書いていないことは検証に出てこない**という点です（並べ替えできない一覧も、確認の無い一括も、定義としては正しい）。案件の決めごとがあるなら `rules` を渡してください（合わない規則を止める `off`、目盛りを変える `options`、決めごとを足す `require`）。知らないキーや知らない規則名は**黙って無視せずエラー**にします。
 

@@ -26,6 +26,7 @@ npx hatake where 締め処理          # これはどこの担当？（定義 / 
 npx hatake where --from 依頼.md    # 依頼文を行ごとに仕分ける（外が混ざっていたら先に言う）
 npx hatake project                # 案件の前書き（何のシステムか・用語・名前の決めごと）
 npx hatake project --agents       # その前書きを AGENTS.md / CLAUDE.md に貼る断片にする
+npx hatake check page.yaml        # **書けたらまずこれ**。validate（事実）/ explain（読み返し）/ advise（好み）/ ask（人が決めること）を**1回で**回して、欄を分けたまま1枚にする＝4本を別々に呼ぶのと同じ結果なので、順番を覚えなくてよい。**混ぜていない**ので、終了コードを動かすのは事実の欄だけ（--warn-as-error のとき）。--no-explain / --no-advise / --no-ask で欄を落とせるが、**事実の欄は落とせない**（旗で消せると「警告ゼロ」と「見ていない」が同じ顔になる）
 npx hatake validate page.yaml     # strict（知らないキーを弾く）。--json で機械可読
 npx hatake new <kind> --id <id> --title <title>   # 雛形（crud/search/master/detail/form/wizard/dashboard/report）
 npx hatake reference <キー名>      # そのキーの型・既定値・書ける場所（--page-kind で絞る）
@@ -54,6 +55,8 @@ npx hatake run page.yaml --widget-draft  # **画面の試験（Dart）の下書�
 npx hatake trace --diff <前> <後>  # **その変更はどの要求から来たか**（意図の1枚と定義の差を組む）。言えるのは足された／消えた相手の由来だけ＝書き換えは指せる相手が動かないので言えない。由来の無い変更で落とすなら --require-intent
 npx hatake same <前> <後>          # **書き方が違うだけか**（解析後のモデルで比べる。キーの並び・既定値の明示・囲みの書き方は差にしない）。同じなら 0、違えばどこが違うかを道つきで出して 1。**等価な条件の書き換えは見ない**（all: [x] と x は「違う」と言う）
 npx hatake fix page.yaml --todo    # 機械が直せなかった分だけを「次の1往復で渡す形」にする
+npx hatake gaps app.yaml           # **繋がっていない所を1枚で**（定義の要求と登録済みの一覧の差を、押す所ごとに1行＝どの画面のどのボタンが空振りするか）。画面ごとの残り件数も出る。見たのは名前が登録されているかまでで、中身が TODO のままかは数えない。**渡されていない種類は「見なかった」**（手で書いた一覧では書き忘れと区別できない）。動いているアプリの申告なら、出ていない種類を「1つも登録していない」と読む
+npx hatake advise --effect <前> <後>  # **助言の効き目**（どの規則が実際に直されたか）。前の版で鳴っていた助言が後の版で鳴らなくなったかを、**画面×規則**で数える。鳴ったのに1回も直っていない規則は切る候補。黙らせた（# advise-off:）は「直った」に入れない＝鳴らなかったのではなく読まれなかった
 npx hatake refs app.yaml --unused  # 逆向き：登録してあるのに、どの定義も使っていないもの
 npx hatake paper report.yaml       # 帳票を「刷ったらどう見えるか」に開く（文字で・行が無くても見本を作る）
 npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか（Repository / プラグイン名 / 出す口）

@@ -89,6 +89,17 @@ import {
   reviewMarkdown,
 } from "./explainMarkdown.js";
 import { readGitPair } from "./gitRange.js";
+import { gapsLines, wiringGaps } from "./wiringGaps.js";
+import {
+  adviceEffect,
+  effectLines,
+  type EffectPair,
+} from "./adviseEffect.js";
+import {
+  buildCheckSheet,
+  checkLines,
+  type CheckInput,
+} from "./checkSheet.js";
 import { buildReport } from "./report.js";
 import { layoutReport } from "./reportLayout.js";
 import { renderPaperText } from "./paperText.js";
@@ -126,6 +137,7 @@ import {
   adviceRuleNames,
   applyAdviseOff,
   parseAdviseOff,
+  type SilencedAdvice,
   silencedLines,
 } from "./adviseOff.js";
 import { designMarkdown, type DesignParts } from "./design.js";
@@ -271,6 +283,21 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       定義の隣の hatake-registry.json があれば拾う。
       一覧に roles（アプリが配りうる役割）が在れば、**定義にしか無い役割**も言う
       ＝その役割で出し分けている列やボタンは誰にも見えない。
+
+  hatake check <file> [--page id] [--json] [--registry file] [--project file]
+              [--warn-as-error] [--no-explain] [--no-advise] [--no-ask]
+      **1往復で1本**。validate（事実）・explain（読み返し）・advise（好み）・
+      ask（人が決めること）を1回で回して、**欄を分けたまま**1枚にする。
+      別々に呼ぶのと同じ結果になる（別の数え方はしない）ので、順番を覚えなくてよい。
+      欄は混ぜない＝終了コードを動かすのは**事実の欄だけ**（--warn-as-error のとき）。
+      好みと問いは終了コードを動かさない。
+      --no-explain / --no-advise / --no-ask で欄を落とせる（落とした欄は「入れな
+      かった欄」に理由つきで出る）。**事実の欄は落とせない**＝旗で消せると
+      「警告ゼロ」と「見ていない」が同じ顔になる。
+      画面が複数ある定義（app）では読み返しは1行ずつ。--page <id> で1枚に絞ると
+      その画面の読み返しが全文になる。
+      人に渡す1枚が要るなら hatake design（あちらは意図の1枚と突き合わせる紙で、
+      合否は言わない）。
 
   hatake run <file> [--page <id>] --scenario s.json [--cover] [--json]
   hatake run <file> [--page <id>] --draft [--out s.json] [--json]
@@ -509,6 +536,19 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       **終了コードは動かさない**（レビューに出す紙で、合否ではない）。合否は
       hatake validate と hatake trace の担当。
 
+  hatake advise --effect <前> <後>...  /  --effect --git <range> <file...>
+              [--min 3] [--json] [--rules file]
+      **助言の効き目**を数える（どの規則が実際に直されたか）。前の版で鳴っていた
+      助言が、後の版で鳴らなくなったかを見る。数える単位は**画面×規則**＝場所の道は
+      列を1本足すと動くので、1件ずつの同じさは言えない。
+      欄は「鳴った / 直った / 残った / 黙らせた（印で消した）/ 画面ごと消えた /
+      新しく鳴った」。鳴ったのに1回も直っていない規則は**切る候補**として出す
+      （そのまま物差しの off に書ける形で）。
+      --min は見立てを言うのに要る「鳴った回数」（既定 3）。届かない規則は
+      「まだ言えない」に置く＝1組で規則の値打ちを決めない。
+      「直った」は**後の版で鳴らなくなった**という意味しかない（直したのか、書き方を
+      変えたら鳴らなくなったのかは見ていない）。終了コードは動かさない。
+
   hatake rules [<規則名>] [--kind warning|advice] [--json]
       **警告と助言の規則そのもの**を引く（id・何を見ているか・何が起きるか・直し方・
       対照表への繋ぎ・助言のつまみ）。立ち位置は hatake reference と同じ＝仕様書を
@@ -626,6 +666,21 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --unused に --source を渡すと、**アプリのコードの中で名前が書かれているか**も
       見る（画面の外から直接呼んでいる登録は「消してよい」ではない）。
       --unused-as-error は、コードのどこにも無いものが残っていれば落とす。
+
+  hatake gaps <file...> [--registry <一覧.json>] [--json] [--unwired-as-error]
+      **繋がっていない所を1枚で**出す。定義が外に要求しているものと、登録済みの
+      一覧の差を、**押す所ごとに1行**（どの画面の・どのボタンが空振りするか）。
+      種類ごとの見出しには、埋めないと何が起きるかと**同じことを言う警告の規則名**
+      が付く（hatake rules で引ける）。画面ごとの残り件数も出るので、開発中に
+      1回で見渡せる。
+      一覧は --registry か、定義の隣の hatake-registry.json。**動いているアプリの
+      申告**（hatake registry --from-app が書いた紙）なら、出ていない種類を
+      「1つも登録していない」と読む＝申告できる種類だけ。手で書いた一覧では
+      「登録していない」と「書き忘れた」が区別できないので、渡されていない種類は
+      理由つきで「見なかった種類」に並べる。
+      見たのは**名前が登録されているか**まで＝中身が TODO のままかは数えない
+      （そこは refs --filled --source の担当）。
+      --unwired-as-error で、1か所でも残っていれば落とす。
 
   hatake wire <file> [--base /api] [--out file] [--class Name] [--assets path]
       アプリ側の配線（Flutter）の下書きを出す。定義が要求している登録
@@ -820,6 +875,11 @@ const BOOLEAN_FLAGS = new Set([
   "compare",
   "require-intent",
   "widget-draft",
+  "unwired-as-error",
+  "effect",
+  "no-explain",
+  "no-advise",
+  "no-ask",
   "matrix",
   "dry-run",
   "if-changed",
@@ -881,6 +941,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
     switch (command) {
       case "validate":
         return validate(positional, flags, io);
+      case "check":
+        return check(positional, flags, io);
       case "run":
         return run(positional, flags, io);
       case "fixtures":
@@ -921,6 +983,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return diff(positional, flags, io);
       case "refs":
         return refs(positional, flags, io);
+      case "gaps":
+        return gaps(positional, flags, io);
       case "registry":
         return registry(positional, flags, io);
       case "wire":
@@ -1058,6 +1122,112 @@ function validate(files: string[], flags: Args["flags"], io: CliIo): number {
   if (failures > 0) return 1;
   // 警告で終了コードを変えるかは呼び出し側が決める（既定は「見せるだけ」）。
   return warned > 0 && flags["warn-as-error"] === true ? 1 : 0;
+}
+
+/**
+ * 1往復で1本（`check`）。
+ *
+ * 集めるだけで、新しいことは何も言わない。**4本を別々に呼んだのと同じ結果**にする
+ * のがこの紙の値打ちなので、どの欄も既にある道をそのまま通す（別の数え方をした
+ * 瞬間に、道具ごとに違うことを言う紙になる）。
+ *
+ * 終了コードは `validate` と同じ＝**事実の欄だけ**が動かす。
+ */
+function check(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("見る定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const file = files[0];
+  const source = io.readFile(file);
+  // 読めない定義は、ここで落ちる（読めないものは読み返せない）。
+  const parsed = parseDefinition(source, file, { strict: flags["no-strict"] !== true });
+  const registry = loadRegistry(file, flags, io);
+  const project = projectOf(file, flags, io);
+  const wanted = str(flags, "page");
+  const input: CheckInput = {
+    from: file,
+    kind: parsed.kind,
+    source,
+    ...(wanted === undefined ? {} : { page: wanted }),
+    ...(registry === undefined ? {} : { registry }),
+    registryFromApp: registryWasSnapshot,
+    rules: loadAdviceRules(flags, io),
+    ...(project === undefined ? {} : { project }),
+    ...questionTable(project, flags, io),
+    drop: {
+      ...(flags["no-explain"] === true
+        ? { readback: "--no-explain で落としました。" }
+        : {}),
+      ...(flags["no-advise"] === true
+        ? { preferences: "--no-advise で落としました。" }
+        : {}),
+      ...(flags["no-ask"] === true ? { questions: "--no-ask で落としました。" } : {}),
+    },
+  };
+  const sheet = buildCheckSheet(input);
+  if (flags.json === true) {
+    io.out(JSON.stringify(sheet, null, 2));
+  } else {
+    for (const line of checkLines(sheet)) io.out(line);
+  }
+  return sheet.facts.warnings.length > 0 && flags["warn-as-error"] === true ? 1 : 0;
+}
+
+/**
+ * 問いの表と担当の表（`ask` と同じ重ね方＝組み込み → 会社 → 案件）。
+ *
+ * 読めなければ**キーごと落とす**＝紙の側が「数えていません」と書く（0 件と混ぜない）。
+ */
+function questionTable(
+  project: ProjectDocument | undefined,
+  flags: Args["flags"],
+  io: CliIo,
+): Pick<CheckInput, "questions"> {
+  const rawKinds = optionalSpec(flags, io, QUESTION_KINDS_FILE);
+  const rawAreas = optionalSpec(flags, io, RESPONSIBILITY_FILE);
+  if (rawKinds === null || rawAreas === null) return {};
+  return {
+    questions: {
+      kinds: mergeQuestionKinds(
+        parseQuestionKinds(rawKinds),
+        teamQuestions(flags, io),
+        project?.questions.ask ?? [],
+      ),
+      areas: parseResponsibility(rawAreas),
+    },
+  };
+}
+
+/**
+ * 助言を集める（`advise` / `design` / `check` が通る1本の道）。
+ *
+ * 同じ式を3か所に写すと、片方だけ下書きを付けたり片方だけ印を見なかったりして、
+ * **道具ごとに違う件数**を言い出す。前書きも一緒に返すのは、どの物差しで見たかを
+ * 紙に書く側が要るから。
+ */
+function collectAdvice(
+  file: string,
+  source: string,
+  raw: Record<string, unknown>,
+  rules: AdviceRules,
+  flags: Args["flags"],
+  io: CliIo,
+  page?: string,
+): { off: SilencedAdvice; project?: ProjectDocument } {
+  const project = projectOf(file, flags, io);
+  const all = withDrafts(raw, [
+    ...findAdvice(raw, rules),
+    // 案件の決めごと（名前・用語）は、前書きが在るときだけ。
+    ...(project === undefined
+      ? []
+      : findProjectAdvice(raw, project, rules, { ...registryOf(file, flags, io) })),
+  ]);
+  const mine = page === undefined ? all : all.filter((one) => one.page === page);
+  return {
+    off: applyAdviseOff(mine, parseAdviseOff(source, adviceRuleNames(rules))),
+    ...(project === undefined ? {} : { project }),
+  };
 }
 
 /** 素の document を見て、通るけれど意図どおり動かない書き方を拾う。 */
@@ -1872,6 +2042,7 @@ function unusedRoles(
  * 強制することになる。事実（書いたのに効かない）は `validate` の担当。
  */
 function advise(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (flags.effect === true) return adviceEffectCommand(files, flags, io);
   if (files.length !== 1) {
     io.err("助言する定義ファイルを1つ指定してください。");
     return 1;
@@ -1887,29 +2058,22 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
   if (picks !== undefined) {
     return applyPicked(files[0], source, picks, rules, flags, io);
   }
-  const project = projectOf(files[0], flags, io);
-  // 下書きも添える（「何を足すか」までは言えても、値で止まるので）。
-  const advice = withDrafts(
+  // 集める道は `design` / `check` と同じ1本（下書きも印も、同じ所で当たる）。
+  // 定義の隣の印（`# advise-off:`）で黙らせたものは**捨てずに持っておく**＝何件
+  // 消したかを最後に必ず言うため。
+  const collected = collectAdvice(
+    files[0],
+    source,
     document as Record<string, unknown>,
-    [
-      ...findAdvice(document as Record<string, unknown>, rules),
-      // 案件の決めごと（名前・用語）は、前書きが在るときだけ。
-      ...(project === undefined
-        ? []
-        : findProjectAdvice(document as Record<string, unknown>, project, rules, {
-            // 登録済みの一覧が在れば「宣言したのに登録が無い」まで言える
-            // （渡されていなければ、そこは黙る＝知らないことを言わない）。
-            ...registryOf(files[0], flags, io),
-          })),
-    ],
+    rules,
+    flags,
+    io,
   );
+  const off = collected.off;
+  const project = collected.project;
   // 物差しが「その場所に書けないキー」を勧めていたら、助言を出す前に止める。
-  // 間違いを教える助言は、無いほうがまし。
-  if (unwritable(advice, flags, io) > 0) return 1;
-
-  // 定義の隣の印（`# advise-off:`）で、その画面だけ黙らせる。**黙らせたものは
-  // 捨てずに持っておく**＝何件消したかを最後に必ず言うため。
-  const off = applyAdviseOff(advice, parseAdviseOff(source, adviceRuleNames(rules)));
+  // 間違いを教える助言は、無いほうがまし（黙らせたものも見る＝印で隠れない）。
+  if (unwritable([...off.kept, ...off.silenced], flags, io) > 0) return 1;
   const kept = off.kept;
 
   // **案件が決めたときだけ**落とす。助言を勝手に落とすのは駄目（好みを押し付ける道具に
@@ -1953,6 +2117,63 @@ function advise(files: string[], flags: Args["flags"], io: CliIo): number {
 }
 
 /**
+ * 助言の効き目（`advise --effect`）。
+ *
+ * 前後の揃え方は `explain --diff` と同じ道（[sourcePair]）を通す＝「前と後」の言い方を
+ * 2つ作らない。`--git` のときだけ**定義を何枚でも**渡せる（1組では何も言えないので、
+ * 山で見るのが普通の使い方）。
+ *
+ * 終了コードは動かさない。効き目の話は「この規則は要るか」＝好みの話で、合否ではない。
+ */
+function adviceEffectCommand(
+  files: string[],
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  if (files.length === 0) {
+    io.err("比べる定義ファイルを指定してください（前 後、または --git <range> <file...>）。");
+    return 1;
+  }
+  const rules = loadAdviceRules(flags, io);
+  const groups =
+    str(flags, "git") === undefined ? [files] : files.map((one) => [one]);
+  const pairs: EffectPair[] = [];
+  for (const group of groups) {
+    const pair = sourcePair(group, flags, io, "advise --effect");
+    if (pair === null) return 1;
+    const before = parseYamlText(pair.before);
+    const after = parseYamlText(pair.after);
+    if (
+      typeof before !== "object" ||
+      before === null ||
+      typeof after !== "object" ||
+      after === null
+    ) {
+      io.err(`${group.join(" → ")} を定義（map）として読めません。`);
+      return 1;
+    }
+    pairs.push({
+      label: pair.label ?? group.join(" → "),
+      before: before as Record<string, unknown>,
+      after: after as Record<string, unknown>,
+      afterSource: pair.after,
+    });
+  }
+  const min = Number(str(flags, "min") ?? 3);
+  if (!Number.isFinite(min) || min < 1) {
+    io.err("--min には1以上の数を渡してください。");
+    return 1;
+  }
+  const report = adviceEffect(pairs, { rules, min });
+  if (flags.json === true) {
+    io.out(JSON.stringify(report, null, 2));
+    return 0;
+  }
+  for (const line of effectLines(report)) io.out(line);
+  return 0;
+}
+
+/**
  * 設計書を1枚に刷る（`design`）。
  *
  * 集めるだけで、新しいことは何も言わない。**言えないものは「渡されていません」と書く**
@@ -1987,14 +2208,7 @@ function design(files: string[], flags: Args["flags"], io: CliIo): number {
 
   // 助言は `advise` とまったく同じ道を通す（1枚に載せるために別の数え方をすると、
   // 道具ごとに違うことを言う）。画面を1枚に絞ったなら助言もその画面だけ。
-  const all = withDrafts(raw, [
-    ...findAdvice(raw, rules),
-    ...(project === undefined
-      ? []
-      : findProjectAdvice(raw, project, rules, { ...registryOf(files[0], flags, io) })),
-  ]);
-  const mine = wanted === undefined ? all : all.filter((one) => one.page === wanted);
-  const off = applyAdviseOff(mine, parseAdviseOff(source, adviceRuleNames(rules)));
+  const off = collectAdvice(files[0], source, raw, rules, flags, io, wanted).off;
   parts.advice = off.kept;
   if (off.marks.length > 0) parts.silenced = off;
 
@@ -3223,6 +3437,51 @@ function collectPaths(
 }
 
 /** 定義が外に要求しているものを並べる。出力はそのまま --registry に渡せる形。 */
+/**
+ * 繋がっていない所を1枚で（`gaps`）。
+ *
+ * 新しい判断はしない＝定義の要求（`collectRefs`）と登録済みの一覧の差を並べるだけ。
+ * だから**一覧が無ければ何も言えない**（そこは黙らずに、どう作るかを言う）。
+ *
+ * 申告かどうかで旗を分けないのは、**紙に印が付いている**から（`$source`）。旗で
+ * 名乗らせると、手で書いた一覧を --from-app に渡せてしまう。
+ */
+function gaps(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length === 0) {
+    io.err("突き合わせる定義ファイルを指定してください。");
+    return 1;
+  }
+  const registry = loadRegistry(files[0], flags, io);
+  if (registry === undefined) {
+    io.err(
+      "登録済みの一覧が見つかりません（--registry で渡すか、定義の隣に " +
+        `${REGISTRY_FILE} を置いてください）。動いているアプリの申告なら ` +
+        "hatake registry --from-app <申告> --out で書けます" +
+        "（そちらは「出ていない種類＝登録していない」まで言えます）。",
+    );
+    return 1;
+  }
+  const fromApp = registryWasSnapshot;
+  const documents: Record<string, unknown>[] = [];
+  for (const file of files) {
+    const document = parseYamlText(io.readFile(file));
+    if (typeof document !== "object" || document === null) {
+      io.err(`${file} を定義（map）として読めません。`);
+      return 1;
+    }
+    documents.push(document as Record<string, unknown>);
+  }
+  const report = wiringGaps(documents, registry, { fromApp });
+  if (flags.json === true) {
+    io.out(JSON.stringify(report, null, 2));
+  } else {
+    for (const line of gapsLines(report)) io.out(line);
+  }
+  // 残っていることは**事実**だが、開発中はずっと残っているのが普通なので既定では
+  // 落とさない（CI に置くときだけ旗を渡す）。
+  return report.spots > 0 && flags["unwired-as-error"] === true ? 1 : 0;
+}
+
 function refs(files: string[], flags: Args["flags"], io: CliIo): number {
   if (files.length === 0) {
     io.err("定義ファイルを指定してください。");
