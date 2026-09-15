@@ -454,6 +454,57 @@ npx hatake same before.yaml after.yaml
 
 この判定が嘘をつかない仕掛けは、`minimize`（既定値と同じ指定を落とす）**の出力が必ず「同じ」と判定されること**を試験が見ているところ ── 意味を変えないと言っている道具の結果を、別の道具で言い直せる。
 
+### 画面の試験も、最初の1本は起こせる
+
+シナリオ（値の話）は下書きから「まだ試していない所」まで閉じた。残っていたのは**画面の試験** ── 押せるか・出ているか・保存に行ったかは、画面を出さないと分からない。道具（`hatake_test`）は配ったが、最初の1本を書くのは今も人だった。
+
+```bash
+npx hatake run page.yaml --widget-draft --assets assets/page.yaml --out page_test.dart
+```
+
+```dart
+// table.rowActions（edit）＋ form から。
+testWidgets('行から編集を開いて保存できる', (tester) async {
+  final page = await pumpPage(tester, definition, rows: [{'id': 1, 'code': 'テスト'}]);
+
+  await tester.tap(HatakeFind.edit(1));
+  await tester.pumpAndSettle();
+  await tester.enterText(HatakeFind.field('code'), 'テスト');
+  await tester.tap(HatakeFind.formSave);
+  await tester.pumpAndSettle();
+
+  // 保存に行ったこと（何をどう保存するかは Repository の担当）。
+  expect(page.repository.calls, contains('update(1)'));
+});
+```
+
+**キーの字は1つも書いていない。** 押す相手は公開された規約（`HatakeFind`）で書くので、規約を変えたら下書きも一緒に動く。
+
+期待に書くのは**枠組みが必ずそうする所**だけ ── 問い合わせに行った・保存に行かなかった・登録した処理が呼ばれた。**業務として正しいか**（その値でいいのか・保存後にどこへ行くのか）は人が足す。見ていないもの（押した先の画面・プラグインの中身）は毎回言う。
+
+この下書きが嘘をつかない仕掛けは、デモアプリの `test/` に**生成したものをそのまま置いてある**ところ。CI が再生成して差分を見て、`flutter test` がそれを本当に走らせる ── 通らない試験を書き出す道具は、無いほうがまだいい。
+
+### その変更は、どの要求から来たか
+
+`diff` は「何が変わったか」しか言えない。**なぜ変わったか**は人が PR 本文に書くしかなく、書き忘れると半年後に誰も理由を思い出せない。[意図の1枚](/design)と定義の差を組めば、そこは機械が言える。
+
+```bash
+npx hatake trace --diff before.yaml after.yaml --intent order_search.intent.yaml
+```
+
+```
+足されたもの（2 件）:
+  ・column:stock「在庫数」… **どの要求からも来ていません**
+  ・action:reject「却下」… R7 から
+
+消えたもの（1 件）:
+  ・action:approve「承認」… R2 が指していました（その要求は空を指すようになります）
+```
+
+**言えるのは足された／消えた相手まで。** 書き換え（ラベル・必須・見せ方）は指せる相手が動かないので由来を言えず、件数だけ出して「言えない」と書く ── そこを推し量ると、由来の表そのものが信用されなくなる。
+
+**由来が無い＝間違い、ではない**（先に書いて、あとで意図に足すこともある）ので既定では落とさない。CI で止めるなら `--require-intent`。
+
 ### 次に書く1件まで下ろす
 
 `--cover` は「まだ試していない分岐」を挙げる所まで来たが、そこから**書くのは人**だった。判断を投げられた AI は止まるか、勝手に決める（後者のほうが悪い）。

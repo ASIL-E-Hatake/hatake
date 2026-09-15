@@ -488,6 +488,13 @@
           "open": false
         },
         {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Every role this app may hand out (the vocabulary, not a gate). Writing it lets the tools check role names with the definition alone: a role used on a menu item, action, column, field, filter or card that is not listed here is a typo, and anything gated on it is visible to nobody. Absent = the vocabulary is unknown, so that check needs the application registry (`HatakeScope(knownRoles:)`) instead. Listing a role here grants nothing: display gating is `roles` on each item, and enforcement is the server.",
+          "items": "string"
+        },
+        {
           "key": "theme",
           "type": "object",
           "required": false,
@@ -3321,6 +3328,7 @@
     ],
     "roles": [
       "action",
+      "app",
       "column",
       "dashboardItem",
       "field",

@@ -28,6 +28,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  # 画面の試験の道具。`hatake run --widget-draft` が起こした下書き
+  # （test/drafted_customer_master_test.dart）がこれを使う＝**生成した試験が
+  # 本当に通ること**で、下書きの嘘を防いでいる（配線の下書きと同じ考え）。
+  hatake_test: ^0.0.1
 
 dependency_overrides:
   hatake_core:
@@ -44,6 +48,8 @@ dependency_overrides:
     path: ../hatake_print
   hatake_http:
     path: ../hatake_http
+  hatake_test:
+    path: ../hatake_test
 
 flutter:
   # Required to bundle the MaterialIcons font. Without it FontManifest.json is

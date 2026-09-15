@@ -66,6 +66,8 @@ import {
 import { draftScenario } from "./scenarioDraft.js";
 import { coverScenario } from "./scenarioCover.js";
 import { coverDraftLines, draftForCover } from "./scenarioCoverDraft.js";
+import { draftWidgetTest, widgetDraftLines } from "./widgetDraft.js";
+import { traceDiff, traceDiffLines } from "./traceDiff.js";
 import { renderExplain } from "./explain.js";
 import {
   explainSource,
@@ -272,6 +274,7 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
 
   hatake run <file> [--page <id>] --scenario s.json [--cover] [--json]
   hatake run <file> [--page <id>] --draft [--out s.json] [--json]
+  hatake run <file> [--page <id>] --widget-draft [--assets <道>] [--out x_test.dart]
       定義を**動かして**答えを見る。画面もブラウザも要らない。
       1件（シナリオ）は「この値を入れたら、こうなる」。返すのは
       **検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン**。
@@ -281,6 +284,14 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       --draft は定義の制約から下書きを起こす（必須を空に・文字数の境界・同じ値の
       行を2つ・条件が成立した形）。**期待はいまの答えを写す**ので、業務として
       正しいかは人が見る。
+      --widget-draft は**画面の試験**（Dart）の下書きを出す。シナリオは値の話しか
+      できないが、押せるか・出ているか・保存に行ったかは画面を出さないと分からない。
+      押す相手は**公開された規約**（hatake_test の HatakeFind）で書くので、キーの字は
+      1つも出さない＝規約を変えたら下書きも一緒に動く。期待に書くのは**枠組みが必ず
+      そうする所**だけ（問い合わせに行った・保存に行かなかった・登録した処理が
+      呼ばれた）で、業務として正しいかは人が足す。見ていないもの（押した先の画面・
+      プラグインの中身）は毎回言う。--assets を渡すと、定義をその道から読む試験に
+      なる（渡さなければ定義を文字列で埋め込む）。
       --cover は「まだ試していない所」を定義の分岐から挙げる（落とさない）。
       --scenario と --cover に --draft を足すと、**まだ試していない分岐から次に書く
       1件を起こす**（--out でシナリオに書ける）。起こした形は**実際に回して、その
@@ -387,6 +398,16 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       **指示文のどこにも出てこない定義**（言われていないのに在るもの）も挙げる。
       入力は指示文だけ＝定義から要求を起こしてはいけない（必ず一致するので、
       突き合わせが何も言わなくなる）。
+
+  hatake trace --diff <前> <後> [--page <id>] [--intent file] [--json]
+                                [--require-intent]
+      **その変更はどの要求から来たか**。diff は「何が変わったか」しか言えず、なぜ
+      変わったかは人が PR 本文に書くしかない（書き忘れると半年後に誰も理由を
+      思い出せない）。意図の1枚と定義の差を組めば、そこは機械が言える。
+      言えるのは**足された／消えた相手**の由来だけ＝書き換え（ラベル・必須・見せ方）は
+      指せる相手が動かないので由来を言えない（件数だけ出して、そう書く）。
+      **由来が無い＝間違い、ではない**（先に書いて、あとで意図に足すこともある）ので
+      既定では落とさない。CI で止めるなら --require-intent。
 
   hatake trace <file> [--page <id>] [--intent file] [--project file]
               [--json] [--require-intent]
@@ -798,6 +819,7 @@ const BOOLEAN_FLAGS = new Set([
   "cover",
   "compare",
   "require-intent",
+  "widget-draft",
   "matrix",
   "dry-run",
   "if-changed",
@@ -1139,6 +1161,27 @@ function run(files: string[], flags: Args["flags"], io: CliIo): number {
   }
   const page = scenarioPageOf(io.readFile(files[0]), str(flags, "page"), io);
   if (page === null) return 1;
+
+  // 画面の試験の下書きは、シナリオも回さない（押す相手は定義から決まる）。
+  if (flags["widget-draft"] === true) {
+    const drafted = draftWidgetTest(page, {
+      ...(str(flags, "assets") === undefined
+        ? { source: io.readFile(files[0]) }
+        : { from: str(flags, "assets") }),
+    });
+    const out = str(flags, "out");
+    if (out !== undefined) {
+      io.writeFile(out, drafted.source);
+      io.out(`書きました: ${out}（${drafted.cases.length} 本）`);
+    } else if (flags.json === true) {
+      io.out(JSON.stringify(drafted, null, 2));
+      return 0;
+    } else {
+      io.out(drafted.source);
+    }
+    for (const line of widgetDraftLines(drafted)) io.err(line);
+    return 0;
+  }
 
   // `--cover --draft` は**回したあと**に起こす（まだ試していない分岐が要る）ので、
   // シナリオを渡されているときはこちらには来ない。
@@ -1801,12 +1844,25 @@ function unusedRoles(
   flags: Args["flags"],
   io: CliIo,
 ): string[] {
+  // 配る役割の出どころは2つ（定義の宣言と、アプリ側の一覧）。どちらか在れば数える。
+  const app = raw.app;
+  const declared =
+    typeof app === "object" && app !== null && Array.isArray((app as Record<string, unknown>).roles)
+      ? ((app as Record<string, unknown>).roles as unknown[]).filter(
+          (one): one is string => typeof one === "string",
+        )
+      : [];
   const registry = str(flags, "registry");
-  if (registry === undefined) return [];
-  const known = (JSON.parse(io.readFile(registry)) as DefinitionRegistry).roles;
-  if (known === undefined) return [];
+  const listed =
+    registry === undefined
+      ? undefined
+      : (JSON.parse(io.readFile(registry)) as DefinitionRegistry).roles;
+  const known = [...declared, ...(listed ?? [])];
+  if (known.length === 0) return [];
   const inDefinition = new Set(rolesInDocument(raw));
-  return known.filter((role) => role !== NOBODY && !inDefinition.has(role));
+  return [...new Set(known)].filter(
+    (role) => role !== NOBODY && !inDefinition.has(role),
+  );
 }
 
 /**
@@ -2989,6 +3045,8 @@ function projectOf(
  * 言ったこと（意図）と書いたもの（定義）を突き合わせる（`trace`）。
  */
 function trace(files: string[], flags: Args["flags"], io: CliIo): number {
+  // 変更の由来は**2つの定義**を見るので、先に捌く。
+  if (flags.diff === true) return tracedDiff(files, flags, io);
   if (files.length !== 1) {
     io.err("突き合わせる定義ファイルを1つ指定してください。");
     return 1;
@@ -3012,6 +3070,44 @@ function trace(files: string[], flags: Args["flags"], io: CliIo): number {
     return result.hasIntent && result.findings.length === 0 ? 0 : 1;
   }
   return hardFindings(result).length > 0 ? 1 : 0;
+}
+
+/**
+ * その変更はどの要求から来たか（`trace --diff <前> <後>`）。
+ *
+ * 終了コードは既定 0（由来が無いのは間違いとは限らない＝先に書いて、あとで意図に足す
+ * こともある）。`--require-intent` を渡したときだけ落とす＝CI に置く用。
+ */
+function tracedDiff(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 2) {
+    io.err("比べる定義を2つ指定してください（hatake trace --diff <前> <後>）。");
+    return 1;
+  }
+  const wanted = str(flags, "page");
+  const before = scenarioPageOf(io.readFile(files[0]), wanted, io);
+  const after = scenarioPageOf(io.readFile(files[1]), wanted, io);
+  if (before === null || after === null) return 1;
+  // 説明が変わった件数は**説明の差**が数える（ここで別に数えると答えが2つできる）。
+  const explained = explainDiffSources(
+    io.readFile(files[0]),
+    io.readFile(files[1]),
+  ).changes;
+  const intent = intentOf(files[1], after.id, flags, io);
+  const result = traceDiff(before, after, intent, explained);
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+  } else {
+    for (const line of traceDiffLines(result)) io.out(line);
+  }
+  if (flags["require-intent"] !== true) return 0;
+  if (result.orphans.length === 0 && result.hasIntent) return 0;
+  io.err(
+    result.hasIntent
+      ? `由来の無い変更が ${result.orphans.length} 件あります` +
+          "（意図の1枚に足すか、その変更を戻してください）。"
+      : "意図の1枚がありません（--require-intent は由来を要求する旗です）。",
+  );
+  return 1;
 }
 
 /**

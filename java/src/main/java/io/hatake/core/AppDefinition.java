@@ -22,6 +22,13 @@ public record AppDefinition(
          * キーは strict で弾かれる／黙って落ちるのどちらかになる）。
          */
         String navigation,
+        /**
+         * このアプリが配りうる役割の<b>語彙</b>（{@code app.roles}）。
+         *
+         * <p>サーバ側では出し分けに使わないが、<b>3版が同じ語彙を持つ</b>ために読んでおく
+         * （片方だけ知らないキーは strict で弾かれる／黙って落ちるのどちらかになる）。
+         */
+        List<String> roles,
         List<MenuItem> menu,
         List<PageRef> pages) {
 }

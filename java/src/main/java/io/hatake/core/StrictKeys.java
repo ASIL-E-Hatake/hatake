@@ -47,7 +47,7 @@ public final class StrictKeys {
      */
     public static final Map<String, Set<String>> TABLE = Map.ofEntries(
             Map.entry("", keys("dsl_version", "page", "app")),
-            Map.entry("app", keys("id", "title", "home", "navigation", "theme", "menu",
+            Map.entry("app", keys("id", "title", "home", "navigation", "roles", "theme", "menu",
                     "pages")),
             Map.entry("theme", keys("primaryColor", "secondaryColor", "brightness",
                     "density", "fontFamily", "radius", "config")),

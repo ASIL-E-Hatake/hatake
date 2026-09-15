@@ -100,6 +100,9 @@ export function parseAppMap(root: Dict): AppDefinition {
     dslVersion,
     home: optString(app, "home"),
     navigation: optString(app, "navigation") ?? AppNavigations.single,
+    // 配りうる役割の**語彙**。空で書いても「書いた」＝語彙が空だと言える
+    // （書いていない＝語彙は分からない、とは別）。
+    roles: optList(app, "roles").map((one) => String(one)),
     theme: parseTheme(optDict(app, "theme")),
     menu: optList(app, "menu").map((m, i) =>
       parseMenu(asDict(m, `app.menu[${i}]`)),

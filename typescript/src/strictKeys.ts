@@ -22,7 +22,7 @@ export interface UnknownKey {
  */
 export const strictKeyTable: Record<string, string[]> = {
   "": ["dsl_version", "page", "app"],
-  app: ["id", "title", "home", "navigation", "theme", "menu", "pages"],
+  app: ["id", "title", "home", "navigation", "roles", "theme", "menu", "pages"],
   theme: [
     "primaryColor", "secondaryColor", "brightness", "density", "fontFamily",
     "radius", "config",

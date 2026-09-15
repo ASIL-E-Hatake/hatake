@@ -19,6 +19,8 @@ AppDefinition parseAppMap(Map<String, Object?> root) {
     dslVersion: dslVersion ?? kDslVersion,
     home: app.optString('home'),
     navigation: app.optString('navigation') ?? AppNavigation.single,
+    // 配りうる役割の**語彙**（`app.roles`）。3版で同じキーを読む。
+    roles: [for (final r in app.optList('roles')) r.toString()],
     theme: _parseTheme(app.optMap('theme')),
     menu: [
       for (var i = 0; i < menu.length; i++)

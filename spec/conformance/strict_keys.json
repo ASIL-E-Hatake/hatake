@@ -11,14 +11,47 @@
           "title": "顧客マスタ",
           "repository": "customerRepository",
           "key": "id",
-          "search": { "layout": { "columns": 2 }, "filters": [{ "field": "name", "label": "顧客名" }] },
-          "table": { "columns": [{ "field": "code", "label": "コード", "sortable": true }] },
-          "form": {
-            "sections": [
-              { "title": "基本情報", "fields": [{ "field": "code", "label": "コード", "required": true }] }
+          "search": {
+            "layout": {
+              "columns": 2
+            },
+            "filters": [
+              {
+                "field": "name",
+                "label": "顧客名"
+              }
             ]
           },
-          "actions": [{ "id": "create", "type": "create", "label": "新規登録" }]
+          "table": {
+            "columns": [
+              {
+                "field": "code",
+                "label": "コード",
+                "sortable": true
+              }
+            ]
+          },
+          "form": {
+            "sections": [
+              {
+                "title": "基本情報",
+                "fields": [
+                  {
+                    "field": "code",
+                    "label": "コード",
+                    "required": true
+                  }
+                ]
+              }
+            ]
+          },
+          "actions": [
+            {
+              "id": "create",
+              "type": "create",
+              "label": "新規登録"
+            }
+          ]
         }
       },
       "expected": []
@@ -33,13 +66,24 @@
           "repository": "customerRepository",
           "form": {
             "sections": [
-              { "fields": [{ "field": "code", "labell": "コード" }] }
+              {
+                "fields": [
+                  {
+                    "field": "code",
+                    "labell": "コード"
+                  }
+                ]
+              }
             ]
           }
         }
       },
       "expected": [
-        { "path": "page.form.sections[0].fields[0]", "key": "labell", "suggestion": "label" }
+        {
+          "path": "page.form.sections[0].fields[0]",
+          "key": "labell",
+          "suggestion": "label"
+        }
       ]
     },
     {
@@ -52,15 +96,35 @@
           "title": "受注照会",
           "repository": "orderRepository",
           "table": {
-            "pagination": { "pagesize": 20 },
-            "columns": [{ "field": "orderNo", "label": "受注番号", "read_only": true }]
+            "pagination": {
+              "pagesize": 20
+            },
+            "columns": [
+              {
+                "field": "orderNo",
+                "label": "受注番号",
+                "read_only": true
+              }
+            ]
           }
         }
       },
       "expected": [
-        { "path": "", "key": "dslVersion", "suggestion": "dsl_version" },
-        { "path": "page.table.columns[0]", "key": "read_only", "suggestion": null },
-        { "path": "page.table.pagination", "key": "pagesize", "suggestion": "pageSize" }
+        {
+          "path": "",
+          "key": "dslVersion",
+          "suggestion": "dsl_version"
+        },
+        {
+          "path": "page.table.columns[0]",
+          "key": "read_only",
+          "suggestion": null
+        },
+        {
+          "path": "page.table.pagination",
+          "key": "pagesize",
+          "suggestion": "pageSize"
+        }
       ]
     },
     {
@@ -74,7 +138,13 @@
           "onLoad": "refresh"
         }
       },
-      "expected": [{ "path": "page", "key": "onLoad", "suggestion": null }]
+      "expected": [
+        {
+          "path": "page",
+          "key": "onLoad",
+          "suggestion": null
+        }
+      ]
     },
     {
       "name": "自由な入れ物（config / validators / computed / visibleWhen）の中は見ない",
@@ -92,10 +162,29 @@
                     "field": "amount",
                     "label": "金額",
                     "format": "currency",
-                    "config": { "symbol": "¥", "anythingGoesHere": true },
-                    "validators": [{ "type": "min", "value": 1, "message": "1以上" }],
-                    "computed": { "op": "product", "fields": ["qty", "price"] },
-                    "visibleWhen": { "field": "status", "operator": "equals", "value": "未出荷" }
+                    "config": {
+                      "symbol": "¥",
+                      "anythingGoesHere": true
+                    },
+                    "validators": [
+                      {
+                        "type": "min",
+                        "value": 1,
+                        "message": "1以上"
+                      }
+                    ],
+                    "computed": {
+                      "op": "product",
+                      "fields": [
+                        "qty",
+                        "price"
+                      ]
+                    },
+                    "visibleWhen": {
+                      "field": "status",
+                      "operator": "equals",
+                      "value": "未出荷"
+                    }
                   }
                 ]
               }
@@ -121,9 +210,25 @@
                     "field": "lines",
                     "label": "明細",
                     "type": "subTable",
-                    "source": { "repository": "lineRepository", "parentKey": "orderNo", "pagesize": 10 },
-                    "columns": [{ "field": "item", "label": "品名", "witdh": 220 }],
-                    "fields": [{ "field": "qty", "label": "数量", "requiredd": true }]
+                    "source": {
+                      "repository": "lineRepository",
+                      "parentKey": "orderNo",
+                      "pagesize": 10
+                    },
+                    "columns": [
+                      {
+                        "field": "item",
+                        "label": "品名",
+                        "witdh": 220
+                      }
+                    ],
+                    "fields": [
+                      {
+                        "field": "qty",
+                        "label": "数量",
+                        "requiredd": true
+                      }
+                    ]
                   }
                 ]
               }
@@ -132,9 +237,21 @@
         }
       },
       "expected": [
-        { "path": "page.form.sections[0].fields[0].columns[0]", "key": "witdh", "suggestion": "width" },
-        { "path": "page.form.sections[0].fields[0].fields[0]", "key": "requiredd", "suggestion": "required" },
-        { "path": "page.form.sections[0].fields[0].source", "key": "pagesize", "suggestion": "pageSize" }
+        {
+          "path": "page.form.sections[0].fields[0].columns[0]",
+          "key": "witdh",
+          "suggestion": "width"
+        },
+        {
+          "path": "page.form.sections[0].fields[0].fields[0]",
+          "key": "requiredd",
+          "suggestion": "required"
+        },
+        {
+          "path": "page.form.sections[0].fields[0].source",
+          "key": "pagesize",
+          "suggestion": "pageSize"
+        }
       ]
     },
     {
@@ -143,14 +260,27 @@
         "app": {
           "id": "sales_admin",
           "title": "販売管理",
-          "menu": [{ "id": "orders", "label": "受注", "page": "order_search", "ikon": "list" }],
+          "menu": [
+            {
+              "id": "orders",
+              "label": "受注",
+              "page": "order_search",
+              "ikon": "list"
+            }
+          ],
           "pages": [
             {
               "type": "wizard",
               "id": "customer_onboarding",
               "title": "顧客登録",
               "repository": "customerRepository",
-              "steps": [{ "id": "basic", "title": "基本情報", "descriptio": "補足" }]
+              "steps": [
+                {
+                  "id": "basic",
+                  "title": "基本情報",
+                  "descriptio": "補足"
+                }
+              ]
             },
             {
               "type": "dashboard",
@@ -161,8 +291,14 @@
                 {
                   "id": "total",
                   "title": "受注金額",
-                  "value": { "aggregate": "sum", "fields": "amount" },
-                  "sort": { "field": "orderDate", "asc": false }
+                  "value": {
+                    "aggregate": "sum",
+                    "fields": "amount"
+                  },
+                  "sort": {
+                    "field": "orderDate",
+                    "asc": false
+                  }
                 }
               ]
             },
@@ -172,22 +308,64 @@
               "title": "売上明細表",
               "repository": "orderRepository",
               "report": {
-                "paper": { "size": "A4", "orientaton": "portrait" },
-                "groupBy": [{ "field": "customer", "label": "顧客", "pagebreak": true }],
-                "totals": [{ "field": "amount", "agregate": "sum" }]
+                "paper": {
+                  "size": "A4",
+                  "orientaton": "portrait"
+                },
+                "groupBy": [
+                  {
+                    "field": "customer",
+                    "label": "顧客",
+                    "pagebreak": true
+                  }
+                ],
+                "totals": [
+                  {
+                    "field": "amount",
+                    "agregate": "sum"
+                  }
+                ]
               }
             }
           ]
         }
       },
       "expected": [
-        { "path": "app.menu[0]", "key": "ikon", "suggestion": "icon" },
-        { "path": "app.pages[0].steps[0]", "key": "descriptio", "suggestion": "description" },
-        { "path": "app.pages[1].items[0].sort", "key": "asc", "suggestion": null },
-        { "path": "app.pages[1].items[0].value", "key": "fields", "suggestion": "field" },
-        { "path": "app.pages[2].report.groupBy[0]", "key": "pagebreak", "suggestion": "pageBreak" },
-        { "path": "app.pages[2].report.paper", "key": "orientaton", "suggestion": "orientation" },
-        { "path": "app.pages[2].report.totals[0]", "key": "agregate", "suggestion": "aggregate" }
+        {
+          "path": "app.menu[0]",
+          "key": "ikon",
+          "suggestion": "icon"
+        },
+        {
+          "path": "app.pages[0].steps[0]",
+          "key": "descriptio",
+          "suggestion": "description"
+        },
+        {
+          "path": "app.pages[1].items[0].sort",
+          "key": "asc",
+          "suggestion": null
+        },
+        {
+          "path": "app.pages[1].items[0].value",
+          "key": "fields",
+          "suggestion": "field"
+        },
+        {
+          "path": "app.pages[2].report.groupBy[0]",
+          "key": "pagebreak",
+          "suggestion": "pageBreak"
+        },
+        {
+          "path": "app.pages[2].report.paper",
+          "key": "orientaton",
+          "suggestion": "orientation"
+        },
+        {
+          "path": "app.pages[2].report.totals[0]",
+          "key": "agregate",
+          "suggestion": "aggregate"
+        }
       ]
     },
     {
@@ -200,25 +378,94 @@
           "title": "受注照会",
           "repository": "orderRepository",
           "key": "orderNo",
-          "table": { "columns": [{ "field": "orderNo", "label": "受注番号" }] },
+          "table": {
+            "columns": [
+              {
+                "field": "orderNo",
+                "label": "受注番号"
+              }
+            ]
+          },
           "actions": [
-            { "id": "approve", "type": "plugin", "plugin": "approveOrders",
-              "label": "一括承認", "scope": "selection" },
-            { "id": "hold", "type": "plugin", "plugin": "holdOrders",
-              "label": "保留", "sope": "selection" }
+            {
+              "id": "approve",
+              "type": "plugin",
+              "plugin": "approveOrders",
+              "label": "一括承認",
+              "scope": "selection"
+            },
+            {
+              "id": "hold",
+              "type": "plugin",
+              "plugin": "holdOrders",
+              "label": "保留",
+              "sope": "selection"
+            }
           ]
         }
       },
       "expected": [
-        { "path": "page.actions[1]", "key": "sope", "suggestion": "scope" }
+        {
+          "path": "page.actions[1]",
+          "key": "sope",
+          "suggestion": "scope"
+        }
       ]
     },
     {
       "name": "未知のページ種別は種別エラーの領分なので、キーは見ない",
       "document": {
-        "page": { "type": "kanban", "id": "board", "title": "板", "repository": "taskRepository", "lanes": [] }
+        "page": {
+          "type": "kanban",
+          "id": "board",
+          "title": "板",
+          "repository": "taskRepository",
+          "lanes": []
+        }
       },
       "expected": []
+    },
+    {
+      "name": "app.roles（配りうる役割の語彙）は書けて、綴り違いは近い名前を言う",
+      "document": {
+        "app": {
+          "id": "sales",
+          "title": "販売",
+          "roles": [
+            "manager",
+            "staff"
+          ],
+          "role": [
+            "manager"
+          ],
+          "pages": [
+            {
+              "type": "search",
+              "id": "order_search",
+              "title": "受注照会",
+              "repository": "orderRepository",
+              "table": {
+                "columns": [
+                  {
+                    "field": "orderNo",
+                    "label": "受注番号",
+                    "roles": [
+                      "manager"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "path": "app",
+          "key": "role",
+          "suggestion": "roles"
+        }
+      ]
     }
   ]
 }

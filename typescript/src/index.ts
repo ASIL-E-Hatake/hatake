@@ -113,6 +113,8 @@ export * from "./warningRules.js";
 export * from "./rules.js";
 export * from "./scenarioCoverDraft.js";
 export * from "./same.js";
+export * from "./widgetDraft.js";
+export * from "./traceDiff.js";
 export * from "./httpProbe.js";
 export * from "./restTarget.js";
 export * from "./probeShape.js";
