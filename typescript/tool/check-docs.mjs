@@ -33,9 +33,15 @@
 // hatake の定義ではない YAML（`pubspec.yaml` / GitHub Actions）は、囲みの言語のうしろに
 // `no-check` と書いて外す。**黙って飛ばさない**（何をなぜ飛ばしたかを必ず出す）。
 //
-// 使い方: node tool/check-docs.mjs [file...]   （既定は ../docs/**/*.md）
+// 使い方: node tool/check-docs.mjs [file|dir ...]   （既定は ../docs/**/*.md）
+//
+// **道具として渡せる形**にしてある＝ディレクトリを渡せば中の `.md` を全部読む。
+// サイトの散文（`site/prose/**`）にも定義とコマンドが載っていて、そちらは誰も
+// 突き合わせていない。読む人がいちばん多いのはサイトなので、同じ道具で読める形に
+// しておく（**回すのはサイト側**＝フレームワークの CI で回すと、散文を直したときに
+// こちらの CI が落ちる。境界は跨がない）。
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
 import { closestKey, parseIntent, parseProject } from "../dist/index.js";
@@ -346,9 +352,21 @@ async function main(argv) {
   // 提案（docs/proposals）は**これから作る DSL**を書く場所なので、いまの語彙で
   // 突き合わせない（提案が通ったら定義が動く＝順番が逆になる）。
   const isProposal = (path) => path.replace(/\\/g, "/").includes("/docs/proposals/");
-  const files = (
-    argv.length > 0 ? argv.map((one) => resolve(one)) : markdownFiles(DOCS)
-  ).filter((one) => argv.length > 0 || !isProposal(one));
+  // ディレクトリを渡されたら中の `.md` を全部読む（黙って0枚にしない＝渡した所を
+  // 読んでいないのに「食い違っていません」と言うのが、この道具で一番まずい嘘）。
+  const given = argv.flatMap((one) => {
+    const path = resolve(one);
+    if (!existsSync(path)) {
+      throw new Error(`${one} がありません（道を確かめてください）。`);
+    }
+    return statSync(path).isDirectory() ? markdownFiles(path) : [path];
+  });
+  const files = (given.length > 0 ? given : markdownFiles(DOCS)).filter(
+    (one) => argv.length > 0 || !isProposal(one),
+  );
+  if (files.length === 0) {
+    throw new Error("読む `.md` がありません（渡した所に `.md` が無い）。");
+  }
   const ref = reference();
   const keys = knownKeys(ref);
   const open = openContainers(ref);
@@ -360,7 +378,6 @@ async function main(argv) {
   const ran = { count: 0, skipped: new Map() };
 
   for (const path of files) {
-    if (!statSync(path).isFile()) continue;
     const text = readFileSync(path, "utf8");
     const where = relative(ROOT, path).replace(/\\/g, "/");
     for (const block of blocks(text)) {

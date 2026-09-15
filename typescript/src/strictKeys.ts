@@ -34,7 +34,7 @@ export const strictKeyTable: Record<string, string[]> = {
   detailPage: ["type", "id", "title", "repository", "key", "form", "actions"],
   formPage: ["type", "id", "title", "repository", "key", "form", "actions"],
   wizardPage: ["type", "id", "title", "repository", "key", "steps", "actions"],
-  wizardStep: ["id", "title", "description", "layout", "fields"],
+  wizardStep: ["id", "title", "description", "layout", "fields", "visibleWhen"],
   dashboardPage: ["type", "id", "title", "repository", "layout", "search", "items", "actions"],
   dashboardItem: [
     "id", "title", "type", "repository", "span", "filters", "limit", "sort",

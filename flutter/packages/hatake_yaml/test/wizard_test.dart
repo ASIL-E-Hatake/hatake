@@ -132,8 +132,17 @@ page:
     final source =
         File('../../../spec/examples/customer_wizard.yaml').readAsStringSync();
     final page = parsePageYaml(source) as WizardPageDefinition;
-    expect(page.steps.length, 3);
+    expect(page.steps.length, 4);
     // The confirm step derives a summary from earlier steps.
     expect(page.steps.last.fields.first.computed, isNotNull);
+    // 請求先は**条件つきのステップ**（法人のときだけ通る）。
+    final billing = page.steps.firstWhere((step) => step.id == 'billing');
+    expect(billing.visibleWhen, isNotNull);
+    expect(page.visibleSteps({'kind': 'personal'}).map((s) => s.id),
+        isNot(contains('billing')));
+    expect(page.visibleSteps({'kind': 'corporate'}).map((s) => s.id),
+        contains('billing'));
+    // 条件はそのまま区画に載る（隠れたステップは保存時にも検証しない）。
+    expect(page.form.sections[1].visibleWhen, billing.visibleWhen);
   });
 }

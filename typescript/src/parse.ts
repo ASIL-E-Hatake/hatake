@@ -251,6 +251,8 @@ function parseWizardSteps(page: Dict): WizardStepDefinition[] {
       title: reqString(m, "title", `page.steps[${i}].title`),
       description: optString(m, "description"),
       columns: optNumber(optDict(m, "layout") ?? {}, "columns") ?? 1,
+      // ステップ丸ごとの出し分け（区画の `visibleWhen` と同じ書き方）。
+      visibleWhen: optDict(m, "visibleWhen"),
       fields: optList(m, "fields").map((f, j) =>
         parseField(asDict(f, `page.steps[${i}].fields[${j}]`)),
       ),

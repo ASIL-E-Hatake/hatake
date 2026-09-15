@@ -90,6 +90,8 @@ WizardStepDefinition _parseWizardStep(Map<String, Object?> m, int index) {
     title: m.reqString('title', at: 'page.steps[$index].title'),
     description: m.optString('description'),
     layout: _parseLayout(m.optMap('layout')),
+    // ステップ丸ごとの出し分け（区画の `visibleWhen` と同じ書き方）。
+    visibleWhen: m.optMap('visibleWhen'),
     fields: [
       for (var i = 0; i < fields.length; i++)
         _parseField(_asMap(fields[i], 'page.steps[$index].fields[$i]')),

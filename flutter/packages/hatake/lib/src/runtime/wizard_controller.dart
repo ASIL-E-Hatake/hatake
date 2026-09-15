@@ -30,15 +30,30 @@ class WizardController extends ChangeNotifier {
       isEdit ? ConditionModes.edit : ConditionModes.create;
 
   int _stepIndex = 0;
+
+  /// いま何歩目か（**見えているステップの中での**位置）。
   int get stepIndex => _stepIndex;
 
-  List<WizardStepDefinition> get steps => definition.steps;
+  /// いま歩くステップ（`steps[].visibleWhen` で隠れているものは入らない）。
+  ///
+  /// 出どころは定義の側（[WizardPageDefinition.visibleSteps]）＝見えるかどうかを
+  /// 決める所は1つ。ここまでに入れた値で決まるので、条件は**前のステップで入れた値**
+  /// を見ることになる。
+  List<WizardStepDefinition> get steps =>
+      definition.visibleSteps(_draft, mode: formMode);
 
-  /// The step currently being shown.
-  WizardStepDefinition get step => steps[_stepIndex];
+  /// 出せるステップが1枚でも在るか。
+  ///
+  /// 条件で**全部隠れる**ことはありうる（書けてしまう）。そのとき黙って1枚目を
+  /// 出すと「条件が効いていない」ように見えるので、呼ぶ側が気づける形にしておく。
+  bool get hasStep => steps.isNotEmpty;
+
+  /// The step currently being shown（[hasStep] が true のときだけ）。
+  WizardStepDefinition get step =>
+      steps[_stepIndex.clamp(0, steps.length - 1)];
 
   bool get isFirstStep => _stepIndex == 0;
-  bool get isLastStep => _stepIndex == steps.length - 1;
+  bool get isLastStep => _stepIndex >= steps.length - 1;
 
   bool _loading = false;
   bool get loading => _loading;
@@ -100,6 +115,8 @@ class WizardController extends ChangeNotifier {
       return false;
     }
     _validation = ValidationResult.valid;
+    // 値を入れたことで見える/隠れるステップが変わるので、**進む先は入れたあとの
+    // 並びで決める**（隠れたステップは飛ばす）。
     if (!isLastStep) _stepIndex++;
     notifyListeners();
     return true;
@@ -158,9 +175,17 @@ class WizardController extends ChangeNotifier {
     }
   }
 
+  /// 保存で落ちた項目が前のステップに在るなら、そこまで戻る。
+  ///
+  /// 探すのは**見えているステップの並び**（[steps]）。定義の並び
+  /// （[WizardPageDefinition.stepIndexOfField]）で探すと、隠れたステップの分だけ
+  /// 番号がずれて**別のステップに飛ぶ**。番号の空間を2つ混ぜない。
   void _jumpToFirstErroredStep(ValidationResult result) {
+    final shown = steps;
     for (final error in result.errors) {
-      final index = definition.stepIndexOfField(error.field);
+      final index = shown.indexWhere(
+        (step) => step.fields.any((field) => field.field == error.field),
+      );
       if (index >= 0 && index < _stepIndex) {
         _stepIndex = index;
         return;

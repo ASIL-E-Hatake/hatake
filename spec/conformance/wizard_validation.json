@@ -1,5 +1,5 @@
 {
-  "_comment": "Wizard step-scoped validation. Each language parses `page` (a wizard), then validates every case's `record` against either one step's form (`step`: the step id) or the whole page's form (`step`: null). Errors are compared as an unordered set of {field,message}. This pins down the rule that advancing checks only the current step, while saving checks everything.",
+  "_comment": "Wizard step-scoped validation. Each language parses `page` (a wizard), then validates every case's `record` against either one step's form (`step`: the step id) or the whole page's form (`step`: null). Errors are compared as an unordered set of {field,message}. This pins down the rule that advancing checks only the current step, while saving checks everything. The `billing` step carries a `visibleWhen`, which pins the other half: a step nobody can see is not validated either (neither on its own nor as part of the whole form) - the same rule as a hidden section.",
   "page": {
     "dsl_version": "1.0",
     "page": {
@@ -16,6 +16,14 @@
             { "field": "code", "label": "コード", "required": true,
               "validators": [ { "type": "maxLength", "value": 6 } ] },
             { "field": "name", "label": "会社名", "required": true }
+          ]
+        },
+        {
+          "id": "billing",
+          "title": "請求先",
+          "visibleWhen": { "field": "kind", "operator": "equals", "value": "corp" },
+          "fields": [
+            { "field": "billTo", "label": "請求先", "required": true }
           ]
         },
         {
@@ -68,6 +76,34 @@
       "expected": [
         { "field": "zip", "message": "郵便番号の形式が正しくありません" },
         { "field": "email", "message": "メールアドレスの形式が正しくありません" }
+      ]
+    },
+    {
+      "name": "a hidden step is not validated on its own",
+      "step": "billing",
+      "record": { "kind": "person" },
+      "expected": []
+    },
+    {
+      "name": "a shown step is validated on its own",
+      "step": "billing",
+      "record": { "kind": "corp" },
+      "expected": [
+        { "field": "billTo", "message": "必須項目です" }
+      ]
+    },
+    {
+      "name": "the whole form skips a hidden step",
+      "step": null,
+      "record": { "kind": "person", "code": "C001", "name": "山田商事", "email": "a@example.com" },
+      "expected": []
+    },
+    {
+      "name": "the whole form checks a shown step",
+      "step": null,
+      "record": { "kind": "corp", "code": "C001", "name": "山田商事", "email": "a@example.com" },
+      "expected": [
+        { "field": "billTo", "message": "必須項目です" }
       ]
     },
     {

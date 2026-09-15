@@ -64,13 +64,18 @@ class WizardConformanceTest {
                 DefinitionParser.parsePageMap((Map<String, Object>) fixture.get("page"));
 
         assertTrue(page.isWizard());
-        assertEquals(List.of("basic", "contact"),
+        assertEquals(List.of("basic", "billing", "contact"),
                 page.steps().stream().map(WizardStepDefinition::id).toList());
         // 全体の form はステップごとに1セクション。
-        assertEquals(List.of("基本情報", "連絡先"),
+        assertEquals(List.of("基本情報", "請求先", "連絡先"),
                 page.form().sections().stream().map(SectionDefinition::title).toList());
-        assertEquals(List.of("code", "name", "zip", "email"),
+        assertEquals(List.of("code", "name", "billTo", "zip", "email"),
                 page.form().fields().stream().map(FieldDefinition::field).toList());
+        // 条件つきのステップは、区画の visibleWhen として畳まれる
+        // （＝隠れているステップは保存時にも検証しない）。
+        assertEquals(
+                page.stepById("billing").visibleWhen(),
+                page.form().sections().get(1).visibleWhen());
         assertNull(page.stepById("nope"));
     }
 

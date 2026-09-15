@@ -932,6 +932,96 @@ jobs:
           # 警告で落とすのは --warn-as-error のときだけ（好みと問いでは落ちない）。
           node dist/cli.js check "$PAGE" > /dev/null
 
+      - name: Every last-resort path is actually walked
+        working-directory: typescript
+        run: |
+          set -e
+          # 対応表（押してから言う文 ↔ 押す前に言う側）と、**その道を通す試験**の
+          # 突き合わせ。ここが緑でも道が死んでいるかは分からないので、通すのは
+          # Flutter の試験（flutter ジョブが走らせる）。ここでは**試験が在ること**と
+          # **6本ぜんぶ書いてあること**を見る。
+          # 名前まで出す形で走らせる（通ったことだけでなく、**その件が在ること**を見る）。
+          npx vitest run test/actionFallbacks.test.ts --reporter=verbose             > /tmp/fb.log 2>&1
+          grep -q '6本ぜんぶ' /tmp/fb.log
+          # 試験を消したら落ちる（否定側＝砦を足して試験を書かないのと同じ形）。
+          TEST=../flutter/packages/hatake_material/test/action_fallback_test.dart
+          cp "$TEST" /tmp/fallback-test.bak
+          sed -i 's/はこのページでは刷れません/（消した）/' "$TEST"
+          if npx vitest run test/actionFallbacks.test.ts > /tmp/fb-bad.log 2>&1; then
+            cp /tmp/fallback-test.bak "$TEST"
+            echo "砦を通す試験が消えても通ってしまった"; exit 1
+          fi
+          cp /tmp/fallback-test.bak "$TEST"
+          grep -q 'その砦を通す試験がありません' /tmp/fb-bad.log
+          # 戻したことを確かめる（試験を壊したまま次のステップに進まない）。
+          diff -q /tmp/fallback-test.bak "$TEST"
+
+      - name: A wizard step can be skipped whole (and is not validated)
+        working-directory: typescript
+        run: |
+          set -e
+          mkdir -p /tmp/p0e
+          # 同梱の例が**条件つきのステップ**を持っていて、警告ゼロで通る。
+          node dist/cli.js validate ../spec/examples/customer_wizard.yaml --warn-as-error
+          # 読み返しに出る（飛ばされるステップの理由が紙から消えない）。
+          node dist/cli.js explain ../spec/examples/customer_wizard.yaml             > /tmp/p0e/explain.log
+          grep -q '請求先（区分 が 法人 のときだけ出る枠）' /tmp/p0e/explain.log
+          # **書けるのは条件だけ**＝綴り違いは今までどおり弾く（穴を広げていない）。
+          sed 's/visibleWhen: { field: kind/visibleIf: { field: kind/'             ../spec/examples/customer_wizard.yaml > /tmp/p0e/typo.yaml
+          if node dist/cli.js validate /tmp/p0e/typo.yaml > /tmp/p0e/typo.log 2>&1; then
+            echo "知らないキーが通ってしまった"; exit 1
+          fi
+          grep -q 'visibleIf' /tmp/p0e/typo.log
+          # スキーマにも在る（3版の読む側が同じキーを見る）。
+          node -e '
+            const fs = require("fs");
+            const schema = JSON.parse(
+              fs.readFileSync("../spec/hatake-page.schema.json", "utf8"));
+            const step = schema.$defs.wizardStep.properties;
+            if (step.visibleWhen === undefined) {
+              console.error("スキーマにステップの条件が無い"); process.exit(1);
+            }
+            for (const [name, path] of [
+              ["Dart", "../flutter/packages/hatake_yaml/lib/src/strict_keys.dart"],
+              ["Java", "../java/src/main/java/io/hatake/core/StrictKeys.java"],
+            ]) {
+              const text = fs.readFileSync(path, "utf8");
+              const at = text.indexOf("wizardStep");
+              const line = text.slice(at, at + 220);
+              if (!line.includes("visibleWhen")) {
+                console.error(name + " の strict がステップの条件を知らない");
+                process.exit(1);
+              }
+            }
+            console.log("ステップの条件は3版が読む");
+          '
+          # 条件つきのステップは、**区画の条件として畳まれる**（判定を2つ持たない）。
+          node -e '
+            const { parsePageYaml, wizardForm, visibleWizardSteps } =
+              require("./dist/index.js");
+            const fs = require("fs");
+            const page = parsePageYaml(
+              fs.readFileSync("../spec/examples/customer_wizard.yaml", "utf8"),
+              { strict: true });
+            const billing = page.steps.find((one) => one.id === "billing");
+            const section = wizardForm(page).sections.find(
+              (one) => one.title === "請求先");
+            if (JSON.stringify(section.visibleWhen) !==
+                JSON.stringify(billing.visibleWhen)) {
+              console.error("ステップの条件が区画に渡っていない"); process.exit(1);
+            }
+            const person = visibleWizardSteps(page, { kind: "personal" })
+              .map((one) => one.id);
+            const corp = visibleWizardSteps(page, { kind: "corporate" })
+              .map((one) => one.id);
+            if (person.includes("billing") || !corp.includes("billing")) {
+              console.error("歩くステップが条件で変わらない: " + person + " / " + corp);
+              process.exit(1);
+            }
+            console.log("歩くステップ: 個人 " + person.length + " 枚 / 法人 " +
+              corp.length + " 枚");
+          '
+
       - name: The count that cannot be gamed, and renaming a field everywhere
         working-directory: typescript
         run: |
@@ -2504,6 +2594,27 @@ jobs:
             echo "引けない手引きで通ってしまった"; cat /tmp/lookup.log; exit 1
           fi
           grep -q '引けません' /tmp/lookup.log
+          # **道具として渡せる形**＝ディレクトリを渡したら中の .md を全部読む
+          # （サイトの散文をサイト側から読ませるため。ここで回すのは docs/ だけ）。
+          node tool/check-docs.mjs ../docs/guide > /tmp/dir.log
+          node -e '
+            const log = require("fs").readFileSync("/tmp/dir.log", "utf8");
+            const read = /手引きを (\d+) 枚読みました/.exec(log);
+            if (read === null || Number(read[1]) < 3) {
+              console.error("ディレクトリを渡したのに読めていない: " + (read?.[1] ?? "なし"));
+              process.exit(1);
+            }
+            console.log("ディレクトリ渡しで " + read[1] + " 枚読んだ");
+          '
+          # **黙って0枚にしない**（渡した所を読んでいないのに「食い違っていません」と
+          # 言うのが、この道具で一番まずい嘘）。
+          if node tool/check-docs.mjs /tmp/nowhere > /tmp/nowhere.log 2>&1; then
+            echo "在りもしない道を渡して通ってしまった"; cat /tmp/nowhere.log; exit 1
+          fi
+          mkdir -p /tmp/emptydir
+          if node tool/check-docs.mjs /tmp/emptydir > /tmp/empty.log 2>&1; then
+            echo ".md が無い所を渡して通ってしまった"; cat /tmp/empty.log; exit 1
+          fi
           # 2. 落とせることを確かめる（通ることしか確かめない検査は、寝ていても気づけない）。
           mkdir -p /tmp/rotten
           cat > /tmp/rotten/stale.md <<'MD'

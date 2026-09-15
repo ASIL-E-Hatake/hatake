@@ -414,6 +414,13 @@ export interface WizardStepDefinition {
   /** Fields per row on wide layouts (DSL: `layout.columns`). */
   columns: number;
   fields: FieldDefinition[];
+  /**
+   * Show this whole step only when the condition matches what has been entered
+   * so far. A hidden step is skipped by 次へ / 戻る, and its fields are not
+   * validated — the step becomes a section (`wizardStepForm` / `wizardForm`),
+   * so the "a hidden section is not validated" rule does the work.
+   */
+  visibleWhen?: Record<string, unknown>;
 }
 
 /**
@@ -432,10 +439,25 @@ export interface WizardPageDefinition {
   actions: ActionDefinition[];
 }
 
-/** One step as a standalone form, so `FormValidator` can check just that step. */
+/**
+ * One step as a standalone form, so `FormValidator` can check just that step.
+ *
+ * The step's own condition rides along as the section's `visibleWhen`: a step
+ * that is not shown is not validated either, and **that rule lives in one
+ * place** (the form validator), not once per shape.
+ */
 export function wizardStepForm(step: WizardStepDefinition): FormDefinition {
   return {
-    sections: [{ title: step.title, columns: step.columns, fields: step.fields }],
+    sections: [
+      {
+        title: step.title,
+        columns: step.columns,
+        fields: step.fields,
+        ...(step.visibleWhen === undefined
+          ? {}
+          : { visibleWhen: step.visibleWhen }),
+      },
+    ],
   };
 }
 
@@ -446,9 +468,11 @@ export function wizardForm(page: WizardPageDefinition): FormDefinition {
       title: s.title,
       columns: s.columns,
       fields: s.fields,
+      ...(s.visibleWhen === undefined ? {} : { visibleWhen: s.visibleWhen }),
     })),
   };
 }
+
 
 /** How a `metric` card reduces the rows it fetched to one number. */
 export interface DashboardValueDefinition {

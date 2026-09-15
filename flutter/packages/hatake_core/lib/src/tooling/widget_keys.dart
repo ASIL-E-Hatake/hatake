@@ -117,6 +117,11 @@ abstract final class HatakeKeys {
   static const wizardNext = 'hatake.wizard.next';
   static const wizardSave = 'hatake.wizard.save';
   static const wizardError = 'hatake.wizard.error';
+
+  /// 条件（`steps[].visibleWhen`）で**全部のステップが隠れた**とき。
+  ///
+  /// 黙って1枚目を出すと「条件が効いていない」ように見えるので、そう言って止める。
+  static const wizardEmpty = 'hatake.wizard.empty';
   static String wizardStep(String id) => 'hatake.wizard.step.$id';
 
   // ── アプリの外枠（app: の定義） ───────────────────────────────────
@@ -201,6 +206,7 @@ abstract final class HatakeKeys {
         wizardNext,
         wizardSave,
         wizardError,
+        wizardEmpty,
         wizardStep(any),
         appBack,
         appNotFound,
