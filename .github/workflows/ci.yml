@@ -932,6 +932,116 @@ jobs:
           # 警告で落とすのは --warn-as-error のときだけ（好みと問いでは落ちない）。
           node dist/cli.js check "$PAGE" > /dev/null
 
+      - name: The count that cannot be gamed, and renaming a field everywhere
+        working-directory: typescript
+        run: |
+          set -e
+          mkdir -p /tmp/p0d/wire
+          # 1. **配線の数え方が嘘をつかない。** まず定義（登録が2つ要る形）。
+          cat > /tmp/p0d/page.yaml <<'YAML'
+          dsl_version: "1.0"
+          page:
+            type: search
+            id: order_search
+            title: 受注照会
+            repository: orderRepository
+            table:
+              columns:
+                - { field: orderNo, label: 受注番号 }
+            actions:
+              - { id: approve, type: plugin, plugin: approveOrders, label: 承認 }
+          YAML
+          # TypeScript の配線（**この言語の定番**で TODO を書いてある）。
+          cat > /tmp/p0d/wire/wiring.ts <<'TS'
+          const scope = {
+            repositories: new RepositoryRegistry({ 'orderRepository': repo }),
+            actions: new ActionRegistry({
+              'approveOrders': async (ctx) => { throw new Error("TODO: 承認する"); },
+            }),
+          };
+          TS
+          if node dist/cli.js refs /tmp/p0d/page.yaml --filled --source /tmp/p0d/wire \
+               --pending-as-error > /tmp/p0d/todo.log 2>&1; then
+            echo "TS の配線の TODO を見落とした（黙って埋まっていると言った）"
+            cat /tmp/p0d/todo.log; exit 1
+          fi
+          grep -q 'TODO のまま' /tmp/p0d/todo.log
+          grep -q 'approveOrders' /tmp/p0d/todo.log
+          # **目印を消して空実装にしても、数は良くならない**（ここが今回の肝）。
+          cat > /tmp/p0d/wire/wiring.ts <<'TS'
+          const scope = {
+            repositories: new RepositoryRegistry({ 'orderRepository': repo }),
+            actions: new ActionRegistry({
+              'approveOrders': async (ctx) => {},
+            }),
+          };
+          TS
+          if node dist/cli.js refs /tmp/p0d/page.yaml --filled --source /tmp/p0d/wire \
+               --pending-as-error > /tmp/p0d/hollow.log 2>&1; then
+            echo "空実装にしたら緑になった（数を良くするために中身を消せる）"
+            cat /tmp/p0d/hollow.log; exit 1
+          fi
+          grep -q '中身が無い' /tmp/p0d/hollow.log
+          grep -q '落ちないので気づけません' /tmp/p0d/hollow.log
+          # **間違いとは言わない**（何もしないのが正しい登録もある）。
+          grep -q '何もしないのが正しいなら' /tmp/p0d/hollow.log
+          # 中身を書けば「埋まっている」に移る（数えるものが動くことを見る）。
+          cat > /tmp/p0d/wire/wiring.ts <<'TS'
+          const scope = {
+            repositories: new RepositoryRegistry({ 'orderRepository': repo }),
+            actions: new ActionRegistry({
+              'approveOrders': async (ctx) => { await api.approve(ctx.records); },
+            }),
+          };
+          TS
+          node dist/cli.js refs /tmp/p0d/page.yaml --filled --source /tmp/p0d/wire \
+            --pending-as-error > /tmp/p0d/filled.log
+          grep -q '埋まっている   2' /tmp/p0d/filled.log
+          # 2. **名前を変えた先も辿る。**
+          DEF=../spec/examples/order_entry.yaml
+          BEFORE=$(node dist/cli.js ask "$DEF" --impact qty --json \
+            | node -e 'let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{
+                console.log(JSON.parse(s).impacts.length);
+              })')
+          if [ "$BEFORE" -lt 2 ]; then
+            echo "辿る所が少なすぎる（試験になっていない）: $BEFORE"; exit 1
+          fi
+          node dist/cli.js ask "$DEF" --impact qty:orderedQty \
+            --out /tmp/p0d/renamed.yaml > /tmp/p0d/rename.log 2>&1
+          # 下書きは**そのまま読める定義**（警告も出ない）。
+          node dist/cli.js validate /tmp/p0d/renamed.yaml --warn-as-error
+          # 新しい名前で**同じ件数**が辿れて、元の名前は項目名として消えている。
+          AFTER=$(node dist/cli.js ask /tmp/p0d/renamed.yaml --impact orderedQty --json \
+            | node -e 'let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{
+                console.log(JSON.parse(s).impacts.length);
+              })')
+          if [ "$BEFORE" != "$AFTER" ]; then
+            echo "書き換えで件数が変わった（前 $BEFORE / 後 $AFTER）"; exit 1
+          fi
+          if node dist/cli.js ask /tmp/p0d/renamed.yaml --impact qty \
+               > /tmp/p0d/gone.log 2>&1; then
+            echo "元の名前がまだ項目名として残っている"; cat /tmp/p0d/gone.log; exit 1
+          fi
+          # **触っていない所を毎回言う**（定義の外は直していない）。
+          grep -q '定義の外は直していません' /tmp/p0d/rename.log
+          # **衝突は黙って作らない**（もう在る名前には変えない）。
+          if node dist/cli.js ask "$DEF" --impact qty:price \
+               > /tmp/p0d/clash.log 2>&1; then
+            echo "衝突する名前に変えてしまった"; exit 1
+          fi
+          grep -q 'もう使われています' /tmp/p0d/clash.log
+          # ラベルや文言の中の同じ言葉は触らない（業務の言葉）。
+          node -e '
+            const fs = require("fs");
+            const before = fs.readFileSync("../spec/examples/order_entry.yaml", "utf8");
+            const after = fs.readFileSync("/tmp/p0d/renamed.yaml", "utf8");
+            const labels = (text) => (text.match(/label: [^,}\r\n]+/g) ?? []).join("|");
+            if (labels(before) !== labels(after)) {
+              console.error("ラベルを書き換えてしまった"); process.exit(1);
+            }
+            console.log("ラベルは1つも動いていない");
+          '
+
       - name: A mismatch kind can be looked up, and credentials can be checked alone
         working-directory: typescript
         run: |
@@ -2368,6 +2478,32 @@ jobs:
           grep -q '食い違っていません' /tmp/docs.log
           # **飛ばした所は必ず言う**（黙って飛ばすと、見ていないことが見えなくなる）。
           grep -q '飛ばした: ' /tmp/docs.log
+          # **引く道具は本当に走らせる**（旗の名前だけ合っていても、引く先が消えて
+          # いれば手引きは嘘になる）。走らせた数と、走らせなかった理由を必ず出す。
+          grep -q '実際に走らせました' /tmp/docs.log
+          grep -q '走らせなかった: ' /tmp/docs.log
+          node -e '
+            const log = require("fs").readFileSync("/tmp/docs.log", "utf8");
+            const ran = /引く道具を (\d+) 回/.exec(log);
+            if (ran === null || Number(ran[1]) < 5) {
+              console.error("手引きのコマンドを走らせていない: " + (ran?.[1] ?? "なし"));
+              process.exit(1);
+            }
+            console.log("手引きのコマンドを " + ran[1] + " 回走らせた");
+          '
+          # 引ける先が消えた手引きは落ちる（否定側＝旗も綴りも合っているのに引けない）。
+          mkdir -p /tmp/rotten
+          cat > /tmp/rotten/lookup.md <<'MD'
+          # 引けない手引き（試験用）
+
+          ```bash
+          npx hatake rules no-such-rule
+          ```
+          MD
+          if node tool/check-docs.mjs /tmp/rotten/lookup.md > /tmp/lookup.log 2>&1; then
+            echo "引けない手引きで通ってしまった"; cat /tmp/lookup.log; exit 1
+          fi
+          grep -q '引けません' /tmp/lookup.log
           # 2. 落とせることを確かめる（通ることしか確かめない検査は、寝ていても気づけない）。
           mkdir -p /tmp/rotten
           cat > /tmp/rotten/stale.md <<'MD'

@@ -23,6 +23,7 @@ import { roleSights } from "./roleSight.js";
 import { bulkByRole } from "./roleBulk.js";
 import { PLACEHOLDER_CONTEXTS } from "./placeholders.js";
 import { impactLines, impactOf } from "./questionImpact.js";
+import { RENAME_NOTE, renameDraft } from "./renameDraft.js";
 import {
   answeredBy,
   askQuestions,
@@ -530,7 +531,12 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             type: "string",
             description:
               "**触る前に聞く**ときだけ渡す項目名（`price`）。渡すと問い返しではなく" +
-              "「その項目を触ると定義のどこが壊れるか」を返す（消す前・名前を変える前に）。",
+              "「その項目を触ると定義のどこが壊れるか」を返す（消す前・名前を変える前に）。" +
+              "`price:unitPrice` の形で**前:後**を渡すと、そこを全部書き換えた" +
+              "**下書き**（draft）まで返す＝当てるのは人（そのまま保存してよいかは" +
+              "確かめること）。ラベルや文言の中の同じ言葉は触らない（あちらは業務の" +
+              "言葉）。**定義の外**（サーバ・試験・アプリ側のハンドラ）は見えないので" +
+              "直していない。新しい名前がもう使われていたら落とす。",
           },
         },
         required: ["source"],
@@ -545,6 +551,17 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         const field = str(args, "impact");
         if (field !== undefined) {
           const raw = document as Record<string, unknown>;
+          // `<前>:<後>` なら、辿るだけでなく書き換えた下書きまで返す。
+          const colon = field.indexOf(":");
+          if (colon > 0) {
+            const result = renameDraft(
+              required(args, "source"),
+              raw,
+              field.slice(0, colon),
+              field.slice(colon + 1),
+            );
+            return pretty({ ...result, note: RENAME_NOTE });
+          }
           const impacts = impactOf(raw, field);
           if (impacts.length === 0) {
             // 「影響なし」と読ませない＝それを見て消す人が出る。

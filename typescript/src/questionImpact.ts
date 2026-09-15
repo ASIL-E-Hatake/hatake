@@ -13,9 +13,11 @@
 //   嘘をつかない（試験がそれを確かめている）
 // * **定義のどこにも無い名前は「影響なし」と言わない。** 打ち間違いを黙って通すと、
 //   「影響ありません」を見て消す人が出る。**無い**と言う
-// * **直さない。** 消す／名前を変える／残して隠すは業務の判断なので、問いを返すだけ
+// * **決めない。** 消す／名前を変える／残して隠すは業務の判断。名前を変えると決めたら
+//   [renameDraft] が**下書き**を作るが、当てるのは人（`--write`）
 
 import { labelFor, pageActions, rawFormFields, searchFilters, tableColumns } from "./pageParts.js";
+import { type Path } from "./shrink.js";
 
 type Dict = Record<string, unknown>;
 
@@ -64,6 +66,14 @@ export interface Impact {
   page?: string;
   /** 定義の道。**この道を辿ると、その名前に行き当たる**。 */
   path: string;
+  /**
+   * 同じ道を**構造で**持ったもの（`["app", "pages", 0, "table", "columns", 2, "field"]`）。
+   *
+   * 書き換える側（[renameDraft]）はこれを `yamlSpans` に渡す＝**道の文字を読み解かない**
+   * （`app.pages[0].…` を正規表現で割ると、番号と引用符の扱いで必ずどこかを外す）。
+   * 最後の要素が数値なら**配列の要素そのもの**、文字列ならキーの**値**を指す。
+   */
+  at: Path;
   /** その場所の呼び名（画面の言葉。無ければ項目名）。 */
   label?: string;
 }
@@ -71,7 +81,7 @@ export interface Impact {
 /** 画面の中の、項目を書く場所1つ（明細の中まで開いたもの）。 */
 interface FieldSpot {
   node: Dict;
-  path: string;
+  path: Path;
   kind: "column" | "filter" | "field";
 }
 
@@ -82,7 +92,7 @@ interface FieldSpot {
  * ＝「明細の単価を消したい」がいちばん多い相談なので、ここで開く（あちらを変えると
  * 助言の鳴り方まで変わるので、この道具の側で開く）。
  */
-const pathText = (parts: (string | number)[]): string =>
+const pathText = (parts: Path): string =>
   parts.reduce<string>(
     (text, one) =>
       typeof one === "number" ? `${text}[${one}]` : text === "" ? one : `${text}.${one}`,
@@ -91,19 +101,19 @@ const pathText = (parts: (string | number)[]): string =>
 
 function fieldSpots(page: Dict): FieldSpot[] {
   const found: FieldSpot[] = [];
-  const push = (node: Dict, path: string, kind: FieldSpot["kind"]): void => {
+  const push = (node: Dict, path: Path, kind: FieldSpot["kind"]): void => {
     found.push({ node, path, kind });
     if (str(node.type) !== "subTable") return;
     dicts(node.columns).forEach((child, index) =>
-      push(child, `${path}.columns[${index}]`, "column"),
+      push(child, [...path, "columns", index], "column"),
     );
     dicts(node.fields).forEach((child, index) =>
-      push(child, `${path}.fields[${index}]`, "field"),
+      push(child, [...path, "fields", index], "field"),
     );
   };
-  for (const part of tableColumns(page)) push(part.node, pathText(part.path), "column");
-  for (const part of searchFilters(page)) push(part.node, pathText(part.path), "filter");
-  for (const part of rawFormFields(page)) push(part.node, pathText(part.path), "field");
+  for (const part of tableColumns(page)) push(part.node, part.path, "column");
+  for (const part of searchFilters(page)) push(part.node, part.path, "filter");
+  for (const part of rawFormFields(page)) push(part.node, part.path, "field");
   return found;
 }
 
@@ -115,41 +125,41 @@ const CONDITION_KEYS = [
   "requiredWhen",
 ];
 
-const pagesOf = (document: Dict): { page: Dict; path: string }[] => {
-  const found: { page: Dict; path: string }[] = [];
+const pagesOf = (document: Dict): { page: Dict; path: Path }[] => {
+  const found: { page: Dict; path: Path }[] = [];
   const app = isDict(document.app) ? document.app : undefined;
   if (app !== undefined) {
     dicts(app.pages).forEach((page, index) =>
-      found.push({ page, path: `app.pages[${index}]` }),
+      found.push({ page, path: ["app", "pages", index] }),
     );
   }
-  if (isDict(document.page)) found.push({ page: document.page, path: "page" });
+  if (isDict(document.page)) found.push({ page: document.page, path: ["page"] });
   return found;
 };
 
 /** 条件の中で、その項目名を見ている所を全部（入れ子の all / any / not も辿る）。 */
-function inCondition(node: unknown, field: string, at: string, found: string[]): void {
+function inCondition(node: unknown, field: string, at: Path, found: Path[]): void {
   if (Array.isArray(node)) {
-    node.forEach((one, index) => inCondition(one, field, `${at}[${index}]`, found));
+    node.forEach((one, index) => inCondition(one, field, [...at, index], found));
     return;
   }
   if (!isDict(node)) return;
-  if (str(node.field) === field) found.push(`${at}.field`);
+  if (str(node.field) === field) found.push([...at, "field"]);
   for (const key of ["all", "any", "not"]) {
-    if (node[key] !== undefined) inCondition(node[key], field, `${at}.${key}`, found);
+    if (node[key] !== undefined) inCondition(node[key], field, [...at, key], found);
   }
 }
 
 /** 計算の中で、その項目名を見ている所を全部。 */
-function inComputed(computed: Dict, field: string, at: string, found: string[]): void {
+function inComputed(computed: Dict, field: string, at: Path, found: Path[]): void {
   list(computed.fields).forEach((one, index) => {
-    if (one === field) found.push(`${at}.fields[${index}]`);
+    if (one === field) found.push([...at, "fields", index]);
   });
-  if (str(computed.field) === field) found.push(`${at}.field`);
+  if (str(computed.field) === field) found.push([...at, "field"]);
   // `of` は**畳む相手の行の項目**（`op: sum, field: lines, of: amount`）。
-  if (str(computed.of) === field) found.push(`${at}.of`);
+  if (str(computed.of) === field) found.push([...at, "of"]);
   if (computed.where !== undefined) {
-    inCondition(computed.where, field, `${at}.where`, found);
+    inCondition(computed.where, field, [...at, "where"], found);
   }
 }
 
@@ -163,35 +173,37 @@ export function impactOf(document: Dict, field: string): Impact[] {
   const found: Impact[] = [];
   for (const { page, path } of pagesOf(document)) {
     const id = str(page.id);
-    const add = (kind: ImpactKind, at: string, label?: string): void => {
+    const add = (kind: ImpactKind, at: Path, label?: string): void => {
       found.push({
         kind,
         ...(id === undefined ? {} : { page: id }),
-        path: `${path}.${at}`,
+        path: pathText([...path, ...at]),
+        at: [...path, ...at],
         ...(label === undefined ? {} : { label }),
       });
     };
 
-    if (str(page.key) === field) add("key", "key");
+    if (str(page.key) === field) add("key", ["key"]);
 
     for (const spot of fieldSpots(page)) {
+      // 道は画面の中だけ（画面までの道は add が足す）。
       const at = spot.path;
       if (str(spot.node.field) === field) {
-        add(spot.kind, `${at}.field`, str(spot.node.label));
+        add(spot.kind, [...at, "field"], str(spot.node.label));
       }
       // 計算・条件は「その項目を持っている所」ではなく「その項目を見ている所」。
       const computed = isDict(spot.node.computed) ? spot.node.computed : undefined;
       if (computed !== undefined) {
-        const hits: string[] = [];
-        inComputed(computed, field, `${at}.computed`, hits);
+        const hits: Path[] = [];
+        inComputed(computed, field, [...at, "computed"], hits);
         for (const hit of hits) {
           add("computed", hit, str(spot.node.label) ?? str(spot.node.field));
         }
       }
       for (const key of CONDITION_KEYS) {
         if (spot.node[key] === undefined) continue;
-        const hits: string[] = [];
-        inCondition(spot.node[key], field, `${at}.${key}`, hits);
+        const hits: Path[] = [];
+        inCondition(spot.node[key], field, [...at, key], hits);
         for (const hit of hits) {
           add("condition", hit, str(spot.node.label) ?? str(spot.node.field));
         }
@@ -199,19 +211,21 @@ export function impactOf(document: Dict, field: string): Impact[] {
     }
 
     for (const part of pageActions(page)) {
-      const at = pathText(part.path);
+      const at = part.path;
       const label = str(part.node.label) ?? str(part.node.id);
       for (const key of CONDITION_KEYS) {
         if (part.node[key] === undefined) continue;
-        const hits: string[] = [];
-        inCondition(part.node[key], field, `${at}.${key}`, hits);
+        const hits: Path[] = [];
+        inCondition(part.node[key], field, [...at, key], hits);
         for (const hit of hits) add("condition", hit, label);
       }
       // 遷移のパラメータ（`$row.<項目名>` で行の値を渡す）。
       const params = isDict(part.node.params) ? part.node.params : undefined;
       if (params !== undefined) {
         for (const [name, value] of Object.entries(params)) {
-          if (str(value) === `$row.${field}`) add("param", `${at}.params.${name}`, label);
+          if (str(value) === `$row.${field}`) {
+            add("param", [...at, "params", name], label);
+          }
         }
       }
     }
@@ -219,14 +233,16 @@ export function impactOf(document: Dict, field: string): Impact[] {
     const report = isDict(page.report) ? page.report : undefined;
     if (report !== undefined) {
       list(report.groupBy).forEach((one, index) => {
-        if (one === field) add("report", `report.groupBy[${index}]`);
+        if (one === field) add("report", ["report", "groupBy", index]);
       });
       dicts(report.totals).forEach((total, index) => {
-        if (str(total.field) === field) add("report", `report.totals[${index}].field`);
+        if (str(total.field) === field) {
+          add("report", ["report", "totals", index, "field"]);
+        }
       });
       const sort = isDict(report.sort) ? report.sort : undefined;
       if (sort !== undefined && str(sort.field) === field) {
-        add("report", "report.sort.field");
+        add("report", ["report", "sort", "field"]);
       }
     }
   }

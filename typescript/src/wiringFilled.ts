@@ -11,6 +11,11 @@
 //     言うのが、この仕組みで一番まずい嘘＝仕組みごと信用されなくなる）。
 //   ・**「埋まっている」は「目印が残っていない」という意味しかない。** 中身が業務として
 //     正しいかは見ていない。数え方をそう名乗る。
+//   ・**目印を消しても数が良くならない。** 目印（`UnimplementedError`）を消して空実装
+//     （`{}` / `=> null`）に置き換えると、数え方が「TODO のまま」から「埋まっている」に
+//     変わる＝**数を良くするために中身を消せる**。だから空実装は `hollow`（中身が無い）
+//     として**「埋まっている」に数えない**。ただし**間違いとは言わない**（何もしないのが
+//     正しい登録もある）ので、欄を分けて理由を書く。
 //   ・**組み込みは数えない。** 定義が使っているだけで登録は要らないので、混ぜると
 //     「20 件のうち 18 件埋まっている」のような、読む意味の無い数になる。
 
@@ -28,6 +33,13 @@ export type FilledState =
   | "filled"
   /** 登録は在るが、中身が TODO のまま（動かすと落ちる）。 */
   | "pending"
+  /**
+   * 登録は在り、目印も無いが、**本体が空**（何もしない）。
+   *
+   * 落ちないので気づけない＝押しても何も起きないボタンになる。**何もしないのが正しい
+   * こともある**ので、`pending` とは別に数える。
+   */
+  | "hollow"
   /** 登録が無い（`wire --merge` で足せる）。 */
   | "missing"
   /** 読めなかった登録が在るので、在るとも無いとも言えない。 */
@@ -58,7 +70,13 @@ export interface FilledReport {
   scanned: number;
 }
 
-const STATE_ORDER: FilledState[] = ["pending", "missing", "unknown", "filled"];
+const STATE_ORDER: FilledState[] = [
+  "pending",
+  "hollow",
+  "missing",
+  "unknown",
+  "filled",
+];
 
 /**
  * 定義の要求と実装の走査を突き合わせる。
@@ -76,12 +94,14 @@ export function filledReport(
   const blind = new Set(scan.unreadable.map((one) => one.kind));
   const where = new Map<string, string>();
   const pending = new Set<string>();
+  const hollow = new Set<string>();
   for (const site of scan.sites) {
     for (const name of site.names) {
       const key = `${site.kind}/${name}`;
       if (!where.has(key)) where.set(key, `${site.file}:${site.line}`);
     }
     for (const name of site.pending) pending.add(`${site.kind}/${name}`);
+    for (const name of site.hollow) hollow.add(`${site.kind}/${name}`);
   }
 
   const items: FilledItem[] = [];
@@ -96,7 +116,9 @@ export function filledReport(
             : "missing"
           : pending.has(key)
             ? "pending"
-            : "filled";
+            : hollow.has(key)
+              ? "hollow"
+              : "filled";
       items.push({
         kind: kind as RefKind,
         name,
@@ -126,11 +148,14 @@ export const inState = (report: FilledReport, state: FilledState): FilledItem[] 
  * 道具の限界で、書いた人の落ち度ではない）。
  */
 export const hasUnfilled = (report: FilledReport): boolean =>
-  report.items.some((one) => one.state === "pending" || one.state === "missing") ||
-  report.loose.length > 0;
+  report.items.some(
+    (one) =>
+      one.state === "pending" || one.state === "missing" || one.state === "hollow",
+  ) || report.loose.length > 0;
 
 const STATE_LABEL: Record<FilledState, string> = {
   pending: "TODO のまま",
+  hollow: "中身が無い",
   missing: "登録が無い",
   unknown: "言えない",
   filled: "埋まっている",
@@ -138,6 +163,9 @@ const STATE_LABEL: Record<FilledState, string> = {
 
 const STATE_WHY: Record<FilledState, string> = {
   pending: "動かすと UnimplementedError で落ちます（hatake wire が足した所のまま）",
+  hollow:
+    "本体が空です＝**落ちないので気づけません**（押しても何も起きない）。" +
+    "何もしないのが正しいなら、そう分かる中身を書いてください",
   missing: "実装に見つかりません（hatake wire --merge で足せます）",
   unknown: "読めなかった登録が在るので、在るとも無いとも言えません",
   filled: "",
@@ -155,7 +183,7 @@ export function renderFilled(report: FilledReport): string {
     if (state === "unknown" && count(state) === 0) continue;
     out.push(`  ${STATE_LABEL[state]}   ${count(state)}`);
   }
-  for (const state of ["pending", "missing", "unknown"] as FilledState[]) {
+  for (const state of ["pending", "hollow", "missing", "unknown"] as FilledState[]) {
     const found = inState(report, state);
     if (found.length === 0) continue;
     out.push("");
@@ -186,7 +214,9 @@ export function renderFilled(report: FilledReport): string {
   out.push("");
   out.push(
     "※ 「埋まっている」は**目印（UnimplementedError）が残っていない**という意味です。" +
-      "中身が業務として正しいかは見ていません。",
+      "中身が業務として正しいかは見ていません。" +
+      "**目印を消して空実装にしても数は良くなりません**（それは「中身が無い」に入ります）" +
+      "＝ただし何もしないのが正しい登録もあるので、そこは間違いとは言いません。",
   );
   return out.join("\n");
 }

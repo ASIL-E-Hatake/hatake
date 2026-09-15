@@ -90,6 +90,7 @@ import {
 } from "./explainMarkdown.js";
 import { readGitPair } from "./gitRange.js";
 import { gapsLines, wiringGaps } from "./wiringGaps.js";
+import { renameDraft, renameLines } from "./renameDraft.js";
 import {
   adviceEffect,
   effectLines,
@@ -344,6 +345,16 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
   hatake ask <file> [--project hatake.project.yaml] [--questions team.json]
                     [--markdown] [--json]
   hatake ask --kinds [--json]
+  hatake ask <file> --impact <前>:<後> [--out file] [--write] [--json]
+      **名前を変えた先も辿る**。その項目名を指している所を全部書き換えた
+      **下書き**を出す（列・絞り込み・入力欄・計算の元・条件・遷移のパラメータ・
+      帳票の合計と並び）。既定は標準出力＝当てるのは人（--write で上書き）。
+      書き換えるのは**項目名として書いてある所**だけ＝ラベル・確認の文・エラーの
+      文言に同じ言葉が出てきても触らない（あちらは業務の言葉）。差し込み
+      （$row.<項目名>）は直す。**定義の外は直さない**（サーバ・試験・アプリ側の
+      ハンドラは見えない）ので、そこは人が一緒に直すこと。
+      新しい名前が**もう使われていたら落とす**（衝突を黙って作らない）。
+
   hatake ask <file> --impact <項目名> [--json]
       **人が決めないと決まらないこと**を、画面から問い返す（排他・採番・論理削除・
       端数・サーバ側の検証・止めるのは誰か…）。雑な依頼から起こした定義は、書ける
@@ -658,10 +669,15 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       （登録済みの一覧が要る。消し忘れた登録は「使われている」と誤解される）。
 
       --filled --source <実装のパス> で、要求している登録が**本当に埋まったか**を
-      数える（埋まっている／TODO のまま／登録が無い／言えない）。「TODO のまま」は
-      wire が足した目印（UnimplementedError）が残っているもの＝動かすと落ちる。
+      数える（埋まっている／TODO のまま／中身が無い／登録が無い／言えない）。
+      「TODO のまま」は「まだ書いていない」の目印が残っているもの＝動かすと落ちる
+      （3言語ぶん見る＝Dart の UnimplementedError・Java の
+      UnsupportedOperationException・TypeScript の throw new Error（TODO と書いた分））。
+      「中身が無い」は登録も目印も無いのに**本体が空**なもの＝落ちないので気づけない。
+      目印を消して空実装にしても数は良くならない、という形にしてある。
+      ただし**間違いとは言わない**（何もしないのが正しい登録もある）。
       読めなかった登録が在る種類は「言えない」＝在るとも無いとも言わない。
-      --pending-as-error で、TODO のまま・登録が無い が1件でもあれば落とす。
+      --pending-as-error で、TODO のまま・中身が無い・登録が無い が1件でもあれば落とす。
 
       --unused に --source を渡すと、**アプリのコードの中で名前が書かれているか**も
       見る（画面の外から直接呼んでいる登録は「消してよい」ではない）。
@@ -3681,6 +3697,16 @@ function filled(
           "（hatake wire --merge --todo で渡した所です）。",
       );
     }
+    // 空実装は**落ちない**ので、数だけでも標準エラーに出す（一覧は読まれなくても、
+    // 数は読まれる）。
+    const hollow = inState(report, "hollow").length;
+    if (hollow > 0) {
+      io.err(
+        `中身が空のまま登録されているのが ${hollow} 件あります` +
+          "（落ちないので気づけません。何もしないのが正しいなら、そう分かる中身を" +
+          "書いてください）。",
+      );
+    }
   }
   return failIf(flags, "pending-as-error", hasUnfilled(report));
 }
@@ -4365,12 +4391,26 @@ function impactCommand(
     io.err("--impact は定義ファイルを1つ指定してください。");
     return 1;
   }
-  const document = parseYamlText(io.readFile(files[0]));
+  const source = io.readFile(files[0]);
+  const document = parseYamlText(source);
   if (typeof document !== "object" || document === null) {
     io.err("定義（map）として読めません。");
     return 1;
   }
   const raw = document as Record<string, unknown>;
+  // `<前>:<後>` なら、辿るだけでなく**書き換えた下書き**まで出す。
+  const colon = field.indexOf(":");
+  if (colon > 0) {
+    return renameCommand(
+      files[0],
+      source,
+      raw,
+      field.slice(0, colon),
+      field.slice(colon + 1),
+      flags,
+      io,
+    );
+  }
   const found = impactOf(raw, field);
   if (flags.json === true) {
     io.out(JSON.stringify({ field, impacts: found }, null, 2));
@@ -4381,6 +4421,43 @@ function impactCommand(
     else io.out(line);
   }
   return found.length === 0 ? 1 : 0;
+}
+
+/**
+ * 名前を変えた下書き（`ask --impact <前>:<後>`）。
+ *
+ * **当てない**のが既定＝出すのは下書きで、上書きは `--write` を渡したときだけ
+ * （`fix` と同じ立場）。書き換えられなかった所が在れば**終了コード 1**＝
+ * 「不完全な下書きを当てた」に気づけるようにする。
+ */
+function renameCommand(
+  file: string,
+  source: string,
+  raw: Record<string, unknown>,
+  before: string,
+  after: string,
+  flags: Args["flags"],
+  io: CliIo,
+): number {
+  const result = renameDraft(source, raw, before, after);
+  // 書き出す先は `--out`、`--write` なら読んだ定義そのもの（`fix` と同じ）。
+  const to = str(flags, "out") ?? (flags.write === true ? file : undefined);
+  if (flags.json === true) {
+    io.out(JSON.stringify(result, null, 2));
+    return result.missed.length > 0 ? 1 : 0;
+  }
+  if (to === undefined) {
+    // 末尾の改行は `out` が足すので、二重にしない（そのままリダイレクトできる形）。
+    // CR は残す（CRLF の定義の最後の行を LF にしない）。
+    io.out(result.source.replace(/\n$/, ""));
+  } else {
+    io.writeFile(to, result.source);
+    io.out(`書きました: ${to}`);
+  }
+  // 何をどこで書き換えたかは**標準エラー**（標準出力は下書きそのもの＝そのまま
+  // リダイレクトできる形にしておく）。
+  for (const line of renameLines(result)) io.err(line);
+  return result.missed.length > 0 ? 1 : 0;
 }
 
 /** `--out` があればファイルへ、無ければ標準出力へ（どちらも末尾は改行1つ）。 */
