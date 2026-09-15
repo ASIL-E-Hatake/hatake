@@ -610,6 +610,100 @@ jobs:
             | node dist/mcp.js > /tmp/rules-mcp.log
           grep -q '並びの決まっていないグループ' /tmp/rules-mcp.log
 
+      - name: Conditions that can never hold, the next case to write, and sameness
+        working-directory: typescript
+        run: |
+          set -e
+          mkdir -p /tmp/p0
+          # 1. **出し分けの条件が永久に偽**（節点ごとに別の規則・別の言い方）。
+          cat > /tmp/p0/never.yaml <<'YAML'
+          page:
+            type: crud
+            id: order_master
+            title: 受注
+            repository: orderRepository
+            key: orderNo
+            table:
+              columns:
+                - { field: orderNo, label: 受注番号 }
+            form:
+              sections:
+                - fields:
+                    - { field: orderNo, label: 受注番号 }
+                    - { field: status, label: 状態 }
+                    - field: note
+                      label: 備考
+                      visibleWhen:
+                        all:
+                          - { field: status, operator: equals, value: 受付 }
+                          - { field: status, operator: equals, value: 承認済 }
+          YAML
+          node dist/cli.js validate /tmp/p0/never.yaml --json > /tmp/p0/never.json
+          grep -q 'visiblewhen-never-true' /tmp/p0/never.json
+          grep -q '永久に成り立ちません' /tmp/p0/never.json
+          # 節点ごとに言い方が違う（重さを測れるように）。
+          for KEY in requiredWhen readOnlyWhen; do
+            sed "s/visibleWhen:/$KEY:/" /tmp/p0/never.yaml > /tmp/p0/$KEY.yaml
+            node dist/cli.js validate /tmp/p0/$KEY.yaml --json > /tmp/p0/$KEY.json
+            LOWER=$(echo "$KEY" | tr 'A-Z' 'a-z')
+            grep -q "$LOWER-never-true" /tmp/p0/$KEY.json
+          done
+          node dist/cli.js rules visiblewhen-never-true > /tmp/p0/rule.log
+          grep -q '永久に出ません' /tmp/p0/rule.log
+          node dist/cli.js rules requiredwhen-never-true | grep -q '空のまま保存'
+          node dist/cli.js rules readonlywhen-never-true | grep -q '編集できます'
+          # any なら言わない（1つ成り立てばよい）。
+          sed 's|          all:|          any:|' /tmp/p0/never.yaml > /tmp/p0/any.yaml
+          if node dist/cli.js validate /tmp/p0/any.yaml --json \
+               | grep -q 'visiblewhen-never-true'; then
+            echo "any の中を永久に偽と言ってしまった"; exit 1
+          fi
+          # 2. **まだ試していない分岐から、次に書く1件を起こす**。
+          DEF=../spec/examples/order_entry.yaml
+          node dist/cli.js run "$DEF" --draft --out /tmp/p0/first.json > /dev/null
+          node dist/cli.js run "$DEF" --scenario /tmp/p0/first.json --cover \
+            > /tmp/p0/cover-before.log
+          grep -q 'まだ試していない所' /tmp/p0/cover-before.log
+          node dist/cli.js run "$DEF" --scenario /tmp/p0/first.json --cover --draft \
+            --out /tmp/p0/more.json > /tmp/p0/draft.log 2>&1
+          grep -q '回して確かめてあります' /tmp/p0/draft.log
+          # **起こしたものを足すと、まだ試していない所がゼロになる**（輪が閉じる）。
+          node -e '
+            const fs = require("fs");
+            const a = JSON.parse(fs.readFileSync("/tmp/p0/first.json", "utf8"));
+            const b = JSON.parse(fs.readFileSync("/tmp/p0/more.json", "utf8"));
+            if (b.cases.length === 0) { console.error("1件も起こせなかった"); process.exit(1); }
+            fs.writeFileSync("/tmp/p0/all.json",
+              JSON.stringify({ cases: [...a.cases, ...b.cases] }));
+          '
+          node dist/cli.js run "$DEF" --scenario /tmp/p0/all.json --cover \
+            > /tmp/p0/cover-after.log
+          grep -q 'まだ試していない分岐はありません' /tmp/p0/cover-after.log
+          # --cover を付けずに --scenario と --draft を渡したら、そう言って落ちる。
+          if node dist/cli.js run "$DEF" --scenario /tmp/p0/first.json --draft \
+               > /tmp/p0/draft-bad.log 2>&1; then
+            echo "--cover 無しで通してしまった"; exit 1
+          fi
+          grep -q -e '--cover も付けてください' /tmp/p0/draft-bad.log
+          # 3. **書き方が違っても同じ画面か**。
+          node dist/cli.js minimize "$DEF" > /tmp/p0/min.yaml
+          node dist/cli.js same "$DEF" /tmp/p0/min.yaml > /tmp/p0/same.log
+          grep -q '同じ画面です' /tmp/p0/same.log
+          grep -q '同じ＝正しい、ではありません' /tmp/p0/same.log
+          # 意味を変えたら、どこが違うかを道つきで出して落ちる。
+          sed 's|label: 明細|label: 明細行|' "$DEF" > /tmp/p0/relabel.yaml
+          if node dist/cli.js same "$DEF" /tmp/p0/relabel.yaml > /tmp/p0/diff.log; then
+            echo "意味が変わったのに同じと言ってしまった"; cat /tmp/p0/diff.log; exit 1
+          fi
+          grep -q '違う画面です' /tmp/p0/diff.log
+          grep -q 'label' /tmp/p0/diff.log
+          # 比べる相手が違えば「比べられない」と言う。
+          if node dist/cli.js same "$DEF" ../spec/examples/sales_app.yaml \
+               > /tmp/p0/same-bad.log 2>&1; then
+            echo "app と単票を比べてしまった"; exit 1
+          fi
+          grep -q '比べられません' /tmp/p0/same-bad.log
+
       - name: A mismatch kind can be looked up, and credentials can be checked alone
         working-directory: typescript
         run: |

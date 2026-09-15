@@ -50,6 +50,7 @@ npx hatake diagram app.yaml --role admin   # その役割で通れる道だけ�
 npx hatake diagram app.yaml --computed --all  # 計算の依存（画面ごとに囲んで1枚に。箱の中に op と絞り込み）
 npx hatake minimize page.yaml      # 既定値と同じ指定を落として短く（意味は変えない）
 npx hatake diff <前> <後>          # 既にある定義を直したとき：契約・画面・権限・アプリ構成への影響
+npx hatake same <前> <後>          # **書き方が違うだけか**（解析後のモデルで比べる。キーの並び・既定値の明示・囲みの書き方は差にしない）。同じなら 0、違えばどこが違うかを道つきで出して 1。**等価な条件の書き換えは見ない**（all: [x] と x は「違う」と言う）
 npx hatake fix page.yaml --todo    # 機械が直せなかった分だけを「次の1往復で渡す形」にする
 npx hatake refs app.yaml --unused  # 逆向き：登録してあるのに、どの定義も使っていないもの
 npx hatake paper report.yaml       # 帳票を「刷ったらどう見えるか」に開く（文字で・行が無くても見本を作る）
@@ -59,6 +60,7 @@ npx hatake registry lib/main.dart --out hatake-registry.json  # 実装を読ん�
 npx hatake registry --from-app snapshot.json  # **動いているアプリ／サーバの申告**を読む（registrySnapshot が書いた紙。印（$source）の無い紙は受け取らない＝手書きの一覧を申告として扱うと、無い種類について道具が断定する）
 ```
 `validate` は**解析は通るのに意図どおり動かない書き方**も警告する（宣言していない行アクション／存在しないページへの遷移／`sort` の無い `groupBy`／条件で使えない演算子／`field` の無い集計など）。エラーではないが**画面を見ても気づけない**類なので、警告が出たら直す。`--warn-as-error` で CI を落とせる。
+**出し分けの条件が永久に偽**も言う（`visibleWhen` / `requiredWhen` / `readOnlyWhen` / `enabledWhen` に矛盾を書いた／その画面に無い項目を見ている）＝永久に出ない項目・永久に必須にならない項目は、画面を見ても「そういう仕様」に見える。節点ごとに規則が違うので、重さは規則名で測れる。
 警告名を言われて「それは何か」が分からないときは `hatake rules <規則名>` で引く（仕様書を読まなくてよい。知らない名前は空ではなくエラーになる＝引けなかったのか無いのかが分かる）。
 **黙って効かない書き方**も見る（遷移のパラメータ `$row.<項目名>` が画面に無い項目／`enabledWhen` が永久に成り立たない／組み込みでない紙は A4 として刷られる）。申告（`--registry` に `$source` つきの紙）を渡したときだけ「出す口（exportSink / printSink）が1つも登録されていない」まで言う＝手で書いた一覧では「登録していない」と「書き忘れた」の区別が付かないので言わない。
 未知キーは場所と直し方まで出る: `page.table.columns[0]: 知らないキー "witdh"（width の間違い？）`

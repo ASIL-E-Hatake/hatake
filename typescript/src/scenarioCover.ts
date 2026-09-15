@@ -21,6 +21,21 @@ import {
 } from "./definition.js";
 import { formOf, type ScenarioAnswer, type ScenarioCase } from "./scenario.js";
 
+/**
+ * その分岐が**何から来たか**（下書きを起こす側が見る所）。
+ *
+ * `at` は人に見せる道なので、下書きがそれを**読み解いて**値を作ると、道の書き方を
+ * 変えた瞬間に下書きが黙って壊れる。だから判断は構造で渡す。
+ *
+ * `record` = フォームのレコードに値を置けば動かせる分岐。`row` = 明細の**行**に対して
+ * 判定される分岐（行を作る話なので、レコードに1つ値を置いても動かない）。
+ */
+export type CoverSource =
+  | { kind: "condition"; on: "record" | "row"; condition: Record<string, unknown> }
+  | { kind: "validators"; field: string }
+  | { kind: "rowValidators"; field: string; rowField: string }
+  | { kind: "computed"; field: string };
+
 /** 数える分岐1つ。 */
 export interface CoverPoint {
   /** どこか（`page.form.fields[2].visibleWhen` のような道）。 */
@@ -31,6 +46,8 @@ export interface CoverPoint {
   seen: string[];
   /** まだ見ていない側。 */
   missing: string[];
+  /** 何から来た分岐か（下書きを起こせるかはここで決まる）。 */
+  source?: CoverSource;
 }
 
 export interface CoverReport {
@@ -57,12 +74,19 @@ export function coverScenario(
   answers: ScenarioAnswer[],
 ): CoverReport {
   const points: CoverPoint[] = [];
-  const add = (at: string, what: string, sides: string[], seen: Set<string>): void => {
+  const add = (
+    at: string,
+    what: string,
+    sides: string[],
+    seen: Set<string>,
+    source?: CoverSource,
+  ): void => {
     points.push({
       at,
       what,
       seen: sides.filter((side) => seen.has(side)),
       missing: sides.filter((side) => !seen.has(side)),
+      ...(source === undefined ? {} : { source }),
     });
   };
 
@@ -84,6 +108,11 @@ export function coverScenario(
           `枠「${section.title ?? s}」が出る条件`,
           BOTH,
           seen,
+          {
+            kind: "condition",
+            on: "record",
+            condition: section.visibleWhen as Record<string, unknown>,
+          },
         );
       }
     });
@@ -100,7 +129,11 @@ export function coverScenario(
           const holds = evaluateCondition(condition, answer.record, cases[i].mode);
           seen.add(holds ? BOTH[0] : BOTH[1]);
         });
-        add(`${field.field}.${key}`, `「${field.label}」${what}`, BOTH, seen);
+        add(`${field.field}.${key}`, `「${field.label}」${what}`, BOTH, seen, {
+          kind: "condition",
+          on: "record",
+          condition,
+        });
       }
 
       // 畳む前に行を絞る条件（`where`）。行ごとに見る（1行でも残れば「成立した」）。
@@ -120,6 +153,7 @@ export function coverScenario(
           `「${field.label}」が畳む行を絞る条件`,
           BOTH,
           seen,
+          { kind: "condition", on: "row", condition: where },
         );
       }
 
@@ -134,6 +168,7 @@ export function coverScenario(
           `「${field.label}」の計算`,
           ["値が出た"],
           seen,
+          { kind: "computed", field: field.field },
         );
       }
 
@@ -154,6 +189,7 @@ export function coverScenario(
         `「${field.label}」の検証（どの規則で落ちたかまでは数えない）`,
         PASSED_FAILED,
         seen,
+        { kind: "validators", field: field.field },
       );
     }
   }
@@ -169,7 +205,11 @@ export function coverScenario(
       seen.add(value ? BOTH[0] : BOTH[1]);
       void i;
     });
-    add(`${action.id}.enabledWhen`, `「${action.label}」が押せる条件`, BOTH, seen);
+    add(`${action.id}.enabledWhen`, `「${action.label}」が押せる条件`, BOTH, seen, {
+      kind: "condition",
+      on: "record",
+      condition: action.enabledWhen as Record<string, unknown>,
+    });
   }
 
   // 明細の行の中の検証（行が在るときだけ数える）。
@@ -193,6 +233,7 @@ export function coverScenario(
           `明細「${field.label}」の行の「${rowField.label}」の検証`,
           PASSED_FAILED,
           seen,
+          { kind: "rowValidators", field: field.field, rowField: rowField.field },
         );
       }
     }

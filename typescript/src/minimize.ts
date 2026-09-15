@@ -64,13 +64,18 @@ const KEEP = new Set(["dsl_version"]);
 const isDict = (v: unknown): v is Dict =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-/** キーの並び順に依らない JSON（モデルの一致を見るため）。 */
-function stable(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
+/**
+ * キーの並び順に依らない JSON（モデルの一致を見るため）。
+ *
+ * 外に出してあるのは、**同じ物差しを2つ持たない**ため（`hatake same` が「書き方が違う
+ * だけか」を見るのに、これと同じ一致の判定を使う）。
+ */
+export function stableModel(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableModel).join(",")}]`;
   if (isDict(value)) {
     return `{${Object.keys(value)
       .sort()
-      .map((key) => `${JSON.stringify(key)}:${stable(value[key])}`)
+      .map((key) => `${JSON.stringify(key)}:${stableModel(value[key])}`)
       .join(",")}}`;
   }
   return JSON.stringify(value) ?? "null";
@@ -145,7 +150,7 @@ function onePass(source: string, reference: DslReference): MinimizeResult {
 
   const raw = parseYamlText(source) as Dict;
   const model = (document: Dict): string =>
-    stable(isApp ? parseAppMap(document) : parsePageMap(document));
+    stableModel(isApp ? parseAppMap(document) : parsePageMap(document));
   const baseline = model(raw);
 
   const nodes = nodesByPath(raw);
@@ -164,7 +169,7 @@ function onePass(source: string, reference: DslReference): MinimizeResult {
         return true;
       }
       if (!known.has(key)) return false;
-      if (stable(known.get(key)) !== stable(node)) return false;
+      if (stableModel(known.get(key)) !== stableModel(node)) return false;
       reasons.set(path.join(" "), "既定値と同じ");
       return true;
     },

@@ -499,6 +499,7 @@ function checkPage(
   checkPlaceholders(actions, `${path}.actions`, found);
   checkRouteParams(page, actions, `${path}.actions`, found);
   checkNeverTrue(page, actions, `${path}.actions`, found);
+  checkFieldConditions(page, path, found);
   checkPrompt(actions, `${path}.actions`, found);
   checkTable(page, actionIds, path, found);
   checkSearch(page, path, found);
@@ -1156,6 +1157,85 @@ function checkNeverTrue(
     }
   });
 }
+
+/**
+ * 出し分けの条件が**永久に偽**になる節点（`visibleWhen` / `requiredWhen` /
+ * `readOnlyWhen`）。
+ *
+ * 見つけ方はボタンの `enabledWhen` と同じ（[contradiction] / [leaves] を使い回す＝
+ * 判定を2つ持つと、片方だけ直したときに節点によって答えが変わる）。**違うのは言い方**で、
+ * 永久に偽の意味が節点ごとに別物なため:
+ *   ・`visibleWhen` … その項目が**永久に出ない**（入力欄が無いのと同じ。いちばん重い）
+ *   ・`requiredWhen` … **永久に必須にならない**（空のまま保存できる）
+ *   ・`readOnlyWhen` … **永久に読み取り専用にならない**（守るつもりの値が編集できる）
+ * だから規則も3つに分ける（1つにまとめると、出力を読んだ人が重さを測れない）。
+ *
+ * **永久に真は言わない。** 条件が常に成り立つのは「条件が要らなかった」だけで、
+ * 画面は意図どおりに動く（`required: true` を書いたのと同じ）。事故ではない。
+ */
+const CONDITION_RULES: { key: string; rule: string }[] = [
+  { key: "visibleWhen", rule: "visiblewhen-never-true" },
+  { key: "requiredWhen", rule: "requiredwhen-never-true" },
+  { key: "readOnlyWhen", rule: "readonlywhen-never-true" },
+];
+
+function checkFieldConditions(
+  page: Dict,
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  const names = pageFieldNames(page);
+  for (const part of rawFormFields(page)) {
+    const field = part.node;
+    const label = str(field.label) ?? str(field.field) ?? "項目";
+    const at = `${path}.${partPath(part.path)}`;
+    for (const { key, rule } of CONDITION_RULES) {
+      const condition = isDict(field[key]) ? (field[key] as Dict) : undefined;
+      if (condition === undefined) continue;
+      const clash = contradiction(condition);
+      if (clash !== null) {
+        warn(
+          found,
+          rule,
+          `${at}.${key}`,
+          `「${label}」の \`${key}\` は**永久に成り立ちません**（${clash}）。`,
+        );
+        continue;
+      }
+      if (names.size === 0) continue;
+      for (const leaf of leaves(condition)) {
+        const name = str(leaf.field);
+        if (name === undefined || names.has(name)) continue;
+        // 無い項目は値が来ないので `isEmpty` は**真**になる＝「永久に偽」ではない。
+        if (leaf.operator === "isEmpty") continue;
+        // 知らない演算子でも条件は常に偽だが、それは
+        // `condition-operator-unsupported` が「その項目は出てこない」まで言っている
+        // ＝同じことを2か所で言わない（2件出ると、読む人は2つの問題だと思う）。
+        const operator = str(leaf.operator) ?? "equals";
+        if (!(ConditionOperators as readonly string[]).includes(operator)) continue;
+        const near = closestKey(name, [...names]);
+        if (near === null) continue;
+        warn(
+          found,
+          rule,
+          `${at}.${key}.field`,
+          `「${label}」の \`${key}\` が見ている "${name}" が、この画面のどこにも` +
+            `ありません（${near} の間違いではないですか？）。値が来ないので条件は` +
+            `成り立ちません。`,
+          `${near} に直してください。`,
+        );
+        break;
+      }
+    }
+  }
+}
+
+/** [pageParts] の道（配列）を、警告の道（文字）にする。 */
+const partPath = (path: (string | number)[]): string =>
+  path
+    .map((step) => (typeof step === "number" ? `[${step}]` : `.${step}`))
+    .join("")
+    .replace(/^\./, "");
 
 /** 条件の葉を全部（`all` / `any` / `not` を潜る）。 */
 function leaves(condition: Dict): Dict[] {

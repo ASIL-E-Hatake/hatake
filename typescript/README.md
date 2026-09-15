@@ -54,6 +54,8 @@ npx hatake registry --compare app.json server.json  # 足した登録が画面�
 npx hatake registry --from-app snapshot.json --out hatake-registry.json  # 動いているアプリの申告を読む
 npx hatake run page.yaml --draft --out s.json   # 定義から下書きのシナリオを起こす
 npx hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所
+npx hatake run page.yaml --scenario s.json --cover --draft --out more.json  # 残った分岐から次の1件を起こす
+npx hatake same old.yaml new.yaml            # 書き方が違うだけか（意味は同じか）
 npx hatake fixtures page.yaml                   # サーバ側の試験データ（通る形・弾く形）
 npx hatake probe --kinds type-mismatch           # 食い違いの印から直し方を引く（通信しない）
 npx hatake probe --login login.json --check      # 資格が取れることだけを試す（業務の口は叩かない）
