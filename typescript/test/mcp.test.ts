@@ -89,6 +89,7 @@ describe("MCP プロトコル", () => {
       "hatake_intent",
       "hatake_reference",
       "hatake_examples",
+      "hatake_check",
       "hatake_validate",
       "hatake_advise",
       "hatake_apply_advice",

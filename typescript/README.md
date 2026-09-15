@@ -37,6 +37,7 @@ const spec = buildQuery(page.search, req.query); // { conditions, sort, page, pa
 定義を「書いた → すぐ検証」の1コマンドにするやつ。人にも AI にも同じ入口。
 
 ```bash
+npx hatake check page.yaml                   # 1往復で1本（事実・読み返し・好み・人が決めること）
 npx hatake validate spec/examples/*.yaml     # 解析 + strict（既定）
 npx hatake new report --id sales_report --title 売上明細表 > page.yaml
 npx hatake types page.yaml --lang java --package io.example.api --out gen/
@@ -58,6 +59,8 @@ npx hatake run page.yaml --scenario s.json --cover --draft --out more.json  # �
 npx hatake same old.yaml new.yaml            # 書き方が違うだけか（意味は同じか）
 npx hatake run page.yaml --widget-draft --out page_test.dart  # 画面の試験（Dart）の下書き
 npx hatake trace --diff old.yaml new.yaml    # その変更はどの要求から来たか
+npx hatake gaps app.yaml                     # 繋がっていない所を1枚で（押す所ごとに1行）
+npx hatake advise --effect <前> <後>          # 助言の効き目（どの規則が実際に直されたか）
 npx hatake fixtures page.yaml                   # サーバ側の試験データ（通る形・弾く形）
 npx hatake probe --kinds type-mismatch           # 食い違いの印から直し方を引く（通信しない）
 npx hatake probe --login login.json --check      # 資格が取れることだけを試す（業務の口は叩かない）

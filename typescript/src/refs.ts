@@ -65,6 +65,20 @@ export interface DefinitionRef {
   /** どこで参照しているか（`app.pages[0].table.columns[2].format` のような道）。 */
   path: string;
   /**
+   * どの画面か（app の中なら画面 id）。
+   *
+   * 道（[path]）にも書いてあるが、**道の文字を読み解かせない**ために構造で渡す
+   * （`app.pages[3]` から画面 id は引けないし、番号は列を1本足すと動く）。
+   */
+  page?: string;
+  /**
+   * その所の名前（ボタンの id・項目名・カードの id）。
+   *
+   * 「どのボタンが繋がっていないか」を言う側（[wiringGaps]）が使う。道の番号は
+   * 動くので、人と AI に見せるのはこちら。
+   */
+  spot?: string;
+  /**
    * Framework に組み込みで在るか。false なら**アプリ側で登録が要る**
    * （Repository / プラグインのように、組み込みが存在しない種類は常に false）。
    */
@@ -151,6 +165,31 @@ export function collectRefs(document: Dict): DefinitionRef[] {
 interface Ctx {
   found: DefinitionRef[];
   declared: Set<string>;
+  /** いま歩いている画面の id（app の外なら undefined）。 */
+  page?: string;
+  /** いま歩いている所の名前（ボタンの id・項目名）。 */
+  spot?: string;
+}
+
+/**
+ * その名前が、渡された一覧で**登録済みと言えるか**。
+ *
+ * **undefined = その種類の一覧を渡されていない**＝在るとも無いとも言えない。
+ * `{}` と `{ plugins: [] }` は別物（前者は「知らない」、後者は「1つも登録していない」）
+ * なので、呼ぶ側はここを3値で受けること。
+ *
+ * 判定がここ1か所なのは、**同じ物差しを2つ持たない**ため。警告（`unknown-plugin` を
+ * 言う側）と一覧（`gaps` が数える側）で組み込みの扱いが違うと、「警告は出るのに一覧に
+ * 出てこない」が起きる。
+ */
+export function isRegistered(
+  registry: DefinitionRegistry,
+  kind: RefKind,
+  name: string,
+): boolean | undefined {
+  const registered = registry[kind];
+  if (registered === undefined) return undefined;
+  return [...builtInNames[kind], ...registered].includes(name);
 }
 
 /** [collectRefs] の結果を種類ごとにまとめる（重複なし・名前順）。 */
@@ -210,6 +249,8 @@ function push(ctx: Ctx, kind: RefKind, name: string, path: string): void {
     kind,
     name,
     path,
+    ...(ctx.page === undefined ? {} : { page: ctx.page }),
+    ...(ctx.spot === undefined ? {} : { spot: ctx.spot }),
     builtIn: builtInNames[kind].includes(name),
   });
 }
@@ -226,6 +267,17 @@ function collectMenu(items: unknown[], path: string, ctx: Ctx): void {
 }
 
 function collectPage(page: Dict, path: string, ctx: Ctx): void {
+  // 歩き終わったら戻す（app の外＝1枚の定義では undefined のまま）。
+  const outer = ctx.page;
+  ctx.page = str(page.id) ?? outer;
+  try {
+    collectPageBody(page, path, ctx);
+  } finally {
+    ctx.page = outer;
+  }
+}
+
+function collectPageBody(page: Dict, path: string, ctx: Ctx): void {
   const repository = str(page.repository);
   if (repository !== undefined) {
     push(ctx, "repositories", repository, `${path}.repository`);
@@ -266,6 +318,7 @@ function collectPage(page: Dict, path: string, ctx: Ctx): void {
   list(page.items).forEach((raw, i) => {
     if (!isDict(raw)) return;
     const at = `${path}.items[${i}]`;
+    ctx.spot = str(raw.id) ?? str(raw.title);
     const type = str(raw.type);
     if (type !== undefined) push(ctx, "dashboardItemTypes", type, `${at}.type`);
     const repo = str(raw.repository);
@@ -283,6 +336,7 @@ function collectPage(page: Dict, path: string, ctx: Ctx): void {
       }
     }
     collectColumns(list(raw.columns), `${at}.columns`, ctx);
+    ctx.spot = undefined;
     // カードの `action` はアクション id（同じページの actions を指す）なので、
     // 外への参照ではない。宣言があるかは既存の警告 `unknown-action` の担当。
   });
@@ -300,6 +354,8 @@ function collectPage(page: Dict, path: string, ctx: Ctx): void {
 }
 
 function collectAction(action: Dict, path: string, ctx: Ctx): void {
+  // ボタンは id で呼ぶ（画面にも定義にも同じ字が出る）。
+  ctx.spot = str(action.id) ?? str(action.label);
   const type = str(action.type);
   if (type !== undefined) push(ctx, "actionTypes", type, `${path}.type`);
   // 出す口。Framework は文書（CSV の文字列・紙の中身）までしか作らないので、
@@ -320,6 +376,12 @@ function collectAction(action: Dict, path: string, ctx: Ctx): void {
   // 役割ごとの件数（`maxRows` / `batchSize` の `byRole`）に書いた役割名も、アプリが
   // 配ってくれないと**その数は誰にも効かない**。出し分け（`roles`）と同じ扱いで、
   // アプリ側の語彙と突き合わせる相手に入れる。
+  actionRoles(action, path, ctx);
+  ctx.spot = undefined;
+}
+
+/** 役割ごとの件数に書いた役割名（`maxRows` / `batchSize` の `byRole`）。 */
+function actionRoles(action: Dict, path: string, ctx: Ctx): void {
   for (const key of ["maxRows", "batchSize"]) {
     const value = action[key];
     if (!isDict(value)) continue;
@@ -335,10 +397,13 @@ function collectColumns(columns: unknown[], path: string, ctx: Ctx): void {
   columns.forEach((raw, i) => {
     if (!isDict(raw)) return;
     const at = `${path}[${i}]`;
+    const outer = ctx.spot;
+    ctx.spot = str(raw.field) ?? outer;
     const type = str(raw.type);
     if (type !== undefined) push(ctx, "columnTypes", type, `${at}.type`);
     const format = str(raw.format);
     if (format !== undefined) push(ctx, "formatters", format, `${at}.format`);
+    ctx.spot = outer;
   });
 }
 
@@ -346,6 +411,8 @@ function collectFields(fields: unknown[], path: string, ctx: Ctx): void {
   fields.forEach((raw, i) => {
     if (!isDict(raw)) return;
     const at = `${path}[${i}]`;
+    const outer = ctx.spot;
+    ctx.spot = str(raw.field) ?? outer;
     const type = str(raw.type);
     if (type !== undefined) push(ctx, "fieldTypes", type, `${at}.type`);
     const format = str(raw.format);
@@ -375,6 +442,7 @@ function collectFields(fields: unknown[], path: string, ctx: Ctx): void {
     }
     collectColumns(list(raw.columns), `${at}.columns`, ctx);
     collectFields(list(raw.fields), `${at}.fields`, ctx);
+    ctx.spot = outer;
   });
 }
 

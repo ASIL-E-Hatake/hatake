@@ -36,6 +36,7 @@ import {
   builtInNames,
   collectRefs,
   type DefinitionRegistry,
+  isRegistered,
   type RefKind,
 } from "./refs.js";
 import { paperName, PAPERS, paperSize } from "./papers.js";
@@ -185,8 +186,11 @@ export function findWarnings(
  *
  * `missing` は「無い」の言い方（既定は「登録されていません」）。役割だけは登録では
  * なく**配るもの**なので、そこだけ言い換える。
+ *
+ * **ここが正**。繋がっていない所を1枚にする側（`wiringGaps`）も同じ表と同じ規則名から
+ * 言葉を採る＝種類の呼び方を2か所に置くと、警告と一覧で違う名前の物が出てくる。
  */
-const REF_KINDS: Record<
+export const REF_KINDS: Record<
   RefKind,
   { rule: string; what: string; missing?: string }
 > = {
@@ -304,10 +308,9 @@ function checkRegistry(
   // 1つ＝登録する側なので）。件数だけ添えて、どれだけ効いているかは分かるように。
   const seen = new Set<string>();
   for (const ref of refs) {
-    const registered = registry[ref.kind];
-    if (registered === undefined) continue; // 一覧を渡されていない種類は見ない
-    const known = [...builtInNames[ref.kind], ...registered];
-    if (known.includes(ref.name)) continue;
+    // 一覧を渡されていない種類は見ない（判定は refs.ts の1か所）。
+    if (isRegistered(registry, ref.kind, ref.name) !== false) continue;
+    const known = [...builtInNames[ref.kind], ...(registry[ref.kind] ?? [])];
     const id = `${ref.kind}/${ref.name}`;
     if (seen.has(id)) continue;
     seen.add(id);

@@ -13,6 +13,33 @@
 // 言えないことも決めてある: **印の中身が本当かは見ない**（書けば名乗れる）。言えるのは
 // 「名乗っていない紙は受けない」までで、そう出力にも書く。
 
+import type { RefKind } from "./refs.js";
+
+/**
+ * 動いているアプリが**申告できる**種類。
+ *
+ * 申告は**空の種類を書かない**ので、受け取った側が「出ていない＝1つも登録していない」と
+ * 読めるのはここに在る種類だけ。画面の外で決まるもの（ページ・列の型・アクションの型・
+ * グラフの種類）はアプリが登録するものではないので、出ていないことに意味が無い。
+ *
+ * 正は `spec/conformance/registry_snapshot.json` の `runtimeKinds`（Dart 側の
+ * `registrySnapshot` が出す種類と同じもの）。ここに写しているのは、判断する側が実行時に
+ * spec を読みに行かないため＝**食い違わないことは試験が見る**。
+ */
+export const RUNTIME_KINDS: RefKind[] = [
+  "repositories",
+  "plugins",
+  "sinks",
+  "validators",
+  "formatters",
+  "converters",
+  "computedOps",
+  "aggregates",
+  "fieldTypes",
+  "dashboardItemTypes",
+  "roles",
+];
+
 /** 申告を名乗れるもの（3版で決めた字。`spec/conformance/registry_snapshot.json`）。 */
 export const SNAPSHOT_SOURCES = ["registrySnapshot", "RegistrySnapshot"] as const;
 
