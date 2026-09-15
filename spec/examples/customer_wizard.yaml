@@ -22,6 +22,16 @@ page:
         - { field: registryNo, label: 法人番号, type: text,
             visibleWhen: { field: kind, operator: equals, value: corporate } }
 
+    # 法人のときだけ通るステップ（条件で丸ごと飛ばす）。
+    # 個人を選んだ人には出ないし、**出ないステップの必須は保存を止めない**。
+    - id: billing
+      title: 請求先
+      description: 請求書の宛名が会社名と違うときに入れてください。
+      visibleWhen: { field: kind, operator: equals, value: corporate }
+      fields:
+        - { field: billTo, label: 請求先名, type: text, required: true }
+        - { field: billingNote, label: 備考, type: text }
+
     - id: contact
       title: 連絡先
       description: 請求書の送付先になります。

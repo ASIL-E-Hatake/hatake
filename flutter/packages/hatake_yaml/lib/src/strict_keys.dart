@@ -45,7 +45,7 @@ const Map<String, Set<String>> strictKeyTable = {
   'wizardPage': {
     'type', 'id', 'title', 'repository', 'key', 'steps', 'actions',
   },
-  'wizardStep': {'id', 'title', 'description', 'layout', 'fields'},
+  'wizardStep': {'id', 'title', 'description', 'layout', 'fields', 'visibleWhen'},
   'dashboardPage': {
     'type', 'id', 'title', 'repository', 'layout', 'search', 'items', 'actions',
   },

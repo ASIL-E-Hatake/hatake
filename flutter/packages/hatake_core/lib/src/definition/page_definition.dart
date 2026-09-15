@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../logic/condition_evaluator.dart';
+import '../repository/repository.dart';
 import 'action_definition.dart';
 import 'dashboard_item_definition.dart';
 import 'form_definition.dart';
@@ -239,9 +241,25 @@ class WizardPageDefinition extends PageDefinition {
               title: step.title,
               fields: step.fields,
               layout: step.layout,
+              // 隠れたステップは保存時にも検証しない（区画の規則がそのまま効く）。
+              visibleWhen: step.visibleWhen,
             ),
         ],
       );
+
+  /// いま歩くステップだけ（`steps[].visibleWhen`）。
+  ///
+  /// 送り側（次へ／戻る／歩数の表示）は**ここに聞く**。判定を2つ持つと、誰にも
+  /// 見えないステップの必須で保存できない画面か、条件が効いていない画面のどちらかが
+  /// 必ず生まれる。検証の側は [form] の区画が同じ条件を持っているので何も足さない。
+  ///
+  /// 条件で全部隠れたら**空を返す**（黙って1枚目を出さない＝呼ぶ側が気づける）。
+  List<WizardStepDefinition> visibleSteps(DataRecord record, {String? mode}) => [
+        for (final step in steps)
+          if (step.visibleWhen == null ||
+              evaluateCondition(step.visibleWhen, record, mode: mode))
+            step,
+      ];
 
   /// Index of the first step declaring [field], or -1 when no step does. Lets a
   /// renderer jump back to where a whole-form error actually lives.

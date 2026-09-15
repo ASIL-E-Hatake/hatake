@@ -16,6 +16,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "check-docs": "node tool/check-docs.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

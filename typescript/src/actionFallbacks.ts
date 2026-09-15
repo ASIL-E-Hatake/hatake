@@ -13,6 +13,21 @@
 // * **文は Dart に在る字そのまま**（部分一致で探す）。言い方を変えたら、ここも変わる
 // * **押す前に言う側を必ず書く。** 「まだ無い」は書けない＝無いなら、それは作る仕事
 // * この表は**判定に使わない**（道具の答えを変えない）。嘘を見つけるためだけに在る
+// * **どうやってその道に着くか**（[ActionFallback.press]）も書く。文が在るだけでは
+//   「分岐が死んでいないか」は分からない＝Dart の試験が1本ずつ通していて、その試験に
+//   6本ぜんぶが出てくることを機械が見る（`actionFallbacks.test.ts`）
+
+/**
+ * その道にどうやって着くか（Dart の試験が1本ずつ通している）。
+ *
+ * * `tap` … 画面を出して**本当に押せる**
+ * * `disabled` … **押す前に止めている**ので、もう通れない（試験は「押せないこと」を
+ *   固定する）。砦のコードは残す＝枠組みの取りこぼしで来たときに黙るのが一番まずい
+ * * `model` … 定義からは作れない（strict が弾く）＝モデルを直に組んだときだけ通る
+ */
+export const PRESS_KINDS = ["tap", "disabled", "model"] as const;
+
+export type PressKind = (typeof PRESS_KINDS)[number];
 
 /** 押す前に言うのは誰か。 */
 export const SAID_BY = ["validate", "strict", "registry", "renderer"] as const;
@@ -29,6 +44,8 @@ export interface ActionFallback {
   by: SaidBy;
   /** なぜ押す前に言えるのか（1行）。 */
   why: string;
+  /** その道にどうやって着くか（Dart の試験がそうしている）。 */
+  press: PressKind;
 }
 
 /**
@@ -41,12 +58,14 @@ export const ACTION_FALLBACKS: ActionFallback[] = [
     before: "selection-unsupported-type",
     by: "validate",
     why: "`scope: selection` に置ける型は `plugin` だけ＝定義を読んだだけで分かる。",
+    press: "tap",
   },
   {
     message: "はこのページでは使えません",
     before: "create-action-unusable",
     by: "validate",
     why: "`type: create` が開くのは一覧からの新規入力＝置ける画面の種別は決まっている。",
+    press: "tap",
   },
   {
     message: "のハンドラが未登録です",
@@ -55,24 +74,30 @@ export const ACTION_FALLBACKS: ActionFallback[] = [
     why:
       "登録した名前と定義の `plugin:` の突き合わせ（`validate --registry`）で分かる。" +
       "画面でも**押す前に**灰色にして理由を出す（登録は実行時に引けるので）。",
+    // 押す前に灰色にしたので、**この道はもう通れない**（試験がそれを固定している）。
+    press: "disabled",
   },
   {
     message: "はこのページでは出力できません",
     before: "export-without-rows",
     by: "validate",
     why: "CSV にするのは表の行＝表の無い画面に置けないことは定義から分かる。",
+    press: "tap",
   },
   {
     message: "はこのページでは刷れません",
     before: "print-without-report",
     by: "validate",
     why: "`type: print` は帳票の画面だけ＝`report` の無い画面に置けないと定義から分かる。",
+    press: "tap",
   },
   {
     message: "は未実装です",
     before: "unknown-action-type",
     by: "strict",
     why: "知らない `type` は strict が弾く＝ここに来るのは枠組みの取りこぼし。",
+    // 定義からは作れない＝モデルを直に組んだときだけ通る。
+    press: "model",
   },
 ];
 

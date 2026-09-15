@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ACTION_CASES,
   ACTION_FALLBACKS,
+  PRESS_KINDS,
   SAID_BY,
 } from "../src/index.js";
 
@@ -15,6 +16,9 @@ import {
  * 対応を両方向で確かめる。
  */
 const RENDERER = "../flutter/packages/hatake_material/lib/src/renderer/page_actions.dart";
+
+/** 砦を1本ずつ通している試験（Dart）。 */
+const FALLBACK_TEST = "../flutter/packages/hatake_material/test/action_fallback_test.dart";
 
 const source = (): string => readFileSync(RENDERER, "utf8");
 
@@ -68,6 +72,31 @@ describe("押した時の言い方と、押す前の表", () => {
       (one) => one.by !== "renderer" && !code.includes(`"${one.before}"`),
     ).map((one) => one.before);
     expect(missing).toEqual([]);
+  });
+
+  it("**6本ぜんぶ、Dart の試験がその道を通している**", () => {
+    // 文が在るだけでは「分岐が死んでいないか」は分からない（文だけ残って分岐が
+    // 消えた画面は、押しても何も言わない）。だから**試験に出てくること**まで見る
+    // ＝砦を足したら試験を書くまで通らないし、試験を消したら落ちる。
+    const dart = readFileSync(FALLBACK_TEST, "utf8");
+    const missing = ACTION_FALLBACKS.filter(
+      (one) => !dart.includes(one.message),
+    ).map((one) => one.message);
+    expect(missing, "その砦を通す試験がありません").toEqual([]);
+    // 試験の本数も数える（1本にまとめて「通した」と言えないように）。
+    const cases = [...dart.matchAll(/testWidgets\(/g)].length;
+    expect(cases).toBeGreaterThanOrEqual(ACTION_FALLBACKS.length);
+  });
+
+  it("どうやってその道に着くかを、1本ずつ書いてある", () => {
+    for (const one of ACTION_FALLBACKS) {
+      expect(PRESS_KINDS, one.message).toContain(one.press);
+    }
+    // **押せない道**（押す前に止めた）と**定義から作れない道**は、それぞれ在る
+    // ＝全部 tap になっていたら、どれかが嘘（もう通れない道を「通した」と言っている）。
+    const kinds = new Set(ACTION_FALLBACKS.map((one) => one.press));
+    expect(kinds.has("disabled"), "押す前に止めた砦が1本も無い").toBe(true);
+    expect(kinds.has("model"), "定義から作れない砦が1本も無い").toBe(true);
   });
 
   it("押す前の表（ACTION_CASES）と規則名が食い違っていない", () => {

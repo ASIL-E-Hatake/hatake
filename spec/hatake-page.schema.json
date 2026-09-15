@@ -516,6 +516,10 @@
           "type": "string",
           "description": "Optional explanatory text."
         },
+        "visibleWhen": {
+          "$ref": "#/$defs/condition",
+          "description": "Show this whole step only when the condition matches what has been entered so far. A hidden step is skipped by 次へ / 戻る and its fields are not validated — the same rule as a hidden section."
+        },
         "layout": {
           "$ref": "#/$defs/layout"
         },

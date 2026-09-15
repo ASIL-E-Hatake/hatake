@@ -79,7 +79,9 @@ public final class DefinitionParser {
         FormDefinition form = steps.isEmpty()
                 ? parseForm(page.get("form"))
                 : new FormDefinition(steps.stream()
-                        .map(s -> new SectionDefinition(s.title(), s.fields(), null))
+                        // 隠れるステップは保存時にも検証しない（条件を区画に渡す）。
+                        .map(s -> new SectionDefinition(
+                                s.title(), s.fields(), s.visibleWhen()))
                         .toList());
         boolean dashboard = PageDefinition.DASHBOARD.equals(type);
 
@@ -247,7 +249,13 @@ public final class DefinitionParser {
                 }
             }
             steps.add(new WizardStepDefinition(
-                    reqStr(m, "id"), reqStr(m, "title"), List.copyOf(fields)));
+                    reqStr(m, "id"),
+                    reqStr(m, "title"),
+                    List.copyOf(fields),
+                    // ステップ丸ごとの出し分け（区画の visibleWhen と同じ書き方）。
+                    m.get("visibleWhen") instanceof Map<?, ?> when
+                            ? (Map<String, Object>) when
+                            : null));
         }
         return List.copyOf(steps);
     }

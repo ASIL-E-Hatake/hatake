@@ -242,15 +242,22 @@ export function explainPage(
   if ("table" in page) sections.push(describeTable(page, lang));
   if (form !== undefined) sections.push(...describeForm(form, vocabulary, lang));
   if ("steps" in page) {
+    // 条件つきのステップは**題に条件を添える**（言い方は区画と同じもの＝同じことを
+    // 2つの言い方で書かない）。飛ばされるステップが読み返しに出ないと、「入れたのに
+    // 出てこない項目」の理由が紙から消える。
+    const stepTitle = (step: (typeof page.steps)[number]): string => {
+      const when = describeCondition(step.visibleWhen, vocabulary, lang);
+      return when === "" ? step.title : v.sectionWhen(step.title, when);
+    };
     sections.push({
       title: v.inputOrder,
       lines: page.steps.map((step, i) =>
-        v.stepLine(i + 1, step.title, step.fields.length, step.description),
+        v.stepLine(i + 1, stepTitle(step), step.fields.length, step.description),
       ),
     });
     for (const step of page.steps) {
       sections.push(
-        ...describeFields(step.fields, v.stepFields(step.title), vocabulary, lang),
+        ...describeFields(step.fields, v.stepFields(stepTitle(step)), vocabulary, lang),
       );
     }
   }

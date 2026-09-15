@@ -71,6 +71,19 @@ class _MaterialWizardPageState extends State<_MaterialWizardPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final roles = HatakeScope.of(context).roles;
+    // 条件（`steps[].visibleWhen`）で**全部隠れる**ことはありうる。黙って1枚目を
+    // 出すと「条件が効いていない」ように見えるので、そう言って止める。
+    if (!_controller.hasStep) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          '出せるステップがありません（すべてのステップが条件で隠れています）',
+          // 字はここに書く（規約との突き合わせがソースの字を読むので）。
+          key: const Key('hatake.wizard.empty'),
+          style: TextStyle(color: theme.colorScheme.error),
+        ),
+      );
+    }
     final step = _controller.step;
 
     return Padding(
@@ -130,7 +143,9 @@ class _MaterialWizardPageState extends State<_MaterialWizardPage> {
   /// Step headings with the current one highlighted — a plain row rather than a
   /// Material `Stepper`, so the fields keep using the shared form renderer.
   Widget _buildStepIndicator(ThemeData theme) {
-    final steps = widget.definition.steps;
+    // 表示するのは**いま歩くステップ**だけ（隠れたステップは丸ごと出さない）。
+    // 定義ではなく Controller に聞く＝見えるかどうかの判定を2つ持たない。
+    final steps = _controller.steps;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(

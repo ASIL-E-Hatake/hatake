@@ -23,20 +23,36 @@ class WizardStepDefinition extends Equatable {
   /// Input fields belonging to this step.
   final List<FieldDefinition> fields;
 
+  /// Show this whole step only when the condition matches what has been entered
+  /// so far (see `evaluateCondition`). Null = always shown.
+  ///
+  /// A hidden step is skipped by 次へ / 戻る **and** is not validated — the step
+  /// becomes a section ([form]), so the "a hidden section is not validated" rule
+  /// does the work. 判定を2つ持たない。
+  final Map<String, Object?>? visibleWhen;
+
   const WizardStepDefinition({
     required this.id,
     required this.title,
     this.description,
     this.layout = LayoutDefinition.single,
     this.fields = const [],
+    this.visibleWhen,
   });
 
   /// This step as a standalone form, so the ordinary [FormDefinition] machinery
   /// (validator, normalizer, form renderer) works on one step unchanged.
   FormDefinition get form => FormDefinition(
-        sections: [SectionDefinition(fields: fields, layout: layout)],
+        sections: [
+          SectionDefinition(
+            fields: fields,
+            layout: layout,
+            visibleWhen: visibleWhen,
+          ),
+        ],
       );
 
   @override
-  List<Object?> get props => [id, title, description, layout, fields];
+  List<Object?> get props =>
+      [id, title, description, layout, fields, visibleWhen];
 }
