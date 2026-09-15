@@ -27,6 +27,7 @@ npx hatake where --from 依頼.md    # 依頼文を行ごとに仕分ける（�
 npx hatake project                # 案件の前書き（何のシステムか・用語・名前の決めごと）
 npx hatake project --agents       # その前書きを AGENTS.md / CLAUDE.md に貼る断片にする
 npx hatake check page.yaml        # **書けたらまずこれ**。validate（事実）/ explain（読み返し）/ advise（好み）/ ask（人が決めること）を**1回で**回して、欄を分けたまま1枚にする＝4本を別々に呼ぶのと同じ結果なので、順番を覚えなくてよい。**混ぜていない**ので、終了コードを動かすのは事実の欄だけ（--warn-as-error のとき）。--no-explain / --no-advise / --no-ask で欄を落とせるが、**事実の欄は落とせない**（旗で消せると「警告ゼロ」と「見ていない」が同じ顔になる）
+npx hatake ask page.yaml --impact price:unitPrice  # **名前を変えた下書き**（その項目名を指している所を全部書き換える＝列・絞り込み・入力欄・計算の元・条件・遷移のパラメータ・帳票）。既定は標準出力で、当てるのは人（--write / --out）。**ラベルや文言の中の同じ言葉は触らない**（あちらは業務の言葉）。差し込み $row.<項目名> は直す。**定義の外**（サーバ・試験・アプリ側のハンドラ）は見えないので直していない。新しい名前がもう使われていたら落ちる
 npx hatake validate page.yaml     # strict（知らないキーを弾く）。--json で機械可読
 npx hatake new <kind> --id <id> --title <title>   # 雛形（crud/search/master/detail/form/wizard/dashboard/report）
 npx hatake reference <キー名>      # そのキーの型・既定値・書ける場所（--page-kind で絞る）

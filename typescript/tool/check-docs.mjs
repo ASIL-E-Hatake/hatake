@@ -13,12 +13,19 @@
 //      … 丸ごとは検証できないので、**キー名だけ**を DSL の語彙（spec/reference.json）と
 //      突き合わせる。手引きが腐る一番の形（消えたキー・綴り違い）はこれで捕まる
 //   3. ```bash に出てくる `hatake <コマンド> --旗`
-//      … **`--help` に載っているか**だけを見る（走らせない）。走らせると `git clone` も
-//      `probe` も動いてしまう。実際に走らせるものは CI に個別のステップで置いてある
-//      （チュートリアル・PR コメント・意図・シナリオ…）
+//      … **`--help` に載っているか**を見て、**引く道具は実際に走らせる**
 //
 // 3 は「手引き ↔ help」の突き合わせでもある。docs にしか無い旗が出たら、**どちらかが
 // 嘘**（旗が消えたか、help が書き忘れたか）。
+//
+// **走らせる所**（[RUNNABLE]）は「引く道具」だけに絞ってある。理由は3つ:
+//   ・定義も紙も要らない＝手引きに載っている引数（キー名・規則名・やりたいこと）が
+//     そのまま渡せる。道を渡す形（`page.yaml`）は、その場に無いので走らせられない
+//   ・通信しないし、1バイトも書かない＝砂場が要らない
+//   ・**AI が引く知識そのもの**＝ここが腐ると一番効く（キーが消えた・規則名が変わった
+//     のに手引きは古い名前で引いている、が黙って通る）
+// 判定は**終了コードだけ**（この道具はどれも「引けなかったら 1」を既に返す）＝
+// **新しい物差しを作らない**。走らせなかったものは理由ごとに数えて出す（黙って飛ばさない）。
 //
 // 定義ではない hatake の紙（案件の前書き・意図の1枚）は、**その紙の読み手**にかける
 // （DSL の語彙で見ると全部知らないキーになるので、`no-check` で外すと誰も見なくなる）。
@@ -202,13 +209,96 @@ async function checkFragment(body, where, keys, open, problems, skipped) {
 }
 
 /**
- * `hatake <コマンド> … --旗` が `--help` に載っているか（走らせない）。
+ * **走らせる道具**と、走らせるのに要る旗。
+ *
+ * ここに無い道具は走らせない（定義や紙を渡す形・通信する・書き込む）。値の `requires`
+ * は「その旗が付いているときだけ走らせる」＝`ask` は表だけ見る形（`--kinds`）なら
+ * 定義が要らない。
+ */
+const RUNNABLE = {
+  reference: {},
+  examples: {},
+  pitfalls: {},
+  rules: {},
+  failures: {},
+  where: {},
+  ask: { requires: "kinds" },
+  new: {},
+};
+
+/** 書き込む旗（手引きに載っていても走らせない）。 */
+const WRITING_FLAGS = new Set(["write", "out"]);
+
+/** 道（ファイル・ディレクトリ）を渡している引数か。 */
+const looksLikePath = (arg) =>
+  /[/\\]/.test(arg) || /\.(ya?ml|json|md|dart|ts|tsx|java|kt|txt|csv)$/.test(arg);
+
+/**
+ * 行を引数に割る（引用符の中の空白は割らない。行末の注釈は落とす）。
+ *
+ * 手引きのコマンドには説明が付いている（`hatake where 締め処理  # これは外`）。
+ * 注釈を引数として渡すと「引けません」になるので、先に落とす。
+ */
+function tokens(text) {
+  const found = [];
+  // 行末の CR も落とす（この原本は CRLF なので、`.*$` が最後まで届かない）。
+  const line = text.trim().replace(/\s+#.*$/, "");
+  for (const match of line.matchAll(/"([^"]*)"|'([^']*)'|(\S+)/g)) {
+    found.push(match[1] ?? match[2] ?? match[3]);
+  }
+  return found;
+}
+
+/**
+ * その1行を走らせてよいか。走らせないなら**理由**を返す。
+ *
+ * 理由は数えて出すためのもの（黙って飛ばさない）。
+ */
+function whyNotRun(name, args) {
+  const rule = RUNNABLE[name];
+  if (rule === undefined) return "引く道具ではない（定義や紙が要る・通信する・書き込む）";
+  const flags = args.filter((one) => one.startsWith("--")).map((one) => one.slice(2).split("=")[0]);
+  if (rule.requires !== undefined && !flags.includes(rule.requires)) {
+    return `定義が要る形（--${rule.requires} なら走らせる）`;
+  }
+  if (flags.some((one) => WRITING_FLAGS.has(one))) return "書き込む形";
+  // `hatake reference <key>` のような**置き換える所**は、そのままでは引けない
+  // （手引きの書き方であって、腐っているのではない）。
+  if (args.some((one) => one.includes("<"))) return "置き換える所（<…>）が書いてある";
+  if (args.some((one) => !one.startsWith("--") && looksLikePath(one))) {
+    return "道を渡す形（その場にファイルが無い）";
+  }
+  return null;
+}
+
+/**
+ * 実際に走らせる。**終了コードだけ**を見る。
+ *
+ * 出力は捨てない（落ちたときに人へ見せる）。spec の紙は本物を読ませる＝手引きが
+ * 引いている相手は、いま在る spec だから。
+ */
+function runDocCommand(name, args) {
+  const said = [];
+  const code = runCli([name, ...args], {
+    out: (text) => said.push(text),
+    err: (text) => said.push(text),
+    readFile: (path) => readFileSync(path, "utf8"),
+    writeFile: () => {
+      throw new Error("手引きの実行では書き込みません");
+    },
+    listFiles: () => null,
+  });
+  return { code, said: said.join("\n") };
+}
+
+/**
+ * `hatake <コマンド> … --旗` が `--help` に載っているか（引く道具は走らせる）。
  *
  * 旗は**コマンド名の直後だけに来るわけではない**（`explain page.yaml --roles`）。
  * だからコマンド名から**行の終わりまで**を見る。`|` や `&&` の先は別のコマンドなので、
  * そこで切る（他人の旗を hatake の旗として数えない）。
  */
-function checkCommands(body, where, { commands, flags }, problems) {
+function checkCommands(body, where, { commands, flags }, problems, ran) {
   let found = 0;
   // 行末の `\` で続く書き方は、1行に畳んでから見る。
   const lines = body.replace(/\\\n\s*/g, " ").split("\n");
@@ -230,6 +320,23 @@ function checkCommands(body, where, { commands, flags }, problems) {
           );
         }
       }
+      if (!commands.has(name)) continue;
+      // **引けるかを本当に確かめる。** 旗の名前が合っていても、引く先が消えていれば
+      // 手引きは嘘になる（`hatake rules <消えた規則名>` は終了コード 1）。
+      const args = tokens(rest);
+      const why = whyNotRun(name, args);
+      if (why !== null) {
+        ran.skipped.set(why, (ran.skipped.get(why) ?? 0) + 1);
+        continue;
+      }
+      const result = runDocCommand(name, args);
+      ran.count += 1;
+      if (result.code !== 0) {
+        problems.push(
+          `${where}: hatake ${name} ${args.join(" ")} は**引けません**` +
+            `（終了コード ${result.code}）:\n    ${result.said.split("\n").join("\n    ")}`,
+        );
+      }
     }
   }
   return found;
@@ -249,6 +356,8 @@ async function main(argv) {
   const problems = [];
   const skipped = [];
   const counts = { whole: 0, preamble: 0, intent: 0, fragment: 0, command: 0 };
+  // 走らせたコマンドと、走らせなかった理由（黙って飛ばさない）。
+  const ran = { count: 0, skipped: new Map() };
 
   for (const path of files) {
     if (!statSync(path).isFile()) continue;
@@ -312,7 +421,7 @@ async function main(argv) {
           await checkFragment(block.body, at, keys, open, problems, skipped);
         }
       } else if (block.lang === "bash") {
-        counts.command += checkCommands(block.body, at, surface, problems);
+        counts.command += checkCommands(block.body, at, surface, problems, ran);
       }
     }
   }
@@ -324,6 +433,12 @@ async function main(argv) {
       `飛ばした ${skipped.length}）。`,
   );
   for (const one of skipped) console.log(`   飛ばした: ${one}`);
+  console.log(
+    `   引く道具を ${ran.count} 回**実際に走らせました**（終了コードだけを見ています）。`,
+  );
+  for (const [why, count] of [...ran.skipped].sort((a, b) => b[1] - a[1])) {
+    console.log(`   走らせなかった: ${count} 回 … ${why}`);
+  }
   if (problems.length === 0) {
     console.log("手引きに載せたものは、いま在るものと食い違っていません。");
     return 0;

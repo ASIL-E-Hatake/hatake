@@ -13,15 +13,16 @@
 //   Java              … `new XxxRegistry(Map.of("name", …))` / `Map.ofEntries(Map.entry(…))`
 
 import { type DefinitionRegistry, type RefKind } from "./refs.js";
-import { UNWIRED_REPOSITORY } from "./wireKinds.js";
+import { NULL_IS_AN_ANSWER, UNWIRED_REPOSITORY } from "./wireKinds.js";
 
 /**
  * 「まだ埋めていない」の目印。
  *
  * `wire` が足す TODO は `throw UnimplementedError('名前: 何をするか')` なので、それが
- * 残っているかどうかは**その場で読める**。手書きの空実装まで見つけようとすると
- * （空の関数・null を返すだけ）業務として正しいものまで「埋めていない」と言うことに
- * なるので、**道具が書いた目印と、3言語の定番**だけを見る。
+ * 残っているかどうかは**その場で読める**。**3言語の定番**も見る＝Dart は
+ * `UnimplementedError`、Java は `UnsupportedOperationException`、TypeScript は
+ * `throw new Error("TODO: …")`（この形を知らないと、TS の配線を渡したときに黙って
+ * 「全部埋まっている」と出る）。
  */
 const NOT_FILLED = new RegExp(
   [
@@ -34,8 +35,68 @@ const NOT_FILLED = new RegExp(
   ].join("|"),
 );
 
+/**
+ * 投げる形の「まだ書いていない」（言語をまたぐ定番）。
+ *
+ * TypeScript / Java の定番は例外の**名前**ではなく**文**に出る
+ * （`throw new Error("TODO: 承認する")` / `throw new RuntimeException("未実装")`）。
+ * だから「投げている」ことと「その文が TODO と言っている」ことの**両方**を見る
+ * （`TODO` の字だけで拾うと、業務のメッセージまで未実装と言い出す）。
+ */
+const THROWS_TODO = /\bthrow\b/;
+const SAYS_TODO = /TODO|未実装|まだ実装|not implemented|unimplemented/i;
+
 /** その値が「まだ埋めていない」と読めるか。 */
-export const looksUnfilled = (value: string): boolean => NOT_FILLED.test(value);
+export const looksUnfilled = (value: string): boolean =>
+  NOT_FILLED.test(value) || (THROWS_TODO.test(value) && SAYS_TODO.test(value));
+
+/**
+ * 本体が**空**に見えるか（登録は在り、目印も無いが、何もしない）。
+ *
+ * なぜ数えるか: 目印（`UnimplementedError`）を消して空実装に置き換えると、数え方が
+ * 「TODO のまま」から「埋まっている」に変わる＝**数を良くするために中身を消せる**。
+ * 数えるものは、消せない形にしておきたい。
+ *
+ * ただし**「中身が無い＝間違い」ではない**（何もしないのが正しい登録もある）ので、
+ * 呼ぶ側は「TODO のまま」と混ぜずに別の欄で言うこと（[FilledState] の `hollow`）。
+ *
+ * 見るのは**空の本体だけ**＝`{}` / `=> {}` / `=> null` / `{ return null; }` /
+ * `{ return; }`。式が1つでも書いてあれば見ない（中身が業務として正しいかは、そもそも
+ * この道具に言えない）。[nullIsAnAnswer] の種類では `null` を空と見ない
+ * （検証は null＝OK が契約なので、空実装と区別が付かない）。
+ */
+export function looksHollow(value: string, nullIsAnAnswer = false): boolean {
+  // 目印が残っているものは「TODO のまま」の担当（二重に数えない）。
+  if (looksUnfilled(value)) return false;
+  const inner = bodyOf(value.trim());
+  // **本体が見えないものは何も言わない**（`repo` / `OrderRepo()` のような値や参照は、
+  // 中身がここからは読めない＝空だとも埋まっているとも言わない）。
+  if (inner === null) return false;
+  if (inner === "" || inner === "return;") return true;
+  if (nullIsAnAnswer) return false;
+  return inner === "null" || inner === "return null;" || inner === "return null";
+}
+
+/**
+ * 登録の値から**本体**を取り出す（読めなければ null）。
+ *
+ * 読める形は2つだけ。矢印（Dart / TypeScript の `=>`、Java の `->`）のうしろと、
+ * 引数の並びに続く波括弧の中。どちらでもない値（変数・コンストラクタ呼び出し）は
+ * **読めない**＝null を返す。
+ */
+function bodyOf(text: string): string | null {
+  const arrow = text.search(/=>|->/);
+  const tail =
+    arrow >= 0
+      ? text.slice(arrow + 2).trim()
+      : (/\)\s*(async\s+|throws\s+\S+\s*)?\{/.exec(text)?.index ?? -1) >= 0
+        ? text.slice(text.indexOf("{", text.indexOf(")"))).trim()
+        : null;
+  if (tail === null || tail === "") return null;
+  if (!tail.startsWith("{")) return tail;
+  const close = tail.lastIndexOf("}");
+  return close < 0 ? null : tail.slice(1, close).trim();
+}
 
 /** 読み取れた登録1箇所。 */
 export interface RegistrationSite {
@@ -58,6 +119,14 @@ export interface RegistrationSite {
    * 登録が在ることと動くことは別。`wire --merge` が足した直後は全部ここに入る。
    */
   pending: string[];
+  /**
+   * 名前は在り、道具の目印も残っていないが、**本体が空**に見えるもの
+   * （`names` の部分集合。[pending] とは重ならない）。
+   *
+   * 目印を消して空実装に置き換えると「埋まっている」に化けるので、別に数える。
+   * **間違いとは言わない**（何もしないのが正しい登録もある）。
+   */
+  hollow: string[];
 }
 
 /** 読み取れなかった登録1箇所。 */
@@ -149,6 +218,7 @@ export function scanRegistrations(files: SourceFile[]): RegistryScan {
           at.argsFrom,
           registration.named === true,
           registration.name,
+          registration.kind,
         );
         if (read.skip === true) continue;
         // 引数なし・空の登録は「何も足していない」だけで、「アプリには何も無い」の
@@ -171,6 +241,7 @@ export function scanRegistrations(files: SourceFile[]): RegistryScan {
           endLine: lineOf(source, endOf(source, at.argsFrom, registration.named === true)),
           names: read.names,
           pending: read.pending ?? [],
+          hollow: read.hollow ?? [],
         });
       }
     }
@@ -196,6 +267,7 @@ export function scanRegistrations(files: SourceFile[]): RegistryScan {
           endLine: lineOf(source, endOf(source, at.argsFrom, true)),
           names: read.names,
           pending: [],
+          hollow: [],
         });
       }
     }
@@ -211,6 +283,7 @@ export function scanRegistrations(files: SourceFile[]): RegistryScan {
           endLine: lineOf(source, end),
           names: [registration.name],
           pending: looksUnfilled(value) ? [registration.name] : [],
+          hollow: looksHollow(value) ? [registration.name] : [],
         });
       }
     }
@@ -290,6 +363,8 @@ interface ReadResult {
   names: string[];
   /** 中身が「まだ埋めていない」と読める名前。 */
   pending?: string[];
+  /** 中身が**空**に見える名前（目印は無い）。 */
+  hollow?: string[];
   reason?: string;
   /** 登録ではなく素通し（`fieldBuilders: fieldBuilders`）なので、無かったことにする。 */
   skip?: boolean;
@@ -305,6 +380,7 @@ function readNames(
   from: number,
   named: boolean,
   name: string,
+  kind: RefKind,
 ): ReadResult {
   const at = skipSpace(source, from);
 
@@ -326,7 +402,8 @@ function readNames(
   // いる形。引数なしと同じで、その種類について何も言っていない。
   if (/^null\s*[,)]/.test(source.slice(start))) return { names: [] };
 
-  if (source[start] === "{") return readMapLiteral(source, start);
+  const answer = NULL_IS_AN_ANSWER.includes(kind);
+  if (source[start] === "{") return readMapLiteral(source, start, answer);
   if (named) {
     return {
       names: [],
@@ -336,8 +413,8 @@ function readNames(
   const java = findJavaMapCall(source, start);
   if (java !== null) {
     return java.name === "of"
-      ? readJavaMapOf(source, java.args)
-      : readJavaEntries(source, java.args);
+      ? readJavaMapOf(source, java.args, answer)
+      : readJavaEntries(source, java.args, answer);
   }
   if (source[start] === ")") return { names: [] }; // 引数なし＝組み込みだけ
   return {
@@ -441,9 +518,14 @@ function looksLikeDeclaration(source: string, argsFrom: number): boolean {
 }
 
 /** `{ 'a': …, "b": … }` のキーを読む（値は「埋まっているか」だけ見る）。 */
-function readMapLiteral(source: string, at: number): ReadResult {
+function readMapLiteral(
+  source: string,
+  at: number,
+  nullIsAnAnswer = false,
+): ReadResult {
   const names: string[] = [];
   const pending: string[] = [];
+  const hollow: string[] = [];
   for (const entry of splitTop(source, at)) {
     const text = entry.trim();
     if (text === "") continue;
@@ -462,9 +544,11 @@ function readMapLiteral(source: string, at: number): ReadResult {
       };
     }
     names.push(key);
-    if (looksUnfilled(text.slice(colon + 1))) pending.push(key);
+    const value = text.slice(colon + 1);
+    if (looksUnfilled(value)) pending.push(key);
+    else if (looksHollow(value, nullIsAnAnswer)) hollow.push(key);
   }
-  return { names, pending };
+  return { names, pending, hollow };
 }
 
 /**
@@ -490,13 +574,18 @@ function findJavaMapCall(
 }
 
 /** `Map.of("a", x, "b", y)` の偶数番目を読む。 */
-function readJavaMapOf(source: string, at: number): ReadResult {
+function readJavaMapOf(
+  source: string,
+  at: number,
+  nullIsAnAnswer = false,
+): ReadResult {
   const args = splitTop(source, at);
   if (args.length % 2 !== 0) {
     return { names: [], reason: "Map.of の引数が偶数ではありません" };
   }
   const names: string[] = [];
   const pending: string[] = [];
+  const hollow: string[] = [];
   for (let i = 0; i < args.length; i += 2) {
     const key = literal(args[i].trim());
     if (key === null) {
@@ -506,15 +595,22 @@ function readJavaMapOf(source: string, at: number): ReadResult {
       };
     }
     names.push(key);
-    if (looksUnfilled(args[i + 1] ?? "")) pending.push(key);
+    const value = args[i + 1] ?? "";
+    if (looksUnfilled(value)) pending.push(key);
+    else if (looksHollow(value, nullIsAnAnswer)) hollow.push(key);
   }
-  return { names, pending };
+  return { names, pending, hollow };
 }
 
 /** `Map.ofEntries(Map.entry("a", x), …)` の第1引数を読む。 */
-function readJavaEntries(source: string, at: number): ReadResult {
+function readJavaEntries(
+  source: string,
+  at: number,
+  nullIsAnAnswer = false,
+): ReadResult {
   const names: string[] = [];
   const pending: string[] = [];
+  const hollow: string[] = [];
   for (const raw of splitTop(source, at)) {
     const text = raw.trim();
     if (text === "") continue;
@@ -528,9 +624,11 @@ function readJavaEntries(source: string, at: number): ReadResult {
       return { names: [], reason: `キーが文字列リテラルではありません: ${short(text)}` };
     }
     names.push(key);
-    if (looksUnfilled(parts.slice(1).join(","))) pending.push(key);
+    const value = parts.slice(1).join(",");
+    if (looksUnfilled(value)) pending.push(key);
+    else if (looksHollow(value, nullIsAnAnswer)) hollow.push(key);
   }
-  return { names, pending };
+  return { names, pending, hollow };
 }
 
 /** 文字列リテラルなら中身、そうでなければ null（`r'…'` のような接頭辞も許す）。 */

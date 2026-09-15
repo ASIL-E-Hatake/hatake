@@ -121,6 +121,18 @@ export const WIRE_KINDS: WireKind[] = [
  */
 export const UNWIRED_REPOSITORY = "_UnwiredRepository";
 
+/**
+ * **null を返すことが業務の答えになる**種類。
+ *
+ * 検証は「null を返せば OK、文字列を返せばエラー」という契約なので、`(value, definition)
+ * => null` は**何もしていない実装**と区別が付かない（どちらも同じ字）。だから空実装を
+ * 数える側（[looksHollow]）は、この種類の `null` を「中身が無い」と言わない。
+ *
+ * 表をここに置くのは、各登録の**形**（引数と戻り値の契約）を持っているのがこのファイル
+ * だから。数える側に書くと、契約とズレたときに気づけない。
+ */
+export const NULL_IS_AN_ANSWER: RefKind[] = ["validators"];
+
 /** 出す口（`exportSink` / `printSink`）。map ではなく関数1つなので別扱い。 */
 export const WIRE_SINKS: Record<
   string,

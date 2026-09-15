@@ -69,6 +69,7 @@ npx hatake where --from 依頼.md                  # 依頼文を行ごとに仕
 npx hatake ask page.yaml                        # 決めていないことを問い返す（定義に書けないものだけ）
 npx hatake ask --kinds                          # 何を聞かれるかを先に読む（12種類）
 npx hatake ask page.yaml --impact price         # その項目を触ると、どこが壊れるか
+npx hatake ask page.yaml --impact price:unitPrice # 名前を変えた下書き（当てるのは人）
 npx hatake ask app.yaml --markdown              # 決めていないことを PR に貼る形で
 npx hatake ask app.yaml --questions team.json   # 会社共通の問いも足して聞く
 npx hatake project                              # 案件の前書き（何のシステムか・用語・名前の決めごと）

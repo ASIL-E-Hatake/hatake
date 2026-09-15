@@ -112,6 +112,7 @@ export * from "./registryFromApp.js";
 export * from "./wiringGaps.js";
 export * from "./adviseEffect.js";
 export * from "./checkSheet.js";
+export * from "./renameDraft.js";
 export * from "./warningRules.js";
 export * from "./rules.js";
 export * from "./scenarioCoverDraft.js";
