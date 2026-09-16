@@ -18,6 +18,21 @@ DSL の版（`dsl_version`）はパッケージの版とは別に動く。DSL �
 
 ## 未リリース
 
+（まだありません）
+
+## 0.9.0 — 2026-09-16
+
+**最初に配る版**（git の tag のみ。レジストリには出していない）。
+凍らせた約束は [1.0 の約束](docs/compat.ja.md)。
+
+- 修正: `buildQuery` / `QueryBuilder` が **`sortAscending` の文字列 `"false"` を
+  昇順として読んでいた**（TypeScript / Java）。REST の契約
+  （`spec/conformance/rest_query.json`）は**クエリ文字列で送る**と決めているので、
+  手引きどおり `buildQuery(page.search, req.query)` と書いたサーバは、
+  **降順を頼まれているのに黙って昇順で返していた**（画面には並びが出るので気づけない）。
+  契約の両端が食い違っていた形。共有フィクスチャ（`spec/conformance/queries.json`）に
+  文字列の `"false"` / `"true"` の場合を足して、3版で固定した
+
 - 追加: **git の tag だけで配れるようにした**（→ [リリースと入れ方](docs/guide/release.ja.md)）。
   レジストリには出さない。リリースのワークフローは GitHub Release に貼るだけで、
   **publish する道を持たない**

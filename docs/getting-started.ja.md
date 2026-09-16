@@ -34,15 +34,15 @@ dependencies:
   flutter:
     sdk: flutter
   hatake_material:            # 画面描画（Material3）
-    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.0.1, path: flutter/packages/hatake_material }
+    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.9.0, path: flutter/packages/hatake_material }
   hatake_yaml:                # YAML/JSON を定義に変換（定義を Dart で書くなら不要）
-    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.0.1, path: flutter/packages/hatake_yaml }
+    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.9.0, path: flutter/packages/hatake_yaml }
 
 dependency_overrides:         # 公開までの暫定。**下に居る hatake_* を全部**指す
   hatake_core:
-    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.0.1, path: flutter/packages/hatake_core }
+    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.9.0, path: flutter/packages/hatake_core }
   hatake:
-    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.0.1, path: flutter/packages/hatake }
+    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.9.0, path: flutter/packages/hatake }
 ```
 
 | パッケージ | 役割 | 要る？ |
