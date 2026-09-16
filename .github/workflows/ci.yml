@@ -55,6 +55,14 @@ jobs:
           npm install
           npm run typecheck
           npm test
+      - name: 版の足並み（3版が同じ番号・CHANGELOG がその版に触れている）
+        working-directory: typescript
+        run: |
+          # 版を上げたのに Dart の CHANGELOG を放置すると、`pub publish` が**出す瞬間**に
+          # 落ちる（実際 0.9.0 で Release が止まった）。dry-run は依存の無い1枚しか
+          # 見ていないので、ここで配る 9 枚ぜんぶと3版の番号を見る。
+          node tool/check-versions.mjs
+
       - name: 配る形のまま動く（固めて、入れて、叩く）
         working-directory: typescript
         run: |

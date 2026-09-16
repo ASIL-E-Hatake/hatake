@@ -27,7 +27,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "bundle-spec": "node tool/bundle-spec.mjs",
-    "prepack": "node tool/bundle-spec.mjs && tsc"
+    "prepack": "node tool/bundle-spec.mjs && tsc",
+    "check-versions": "node tool/check-versions.mjs"
   },
   "dependencies": {
     "yaml": "^2.5.0"

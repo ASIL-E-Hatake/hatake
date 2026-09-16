@@ -10,11 +10,3 @@ Flutter / TypeScript / Java の3版は**同じ番号**で出している。
 入れ方は
 [リリースと入れ方](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/release.ja.md)。
 
-## 0.0.1
-
-- Initial release.
-- Function-based builder DSL: `crudPage`, `searchPage`, `search`, `filter`,
-  `table`, `column`, `form`, `section`, `field`, `action`, `option`.
-- Validator helpers: `maxLength`, `minLength`, `minValue`, `maxValue`,
-  `pattern`, `email`.
-- Produces PageDefinitions identical to the equivalent YAML/JSON.
