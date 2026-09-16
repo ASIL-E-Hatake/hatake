@@ -77,11 +77,6 @@ dependencies {
 }
 ```
 
-> **未確認**: JitPack が付ける座標は、最初の tag を打つまで確定しない（モノレポの
-> 割り方によって `com.github.ASIL-E-Hatake:hatake` か
-> `com.github.ASIL-E-Hatake.hatake:hatake-core` になる）。1本目を打ったら
-> <https://jitpack.io/#ASIL-E-Hatake/hatake> で実際の座標を見て、ここを直す。
-
 ---
 
 ## 出す手順（人がやること）
