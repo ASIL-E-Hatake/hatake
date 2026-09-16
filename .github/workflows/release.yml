@@ -1,0 +1,72 @@
+name: Release
+
+# tag を打ったら、**配る形**を作って GitHub Release に貼る。
+#
+# レジストリ（npm / pub.dev / Maven Central）には出さない。出すのは人が決めたときだけで、
+# ここがやるのは「git の tag から入れられる状態にする」までにする＝**間違って publish
+# される道を作らない**。
+#
+# 3版の配られ方はそれぞれ違う:
+#   ・TypeScript … ここで固めた tarball を Release に貼る（`spec/` 同梱）
+#   ・Flutter/Dart … tag をそのまま `git:` で指してもらう（作るものは無い）
+#   ・Java … JitPack が tag を見てビルドする（作るものは無い。jitpack.yml が指図する）
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "手で回すときに貼り付ける tag（例: v0.9.0）"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  tarball:
+    name: TypeScript の tarball を作って貼る
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: 版が tag と揃っているか
+        working-directory: typescript
+        run: |
+          set -e
+          # tag と package.json がズレたまま配ると、入れた人が「どっちが本当か」を
+          # 判断できなくなる。**貼る前**に落とす。
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          HAVE="v$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$HAVE" ]; then
+            echo "tag ($TAG) と package.json ($HAVE) が違います"; exit 1
+          fi
+
+      - name: 固めて、入れて、叩く
+        working-directory: typescript
+        run: |
+          set -e
+          npm install
+          # 配る形のまま動くことを見てから貼る（spec 同梱・bin の張り方・定義が通るか）。
+          node tool/check-package.mjs
+          # 見た形と同じものをもう一度作る（check-package は確かめたあと消す）。
+          npm pack
+
+      - name: Release に貼る
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          files: typescript/*.tgz
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          body: |
+            入れ方は [リリースと入れ方](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/release.ja.md) を見てください。
+
+            - **TypeScript** … 下の `.tgz` を `npm i <URL>`
+            - **Flutter / Dart** … この tag を `git:` で指す（`dependency_overrides` が要ります）
+            - **Java** … JitPack がこの tag をビルドします
+
+            レジストリ（npm / pub.dev / Maven Central）にはまだ出していません。

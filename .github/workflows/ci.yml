@@ -55,6 +55,15 @@ jobs:
           npm install
           npm run typecheck
           npm test
+      - name: 配る形のまま動く（固めて、入れて、叩く）
+        working-directory: typescript
+        run: |
+          # 文書に「npm i で入る」と書くだけでは、入った先で spec が引けない事故が
+          # 起きる（CLI と MCP は実行時に spec/ を読む）。だから**固めて、リポジトリの
+          # 外に入れて、spec を読む道具を叩く**ところまで機械で見る。
+          # リポジトリの中で試すと spec が上に見つかって、同梱できていなくても通る。
+          node tool/check-package.mjs
+
       - name: CLI smoke test (validate every shipped example)
         working-directory: typescript
         run: |
@@ -4969,6 +4978,85 @@ jobs:
         run: python spec/tools/check_dto_schema.py
       - name: Check the DTO emitter's OpenAPI output
         run: python spec/tools/check_openapi.py
+
+  git-install:
+    name: git の tag から入れられる（Dart）
+    runs-on: ubuntu-latest
+    needs: [dart]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - name: 使う側と同じ書き方で入れて、動かす
+        run: |
+          set -e
+          # レジストリに出すまでの間、利用者は git から入れる。手引きに書いた**その書き方**が
+          # 本当に通るかを、口ではなく機械で言う。
+          #
+          # **裸のクローンを自分で作って file:// で指す**＝push の見え方やネットワークに
+          # 依存しない（PR のコミットが remote に在るか、といった話に左右されると、
+          # 落ちた理由が読めなくなる）。見たいのは pub の解決の仕方だけ。
+          git clone --quiet --bare . /tmp/hatake.git
+          SHA=$(git --git-dir=/tmp/hatake.git rev-parse HEAD)
+          mkdir -p /tmp/app/bin && cd /tmp/app
+          # **dependency_overrides が要る**のがこの配り方の肝。パッケージは pub.dev 前提
+          # （`hatake_core: ^0.0.1`）で書いてあり、その中の overrides は**根のパッケージ
+          # でしか効かない**ので、下に居る hatake_* は利用者が指し直す。書き忘れると
+          # 「pub.dev に hatake_core が無い」で落ちる＝手引きにそう書いてある。
+          cat > pubspec.yaml <<YAML
+          name: git_install_check
+          publish_to: none
+          environment: { sdk: ">=3.5.0 <4.0.0" }
+          dependencies:
+            hatake_yaml:
+              git: { url: "file:///tmp/hatake.git", ref: $SHA, path: flutter/packages/hatake_yaml }
+          dependency_overrides:
+            hatake_core:
+              git: { url: "file:///tmp/hatake.git", ref: $SHA, path: flutter/packages/hatake_core }
+          YAML
+          dart pub get
+          # 入っただけでなく、**読めること**まで見る（解決はできたが動かない、を防ぐ）。
+          cat > bin/main.dart <<'DART'
+          import "package:hatake_yaml/hatake_yaml.dart";
+
+          const source = """
+          type: form
+          id: p
+          title: 画面
+          repository: r
+          key: id
+          form:
+            fields:
+              - { name: id, label: ID, type: text }
+          """;
+
+          void main() {
+            final page = parsePageYaml(source);
+            if (page.id != "p") throw StateError("読めていません");
+            print("git から入れた hatake で定義を読めました");
+          }
+          DART
+          dart run bin/main.dart
+      - name: overrides を書き忘れたら、ちゃんと落ちる
+        run: |
+          set -e
+          # 手引きが「overrides が要る」と書いている以上、**書かなければ落ちる**ことも
+          # 確かめる。落ちなくなったら（pub.dev に出た・依存が変わった）手引きが古い。
+          SHA=$(git --git-dir=/tmp/hatake.git rev-parse HEAD)
+          mkdir -p /tmp/app-bad && cd /tmp/app-bad
+          cat > pubspec.yaml <<YAML
+          name: git_install_missing_overrides
+          publish_to: none
+          environment: { sdk: ">=3.5.0 <4.0.0" }
+          dependencies:
+            hatake_yaml:
+              git: { url: "file:///tmp/hatake.git", ref: $SHA, path: flutter/packages/hatake_yaml }
+          YAML
+          if dart pub get > /tmp/bad.log 2>&1; then
+            echo "overrides 無しで通ってしまった（手引きが古い可能性）"; cat /tmp/bad.log; exit 1
+          fi
+          grep -q "hatake_core" /tmp/bad.log
 
   publish-dry-run:
     name: pub publish (dry run)

@@ -17,7 +17,16 @@ flutter pub get && flutter run -d chrome
 
 ## 2. 自分のアプリに入れる
 
-⚠️ **まだ pub.dev 未公開**。当面は git 依存で入れる。`hatake_material` は `hatake` / `hatake_core` を hosted 制約で参照しているので、**公開までは overrides も必要**（公開後は `hatake_material: ^x.y.z` の1行だけで済む）。
+⚠️ **まだ pub.dev 未公開**。当面は git 依存で入れる。決めごとが2つある:
+
+- **`ref:` に tag を書く**（`main` を指さない）。`main` を指すと、こちらが push した瞬間に
+  手元が動く＝ロールバックもできない。tag は3版まとめて打っている
+- **`dependency_overrides` が要る**。パッケージは pub.dev 前提（`hatake_core: ^0.0.1`）で
+  書いてあり、その中の overrides は**根のパッケージでしか効かない**ので、下に居る
+  `hatake_*` は使う側が指し直す。書き忘れると「pub.dev に hatake_core が無い」で落ちる
+  （公開後は `hatake_material: ^x.y.z` の1行だけで済む）
+
+この書き方が本当に通ることは CI が毎回確かめている（→ [リリースと入れ方](guide/release.ja.md)）。
 
 ```yaml no-check:pubspec.yaml（hatake の定義ではない）
 # pubspec.yaml
@@ -25,15 +34,15 @@ dependencies:
   flutter:
     sdk: flutter
   hatake_material:            # 画面描画（Material3）
-    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, path: flutter/packages/hatake_material }
+    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.0.1, path: flutter/packages/hatake_material }
   hatake_yaml:                # YAML/JSON を定義に変換（定義を Dart で書くなら不要）
-    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, path: flutter/packages/hatake_yaml }
+    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.0.1, path: flutter/packages/hatake_yaml }
 
-dependency_overrides:         # 公開までの暫定
+dependency_overrides:         # 公開までの暫定。**下に居る hatake_* を全部**指す
   hatake_core:
-    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, path: flutter/packages/hatake_core }
+    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.0.1, path: flutter/packages/hatake_core }
   hatake:
-    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, path: flutter/packages/hatake }
+    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.0.1, path: flutter/packages/hatake }
 ```
 
 | パッケージ | 役割 | 要る？ |

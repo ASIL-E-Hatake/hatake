@@ -6,6 +6,12 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "spec",
+    "README.md",
+    "LICENSE"
+  ],
   "bin": {
     "hatake": "dist/cli.js",
     "hatake-mcp": "dist/mcp.js"
@@ -19,7 +25,9 @@
     "check-docs": "node tool/check-docs.mjs",
     "check-rules": "node tool/check-rules.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "bundle-spec": "node tool/bundle-spec.mjs",
+    "prepack": "node tool/bundle-spec.mjs && tsc"
   },
   "dependencies": {
     "yaml": "^2.5.0"
