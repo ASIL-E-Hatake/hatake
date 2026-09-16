@@ -1,0 +1,3990 @@
+{
+  "$comment": "規則ごとの「転ぶ定義」。ここに書いた定義をかけると、その規則が必ず出る（CI が全部走らせて確かめる＝出なくなったら落ちる）。実際に転んだ記録が spec/failures.json に在る規則は、そちらのほうが人に効くのでここには書かない。page だけ書いたものは dsl_version と一緒に包んで走らせる。",
+  "cases": [
+    {
+      "rule": "batchsize-without-selection",
+      "why": "一括でないボタンに区切りを書いた（区切るものが無い）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "csv",
+            "type": "export",
+            "label": "CSV出力",
+            "batchSize": 10
+          }
+        ]
+      }
+    },
+    {
+      "rule": "batchsize-above-maxrows",
+      "why": "区切りが1回で動く上限以上（1回で終わるので、進み具合も中断も出ない）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "一括承認",
+            "scope": "selection",
+            "maxRows": 20,
+            "batchSize": 50
+          }
+        ]
+      }
+    },
+    {
+      "rule": "batchsize-unknown-role",
+      "why": "そのボタンを押せない役割について区切りを書いた",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "一括承認",
+            "scope": "selection",
+            "roles": [
+              "manager"
+            ],
+            "batchSize": {
+              "default": 10,
+              "byRole": {
+                "staff": 5
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "columns-wider-than-paper",
+      "why": "画面の px をそのまま列幅に書いた（A4 縦に入らない）",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "a",
+              "label": "あ",
+              "width": 200
+            },
+            {
+              "field": "b",
+              "label": "い",
+              "width": 200
+            },
+            {
+              "field": "c",
+              "label": "う",
+              "width": 200
+            }
+          ]
+        },
+        "report": {
+          "rowsPerPage": 30
+        }
+      }
+    },
+    {
+      "rule": "rows-per-page-too-many",
+      "why": "1枚に詰め込みすぎ（1行あたりの高さが文字より小さくなる）",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "amount",
+              "label": "金額",
+              "type": "number"
+            }
+          ]
+        },
+        "report": {
+          "rowsPerPage": 120
+        }
+      }
+    },
+    {
+      "rule": "unknown-paper-size",
+      "why": "組み込みでない紙の名前（黙って A4 として刷られる）",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "amount",
+              "label": "金額",
+              "type": "number"
+            }
+          ]
+        },
+        "report": {
+          "paper": {
+            "size": "B4"
+          }
+        }
+      }
+    },
+    {
+      "rule": "groupby-without-sort",
+      "why": "まとめる指定だけ書いて、並べ替えを書いていない",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "customer",
+              "label": "顧客名"
+            },
+            {
+              "field": "amount",
+              "label": "金額",
+              "type": "number"
+            }
+          ]
+        },
+        "report": {
+          "groupBy": [
+            {
+              "field": "customer",
+              "label": "顧客"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "total-without-column",
+      "why": "列に出していない項目の合計（どこにも出ない）",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "amount",
+              "label": "金額",
+              "type": "number"
+            }
+          ]
+        },
+        "report": {
+          "totals": [
+            {
+              "field": "tax",
+              "aggregate": "sum"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "required-as-validator-only",
+      "why": "validators に文字列で required と書いた（検証は増えない）",
+      "readable": false,
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "mail",
+                  "label": "メール",
+                  "validators": [
+                    "required",
+                    "email"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "option-when-without-optionsfrom",
+      "why": "選択肢に when だけ書いた（親の項目が決まっていないので絞り込めない）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "city",
+                  "label": "市区町村",
+                  "type": "select",
+                  "options": [
+                    {
+                      "value": "shibuya",
+                      "label": "渋谷区",
+                      "when": "tokyo"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "optionsfrom-unknown-field",
+      "why": "親に指定した項目が同じフォームに無い",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "city",
+                  "label": "市区町村",
+                  "type": "select",
+                  "optionsFrom": "prefecture",
+                  "options": [
+                    {
+                      "value": "shibuya",
+                      "label": "渋谷区",
+                      "when": "tokyo"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "optionssource-parentkey-without-optionsfrom",
+      "why": "引く先に親の鍵を書いたのに、親の項目を書いていない（全件引く）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "city",
+                  "label": "市区町村",
+                  "type": "select",
+                  "optionsSource": {
+                    "repository": "cityRepository",
+                    "parentKey": "prefecture"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "options-and-optionssource",
+      "why": "選択肢を定義にも書き、引きもした（引いた方が勝つ）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "city",
+                  "label": "市区町村",
+                  "type": "select",
+                  "options": [
+                    {
+                      "value": "shibuya",
+                      "label": "渋谷区"
+                    }
+                  ],
+                  "optionsSource": {
+                    "repository": "cityRepository"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "requiredwhen-with-required",
+      "why": "必須と条件つき必須の両方（条件が意味を持たない）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "invoiceNo",
+                  "label": "登録番号",
+                  "required": true,
+                  "requiredWhen": {
+                    "field": "kind",
+                    "value": "corp"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "readonlywhen-with-readonly",
+      "why": "読み取り専用と条件つき読み取り専用の両方",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "memberNo",
+                  "label": "会員番号",
+                  "readOnly": true,
+                  "readOnlyWhen": {
+                    "field": "kind",
+                    "value": "personal"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "condition-operator-unsupported",
+      "why": "条件に between を書いた（検索専用なので、条件では常に false）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "age",
+                  "label": "年齢",
+                  "type": "number"
+                },
+                {
+                  "field": "note",
+                  "label": "備考",
+                  "visibleWhen": {
+                    "field": "age",
+                    "operator": "between",
+                    "value": [
+                      20,
+                      65
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "compare-without-field",
+      "why": "突き合わせる相手を書いていない",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "startDate",
+                  "label": "開始日",
+                  "type": "date"
+                },
+                {
+                  "field": "endDate",
+                  "label": "終了日",
+                  "type": "date",
+                  "validators": [
+                    {
+                      "type": "compare",
+                      "operator": "gte"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "compare-with-itself",
+      "why": "自分自身と比べている（いつも同じ値）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "startDate",
+                  "label": "開始日",
+                  "type": "date"
+                },
+                {
+                  "field": "endDate",
+                  "label": "終了日",
+                  "type": "date",
+                  "validators": [
+                    {
+                      "type": "compare",
+                      "operator": "gte",
+                      "field": "endDate"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "compare-bad-operator",
+      "why": "大小を比べられない演算子で突き合わせた",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "startDate",
+                  "label": "開始日",
+                  "type": "date"
+                },
+                {
+                  "field": "endDate",
+                  "label": "終了日",
+                  "type": "date",
+                  "validators": [
+                    {
+                      "type": "compare",
+                      "operator": "contains",
+                      "field": "startDate"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "compare-where-ignored",
+      "why": "畳んでいないのに行の絞り込みを書いた（絞られない）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "total",
+                  "label": "合計",
+                  "type": "number",
+                  "validators": [
+                    {
+                      "type": "compare",
+                      "operator": "equals",
+                      "field": "lines",
+                      "where": {
+                        "field": "cancelled",
+                        "operator": "notEquals",
+                        "value": true
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "compare-where-unknown-field",
+      "why": "絞り込みが見る項目が明細の行に無い（綴り違い）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "total",
+                  "label": "合計",
+                  "type": "number",
+                  "validators": [
+                    {
+                      "type": "compare",
+                      "operator": "equals",
+                      "field": "lines",
+                      "aggregate": "sum",
+                      "of": "amount",
+                      "where": {
+                        "field": "canceled",
+                        "operator": "notEquals",
+                        "value": true
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "compare-where-mode",
+      "why": "行の絞り込みに mode を書いた（行にフォームの状態は無い）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "total",
+                  "label": "合計",
+                  "type": "number",
+                  "validators": [
+                    {
+                      "type": "compare",
+                      "operator": "equals",
+                      "field": "lines",
+                      "aggregate": "sum",
+                      "of": "amount",
+                      "where": {
+                        "mode": "create"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-aggregate-without-of",
+      "why": "畳む項目を書いていない（count 以外は空欄になる）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "subtotal",
+                  "label": "小計",
+                  "computed": {
+                    "op": "sum",
+                    "field": "lines"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-rows-unsupported-op",
+      "why": "明細の行をまとめられない op",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "subtotal",
+                  "label": "小計",
+                  "computed": {
+                    "op": "product",
+                    "field": "lines",
+                    "of": "amount"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-field-and-fields",
+      "why": "行を畳む形と、同じレコードを畳む形の両方を書いた（片方が効かない）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "subtotal",
+                  "label": "小計",
+                  "computed": {
+                    "op": "sum",
+                    "field": "lines",
+                    "of": "amount",
+                    "fields": [
+                      "a",
+                      "b"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-of-unknown-field",
+      "why": "畳む相手の綴り違い（明細が見つからない）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "subtotal",
+                  "label": "小計",
+                  "computed": {
+                    "op": "sum",
+                    "field": "line",
+                    "of": "amount"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-of-paged-subtable",
+      "why": "ページ送りの明細を畳もうとした（行が揃っていない）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ],
+                  "source": {
+                    "repository": "orderLineRepository",
+                    "parentKey": "orderNo",
+                    "key": "lineNo"
+                  }
+                },
+                {
+                  "field": "subtotal",
+                  "label": "小計",
+                  "computed": {
+                    "op": "sum",
+                    "field": "lines",
+                    "of": "amount"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-sort-without-field",
+      "why": "並べる項目を書かずに上位だけ畳もうとした",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "itemNames",
+                  "label": "主な品名",
+                  "computed": {
+                    "op": "join",
+                    "field": "lines",
+                    "of": "item",
+                    "sort": {
+                      "ascending": false
+                    },
+                    "limit": 3
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-sort-unknown-field",
+      "why": "並べる項目が明細の行に無い（綴り違い）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "itemNames",
+                  "label": "主な品名",
+                  "computed": {
+                    "op": "join",
+                    "field": "lines",
+                    "of": "item",
+                    "sort": {
+                      "field": "amont",
+                      "ascending": false
+                    },
+                    "limit": 3
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-sort-without-rows",
+      "why": "同じレコードの項目を畳むのに、行を並べる指定を書いた",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "total",
+                  "label": "合計",
+                  "computed": {
+                    "op": "sum",
+                    "fields": [
+                      "subtotal",
+                      "tax"
+                    ],
+                    "sort": {
+                      "field": "amount"
+                    },
+                    "limit": 2
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-overflow-unused",
+      "why": "切っていないのに「ほか N 件」を書いた",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "itemNames",
+                  "label": "主な品名",
+                  "computed": {
+                    "op": "join",
+                    "field": "lines",
+                    "of": "item",
+                    "overflow": "他 {count} 件"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-where-ignored",
+      "why": "同じレコードを畳む形に、行の絞り込みを書いた",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "total",
+                  "label": "合計",
+                  "computed": {
+                    "op": "sum",
+                    "fields": [
+                      "a",
+                      "b"
+                    ],
+                    "where": {
+                      "field": "cancelled",
+                      "operator": "notEquals",
+                      "value": true
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-where-unknown-field",
+      "why": "絞り込みが見る項目の綴り違い",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "subtotal",
+                  "label": "小計",
+                  "computed": {
+                    "op": "sum",
+                    "field": "lines",
+                    "of": "amount",
+                    "where": {
+                      "field": "canceled",
+                      "operator": "notEquals",
+                      "value": true
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-where-mode",
+      "why": "行の絞り込みに mode を書いた（1件も残らない）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ]
+                },
+                {
+                  "field": "subtotal",
+                  "label": "小計",
+                  "computed": {
+                    "op": "sum",
+                    "field": "lines",
+                    "of": "amount",
+                    "where": {
+                      "mode": "create"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-order",
+      "why": "後ろに書いた計算を使っている（空のまま計算される）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "total",
+                  "label": "合計",
+                  "computed": {
+                    "op": "sum",
+                    "fields": [
+                      "subtotal",
+                      "tax"
+                    ]
+                  }
+                },
+                {
+                  "field": "subtotal",
+                  "label": "小計",
+                  "computed": {
+                    "op": "sum",
+                    "fields": [
+                      "x",
+                      "y"
+                    ]
+                  }
+                },
+                {
+                  "field": "tax",
+                  "label": "消費税",
+                  "type": "number"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "computed-self-reference",
+      "why": "自分自身を使って計算している",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "total",
+                  "label": "合計",
+                  "computed": {
+                    "op": "sum",
+                    "fields": [
+                      "total",
+                      "tax"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "unique-without-of",
+      "why": "見る項目を書いていない（何も判定しない）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ],
+                  "validators": [
+                    {
+                      "type": "unique"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "unique-unknown-field",
+      "why": "見る項目が行に無い（綴り違い＝黙って通る）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ],
+                  "validators": [
+                    {
+                      "type": "unique",
+                      "of": "itme"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "unique-without-subtable",
+      "why": "明細ではない項目に書いた（見る行が無い）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "validators": [
+                    {
+                      "type": "unique",
+                      "of": "item"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "unique-on-paged-subtable",
+      "why": "ページ送りの明細に書いた（行が揃っていない）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    },
+                    {
+                      "field": "cancelled",
+                      "label": "取消",
+                      "type": "checkbox"
+                    }
+                  ],
+                  "source": {
+                    "repository": "orderLineRepository",
+                    "parentKey": "orderNo"
+                  },
+                  "validators": [
+                    {
+                      "type": "unique",
+                      "of": "item"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "placeholder-not-filled",
+      "why": "一括でないボタンの文言に {count} を書いた（埋まらない）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "承認",
+            "onSuccess": {
+              "message": "{count} 件を承認しました"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "create-action-unusable",
+      "why": "入力の画面に新規登録のボタンを置いた（開く先の枠が無い）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号"
+                }
+              ]
+            }
+          ]
+        },
+        "key": "orderNo",
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規登録"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "selection-without-table",
+      "why": "表の無い画面に一括のボタンを置いた（選ぶ手段が無い）",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号"
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "一括承認",
+            "scope": "selection"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "selection-unsupported-type",
+      "why": "plugin 以外の型に一括を書いた（選んだ行には実行されない）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "csv",
+            "type": "export",
+            "label": "一括出力",
+            "scope": "selection"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "print-without-report",
+      "why": "紙の無い画面に印刷のボタンを置いた",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "printPdf",
+            "type": "print",
+            "label": "印刷"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "prompt-unsupported-type",
+      "why": "聞いた値を受け取れない型のボタンに prompt を書いた",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "csv",
+            "type": "export",
+            "label": "CSV出力",
+            "prompt": {
+              "fields": [
+                {
+                  "field": "memo",
+                  "label": "メモ"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "route-param-unknown-field",
+      "why": "遷移で渡す値が、この画面に無い項目を指している（綴り違い）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            },
+            {
+              "field": "customer",
+              "label": "顧客名"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "detail",
+            "type": "navigate",
+            "label": "詳細",
+            "page": "order_detail",
+            "params": {
+              "id": "$row.ordreNo"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "enabledwhen-never-true",
+      "why": "同じ項目に違う値を2つ求めている（永久に押せない）",
+      "page": {
+        "type": "detail",
+        "id": "order_detail",
+        "title": "受注詳細",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号"
+                },
+                {
+                  "field": "status",
+                  "label": "状態"
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "承認",
+            "enabledWhen": {
+              "all": [
+                {
+                  "field": "status",
+                  "operator": "equals",
+                  "value": "受付"
+                },
+                {
+                  "field": "status",
+                  "operator": "equals",
+                  "value": "承認済"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "enabledwhen-without-record",
+      "why": "レコードの無い画面のボタンに、押せる条件を書いた",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "承認",
+            "enabledWhen": {
+              "field": "status",
+              "operator": "equals",
+              "value": "受付"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "duplicate-action-id",
+      "why": "同じ id のボタンを2つ書いた（後ろの1つは使われない）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "承認"
+          },
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "承認（再）"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "rowactions-as-objects",
+      "why": "行のボタンを object で書いた（行アクションにならない）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "rowActions": [
+            {
+              "id": "edit",
+              "label": "編集"
+            }
+          ],
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "unknown-open",
+      "why": "知らない開き方（黙っていまの画面の続きになる）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "detail",
+            "type": "navigate",
+            "label": "詳細",
+            "page": "order_detail",
+            "open": "window"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "open-without-navigate",
+      "why": "遷移でないボタンに開き方を書いた（開く先が無い）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "承認",
+            "open": "tab"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "open-without-tabs",
+      "why": "画面を並べない定義で「別のタブで開く」と書いた",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "detail",
+            "type": "navigate",
+            "label": "詳細",
+            "page": "order_detail",
+            "open": "tab"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "unknown-action",
+      "why": "カードが呼ぶボタンが、この画面に無い",
+      "page": {
+        "type": "dashboard",
+        "id": "sales_dashboard",
+        "title": "売上",
+        "repository": "orderRepository",
+        "items": [
+          {
+            "id": "total",
+            "title": "売上合計",
+            "action": "reload",
+            "value": {
+              "aggregate": "count"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "duplicate-page-id",
+      "why": "同じ id のページを2枚書いた（後ろの1枚は開けない）",
+      "document": {
+        "app": {
+          "id": "sales",
+          "title": "販売管理",
+          "pages": [
+            {
+              "type": "search",
+              "id": "dup",
+              "title": "受注照会",
+              "repository": "orderRepository"
+            },
+            {
+              "type": "master",
+              "id": "dup",
+              "title": "顧客マスタ",
+              "repository": "customerRepository"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "unknown-home",
+      "why": "最初に開く所に、メニューにもページにも無い名前を書いた",
+      "document": {
+        "app": {
+          "id": "sales",
+          "title": "販売管理",
+          "home": "nowhere",
+          "pages": [
+            {
+              "type": "search",
+              "id": "order_search",
+              "title": "受注照会",
+              "repository": "orderRepository"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "unknown-navigation",
+      "why": "知らない画面の開き方（黙って1画面ずつになる）",
+      "document": {
+        "app": {
+          "id": "sales",
+          "title": "販売管理",
+          "navigation": "split",
+          "pages": [
+            {
+              "type": "search",
+              "id": "order_search",
+              "title": "受注照会",
+              "repository": "orderRepository"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "page-nobody-can-open",
+      "why": "入口の権限が食い違っていて、両方を持つ人が居ない",
+      "document": {
+        "app": {
+          "id": "sales",
+          "title": "販売管理",
+          "menu": [
+            {
+              "group": "マスタ",
+              "roles": [
+                "admin"
+              ],
+              "items": [
+                {
+                  "label": "顧客",
+                  "page": "customer_master"
+                }
+              ]
+            }
+          ],
+          "pages": [
+            {
+              "type": "master",
+              "id": "customer_master",
+              "title": "顧客マスタ",
+              "repository": "customerRepository",
+              "key": "code",
+              "table": {
+                "columns": [
+                  {
+                    "field": "code",
+                    "label": "コード"
+                  }
+                ]
+              },
+              "actions": [
+                {
+                  "id": "openPrice",
+                  "type": "navigate",
+                  "label": "単価",
+                  "page": "price_master",
+                  "roles": [
+                    "manager"
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "master",
+              "id": "price_master",
+              "title": "単価マスタ",
+              "repository": "priceRepository",
+              "key": "code",
+              "table": {
+                "columns": [
+                  {
+                    "field": "code",
+                    "label": "コード"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "unknown-plugin",
+      "why": "登録していないプラグインを呼ぶボタン",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "reject",
+            "type": "plugin",
+            "plugin": "rejectOrders",
+            "label": "却下"
+          }
+        ]
+      },
+      "registry": {
+        "plugins": [
+          "approveOrders"
+        ]
+      }
+    },
+    {
+      "rule": "unknown-validator",
+      "why": "登録していない検証",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "code",
+                  "label": "コード",
+                  "validators": [
+                    {
+                      "type": "zenkakuOnly"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "registry": {
+        "validators": [
+          "katakanaOnly"
+        ]
+      }
+    },
+    {
+      "rule": "unknown-converter",
+      "why": "登録していない正規化",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "code",
+                  "label": "コード",
+                  "normalize": [
+                    "toRomaji"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "registry": {
+        "converters": [
+          "toHankaku"
+        ]
+      }
+    },
+    {
+      "rule": "unknown-computed-op",
+      "why": "登録していない計算の op",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "tax",
+                  "label": "消費税",
+                  "computed": {
+                    "op": "withholding",
+                    "fields": [
+                      "subtotal"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "registry": {
+        "computedOps": [
+          "consumptionTax"
+        ]
+      }
+    },
+    {
+      "rule": "unknown-aggregate",
+      "why": "登録していない集約",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "amount",
+              "label": "金額",
+              "type": "number"
+            }
+          ]
+        },
+        "report": {
+          "totals": [
+            {
+              "field": "amount",
+              "aggregate": "weightedAvg"
+            }
+          ]
+        }
+      },
+      "registry": {
+        "aggregates": [
+          "median"
+        ]
+      }
+    },
+    {
+      "rule": "unknown-field-type",
+      "why": "登録していない項目の型",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "sign",
+                  "label": "署名",
+                  "type": "signature"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "registry": {
+        "fieldTypes": [
+          "colorPicker"
+        ]
+      }
+    },
+    {
+      "rule": "unknown-column-type",
+      "why": "登録していない列の型",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "status",
+              "label": "状態",
+              "type": "traffic"
+            }
+          ]
+        }
+      },
+      "registry": {
+        "columnTypes": [
+          "stars"
+        ]
+      }
+    },
+    {
+      "rule": "unknown-action-type",
+      "why": "登録していないボタンの型",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "archive",
+            "type": "archive",
+            "label": "書庫へ"
+          }
+        ]
+      },
+      "registry": {
+        "actionTypes": [
+          "approve"
+        ]
+      }
+    },
+    {
+      "rule": "unknown-dashboard-item-type",
+      "why": "登録していないカードの型",
+      "page": {
+        "type": "dashboard",
+        "id": "sales_dashboard",
+        "title": "売上",
+        "repository": "orderRepository",
+        "items": [
+          {
+            "id": "heat",
+            "type": "heatmap",
+            "title": "時間帯別"
+          }
+        ]
+      },
+      "registry": {
+        "dashboardItemTypes": [
+          "gauge"
+        ]
+      }
+    },
+    {
+      "rule": "unknown-chart-kind",
+      "why": "登録していないグラフの種類",
+      "page": {
+        "type": "dashboard",
+        "id": "sales_dashboard",
+        "title": "売上",
+        "repository": "orderRepository",
+        "items": [
+          {
+            "id": "byCustomer",
+            "type": "chart",
+            "title": "顧客別",
+            "chart": {
+              "kind": "radar",
+              "labelField": "customer",
+              "aggregate": "count"
+            }
+          }
+        ]
+      },
+      "registry": {
+        "chartKinds": [
+          "donut"
+        ]
+      }
+    },
+    {
+      "rule": "unknown-page-ref",
+      "why": "アプリに無いページへ遷移している（1枚だけの定義でも、一覧が在れば言える）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "detail",
+            "type": "navigate",
+            "label": "詳細",
+            "page": "order_form"
+          }
+        ]
+      },
+      "registry": {
+        "pages": [
+          "order_detail"
+        ]
+      }
+    },
+    {
+      "rule": "role-not-in-app",
+      "why": "アプリが配らない役割名を書いた（綴り違い＝誰にも見えない）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "amount",
+              "label": "金額",
+              "roles": [
+                "manger"
+              ]
+            }
+          ]
+        }
+      },
+      "registry": {
+        "roles": [
+          "manager"
+        ]
+      }
+    },
+    {
+      "rule": "unregistered-sink",
+      "why": "刷る口を登録していないのに印刷のボタンが在る",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "amount",
+              "label": "金額",
+              "type": "number"
+            }
+          ]
+        },
+        "report": {
+          "rowsPerPage": 30
+        },
+        "actions": [
+          {
+            "id": "printPdf",
+            "type": "print",
+            "label": "印刷"
+          }
+        ]
+      },
+      "registry": {
+        "sinks": [
+          "exportSink"
+        ]
+      }
+    },
+    {
+      "rule": "sink-not-declared",
+      "why": "動いているアプリの申告に、出す口が1つも無い",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "csv",
+            "type": "export",
+            "label": "CSV出力"
+          }
+        ]
+      },
+      "registry": {
+        "repositories": [
+          "orderRepository"
+        ]
+      },
+      "registryFromApp": true
+    },
+    {
+      "rule": "maxrows-without-selection",
+      "why": "一括でないボタンに上限を書いた（効かない）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "csv",
+            "type": "export",
+            "label": "CSV出力",
+            "maxRows": 20
+          }
+        ]
+      }
+    },
+    {
+      "rule": "maxrows-above-page-size",
+      "why": "1ページの件数より大きい上限（一度も効かない）",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "pagination": {
+            "pageSize": 10
+          },
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "一括承認",
+            "scope": "selection",
+            "maxRows": 200
+          }
+        ]
+      }
+    },
+    {
+      "rule": "maxrows-unknown-role",
+      "why": "そのボタンを押せない役割について上限を書いた",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "一括承認",
+            "scope": "selection",
+            "roles": [
+              "manager"
+            ],
+            "maxRows": {
+              "default": 20,
+              "byRole": {
+                "staff": 10
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "visiblewhen-never-true",
+      "why": "出す条件が永久に成り立たない（その項目は誰にも出ない）",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号"
+                },
+                {
+                  "field": "status",
+                  "label": "状態"
+                },
+                {
+                  "field": "note",
+                  "label": "備考",
+                  "visibleWhen": {
+                    "all": [
+                      {
+                        "field": "status",
+                        "operator": "equals",
+                        "value": "受付"
+                      },
+                      {
+                        "field": "status",
+                        "operator": "equals",
+                        "value": "承認済"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "requiredwhen-never-true",
+      "why": "必須にする条件が永久に成り立たない（空のまま保存できる）",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号"
+                },
+                {
+                  "field": "status",
+                  "label": "状態"
+                },
+                {
+                  "field": "note",
+                  "label": "備考",
+                  "requiredWhen": {
+                    "all": [
+                      {
+                        "field": "status",
+                        "operator": "equals",
+                        "value": "受付"
+                      },
+                      {
+                        "field": "status",
+                        "operator": "equals",
+                        "value": "承認済"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "readonlywhen-never-true",
+      "why": "読み取り専用にする条件が永久に成り立たない（いつでも編集できる）",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号"
+                },
+                {
+                  "field": "status",
+                  "label": "状態"
+                },
+                {
+                  "field": "note",
+                  "label": "備考",
+                  "readOnlyWhen": {
+                    "all": [
+                      {
+                        "field": "status",
+                        "operator": "equals",
+                        "value": "受付"
+                      },
+                      {
+                        "field": "status",
+                        "operator": "equals",
+                        "value": "承認済"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "no-sortable-column",
+      "why": "列が並ぶのに、並べ替えできる列が1つも無い",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            },
+            {
+              "field": "customer",
+              "label": "得意先"
+            },
+            {
+              "field": "orderDate",
+              "label": "受注日",
+              "type": "date"
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "no-search-filter",
+      "why": "一覧が並ぶのに、絞り込みが1つも無い",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {},
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "key-not-in-table",
+      "why": "1件を指す鍵が一覧に出ていない",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "id",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "no-required-field",
+      "why": "入力できるのに、必須が1つも無い",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号"
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "open-dangerous-action",
+      "why": "消せる・持ち出せるボタンに roles が無い",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "remove",
+            "type": "delete",
+            "label": "削除"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "destructive-without-confirm",
+      "why": "戻せないボタンなのに、押す前に何も聞かない",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "remove",
+            "type": "delete",
+            "label": "削除",
+            "roles": [
+              "admin"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "rule": "too-many-row-actions",
+      "why": "行に並べたボタンが多い",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "rowActions": [
+            "edit",
+            "delete",
+            "detail",
+            "print"
+          ],
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "detail",
+            "type": "plugin",
+            "plugin": "openDetail",
+            "label": "詳細"
+          },
+          {
+            "id": "print",
+            "type": "plugin",
+            "plugin": "printOne",
+            "label": "印刷"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "bulk-without-confirm",
+      "why": "まとめて実行するのに、押す前の確認が無い",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "一括承認",
+            "scope": "selection",
+            "roles": [
+              "admin"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "rule": "bulk-confirm-without-count",
+      "why": "確認は出すのに、何件動くのかを言っていない",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "一括承認",
+            "scope": "selection",
+            "roles": [
+              "admin"
+            ],
+            "confirm": {
+              "message": "承認します"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "bulk-without-error-message",
+      "why": "一括なのに、失敗したときの言い方が無い",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "一括承認",
+            "scope": "selection",
+            "roles": [
+              "admin"
+            ],
+            "confirm": {
+              "message": "{count} 件を承認します"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "bulk-destructive-without-danger",
+      "why": "消す側の一括なのに、確認の OK が赤くない",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "reject",
+            "type": "plugin",
+            "plugin": "rejectOrders",
+            "label": "一括却下",
+            "scope": "selection",
+            "roles": [
+              "admin"
+            ],
+            "confirm": {
+              "message": "{count} 件を却下します"
+            },
+            "onError": {
+              "message": "{failed} 件は却下できません"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "bulk-on-many-rows",
+      "why": "一括があるのに、1回で動く件数が決まっていない（1ページが多い）",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "pagination": {
+            "pageSize": 200
+          },
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "一括承認",
+            "scope": "selection",
+            "roles": [
+              "admin"
+            ],
+            "confirm": {
+              "message": "{count} 件を承認します"
+            },
+            "onError": {
+              "message": "{failedKeys} は失敗しました"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "bulk-without-batchsize",
+      "why": "待たせるのに区切りが無い（1回で動く件数が多い）",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "pagination": {
+            "pageSize": 200
+          },
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "一括承認",
+            "scope": "selection",
+            "roles": [
+              "admin"
+            ],
+            "maxRows": 300,
+            "confirm": {
+              "message": "{count} 件を承認します"
+            },
+            "onError": {
+              "message": "{failedKeys} は失敗しました"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "error-without-failed-keys",
+      "why": "一括の失敗の言い方が件数だけ（どの行が落ちたかを言っていない）",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "一括承認",
+            "scope": "selection",
+            "roles": [
+              "admin"
+            ],
+            "confirm": {
+              "message": "{count} 件を承認します"
+            },
+            "onError": {
+              "message": "{failed} 件は失敗しました"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "prompt-field-without-required",
+      "why": "押す前に聞くのに、その項目を必須にしていない（空欄で OK を押せる）",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "承認",
+            "roles": [
+              "admin"
+            ],
+            "prompt": {
+              "title": "却下の理由",
+              "fields": [
+                {
+                  "field": "reason",
+                  "label": "理由"
+                }
+              ]
+            },
+            "onSuccess": {
+              "message": "却下しました"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "prompt-without-success-message",
+      "why": "聞くだけ聞いて、終わったことを何も言わない",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "approve",
+            "type": "plugin",
+            "plugin": "approveOrders",
+            "label": "承認",
+            "roles": [
+              "admin"
+            ],
+            "prompt": {
+              "title": "却下の理由",
+              "fields": [
+                {
+                  "field": "reason",
+                  "label": "理由",
+                  "required": true
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "rule": "money-without-format",
+      "why": "金額らしい名前なのに見せ方が無い",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            },
+            {
+              "field": "amount",
+              "label": "金額",
+              "type": "number"
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "subtable-without-parent-key",
+      "why": "明細を別テーブルに持つのに、親を指す鍵が無い",
+      "readable": false,
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "required": true
+                },
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "source": {
+                    "repository": "orderLineRepository"
+                  },
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "report-without-totals",
+      "why": "帳票なのに合計が無い",
+      "page": {
+        "type": "report",
+        "id": "sales_report",
+        "title": "売上明細表",
+        "repository": "orderRepository",
+        "table": {
+          "columns": [
+            {
+              "field": "customer",
+              "label": "得意先"
+            },
+            {
+              "field": "amount",
+              "label": "金額",
+              "type": "number",
+              "format": "currency"
+            }
+          ]
+        },
+        "report": {
+          "sort": {
+            "field": "customer"
+          },
+          "groupBy": [
+            {
+              "field": "customer",
+              "label": "得意先"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "dates-without-compare",
+      "why": "「開始 ≤ 終了」の組が居るのに、向きを縛っていない",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "startDate",
+                  "label": "開始日",
+                  "type": "date",
+                  "required": true
+                },
+                {
+                  "field": "endDate",
+                  "label": "終了日",
+                  "type": "date"
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "total-without-compare",
+      "why": "合計を手で入れられるのに、明細の和と突き合わせていない",
+      "page": {
+        "type": "crud",
+        "id": "order_list",
+        "title": "受注一覧",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "search": {
+          "filters": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "fields": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    }
+                  ]
+                },
+                {
+                  "field": "total",
+                  "label": "合計",
+                  "type": "number",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規"
+          }
+        ]
+      }
+    }
+  ]
+}

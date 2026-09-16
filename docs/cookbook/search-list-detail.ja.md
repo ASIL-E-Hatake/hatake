@@ -48,7 +48,7 @@ runApp(MaterialApp(
 
 一覧側に `navigate` アクションを置き、`rowActions` から参照する。`$row.<項目>` で**その行の値**をルートに渡せる。
 
-```yaml
+```yaml context:searchPage
 - type: search
   id: order_search
   title: 受注照会
@@ -66,7 +66,7 @@ runApp(MaterialApp(
 
 遷移先の詳細ページは、受け取った `id` で `repository.findByKey` が呼ばれてレコードが読まれる:
 
-```yaml
+```yaml context:detailPage
 - type: detail
   id: order_detail
   title: 受注詳細
@@ -86,7 +86,7 @@ runApp(MaterialApp(
 
 ### 詳細から編集フォームへ
 `type: form` のページを足して、詳細側にもう1つ `navigate` を置くだけ。
-```yaml
+```yaml context:detailPage
 actions:
   - { id: edit, type: navigate, label: 編集, page: order_form, params: { id: "$record.orderNo" } }
 ```

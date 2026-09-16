@@ -11,7 +11,9 @@
 //      … CLI の `validate` にそのままかける（手引きの完成形は通るはず）
 //   2. ```yaml の**断片**（`columns:` だけ・`- { field: … }` だけ）
 //      … 丸ごとは検証できないので、**キー名だけ**を DSL の語彙（spec/reference.json）と
-//      突き合わせる。手引きが腐る一番の形（消えたキー・綴り違い）はこれで捕まる
+//      突き合わせる。手引きが腐る一番の形（消えたキー・綴り違い）はこれで捕まる。
+//      囲みに `context:<ノード>`（`context:table`）と書いてあれば、**書ける場所**まで
+//      見る（`filter` の下の `columns` は、キーは在るが書けない＝今までは通っていた）
 //   3. ```bash に出てくる `hatake <コマンド> --旗`
 //      … **`--help` に載っているか**を見て、**引く道具は実際に走らせる**
 //
@@ -44,7 +46,13 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-import { closestKey, parseIntent, parseProject } from "../dist/index.js";
+import {
+  checkFragmentInContext,
+  closestKey,
+  describeFragmentFinding,
+  parseIntent,
+  parseProject,
+} from "../dist/index.js";
 import { runCli } from "../dist/cli.js";
 
 /** 囲みの字。**この原本にも直接書かない**（自分の説明で自分を壊さないため）。 */
@@ -193,17 +201,26 @@ function checkPaper(body, where, problems, read, what) {
  * **YAML として読めない断片**（2か所の抜粋をつないで載せているもの）は、間違いとは
  * 限らないので**落とさない**。ただし黙って飛ばさず「見ていない」と言う。
  */
-async function checkFragment(body, where, keys, open, problems, skipped) {
+async function checkFragment(body, where, keys, open, problems, skipped, context) {
   const { parse } = await import("yaml");
   let node;
   try {
     node = parse(body);
   } catch {
     skipped.push(`${where}（yaml: YAML として読めない断片＝2か所の抜粋など）`);
-    return;
+    return false;
+  }
+  // 場所の印が在れば、**そこに書けるか**まで見る（キー名だけの突き合わせより強い＝
+  // どこにも無いキーも、この道で同じことを言う）。知らない場所の名前は落とす。
+  if (context !== undefined) {
+    const found = checkFragmentInContext(node, context, reference());
+    for (const one of found) {
+      problems.push(`${where}: ${describeFragmentFinding(one)}`);
+    }
+    return true;
   }
   const unknown = [...keysIn(node, open)].filter((one) => !keys.has(one)).sort();
-  if (unknown.length === 0) return;
+  if (unknown.length === 0) return false;
   const said = unknown.map((one) => {
     const near = closestKey(one, [...keys]);
     return near === null ? one : `${one}（${near} の間違い？）`;
@@ -212,6 +229,7 @@ async function checkFragment(body, where, keys, open, problems, skipped) {
     `${where}: DSL に無いキーが載っています: ${said.join(" / ")}` +
       `（hatake の定義でないなら、囲みに no-check:<理由> と書いてください）`,
   );
+  return false;
 }
 
 /**
@@ -375,7 +393,15 @@ async function main(argv) {
   const surface = published();
   const problems = [];
   const skipped = [];
-  const counts = { whole: 0, preamble: 0, intent: 0, fragment: 0, command: 0 };
+  const counts = {
+    whole: 0,
+    preamble: 0,
+    intent: 0,
+    fragment: 0,
+    // 断片のうち、**書ける場所まで**見たもの（`context:` の印が在る囲み）。
+    placed: 0,
+    command: 0,
+  };
   // 走らせたコマンドと、走らせなかった理由（黙って飛ばさない）。
   const ran = { count: 0, skipped: new Map() };
 
@@ -411,6 +437,8 @@ async function main(argv) {
         continue;
       }
       if (block.lang === "yaml" || block.lang === "yml") {
+        // 場所の印（`yaml context:table`）。書ける場所まで見るための1語。
+        const context = /(?:^|\s)context:([A-Za-z][\w.]*)/.exec(block.info)?.[1];
         // `...` は「ここは省いた」の印（読む人にもそう見える）。抜粋は丸ごとでは
         // 通らないので見ない＝**印を2つ持たない**（no-check を書かせない）。
         if (/(^|[\s{,])\.\.\.($|[\s},])/.test(block.body)) {
@@ -427,6 +455,14 @@ async function main(argv) {
         // ＝丸ごとで見せたいなら `dsl_version:` から書く、という決めごとでもある。
         if (/^(dsl_version|page):/.test(stripped)) {
           counts.whole += 1;
+          if (context !== undefined) {
+            // 丸ごとの定義は `validate` にかけている＝印は要らない（印が2つあると、
+            // 弱いほうだけ見て「見た」と言い出す）。
+            problems.push(
+              `${at}: 丸ごとの定義に context の印は要りません` +
+                `（validate にかけています）。`,
+            );
+          }
           checkDefinition(block.body, at, problems);
         } else if (/^project_version:/.test(stripped)) {
           counts.preamble += 1;
@@ -437,7 +473,16 @@ async function main(argv) {
           checkPaper(block.body, at, problems, parseIntent, "意図の1枚");
         } else {
           counts.fragment += 1;
-          await checkFragment(block.body, at, keys, open, problems, skipped);
+          const placed = await checkFragment(
+            block.body,
+            at,
+            keys,
+            open,
+            problems,
+            skipped,
+            context,
+          );
+          if (placed) counts.placed += 1;
         }
       } else if (block.lang === "bash") {
         counts.command += checkCommands(block.body, at, surface, problems, ran);
@@ -448,10 +493,17 @@ async function main(argv) {
   console.log(
     `手引きを ${files.length} 枚読みました（提案は将来の DSL なので見ていません）` +
       `（定義 ${counts.whole}・前書き ${counts.preamble}・意図 ${counts.intent}・` +
-      `断片 ${counts.fragment}・コマンド ${counts.command}・` +
+      `断片 ${counts.fragment}（うち書ける場所まで見た ${counts.placed}）・` +
+      `コマンド ${counts.command}・` +
       `飛ばした ${skipped.length}）。`,
   );
   for (const one of skipped) console.log(`   飛ばした: ${one}`);
+  if (counts.fragment > counts.placed) {
+    console.log(
+      `   印の無い断片 ${counts.fragment - counts.placed} 個は**キー名だけ**を見ています` +
+        "（囲みに context:<ノード> と書けば、その場所に書けるかまで見ます）。",
+    );
+  }
   console.log(
     `   引く道具を ${ran.count} 回**実際に走らせました**（終了コードだけを見ています）。`,
   );

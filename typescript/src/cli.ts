@@ -23,6 +23,7 @@ import {
   PITFALLS_FILE,
   QUESTION_KINDS_FILE,
   RESPONSIBILITY_FILE,
+  RULE_CASES_FILE,
   SCHEMA_FILE,
 } from "./specDir.js";
 import {
@@ -117,6 +118,12 @@ import { minimizeSource, renderMinimize } from "./minimize.js";
 import { wireApp } from "./wire.js";
 import { mergeWiring, renderWireMerge } from "./wireMerge.js";
 import { renderWireTodo, wireTodo } from "./wireTodo.js";
+import {
+  type RuleCaseCatalog,
+  type RuleCaseEntry,
+  renderRuleCase,
+  ruleCaseEntries,
+} from "./ruleCases.js";
 import {
   filledReport,
   hasUnfilled,
@@ -569,6 +576,9 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       ここに出るのは**規則そのもの**の話で、1件ごとの「どこで・何が」は validate と
       advise が定義を見て言う（綴り違いの候補・件数・紙の実寸はその場でしか出せない）。
       **人が決めること**（排他・採番・端数…）はどちらにも出てこない＝hatake ask の担当。
+      規則名を1つ渡すと、**その規則を実際に出す定義**も一緒に出る（説明と実例を
+      1往復で渡す）。その定義が本当にその規則を出すことは CI が全部走らせて
+      確かめている＝古い例が残らない。
 
   hatake advise <file> [--rules team.json] [--project hatake.project.yaml]
                        [--registry hatake-registry.json] [--project-as-error]
@@ -2352,11 +2362,52 @@ function rules(positional: string[], flags: Args["flags"], io: CliIo): number {
     warnings: kind === "advice" ? [] : catalog.warnings,
     advice: kind === "warning" ? [] : catalog.advice,
   };
+  // **1件だけ引いたとき**は、その規則を実際に出す定義も添える（説明と実例を1往復で
+  // 渡す）。全部出すときは付けない＝114 件ぶんの定義は読み物にならない。
+  const one = positional[0] === undefined ? undefined : ruleCase(positional[0], flags, io);
   if (flags.json === true) {
-    io.out(JSON.stringify(mine, null, 2));
+    io.out(
+      JSON.stringify(
+        one === undefined ? mine : { ...mine, case: one },
+        null,
+        2,
+      ),
+    );
     return 0;
   }
-  return output(renderRules(mine), flags, io);
+  const text =
+    one === undefined
+      ? renderRules(mine)
+      : `${renderRules(mine)}\n\n${renderRuleCase(one)}`;
+  return output(text, flags, io);
+}
+
+/**
+ * その規則を実際に出す定義（`spec/rule-cases.json` か `spec/failures.json`）。
+ *
+ * spec/ が無い所でも `rules` は引ける必要があるので、読めなければ**添えないだけ**
+ * （引けなかったことにはしない）。
+ */
+function ruleCase(
+  rule: string,
+  flags: Args["flags"],
+  io: CliIo,
+): RuleCaseEntry | undefined {
+  const dir = findSpecDir(str(flags, "spec"));
+  if (dir === null) return undefined;
+  try {
+    const cases = JSON.parse(
+      io.readFile(join(dir, RULE_CASES_FILE)),
+    ) as RuleCaseCatalog;
+    const { entries } = ruleCaseEntries({
+      rules: rulesCatalog(),
+      cases,
+      failures: loadFailures(flags, io),
+    });
+    return entries.find((entry) => entry.rule === rule);
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -3704,7 +3755,7 @@ function filled(
       io.err(
         `中身が空のまま登録されているのが ${hollow} 件あります` +
           "（落ちないので気づけません。何もしないのが正しいなら、そう分かる中身を" +
-          "書いてください）。",
+          "書いてください）。hatake wire --merge --todo の一覧にも入ります。",
       );
     }
   }

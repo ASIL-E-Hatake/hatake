@@ -41,7 +41,7 @@ inv.total;    // 全体: net 4105 / tax 388 / gross 4493
 
 計算は Dart/TS/Java の関数で行い、**表示整形は定義側**に任せる。
 
-```yaml
+```yaml context:table
 columns:
   - { field: net,   label: 税抜, type: number, format: currency, config: { symbol: "¥" } }
   - { field: tax,   label: 消費税, type: number, format: currency, config: { symbol: "¥" } }
@@ -50,7 +50,7 @@ columns:
 
 小計を定義だけで出したいなら計算項目が使える（税計算そのものは上の関数で）:
 
-```yaml
+```yaml context:field
 - { field: total, label: 合計, computed: { op: sum, fields: [net, tax] } }
 ```
 

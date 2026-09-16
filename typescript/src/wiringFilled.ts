@@ -153,7 +153,13 @@ export const hasUnfilled = (report: FilledReport): boolean =>
       one.state === "pending" || one.state === "missing" || one.state === "hollow",
   ) || report.loose.length > 0;
 
-const STATE_LABEL: Record<FilledState, string> = {
+/**
+ * 状態の言葉（**ここが正**）。
+ *
+ * 配線を渡す側（`wire --merge --todo`）も同じ字を使う＝「数える所」と「渡す所」で
+ * 違うことを言わない。
+ */
+export const STATE_LABEL: Record<FilledState, string> = {
   pending: "TODO のまま",
   hollow: "中身が無い",
   missing: "登録が無い",
@@ -161,7 +167,8 @@ const STATE_LABEL: Record<FilledState, string> = {
   filled: "埋まっている",
 };
 
-const STATE_WHY: Record<FilledState, string> = {
+/** 埋めるまで何が起きるか（**ここが正**。[STATE_LABEL] と同じ理由）。 */
+export const STATE_WHY: Record<FilledState, string> = {
   pending: "動かすと UnimplementedError で落ちます（hatake wire が足した所のまま）",
   hollow:
     "本体が空です＝**落ちないので気づけません**（押しても何も起きない）。" +
