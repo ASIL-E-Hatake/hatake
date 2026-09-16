@@ -1,6 +1,7 @@
 import 'package:hatake_core/hatake_core.dart';
 
 import 'definition_parser.dart';
+import 'dsl_version_gate.dart';
 import 'map_readers.dart';
 import 'parse_exception.dart';
 
@@ -9,14 +10,14 @@ import 'parse_exception.dart';
 /// The map may be the whole document (`{dsl_version, app: {...}}`) or the app
 /// map directly. Pages are parsed by the shared [parsePageMap].
 AppDefinition parseAppMap(Map<String, Object?> root) {
-  final dslVersion = root.optString('dsl_version');
+  final dslVersion = acceptDslVersion(root.optString('dsl_version'));
   final app = root.optMap('app') ?? root;
   final menu = app.optList('menu');
   final pages = app.optList('pages');
   return AppDefinition(
     id: app.reqString('id', at: 'app.id'),
     title: app.reqString('title', at: 'app.title'),
-    dslVersion: dslVersion ?? kDslVersion,
+    dslVersion: dslVersion,
     home: app.optString('home'),
     navigation: app.optString('navigation') ?? AppNavigation.single,
     // 配りうる役割の**語彙**（`app.roles`）。3版で同じキーを読む。

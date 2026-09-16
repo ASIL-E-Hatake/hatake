@@ -1882,6 +1882,27 @@
       }
     },
     {
+      "rule": "dsl-version-newer",
+      "why": "この版より新しい minor を名乗っている（読めるが、新しい書き方は効かない）",
+      "document": {
+        "dsl_version": "1.1",
+        "page": {
+          "type": "search",
+          "id": "order_search",
+          "title": "受注照会",
+          "repository": "orderRepository",
+          "table": {
+            "columns": [
+              {
+                "field": "orderNo",
+                "label": "受注番号"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
       "rule": "duplicate-action-id",
       "why": "同じ id のボタンを2つ書いた（後ろの1つは使われない）",
       "page": {

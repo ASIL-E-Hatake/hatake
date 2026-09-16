@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ASIL-E-Hatake/hatake/spec/hatake-page.schema.json",
+  "$id": "https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json",
   "title": "hatake page definition",
   "description": "A hatake document: either a single `page` or an `app` (pages + navigation).",
   "type": "object",
@@ -20,8 +20,9 @@
   "properties": {
     "dsl_version": {
       "type": "string",
-      "description": "DSL version the document conforms to.",
+      "description": "DSL version the document conforms to. Only the major version this schema describes (1.x) is accepted: a document written for another major version means something different, so it is rejected rather than silently read as 1.x. The parsers reject the same inputs (spec/conformance/dsl_version.json).",
       "default": "1.0",
+      "pattern": "^1\\.[0-9]+$",
       "examples": [
         "1.0"
       ]

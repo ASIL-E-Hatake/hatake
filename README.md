@@ -38,7 +38,7 @@ Business Definition (YAML / JSON / 各言語DSL)
 | [`typescript/`](typescript/README.md) | **TypeScript 版**（バックエンド：API ロジック） | ✅ scaffold（core + バリデーション + クエリ組み立て） |
 | [`docs/`](docs/index.ja.md) | **ドキュメント**（[目次](docs/index.ja.md) / [導入](docs/getting-started.ja.md) / [レシピ集](docs/cookbook/) / [AIチートシート](docs/api-cheatsheet.ja.md) / 紹介記事） | ✅ |
 
-全部の版が同じ `spec/` を共通ソースにして、同じ定義から各言語で画面を出す。パッケージ名も揃える（Dart `hatake_core` / npm `@hatake/core` / Maven `io.github.asil-e-hatake:hatake-core` …）。どの言語から来ても「hatake ね」で通じるように。
+全部の版が同じ `spec/` を共通ソースにして、同じ定義から各言語で画面を出す。名前も揃える（Dart `hatake_core` / npm `@hatake-fw/api` / Maven `io.github.asil-e-hatake:hatake-core` …）＝**どこかに必ず `hatake` が出て、役割は名前で分かる**（→ [名前の決めごと](docs/compat.ja.md#名前の決めごと)）。どの言語から来ても「hatake ね」で通じるように。
 
 ## ドキュメント
 
@@ -52,6 +52,8 @@ Business Definition (YAML / JSON / 各言語DSL)
 | [ガイド](docs/guide/) | [仕組みと責務分担](docs/guide/concepts.ja.md) / [ページ種別の選び方](docs/guide/page-types.ja.md) / [入力検証](docs/guide/validation.ja.md) / [バックエンド連携](docs/guide/backend.ja.md) |
 | [AI チートシート](docs/api-cheatsheet.ja.md) | 定義の書き方を1枚に圧縮（AI に渡すならこれ） |
 | [図解](docs/diagrams/README.ja.md) | 定義から画面まで / データの流れ / 層の責務（絵は生成物で、元はテキスト） |
+| [1.0 の約束](docs/compat.ja.md) | 何を凍らせて、何を凍らせないか（DSL の版・診断 id・終了コード・`--json` の形・版の足並み） |
+| [変更の記録](CHANGELOG.md) | 版ごとに何が変わったか（3版ぶんを1枚で） |
 
 ## ざっとイメージ
 
@@ -107,9 +109,10 @@ CrudPage / SearchPage に対応。検索・一覧・ページング・CRUD・バ
 どちらも `core`（定義モデル + YAML/JSON パーサ）、`FormValidator`（サーバ側バリデーション）、`QueryBuilder`（検索フィルタ + params → フレームワーク非依存の `QuerySpec`。フィルタに無い項目は弾く許可リスト方式）、API の形の生成（`DtoSpec` → JSON Schema / OpenAPI 3.1 / ネイティブ型）まで。ORM 依存は持たず、JPA/Prisma 等への変換は opt-in アダプタの領分。YAML↔JSON 収束もテスト済み。詳しくは [`java/README.md`](java/README.md) / [`typescript/README.md`](typescript/README.md)。
 
 ### CLI（`npx hatake`）
-定義を「書いた → すぐ検証」にするやつ。TypeScript 版に同梱。
+定義を「書いた → すぐ検証」にするやつ。TypeScript 版（`@hatake-fw/api`）に同梱。
 
 ```bash
+npm i -D @hatake-fw/api                    # 入れておけば npx はローカルの bin を使う
 npx hatake validate spec/examples/*.yaml   # strict（知らないキーを弾く）。問題があれば終了コード 1
 npx hatake new crud --id customer_master --title 顧客マスタ
 npx hatake reference rowsPerPage           # このキーどこに書くの？型は？既定値は？

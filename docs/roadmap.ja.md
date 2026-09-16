@@ -133,7 +133,7 @@
 3. **収束テスト**（YAML↔JSON、あれば DSL）
 4. 用途に応じて **FormValidator**（バックエンド）／ **Renderer**（フロント）
 5. **コンフォーマンス・スイート**を通す
-6. パッケージ名を揃える（`hatake_core` / `@hatake/core` / `io.github.asil-e-hatake:hatake-core` / `hatake-core`(py) / `hatake_core`(rust crate)）
+6. 名前を[決めごと](compat.ja.md#名前の決めごと)に合わせる（`hatake_core` / `@hatake-fw/<役割>` / `io.github.asil-e-hatake:hatake-core` / `hatake-core`(py) / `hatake_core`(rust crate)）
 
 想定用途:
 - **Python** … バックエンド（FastAPI/Django 連携は opt-in アダプタ）、データ処理・バッチ。バリデーション + QuerySpec が主。
@@ -144,13 +144,13 @@
 
 各エディションの配り方。Dart が主。Java/TS は「まず入れられる状態」を先に、本格公開は必要時。実 publish は人間が実施（CI の tag 公開にする場合も secrets は畠山氏管理）。
 
-| エディション | レジストリ | パッケージ名（案） | 状態 |
+| エディション | レジストリ | パッケージ名（案） | 名前の状態（2026-09-16 に確認） |
 |---|---|---|---|
-| Dart/Flutter | pub.dev | `hatake_core` ほか | 準備済（未公開） |
-| TypeScript | npm | `@hatake/core`（スコープ確保が要る） | TODO |
-| Java | JitPack / GitHub Packages →（本格化で）Maven Central | `io.github.asil-e-hatake:hatake-core`（下記注意） | TODO |
+| Dart/Flutter | pub.dev | `hatake_core` ほか | **9つ全部空き**（`hatake` / `_core` / `_dsl` / `_yaml` / `_material` / `_http` / `_print` / `_test` / `_encoding`）。pub.dev に**予約の仕組みは無い**＝押さえるには publish するしかなく、**名前は消せない**（retract / discontinued にはできる）ので、1.0-rc でまとめて出す |
+| TypeScript | npm | **`@hatake-fw/api`** | **確保済み**（org `hatake-fw`）。無印 `hatake` は 2024-05-26 に別人が publish 済み、`@hatake` スコープも取得不可だった。保険に `@asil-e-hatake` も確保してある。**スコープに修飾語を付けない／名前は役割**は [名前の決めごと](compat.ja.md#名前の決めごと)。いまの TS 版は**サーバ側のロジック＋道具**なので `core` ではなく `api`（Renderer を足す段で `core` を切り出せるように） |
+| Java | JitPack / GitHub Packages →（本格化で）Maven Central | `io.github.asil-e-hatake:hatake-core`（下記注意） | **確保済み**（GitHub アカウントの所有で自動検証されるので、何もしなくてよい） |
 
-- **TS (npm)**: `tsc` で `dist/`（JS + `.d.ts`）を吐いて `npm publish --access public`。consumer は `npm i @hatake/core`。**`spec/` を同梱すること**（`hatake reference` と MCP サーバが実行時に `spec/hatake-page.schema.json` と `spec/examples/` を読む。今はリポジトリを持っている前提で上へ探しに行き、無ければ場所を渡してもらう作り）。npm スコープ `@hatake` が取れなければ `@asil-e-hatake/*` か 無スコープ `hatake-core`。README は npmjs にそのまま出る。
+- **TS (npm)**: `tsc` で `dist/`（JS + `.d.ts`）を吐いて `npm publish --access public`。consumer は `npm i @hatake-fw/api`。**`spec/` を同梱すること**（`hatake reference` と MCP サーバが実行時に `spec/hatake-page.schema.json` と `spec/examples/` を読む。今はリポジトリを持っている前提で上へ探しに行き、無ければ場所を渡してもらう作り）。スコープは `@hatake-fw` で確保済み（→ [名前の決めごと](compat.ja.md#名前の決めごと)）。README は npmjs にそのまま出る。
 - **Java**: モノレポの `java/` から publish。
   - 早期は **JitPack**（GitHub タグから即配布・publisher 設定ほぼゼロ。※モノレポの subdir 指定が要る）か **GitHub Packages (Maven)**（publisher は楽・consumer 側が認証設定を要する＝フリクションあり）。
   - 本格化で **Maven Central**（consumer フリクション最小だが、名前空間検証＋GPG 署名＋sources/javadoc jar が必要）。
@@ -161,6 +161,32 @@
 - **英語版チートシート**（[`docs/api-cheatsheet.md`](api-cheatsheet.md)）＋ **[`llms-en.txt`](../llms-en.txt)** … ✅ 追加済み。組み込みの名前一覧は日本語版と同じ印（`<!-- vocab: … -->`）でスキーマと突き合わせているので、片方だけ古くなることはない。日本語のみの文書へのリンクには `(ja)` を明記。
 - 英語版のガイド（`guide/*.md`）・レシピは未。需要が出てから（チートシート＋機械可読ファイルで定義は書けるので優先度は低い）。
 - 各パッケージ公開時、README にチートシート要約 or リンクを入れる。
+
+## 1.0 の前提（凍結チェックリスト）
+
+**この節は補充しない。** 空になった日が公開の日。
+
+[これから](#これから優先度つき)の P0（3本）とは**別のレーン**で、機能の優先度とは
+比べない。同じ土俵に置くと、機能は毎回勝つ（1本入れると3本に補充されるので、
+公開の日が来ない）。
+
+ここに載るのは**配ったら直せなくなるもの**だけ。何を凍らせて何を凍らせないかは
+[1.0 の約束](compat.ja.md)。**git の tag で配るだけでも、id と終了コードは相手の CI に
+埋まる**ので、レジストリに出すかどうかとは別に要る。
+
+| # | 項目 | 状態 |
+|---|---|---|
+| 1 | **知らない `dsl_version` を落とす**（3版＋JSON Schema・共有フィクスチャ） | ✅ |
+| 2 | **診断 id を凍らせる**（`spec/rule-ids.json`・試験が完全一致を見る） | ✅ |
+| 3 | **終了コードの約束**（`0` / `1` の意味・`1` の意味は変えない） | ✅ |
+| 4 | **`--json` の形の約束**（足すのは互換・消さない・型を変えない） | ✅ |
+| 5 | **スキーマの `$id`**（page だけ引けない URL を名乗っていた） | ✅ |
+| 6 | **CHANGELOG と版の足並み**（3版は同じ番号・DSL の版は別） | ✅ |
+| 7 | **公開 API の線引き** | ⚠️ **半分**。広がったら気づく形は入った（`spec/public-api.ts.json`）が、**TypeScript は実行時に見えるものだけで 586 個**出ている。全部約束するのか、口を絞るのかは**未決**（決めるのは業務の判断） |
+| 8 | **名前の確保** | ✅ npm の org `hatake-fw` を確保し、パッケージを `@hatake-fw/api` に確定（`core` と名乗らないのは、Renderer を足す段で割れるようにするため）。命名の規則も [1.0 の約束](compat.ja.md#名前の決めごと)に書いた |
+
+残りは #7 の1件だけ。**何を約束するかは業務の判断**なので、機械にはできない
+（いまは「広がったら気づく」だけにしてある）。
 
 ## これから（優先度つき）
 

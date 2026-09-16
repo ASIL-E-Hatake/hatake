@@ -6,6 +6,7 @@
 
 | ファイル | 対象 | ケースの形 |
 |---|---|---|
+| `dsl_version.json` | DSL の版の受け取り方（TS・Flutter・Java。JSON Schema の `pattern` も同じものを弾く） | `{ current, warningRule, cases: [{ input, verdict, kind }] }`。`verdict` は `ok`／`warn`（1件言うが読む）／`error`（解析を落とす）で、`kind` は理由の印（`default` / `same` / `newer-minor` / `unknown-major` / `malformed`）。**文面は版ごとの言葉でよいが、印は一致すること**＝ズレると同じ定義が版によって通ったり落ちたりする。→ [1.0 の約束](../../docs/compat.ja.md#dsl-の版) |
 | `formatters.json` | FormatterRegistry | `{ name, value, options?, expected }` |
 | `converters.json` | ConverterRegistry | `{ name, value, expected }`（数値も文字列比較） |
 | `validators.json` | ValidatorRegistry | `{ type, params?, value, valid, message? }` |

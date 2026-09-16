@@ -49,6 +49,8 @@ import {
 import { roleNames } from "./roles.js";
 import { closestKey } from "./strictKeys.js";
 import { WARNING_RULES } from "./warningRules.js";
+import { checkDslVersion } from "./dslVersion.js";
+import { kDslVersion } from "./definition.js";
 import { COMPARE_OPERATORS } from "./validators.js";
 
 /** 構造の間違い1つ。`pitfall` があれば対照表（spec/pitfalls.json）を引ける。 */
@@ -126,6 +128,18 @@ export function findWarnings(
   options: WarningOptions = {},
 ): DefinitionWarning[] {
   const found: DefinitionWarning[] = [];
+  // DSL の版。**落とす側（知らない major・形が違う）は解析の担当**で、ここに来る頃には
+  // 例外になっている。ここで言うのは「読めたが、この版より新しい」だけ＝読めた所までは
+  // 動くが、新しい版で足された書き方は効かない。
+  const version = checkDslVersion(str(document.dsl_version));
+  if (version.warn) {
+    warn(
+      found,
+      "dsl-version-newer",
+      "dsl_version",
+      `この定義は DSL ${version.version} 向けですが、この版は ${kDslVersion} までです。`,
+    );
+  }
   const app = isDict(document.app) ? document.app : undefined;
   const page = isDict(document.page) ? document.page : undefined;
   // このアプリに出てくる役割名（`roles` に書いてあるものの全部）。役割名の綴り違いは

@@ -226,6 +226,15 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
       "一覧のある画面（`crud` / `master`）に置くか、`type: navigate` で入力画面へ" +
       "移してください（`form` / `wizard` には保存ボタンが最初から出ます）。",
   },
+  "dsl-version-newer": {
+    what: "この版より新しい DSL の版",
+    happens:
+      "読めた所までは読みますが、**新しい版で足された書き方は効きません**"
+      + "（知らないキーは strict が別に落とします）。",
+    fix:
+      "定義の dsl_version をこの版に下げるか、道具のほうを上げてください"
+      + "（major が違うときは読まずに落とします）。",
+  },
   "duplicate-action-id": {
     what: "重複したアクション id",
     happens: "id で引くので、後ろの1つは使われません。",

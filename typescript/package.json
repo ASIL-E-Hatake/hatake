@@ -1,5 +1,5 @@
 {
-  "name": "@hatake/core",
+  "name": "@hatake-fw/api",
   "version": "0.0.1",
   "description": "Core definitions + parser + server-side validation for hatake (TypeScript edition). Consumes the language-agnostic hatake DSL.",
   "license": "Apache-2.0",
