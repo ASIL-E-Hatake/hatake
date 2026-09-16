@@ -51,7 +51,7 @@ jobs:
         with: { node-version: "22" }
 
       - name: hatake を入れる
-        run: npm install --no-save @hatake/core
+        run: npm install --no-save @hatake-fw/api
 
       - name: 変わった画面を説明する
         id: explain

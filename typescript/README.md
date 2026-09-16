@@ -1,4 +1,4 @@
-# @hatake/core — TypeScript 版 🌱
+# @hatake-fw/api — TypeScript 版 🌱
 
 [hatake](../README.md) の **TypeScript 版**。フロントで画面を描く Flutter 版と違って、こっちは**バックエンド寄り**。同じ [DSL 仕様](../spec/dsl-spec.ja.md) の定義を読んで、**API のロジック**（サーバ側バリデーション・クエリ組み立て・API の形の生成）に使う。
 
@@ -17,7 +17,7 @@
 - **FormatterRegistry / ConverterRegistry / 集約 / 日本企業向けユーティリティ** … Flutter版と同名・同挙動。formatter（currency / percent / date / wareki / postal / mask）、converter（toHankaku / toZenkaku / hiraToKata / kataToHira / trim / collapseSpaces / parseNumber）、`AggregateRegistry`（count / sum / avg / min / max）、消費税・年度・和暦・営業日・年齢。
 
 ```ts
-import { parsePageYaml, FormValidator } from "@hatake/core";
+import { parsePageYaml, FormValidator } from "@hatake-fw/api";
 
 const page = parsePageYaml(yamlText, { strict: true });
 const result = new FormValidator().validate(page.form, requestBody);
@@ -25,7 +25,7 @@ if (!result.valid) return res.status(400).json({ errors: result.errors });
 ```
 
 ```ts
-import { parsePageYaml, buildQuery } from "@hatake/core";
+import { parsePageYaml, buildQuery } from "@hatake-fw/api";
 
 const page = parsePageYaml(yamlText);
 const spec = buildQuery(page.search, req.query); // { conditions, sort, page, pageSize }
@@ -35,6 +35,19 @@ const spec = buildQuery(page.search, req.query); // { conditions, sort, page, pa
 ## CLI
 
 定義を「書いた → すぐ検証」の1コマンドにするやつ。人にも AI にも同じ入口。
+
+**先に入れる**（入れておけば `npx hatake …` はローカルの bin を使う）:
+
+```bash
+npm i -D @hatake-fw/api
+```
+
+何も入れずに1回だけ試すなら、パッケージを名指しする（bin が2つあるので、素の
+`npx @hatake-fw/api` ではどちらを動かすか決まらない）:
+
+```bash
+npx --package @hatake-fw/api hatake validate page.yaml
+```
 
 ```bash
 npx hatake check page.yaml                   # 1往復で1本（事実・読み返し・好み・人が決めること）

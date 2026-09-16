@@ -1,5 +1,6 @@
 import { parse as parseYamlText } from "yaml";
 import { findUnknownKeys, type UnknownKey } from "./strictKeys.js";
+import { checkDslVersion, dslVersionMessage } from "./dslVersion.js";
 import {
   ActionOpens,
   ActionScopes,
@@ -157,9 +158,21 @@ function fromDecoded(
   return page;
 }
 
+/**
+ * `dsl_version` を受け取る（**読めない版は落とす**）。
+ *
+ * 判定は [checkDslVersion]（3版で同じ）。ここが持つのは「落とし方」だけ。新しい minor は
+ * 落とさずに読む＝言うのは検証の側（`dsl-version-newer`）で、解析は黙って通す。
+ */
+export function acceptDslVersion(raw: string | undefined): string {
+  const verdict = checkDslVersion(raw);
+  if (verdict.fatal) throw new DefinitionParseError(dslVersionMessage(verdict));
+  return verdict.version;
+}
+
 /** The single convergence point shared by the YAML and JSON entry points. */
 export function parsePageMap(root: Dict): PageDefinition {
-  const dslVersion = optString(root, "dsl_version") ?? kDslVersion;
+  const dslVersion = acceptDslVersion(optString(root, "dsl_version"));
   const page = optDict(root, "page") ?? root;
   const type = reqString(page, "type", "page.type");
 

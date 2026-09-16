@@ -1330,7 +1330,7 @@
           "key": "dsl_version",
           "type": "string",
           "required": false,
-          "description": "DSL version the document conforms to.",
+          "description": "DSL version the document conforms to. Only the major version this schema describes (1.x) is accepted: a document written for another major version means something different, so it is rejected rather than silently read as 1.x. The parsers reject the same inputs (spec/conformance/dsl_version.json).",
           "default": "1.0",
           "values": [
             "1.0"

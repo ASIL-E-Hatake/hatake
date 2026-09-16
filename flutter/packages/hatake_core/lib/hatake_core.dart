@@ -13,6 +13,7 @@ export 'src/definition/aggregate_ops.dart';
 export 'src/definition/chart_kinds.dart';
 export 'src/definition/column_types.dart';
 export 'src/definition/dashboard_item_types.dart';
+export 'src/definition/dsl_version.dart';
 export 'src/definition/field_types.dart';
 export 'src/definition/filter_operators.dart';
 export 'src/definition/validator_types.dart';

@@ -1,0 +1,20 @@
+{
+  "_comment": "DSL の版（`dsl_version`）の受け取り方を3版で固定する。**公開すると直せなくなる**決めごとなので、ここが正。いちばん怖いのは「知らない版を黙って今の版として読む」こと＝将来 2.0 を出したとき、世に出た 1.x の道具が 2.0 の定義を**画面は出るのに意味が違う**形で読む。だから知らない major は**落とす**（警告にしない。警告は読まれない）。同じ major の新しい minor は**読んで警告する**＝minor は足すだけと決めているので、知らないキーは strict が別に落とす。形が違うものは推し量らずに落とす（`1` を `1.0` と読むと、次に `1` の意味を決められなくなる）。",
+  "current": "1.0",
+  "_comment_verdict": "`verdict` は3つ。`ok`＝黙って通す / `warn`＝通すが警告を1件出す（規則名は `warningRule`）/ `error`＝解析を落とす（例外・パースエラー）。`kind` は理由の印で、文面は版ごとの言葉でよいが**印は一致すること**。",
+  "warningRule": "dsl-version-newer",
+  "cases": [
+    { "input": null, "verdict": "ok", "kind": "default", "_why": "書かなくてよい（既定は current）。今までの定義が全部落ちると誰も上げられない" },
+    { "input": "1.0", "verdict": "ok", "kind": "same" },
+    { "input": "1.1", "verdict": "warn", "kind": "newer-minor", "_why": "minor は足すだけ＝読める。読めないキーは strict の担当" },
+    { "input": "1.12", "verdict": "warn", "kind": "newer-minor", "_why": "minor は数として比べる（文字列で比べると 1.12 < 1.2 になる）" },
+    { "input": "2.0", "verdict": "error", "kind": "unknown-major", "_why": "ここを通すと、黙って別の意味で読む" },
+    { "input": "0.9", "verdict": "error", "kind": "unknown-major", "_why": "古い major も知らない＝落とす。1.0 より前は世に出していない" },
+    { "input": "1", "verdict": "error", "kind": "malformed", "_why": "`<major>.<minor>` を要求する。1 を 1.0 と読むと、次に 1 の意味を決められなくなる" },
+    { "input": "1.0.0", "verdict": "error", "kind": "malformed", "_why": "3つ目の数を持たない（持つなら持つと決める日が要る）" },
+    { "input": "v1.0", "verdict": "error", "kind": "malformed" },
+    { "input": "1.0 ", "verdict": "error", "kind": "malformed", "_why": "前後の空白も落とす。黙って削ると、削ったことを誰も知らない" },
+    { "input": "abc", "verdict": "error", "kind": "malformed" },
+    { "input": "", "verdict": "error", "kind": "malformed", "_why": "空は「書いていない」ではない（書いて空にしたのは事故）" }
+  ]
+}

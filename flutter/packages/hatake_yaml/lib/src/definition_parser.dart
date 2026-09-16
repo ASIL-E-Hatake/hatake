@@ -1,5 +1,6 @@
 import 'package:hatake_core/hatake_core.dart';
 
+import 'dsl_version_gate.dart';
 import 'map_readers.dart';
 import 'parse_exception.dart';
 
@@ -9,7 +10,7 @@ import 'parse_exception.dart';
 /// the page map directly. This is the single convergence point shared by the
 /// YAML and JSON entry points.
 PageDefinition parsePageMap(Map<String, Object?> root) {
-  final dslVersion = root.optString('dsl_version');
+  final dslVersion = acceptDslVersion(root.optString('dsl_version'));
   final page = root.optMap('page') ?? root;
   final type = page.reqString('type', at: 'page.type');
 
@@ -39,11 +40,11 @@ PageDefinition parsePageMap(Map<String, Object?> root) {
   }
 }
 
-FormPageDefinition _parseFormPage(Map<String, Object?> m, String? dslVersion) {
+FormPageDefinition _parseFormPage(Map<String, Object?> m, String dslVersion) {
   return FormPageDefinition(
     id: m.reqString('id', at: 'page.id'),
     title: m.reqString('title', at: 'page.title'),
-    dslVersion: dslVersion ?? kDslVersion,
+    dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
     keyField: m.optString('key') ?? 'id',
     form: _parseForm(m.optMap('form')),
@@ -56,7 +57,7 @@ FormPageDefinition _parseFormPage(Map<String, Object?> m, String? dslVersion) {
 
 WizardPageDefinition _parseWizardPage(
   Map<String, Object?> m,
-  String? dslVersion,
+  String dslVersion,
 ) {
   final steps = m.optList('steps');
   if (steps.isEmpty) {
@@ -68,7 +69,7 @@ WizardPageDefinition _parseWizardPage(
   return WizardPageDefinition(
     id: m.reqString('id', at: 'page.id'),
     title: m.reqString('title', at: 'page.title'),
-    dslVersion: dslVersion ?? kDslVersion,
+    dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
     keyField: m.optString('key') ?? 'id',
     steps: [
@@ -103,12 +104,12 @@ WizardStepDefinition _parseWizardStep(Map<String, Object?> m, int index) {
 /// `report` for the printing structure.
 ReportPageDefinition _parseReportPage(
   Map<String, Object?> m,
-  String? dslVersion,
+  String dslVersion,
 ) {
   return ReportPageDefinition(
     id: m.reqString('id', at: 'page.id'),
     title: m.reqString('title', at: 'page.title'),
-    dslVersion: dslVersion ?? kDslVersion,
+    dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
     search: _parseSearch(m.optMap('search')),
     table: _parseTable(m.optMap('table')),
@@ -169,7 +170,7 @@ ReportTotal _parseReportTotal(Map<String, Object?> m, int index) {
 /// only the default for items that declare none.
 DashboardPageDefinition _parseDashboardPage(
   Map<String, Object?> m,
-  String? dslVersion,
+  String dslVersion,
 ) {
   final items = m.optList('items');
   if (items.isEmpty) {
@@ -181,7 +182,7 @@ DashboardPageDefinition _parseDashboardPage(
   return DashboardPageDefinition(
     id: m.reqString('id', at: 'page.id'),
     title: m.reqString('title', at: 'page.title'),
-    dslVersion: dslVersion ?? kDslVersion,
+    dslVersion: dslVersion,
     repository: m.optString('repository'),
     layout: _parseLayout(m.optMap('layout'), orElse: 2),
     search: _parseSearch(m.optMap('search')),
@@ -245,12 +246,12 @@ ChartDefinition? _parseChart(Map<String, Object?>? m, String at) {
 
 MasterPageDefinition _parseMasterPage(
   Map<String, Object?> m,
-  String? dslVersion,
+  String dslVersion,
 ) {
   return MasterPageDefinition(
     id: m.reqString('id', at: 'page.id'),
     title: m.reqString('title', at: 'page.title'),
-    dslVersion: dslVersion ?? kDslVersion,
+    dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
     keyField: m.optString('key') ?? 'id',
     search: _parseSearch(m.optMap('search')),
@@ -265,12 +266,12 @@ MasterPageDefinition _parseMasterPage(
 
 DetailPageDefinition _parseDetailPage(
   Map<String, Object?> m,
-  String? dslVersion,
+  String dslVersion,
 ) {
   return DetailPageDefinition(
     id: m.reqString('id', at: 'page.id'),
     title: m.reqString('title', at: 'page.title'),
-    dslVersion: dslVersion ?? kDslVersion,
+    dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
     keyField: m.optString('key') ?? 'id',
     form: _parseForm(m.optMap('form')),
@@ -283,12 +284,12 @@ DetailPageDefinition _parseDetailPage(
 
 SearchPageDefinition _parseSearchPage(
   Map<String, Object?> m,
-  String? dslVersion,
+  String dslVersion,
 ) {
   return SearchPageDefinition(
     id: m.reqString('id', at: 'page.id'),
     title: m.reqString('title', at: 'page.title'),
-    dslVersion: dslVersion ?? kDslVersion,
+    dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
     keyField: m.optString('key') ?? 'id',
     search: _parseSearch(m.optMap('search')),
@@ -300,11 +301,11 @@ SearchPageDefinition _parseSearchPage(
   );
 }
 
-CrudPageDefinition _parseCrud(Map<String, Object?> m, String? dslVersion) {
+CrudPageDefinition _parseCrud(Map<String, Object?> m, String dslVersion) {
   return CrudPageDefinition(
     id: m.reqString('id', at: 'page.id'),
     title: m.reqString('title', at: 'page.title'),
-    dslVersion: dslVersion ?? kDslVersion,
+    dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
     keyField: m.optString('key') ?? 'id',
     search: _parseSearch(m.optMap('search')),

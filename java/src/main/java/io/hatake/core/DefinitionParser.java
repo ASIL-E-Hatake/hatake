@@ -68,7 +68,7 @@ public final class DefinitionParser {
             throw new IllegalArgumentException("Top-level document must be a mapping/object");
         }
         Map<String, Object> root = (Map<String, Object>) decoded;
-        String dslVersion = root.get("dsl_version") instanceof String v ? v : "1.0";
+        String dslVersion = DslVersion.accept(root.get("dsl_version"));
         Map<String, Object> page = root.get("page") instanceof Map
                 ? (Map<String, Object>) root.get("page")
                 : root;

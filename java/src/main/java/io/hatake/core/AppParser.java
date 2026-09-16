@@ -55,7 +55,7 @@ public final class AppParser {
             throw new IllegalArgumentException("Top-level document must be a mapping/object");
         }
         Map<String, Object> root = (Map<String, Object>) decoded;
-        String dslVersion = root.get("dsl_version") instanceof String v ? v : "1.0";
+        String dslVersion = DslVersion.accept(root.get("dsl_version"));
         Map<String, Object> app = root.get("app") instanceof Map
                 ? (Map<String, Object>) root.get("app")
                 : root;

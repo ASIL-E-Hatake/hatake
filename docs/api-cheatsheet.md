@@ -583,7 +583,7 @@ Embedded rows are saved together with the parent. With `source`, each row is sav
 
 ## Using it from code
 
-The same names and outputs exist in all three editions — Dart (`hatake_core`), TypeScript (`@hatake/core`), Java (`io.github.asil-e-hatake:hatake-core`) — and are pinned to identical results by the [conformance suite](../spec/conformance/).
+The same names and outputs exist in all three editions — Dart (`hatake_core`), TypeScript (`@hatake-fw/api`), Java (`io.github.asil-e-hatake:hatake-core`) — and are pinned to identical results by the [conformance suite](../spec/conformance/).
 
 ```ts
 new FormatterRegistry().format("currency", 1234567, { symbol: "¥" }); // "¥1,234,567"

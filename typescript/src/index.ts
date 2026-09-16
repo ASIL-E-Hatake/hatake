@@ -1,4 +1,4 @@
-// @hatake/core — TypeScript edition.
+// @hatake-fw/api — TypeScript edition.
 // Language-agnostic hatake DSL model + parser + server-side validation.
 export * from "./definition.js";
 export * from "./parse.js";
@@ -59,6 +59,7 @@ export * from "./paperText.js";
 export * from "./sampleRows.js";
 export * from "./report.js";
 export * from "./query.js";
+export * from "./dslVersion.js";
 export * from "./dto.js";
 export * from "./dtoDiff.js";
 export * from "./explain.js";

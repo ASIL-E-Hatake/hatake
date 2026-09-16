@@ -3,13 +3,13 @@ import {
   AppNavigations,
   Brightnesses,
   Densities,
-  kDslVersion,
   type AppDefinition,
   type MenuItem,
   type PageRef,
   type ThemeDefinition,
 } from "./definition.js";
 import {
+  acceptDslVersion,
   DefinitionParseError,
   UnknownKeysError,
   type ParseOptions,
@@ -92,7 +92,7 @@ function fromDecoded(
  * directly.
  */
 export function parseAppMap(root: Dict): AppDefinition {
-  const dslVersion = optString(root, "dsl_version") ?? kDslVersion;
+  const dslVersion = acceptDslVersion(optString(root, "dsl_version"));
   const app = optDict(root, "app") ?? root;
   return {
     id: reqString(app, "id", "app.id"),
