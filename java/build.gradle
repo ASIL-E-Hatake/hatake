@@ -1,5 +1,8 @@
 plugins {
-    id 'java'
+    id 'java-library'
+    // JitPack は git の tag からビルドして配る＝**レジストリに出さずに配れる**唯一の道。
+    // そのために `publishToMavenLocal` が要る（JitPack はそれを叩いて成果物を拾う）。
+    id 'maven-publish'
 }
 
 group = 'io.github.asil-e-hatake'
@@ -19,6 +22,29 @@ dependencies {
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
+    }
+    // ソースを一緒に配る（IDE から中身が読める）。javadoc は Maven Central に出す段で足す。
+    withSourcesJar()
+}
+
+publishing {
+    publications {
+        core(MavenPublication) {
+            from components.java
+            artifactId = 'hatake-core'
+            pom {
+                name = 'hatake-core'
+                description = 'hatake DSL の Java 版（定義の解析・サーバ側の検証・クエリ・DTO）'
+                url = 'https://github.com/ASIL-E-Hatake/hatake'
+                licenses {
+                    license {
+                        name = 'Apache License 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0'
+                    }
+                }
+                scm { url = 'https://github.com/ASIL-E-Hatake/hatake' }
+            }
+        }
     }
 }
 

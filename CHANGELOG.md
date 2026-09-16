@@ -18,6 +18,21 @@ DSL の版（`dsl_version`）はパッケージの版とは別に動く。DSL �
 
 ## 未リリース
 
+- 追加: **git の tag だけで配れるようにした**（→ [リリースと入れ方](docs/guide/release.ja.md)）。
+  レジストリには出さない。リリースのワークフローは GitHub Release に貼るだけで、
+  **publish する道を持たない**
+  - TypeScript … `npm pack` に `spec/` と LICENSE を同梱（CLI と MCP は実行時に `spec/`
+    を読むので、同梱しないと配った先で何も引けない）。`.tgz` を Release に貼る。
+    **固めてリポジトリの外に入れて叩く**ところまで CI が見る（中で試すと `spec/` が
+    上に見つかって、同梱できていなくても通る）
+  - Flutter / Dart … git 依存が本当に解決できることを CI が確かめる（裸のクローンを
+    `file://` で指して `pub get` → 定義を1枚読ませる）。**`dependency_overrides` を
+    書かないと落ちること**も確かめる＝手引きが古くなったらそこで落ちる
+  - Java … `jitpack.yml` と `maven-publish`（JitPack が tag からビルドする）。
+    Gradle の wrapper も入れた
+  - 手引きの git 依存に **`ref:`（tag）** を書くようにした。`main` を指すと、こちらが
+    push した瞬間に相手が動く
+
 - 追加: **DSL の版を見るようになった。** 知らない major（`2.0` / `0.9`）と、形が違う字
   （`1` / `1.0.0` / 空）は**落とす**。同じ major の新しい minor（`1.1`）は読んで1件言う
   （`dsl-version-newer`）。判定は3版＋JSON Schema で同じ

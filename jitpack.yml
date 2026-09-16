@@ -1,0 +1,13 @@
+# JitPack は git の tag からビルドして配る＝**レジストリに出さずに Java 版を配れる**道。
+#
+# このリポジトリはモノレポで、Java は `java/` の下に居る。JitPack は根を見に来るので、
+# **どこをビルドするか**をここで教える（教えないと「Gradle プロジェクトが無い」で落ちる）。
+#
+# 試験は回さない（`-x test`）。中身が通ることは CI の担当で、ここは**配れる形になるか**
+# だけを見る。両方やると、JitPack が落ちた理由が2つになって読めなくなる。
+#
+# 利用者側の書き方は docs/guide/release.ja.md。
+jdk:
+  - openjdk21
+install:
+  - cd java && ./gradlew publishToMavenLocal -x test

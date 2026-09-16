@@ -29,6 +29,8 @@
 | **決まっていないことを洗い出したい** | [決めていないことを問い返す](guide/ask.ja.md) | 定義に書けない決めごと（排他・採番・論理削除・端数）を人に聞く。`npx hatake ask <定義>` |
 | **AI エージェントに定義を書かせる** | [MCP サーバ](guide/mcp.ja.md) | 仕様の引き当て・例の取得・検証を道具として渡す |
 | 対応状況・今後の方針を知る | [ロードマップ](roadmap.ja.md) / [utils ロードマップ](roadmap-utils.ja.md) | 実装状況はここが正 |
+| **自分のアプリに入れたい／版を出したい** | [リリースと入れ方](guide/release.ja.md) | まだレジストリ未公開。git の tag から入れる（Flutter は `dependency_overrides` が要る） |
+| 何が凍っていて何が変わるか知る | [1.0 の約束](compat.ja.md) | DSL の版・診断 id・終了コード・`--json` の形・名前の決めごと |
 | 思想・背景を読む | [紹介記事](blog/introducing-hatake.md) | 読み物 |
 
 ## guide（仕組み・判断が必要なテーマ）

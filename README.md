@@ -52,7 +52,8 @@ Business Definition (YAML / JSON / 各言語DSL)
 | [ガイド](docs/guide/) | [仕組みと責務分担](docs/guide/concepts.ja.md) / [ページ種別の選び方](docs/guide/page-types.ja.md) / [入力検証](docs/guide/validation.ja.md) / [バックエンド連携](docs/guide/backend.ja.md) |
 | [AI チートシート](docs/api-cheatsheet.ja.md) | 定義の書き方を1枚に圧縮（AI に渡すならこれ） |
 | [図解](docs/diagrams/README.ja.md) | 定義から画面まで / データの流れ / 層の責務（絵は生成物で、元はテキスト） |
-| [1.0 の約束](docs/compat.ja.md) | 何を凍らせて、何を凍らせないか（DSL の版・診断 id・終了コード・`--json` の形・版の足並み） |
+| [リリースと入れ方](docs/guide/release.ja.md) | まだレジストリ未公開。git の tag から入れる（3版ぶんの入れ方） |
+| [1.0 の約束](docs/compat.ja.md) | 何を凍らせて、何を凍らせないか（DSL の版・診断 id・終了コード・`--json` の形・名前の決めごと） |
 | [変更の記録](CHANGELOG.md) | 版ごとに何が変わったか（3版ぶんを1枚で） |
 
 ## ざっとイメージ
