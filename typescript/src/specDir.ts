@@ -19,6 +19,9 @@ export const PITFALLS_FILE = "pitfalls.json";
 /** 実際に転んだ実例のカタログ（spec/ からの相対）。 */
 export const FAILURES_FILE = "failures.json";
 
+/** 規則ごとの「転ぶ定義」（その規則を実際に出す最小の定義）。 */
+export const RULE_CASES_FILE = "rule-cases.json";
+
 /** 担当の割り振り（どこまでを枠組みが持つか）。 */
 export const RESPONSIBILITY_FILE = "responsibility.json";
 

@@ -24,7 +24,7 @@
 **`crud` と `master` は構造が同じ**（`search` + `table` + `form`）。違いは意図の表明だけで、描画も同じです。「マスタメンテ」と読めば分かるようにしたい／将来まとめて別レイアウトにしたい、という場合に `master` を選びます。
 
 **`search` は行アクションでプラグイン処理や遷移を呼ぶ**のが定石。読取専用なので `form` は持ちません。
-```yaml
+```yaml context:searchPage
 table:
   rowActions: [detail]        # ↓ actions の id を参照
 actions:
@@ -59,7 +59,7 @@ Web では URL が画面に付いてきます（`/<画面id>?<params>`）。リ�
 
 **`dashboard` は他の種別と毛色が違います。** 単一レコードを指さないので `key` を持たず、`repository` は「カードが省略したときの既定」でしかありません。カード1枚 = 小さな読み取りクエリ + 見せ方（`metric` / `table` / `chart`）です。
 
-```yaml
+```yaml context:dashboardPage
 items:
   - { id: total, title: 受注金額, value: { aggregate: sum, field: amount }, format: currency }
 ```
@@ -74,7 +74,7 @@ items:
 
 **`report` は一覧の印刷版**です。明細の列は `table` から取るので、`search` ページと同じ列定義を使い回せます。`report` が足すのは紙の構造だけ:
 
-```yaml
+```yaml context:reportPage
 report:
   paper: { size: A4, orientation: portrait }
   rowsPerPage: 30                                    # 見出し・小計も1行として数える
@@ -89,7 +89,7 @@ report:
 
 **印刷ボタンは定義に書けます**（`type: print`。帳票専用）。押されると Framework は紙の中身（帳票の定義・いま出ている行・役割・見せ方）を `HatakeScope(printSink:)` に渡すところまでをやり、バイト列は作りません。
 
-```yaml
+```yaml context:reportPage
 actions:
   - { id: printPdf, type: print, label: 印刷, config: { filename: 売上明細 } }
 ```
@@ -109,7 +109,7 @@ HatakeScope(
 
 **CSV は `export` アクション**で、一覧でも帳票でも同じ書き方です。
 
-```yaml
+```yaml context:searchPage
 actions:
   - { id: csv, type: export, label: CSV出力, config: { filename: 売上明細, bom: true } }
 ```

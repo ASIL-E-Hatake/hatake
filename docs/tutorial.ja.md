@@ -170,7 +170,7 @@ npx hatake fix order_entry.yaml --write
 
 通ったあとも、**通るけれど意図どおり動かない書き方**は警告で出る。試しに新規登録ボタンを足すと:
 
-```yaml
+```yaml context:formPage
   actions:
     - { id: create, type: create, label: 新規登録 }
 ```
@@ -334,7 +334,8 @@ npx hatake wire order_entry.yaml --merge lib/wiring.dart --write
 
 手で埋めた中身は1バイトも変わらない（消さない・並べ替えない・整形しない）。
 
-足した所は、**そのまま次の1往復に渡せる**。
+埋める仕事は、**そのまま次の1往復に渡せる**。渡すのは足した所だけではない
+（前から TODO のまま・中身が空の所も同じ一覧に入る＝下の `refs --filled` の数と合う）。
 
 ```bash
 npx hatake wire order_entry.yaml --merge lib/wiring.dart --write --todo
@@ -342,11 +343,15 @@ npx hatake wire order_entry.yaml --merge lib/wiring.dart --write --todo
 
 ```
 機械が 1 か所を足しました（**場所はもう探さなくていい**）。残っているのは中身です。
-1 件、どれも**業務か環境**なので機械には決められません（何をするかは業務、どう繋ぐかは環境）。
+埋める仕事は 2 件です（いま足した 1・TODO のまま 1・中身が空 0）。どれも**業務か環境**なので機械には決められません（何をするかは業務、どう繋ぐかは環境）。
 
-1. computeds/discountRate  lib/wiring.dart:56
+1. computeds/discountRate   [いま足した]  lib/wiring.dart:56
    書くもの: 計算の中身
    埋めるまで: そこを通ると UnimplementedError で落ちます（黙って何もしない、にはなりません）
+
+2. computeds/consumptionTax   [TODO のまま]  lib/wiring.dart:53
+   書くもの: 計算の中身
+   埋めるまで: 動かすと UnimplementedError で落ちます（hatake wire が足した所のまま）
 ```
 
 埋め忘れは**動かして初めて分かる**（押した人の所で落ちる）ので、出荷前に数える。

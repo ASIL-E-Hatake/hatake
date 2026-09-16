@@ -932,6 +932,132 @@ jobs:
           # 警告で落とすのは --warn-as-error のときだけ（好みと問いでは落ちない）。
           node dist/cli.js check "$PAGE" > /dev/null
 
+      - name: Every rule has a definition that actually trips it
+        working-directory: typescript
+        run: |
+          set -e
+          # 規則の表は**名前の集合**までしか突き合わせていなかった＝説明だけが古く
+          # なっても緑のまま。規則ごとに「転ぶ定義」を持って、全部かける。
+          node tool/check-rules.mjs --min 114 > /tmp/rule-cases.log
+          grep -q '出なかった 0' /tmp/rule-cases.log
+          node -e '
+            const log = require("fs").readFileSync("/tmp/rule-cases.log", "utf8");
+            const m = /規則 (\d+) 件のうち (\d+) 件/.exec(log);
+            if (m === null || m[1] !== m[2]) {
+              console.error("覆えていない規則がある: " + (m?.[0] ?? "なし"));
+              process.exit(1);
+            }
+            console.log("規則 " + m[1] + " 件すべてに転ぶ定義があり、全部かけた");
+          '
+          # 否定側①: 転ばない定義を混ぜたら落ちる（説明と中身の食い違いを見る検査が
+          #          本当に効いているか）。`op: product` は「行を畳めない op」の例。
+          cp ../spec/rule-cases.json /tmp/rule-cases.bak
+          sed -i 's/"op": "product"/"op": "sum"/' ../spec/rule-cases.json
+          if node tool/check-rules.mjs > /tmp/rule-cases-bad.log 2>&1; then
+            cp /tmp/rule-cases.bak ../spec/rule-cases.json
+            echo "転ばない定義を混ぜても通ってしまった"; cat /tmp/rule-cases-bad.log
+            exit 1
+          fi
+          cp /tmp/rule-cases.bak ../spec/rule-cases.json
+          grep -q '説明のとおりに転びません' /tmp/rule-cases-bad.log
+          # 戻したことを確かめる（壊したまま次のステップに進まない）。
+          diff -q /tmp/rule-cases.bak ../spec/rule-cases.json
+          # 否定側②: 覆いを減らす方向の変更は通さない（下限を割ったら落ちる）。
+          if node tool/check-rules.mjs --min 200 > /tmp/rule-cases-min.log 2>&1; then
+            echo "下限を割っても通ってしまった"; exit 1
+          fi
+          grep -q '覆いを減らす方向の変更' /tmp/rule-cases-min.log
+          # 引く側にも届く（`hatake rules <規則>` が説明と実例を1往復で渡す）。
+          node dist/cli.js rules computed-rows-unsupported-op > /tmp/rule-one.log
+          grep -q 'この規則が出る定義' /tmp/rule-one.log
+          grep -q 'op: product' /tmp/rule-one.log
+          # 全部出すときは添えない（114 件ぶんの定義は読み物にならない）。
+          node dist/cli.js rules > /tmp/rule-all.log
+          if grep -q 'この規則が出る定義' /tmp/rule-all.log; then
+            echo "全部出すときにも定義を添えている"; exit 1
+          fi
+
+      - name: The list you hand over is the list that was counted
+        working-directory: typescript
+        run: |
+          set -e
+          mkdir -p /tmp/handover
+          cat > /tmp/handover/app.yaml <<'YAML'
+          app:
+            id: sales
+            title: 受注
+            pages:
+              - type: crud
+                id: orders
+                title: 受注
+                repository: orderRepository
+                key: orderNo
+                table:
+                  columns:
+                    - { field: orderNo, label: 受注番号 }
+                actions:
+                  - { id: approve, type: plugin, plugin: approveOrders, label: 承認 }
+                  - { id: reject, type: plugin, plugin: rejectOrders, label: 却下 }
+                  - { id: archive, type: plugin, plugin: archiveOrders, label: 書庫へ }
+          YAML
+          # 3つの状態が同時に在る配線（TODO のまま・中身が空・まだ登録が無い）。
+          cat > /tmp/handover/wiring.dart <<'DART'
+          class SalesApp extends StatelessWidget {
+            @override
+            Widget build(BuildContext context) {
+              return HatakeScope(
+                repositories: const RepositoryRegistry({
+                  'orderRepository': OrderRepository(),
+                }),
+                actions: ActionRegistry({
+                  'approveOrders': (ctx) async => throw UnimplementedError('TODO'),
+                  'archiveOrders': (ctx) async {},
+                }),
+                renderer: const MaterialRenderer(),
+                child: HatakeApp(app: definition),
+              );
+            }
+          }
+          DART
+          node dist/cli.js wire /tmp/handover/app.yaml \
+            --merge /tmp/handover/wiring.dart --write --todo --json \
+            > /tmp/handover/todo.json
+          node dist/cli.js refs /tmp/handover/app.yaml --filled \
+            --source /tmp/handover/wiring.dart --json > /tmp/handover/filled.json
+          # **渡す一覧と、数える側が同じもの**であること（違うと、埋める人は数のほうを
+          # 信用しなくなる）。中身が空の所が一覧に入っていなければ、ここで落ちる。
+          node -e '
+            const fs = require("fs");
+            const todo = JSON.parse(fs.readFileSync("/tmp/handover/todo.json", "utf8"));
+            const filled = JSON.parse(
+              fs.readFileSync("/tmp/handover/filled.json", "utf8"));
+            const counted = filled.items
+              .filter((one) => one.state !== "filled" && one.state !== "unknown")
+              .map((one) => one.name).sort();
+            const handed = todo.items.map((one) => one.name).sort();
+            if (JSON.stringify(handed) !== JSON.stringify(counted)) {
+              console.error("数えた " + JSON.stringify(counted) +
+                " に対して渡したのは " + JSON.stringify(handed));
+              process.exit(1);
+            }
+            const states = todo.items.map((one) => one.state).sort();
+            for (const want of ["added", "hollow", "pending"]) {
+              if (!states.includes(want)) {
+                console.error(want + " が渡す一覧に入っていない"); process.exit(1);
+              }
+            }
+            if (todo.unfilled !== counted.length || todo.added !== 1) {
+              console.error("数が合わない: " + JSON.stringify(todo).slice(0, 200));
+              process.exit(1);
+            }
+            console.log("埋める仕事 " + todo.unfilled + " 件を、数えた所と同じ形で渡した");
+          '
+          # **落ちない所は落ちないと書く**（足した所と同じ扱いにしない）。
+          node dist/cli.js wire /tmp/handover/app.yaml \
+            --merge /tmp/handover/wiring.dart --todo > /tmp/handover/todo.log
+          grep -q '中身が無い' /tmp/handover/todo.log
+          grep -q '落ちないので気づけません' /tmp/handover/todo.log
+
       - name: Every last-resort path is actually walked
         working-directory: typescript
         run: |
@@ -2615,6 +2741,57 @@ jobs:
           if node tool/check-docs.mjs /tmp/emptydir > /tmp/empty.log 2>&1; then
             echo ".md が無い所を渡して通ってしまった"; cat /tmp/empty.log; exit 1
           fi
+          # 1.5 断片は**書ける場所**まで見る（囲みの context:<ノード> の印）。
+          #     何枚を場所まで見たかを必ず出す＝印が黙って消えたらここで分かる。
+          node -e '
+            const log = require("fs").readFileSync("/tmp/docs.log", "utf8");
+            const placed = /書ける場所まで見た (\d+)/.exec(log);
+            if (placed === null || Number(placed[1]) < 30) {
+              console.error("場所まで見た断片が少ない: " + (placed?.[1] ?? "なし"));
+              process.exit(1);
+            }
+            console.log("断片 " + placed[1] + " 個を書ける場所まで見た");
+          '
+          # 否定側①: キーは在るが**その場所には書けない**（今までは通っていた形）。
+          cat > /tmp/rotten/place.md <<'MD'
+          # 場所が違う手引き（試験用）
+
+          ```yaml context:filter
+          columns:
+            - { field: orderNo, label: 受注番号 }
+          ```
+          MD
+          if node tool/check-docs.mjs /tmp/rotten/place.md > /tmp/place.log 2>&1; then
+            echo "書けない場所の断片で通ってしまった"; cat /tmp/place.log; exit 1
+          fi
+          grep -q 'filter の下には書けません' /tmp/place.log
+          grep -q '書けるのは' /tmp/place.log
+          # 否定側②: 知らない場所の名前（印を付けたまま誰も見ていない、を作らない）。
+          cat > /tmp/rotten/where.md <<'MD'
+          ```yaml context:tabel
+          columns: []
+          ```
+          MD
+          if node tool/check-docs.mjs /tmp/rotten/where.md > /tmp/where.log 2>&1; then
+            echo "知らない場所の印で通ってしまった"; cat /tmp/where.log; exit 1
+          fi
+          grep -q 'table の間違い' /tmp/where.log
+          # 否定側③: 丸ごとの定義に印を付けたら落とす（弱いほうの印で「見た」と
+          #          言い出さないため＝印は1つの意味しか持たない）。
+          cat > /tmp/rotten/both.md <<'MD'
+          ```yaml context:document
+          dsl_version: "1.0"
+          page:
+            type: search
+            id: s
+            title: 検索
+            repository: r
+          ```
+          MD
+          if node tool/check-docs.mjs /tmp/rotten/both.md > /tmp/both.log 2>&1; then
+            echo "丸ごとの定義に印を付けて通ってしまった"; cat /tmp/both.log; exit 1
+          fi
+          grep -q 'context の印は要りません' /tmp/both.log
           # 2. 落とせることを確かめる（通ることしか確かめない検査は、寝ていても気づけない）。
           mkdir -p /tmp/rotten
           cat > /tmp/rotten/stale.md <<'MD'

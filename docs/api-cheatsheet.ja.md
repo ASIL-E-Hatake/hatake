@@ -103,7 +103,7 @@ npx hatake types page.yaml --lang java --out gen/            # ネイティブ�
 
 **明細の行どうしの規則**は `unique`（行の中の検証は1行ずつしか見ないので、「同じ品名が2行にある」は誰も気づけない）。
 
-```yaml
+```yaml context:field
 - field: lines
   label: 明細
   type: subTable
@@ -182,7 +182,7 @@ app:
 
 会社の色・明暗・密度・角丸を定義で差す。Renderer が自分の流儀に落とす（Material なら `ThemeData`）。**挙動は何も変わらない**。
 
-```yaml
+```yaml context:document
 app:
   theme:
     primaryColor: "#1B5E20"     # #RRGGBB / #AARRGGBB。ここから配色を作る
@@ -354,7 +354,7 @@ exportSink: (req) async => save(req.filename, encodings.encode(req.charset, req.
 
 新規/編集で出し分ける（`mode` のリーフ。レコードでは分からないので専用に持つ）:
 
-```yaml
+```yaml context:field
 - { field: code, label: コード, enabledWhen: { mode: create } }      # 編集では変えさせない
 - { field: updatedBy, label: 更新者, visibleWhen: { mode: edit } }   # 編集のときだけ出す
 ```
@@ -399,7 +399,7 @@ sections:
   （`count` / `sum` / `avg` / `min` / `max`。集約の語彙はダッシュボードのカードと同じ）
 * 行を**並べて1行にする**のは `join`（数ではなく文字が出る）。区切りは `separator`（既定 `", "`）
 
-```yaml
+```yaml context:field
 - { field: subtotal, label: 小計, computed: { op: sum, field: lines, of: amount } }
 - { field: rows, label: 行数, computed: { op: count, field: lines } }
 - { field: itemNames, label: 品名, computed: { op: join, field: lines, of: item, separator: "、" } }
@@ -423,7 +423,7 @@ sections:
 
 ## 選択肢の連動（親の値で子の選択肢を絞る）
 
-```yaml
+```yaml context:field
 # ① 定義に書く（選択肢が固定のとき）
 - { field: prefecture, label: 都道府県, type: select,
     options: [{ value: tokyo, label: 東京都 }, { value: osaka, label: 大阪府 }] }
@@ -502,7 +502,7 @@ actions:
 
 「削除前に確認」「保存できたら一覧に戻る」を Dart で書かない。
 
-```yaml
+```yaml context:crudPage
 actions:
   - id: delete
     type: delete
@@ -540,7 +540,7 @@ actions:
   いません」）。選び直しは同じ画面に居る間の話なので、翌日やり直すならこちら
 * **実行の前に聞く**なら `prompt`（「却下の理由を書いてから却下」）。項目は**普通の `field`**（型・`required`・`validators`・`computed`・`normalize` がフォームと同じに効く）で、ハンドラは `ctx.input` で受け取る。**確認ダイアログは増えない**（`prompt` の OK が確認そのもの＝`confirm` の文言とボタン名を引き取る）。受け取れるのは `type: plugin` だけ
 
-```yaml
+```yaml context:action
     prompt:
       title: 却下の理由
       okLabel: 却下する

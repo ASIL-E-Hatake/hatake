@@ -6,7 +6,7 @@
 
 ## 書き方
 
-```yaml
+```yaml context:section
 fields:
   - { field: code, label: コード, required: true,          # 必須（マーカーも出る）
       normalize: [toHankaku, trim],                        # 検証の前に正規化される
@@ -51,7 +51,7 @@ HatakeScope(
 
 定義側は登録したキーを書くだけ。**本体の改造は不要**です。
 
-```yaml
+```yaml context:field
 - { field: qty, label: 数量, type: number, validators: [ { type: even } ] }
 ```
 

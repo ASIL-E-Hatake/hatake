@@ -103,7 +103,7 @@ screen's label.
 
 ```bash
 npx hatake wire app.yaml --merge lib/wiring.dart --write     # add only the missing registrations (keeps your code)
-npx hatake wire app.yaml --merge lib/wiring.dart --write --todo   # ...and hand the added stubs over as a work list
+npx hatake wire app.yaml --merge lib/wiring.dart --write --todo   # ...and hand over the work list: what was added, what is still TODO, what is an empty body
 npx hatake refs app.yaml --filled --source lib/             # are those registrations actually filled in? (TODO / missing / cannot tell)
 npx hatake probe app.yaml --base http://localhost:8080/api   # does the server answer what the definition declares?
 npx hatake attack app.yaml --role staff --base http://localhost:8080/api  # does the API refuse what the screen hides?
@@ -218,7 +218,7 @@ Navigation is an action: `{ type: navigate, page: <id>, params: { id: "$row.id" 
 
 Brand colour, brightness, density and shape, declared once. The renderer maps it to its own equivalent (a `ThemeData` for Material). **Nothing about behaviour changes.**
 
-```yaml
+```yaml context:document
 app:
   theme:
     primaryColor: "#1B5E20"     # #RRGGBB / #AARRGGBB — the palette is derived from it
@@ -319,7 +319,7 @@ Every one of these is an **open string**: the built-ins below are what ships, an
 you which state the form is in. False wherever the mode is unknown (a read-only
 detail page has none).
 
-```yaml
+```yaml context:field
 - { field: code, label: Code, enabledWhen: { mode: create } }   # never changed after creation
 ```
 
@@ -401,7 +401,7 @@ Note the difference: `between` / `startsWith` / `endsWith` are search-only, whil
 
 "Ask before deleting" and "go back to the list once saved" are declared, not coded.
 
-```yaml
+```yaml context:crudPage
 actions:
   - id: delete
     type: delete
@@ -506,7 +506,7 @@ Two modes: `fields: [a, b]` folds values of the **same record** (`concat` / `sum
 **rows of a subTable** (`count` / `sum` / `avg` / `min` / `max` — the same aggregate
 vocabulary as dashboard cards — plus `join`, which lists the rows as one string).
 
-```yaml
+```yaml context:field
 - { field: subtotal, label: Subtotal, computed: { op: sum, field: lines, of: amount } }
 - { field: itemNames, label: Items, computed: { op: join, field: lines, of: item } }
 - { field: total, label: Total, computed: { op: sum, fields: [subtotal, tax] } }
@@ -528,7 +528,7 @@ uses leaves it empty, and `validate` says so. Extensible via `ComputedRegistry`.
 
 ## Linked options (the parent narrows the child)
 
-```yaml
+```yaml context:field
 # 1. in the definition
 - { field: prefecture, label: Prefecture, type: select,
     options: [{ value: tokyo, label: Tokyo }, { value: osaka, label: Osaka }] }
@@ -558,7 +558,7 @@ uses leaves it empty, and `validate` says so. Extensible via `ComputedRegistry`.
 
 Put `roles: [...]` on a `field`, `column` or `action` (empty or absent = everyone). In Flutter the current user's roles come from `HatakeScope(roles: {'admin'})`.
 
-```yaml
+```yaml context:field
 - { field: salary, label: Salary, roles: [hr, manager] }
 ```
 
@@ -568,7 +568,7 @@ This is **display gating only**. Real access control belongs in the backend — 
 
 Child rows are one field of the parent record. Either embed them, or fetch them from their own repository with `source`:
 
-```yaml
+```yaml context:field
 - field: lines
   label: Lines
   type: subTable

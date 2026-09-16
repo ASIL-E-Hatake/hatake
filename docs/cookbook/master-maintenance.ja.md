@@ -37,40 +37,40 @@ page:
 ## よくある追加要件
 
 ### コードは半角英数に強制したい
-```yaml
+```yaml context:field
 - { field: code, label: コード, required: true,
     normalize: [toHankaku, trim],                    # 入力を送信前に正規化
     validators: [ { type: pattern, pattern: "^[A-Z0-9]+$", message: 半角英数で入力してください } ] }
 ```
 
 ### 金額を「¥1,234,567」で見せたい
-```yaml
+```yaml context:table
 columns:
   - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
 ```
 マイナスを `△1,234` にしたいなら `config: { negative: triangle }`。→ 整形の一覧は [チートシート](../api-cheatsheet.ja.md)
 
 ### 区分を選択式にしたい
-```yaml
+```yaml context:field
 - { field: kind, label: 区分, type: select, required: true,
     options: [ { value: "1", label: 社内 }, { value: "2", label: 社外 } ] }
 ```
 
 ### 「社外のときだけ取引先名を出す」
-```yaml
+```yaml context:field
 - { field: partner, label: 取引先名,
     visibleWhen: { field: kind, operator: equals, value: "2" } }
 ```
 入力に応じて即座に出し入れされる。→ 詳細は [DSL 仕様の condition](../../spec/dsl-spec.ja.md#condition)
 
 ### 担当者しか見せたくない項目がある
-```yaml
+```yaml context:field
 - { field: cost, label: 原価, type: number, roles: [manager] }
 ```
 `HatakeScope(roles: {'manager'})` で現在ユーザのロールを渡す。**表示制御だけ**なので、本当の保護はサーバ側で必ずやる。
 
 ### 郵便番号・和暦みたいな「毎回作るやつ」
-```yaml
+```yaml context:field
 - { field: zip,   label: 郵便番号, validators: [ { type: postalCode } ], format: postal }
 - { field: date,  label: 契約日,   type: date, format: wareki }     # 令和8年7月22日
 ```

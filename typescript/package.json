@@ -17,6 +17,7 @@
   "scripts": {
     "build": "tsc",
     "check-docs": "node tool/check-docs.mjs",
+    "check-rules": "node tool/check-rules.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
