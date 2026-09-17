@@ -618,6 +618,18 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
     happens: "画面は出ますがデータが来ません（実行時に引き先が見つからない）。",
     fix: "アプリ側の `RepositoryRegistry` に同じ名前で登録するか、定義の名前を直してください。",
   },
+  "key-wrong-shape": {
+    what: "形の違う値を書いたキー",
+    happens:
+      "キーの綴りは合っているので strict も通りますが、解析器は**読める形か**を見て"
+      + "黙って捨てます＝そこに書いたことは**一度も効きません**。"
+      + "目で読んでもキー名は正しいので、いちばん気づきにくい種類です"
+      + "（`optionsFrom:` に Repository を書いて、選択肢が空のまま出た例があります）。",
+    fix:
+      "そのキーが取る形に直してください（`npx hatake reference <キー>` で引けます）。"
+      + "書きたかったものが別のキーなら、そちらに移します"
+      + "（Repository から選択肢を引くのは `optionsSource`）。",
+  },
   "validator-missing-param": {
     what: "見るものが書かれていない検証",
     happens:

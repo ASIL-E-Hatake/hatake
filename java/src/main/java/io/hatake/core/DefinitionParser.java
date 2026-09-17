@@ -377,12 +377,19 @@ public final class DefinitionParser {
 
     private static ColumnDefinition parseColumn(Map<String, Object> m) {
         Map<String, Object> config = optMap(m.get("config"));
+        List<String> roles = new ArrayList<>();
+        if (m.get("roles") instanceof List<?> list) {
+            for (Object r : list) {
+                roles.add(String.valueOf(r));
+            }
+        }
         return new ColumnDefinition(
                 reqStr(m, "field"),
                 reqStr(m, "label"),
                 m.get("type") instanceof String t ? t : "text",
                 m.get("format") instanceof String f ? f : null,
-                config == null ? Map.of() : Map.copyOf(config));
+                config == null ? Map.of() : Map.copyOf(config),
+                List.copyOf(roles));
     }
 
     @SuppressWarnings("unchecked")

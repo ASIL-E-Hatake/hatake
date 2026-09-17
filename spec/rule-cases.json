@@ -4038,6 +4038,66 @@
           }
         ]
       }
+    },
+    {
+      "rule": "key-wrong-shape",
+      "why": "`optionsFrom` は親の項目名（文字）を書く所なのに、Repository の入れ子を書いている（正しくは `optionsSource`）",
+      "page": {
+        "type": "crud",
+        "id": "employee_master",
+        "title": "社員マスタ",
+        "repository": "employeeRepository",
+        "key": "employeeNo",
+        "search": {
+          "filters": [
+            {
+              "field": "name",
+              "label": "氏名",
+              "operator": "contains"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "employeeNo",
+              "label": "社員番号",
+              "sortable": true
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "employeeNo",
+                  "label": "社員番号",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "field": "departmentCode",
+                  "label": "所属部署",
+                  "type": "select",
+                  "optionsFrom": {
+                    "repository": "departmentRepository",
+                    "value": "departmentCode",
+                    "label": "departmentName"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規"
+          }
+        ]
+      }
     }
   ]
 }

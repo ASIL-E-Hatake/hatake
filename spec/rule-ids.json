@@ -39,6 +39,7 @@
     "enabledwhen-without-record",
     "export-without-rows",
     "groupby-without-sort",
+    "key-wrong-shape",
     "maxrows-above-page-size",
     "maxrows-unknown-role",
     "maxrows-without-selection",

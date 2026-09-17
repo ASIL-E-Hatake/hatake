@@ -50,6 +50,7 @@ import { roleNames } from "./roles.js";
 import { closestKey } from "./strictKeys.js";
 import { WARNING_RULES } from "./warningRules.js";
 import { checkDslVersion } from "./dslVersion.js";
+import { findWrongShapes } from "./keyShape.js";
 import { kDslVersion } from "./definition.js";
 import { COMPARE_OPERATORS } from "./validators.js";
 
@@ -184,6 +185,21 @@ export function findWarnings(
       "dsl-version-newer",
       "dsl_version",
       `この定義は DSL ${version.version} 向けですが、この版は ${kDslVersion} までです。`,
+    );
+  }
+  // **形の違う値**は、綴りが合っているぶん strict をすり抜ける（書いたのに効かない）。
+  // 画面より先に言う＝どの画面の話かに関わらず、定義ぜんたいで同じ事故だから。
+  for (const one of findWrongShapes(document)) {
+    warn(
+      found,
+      "key-wrong-shape",
+      one.path,
+      `\`${one.key}\` は${one.what}を${one.wanted}で書く所ですが、${one.wrote}が書いてあります。` +
+        "解析器はここを**黙って捨てます**＝書いたことは一度も効きません。",
+      one.instead === undefined
+        ? `${one.wanted}で書き直してください（npx hatake reference ${one.key}）。`
+        : `Repository から引くなら \`${one.instead}\` です` +
+          `（npx hatake reference ${one.instead}）。`,
     );
   }
   const app = isDict(document.app) ? document.app : undefined;
