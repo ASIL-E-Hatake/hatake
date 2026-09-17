@@ -10,4 +10,7 @@
 jdk:
   - openjdk21
 install:
-  - cd java && ./gradlew publishToMavenLocal -x test
+  # `./gradlew` ではなく `sh gradlew`。git に実行ビットが入っていないと
+  # `Permission denied` で落ちる（実際 v0.9.0 の JitPack がこれで落ちた）。
+  # 実行ビットは入れたが、Windows で clone すると落ちることがあるので二重に守る。
+  - cd java && sh gradlew publishToMavenLocal -x test

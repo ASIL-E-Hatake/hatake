@@ -465,8 +465,14 @@ function checkLabel(
   const name = str(node.field) ?? str(node.id);
 
   for (const entry of project.glossary) {
+    // 正しい言葉で書いてあるなら、その中の一部分は咎めない。`避ける言葉` が正しい
+    // 言葉の一部になっていること（「数量」の中の「数」）は普通に起きるので、
+    // 見ないと**正しいラベルが自分自身で叱られる**（言い直しようが無い）。
+    // 見るのはこの用語の分だけ＝他の用語の「呼ばない言葉」は今までどおり出る。
+    const spelledRight = label.includes(entry.term);
     for (const word of entry.avoid) {
       if (!label.includes(word)) continue;
+      if (spelledRight && entry.term.includes(word)) continue;
       raw.push({
         same: `project-glossary-word ${entry.term} ${label}`,
         advice: {

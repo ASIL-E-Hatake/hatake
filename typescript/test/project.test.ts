@@ -440,6 +440,38 @@ describe("決めごとと定義を突き合わせる", () => {
     expect(words.map((one) => one.says).join("\n")).toContain("区分コードとは別物");
   });
 
+  it("正しい言葉で書いてあるなら、その中の一部分は咎めない", () => {
+    // 「数量」の `avoid` に「数」を並べるのは普通に起きる。見ないと、**正しい
+    // ラベルが自分自身で叱られる**（「数量」に「数」が入っています、と言われる）。
+    const narrow = parseProject(`project_version: "1.0"
+system:
+  what: 受注入力
+glossary:
+  - term: 数量
+    field: quantity
+    avoid: [個数, 数]
+`);
+    const found = findProjectAdvice(
+      definition(`dsl_version: "1.0"
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns:
+      - { field: quantity, label: 数量 }
+      - { field: lineCount, label: 明細行数 }
+`),
+      narrow,
+    );
+    const words = found.filter((one) => one.rule === "project-glossary-word");
+    // 「数量」は言い直しようが無いので出さない。「明細行数」は今までどおり出る。
+    expect(words.map((one) => one.says).join("\n")).not.toContain("ラベル「数量」");
+    expect(words.map((one) => one.says).join("\n")).toContain("ラベル「明細行数」");
+  });
+
   it("辞書の言葉なのに名前が辞書から来ていないときは、推測だと言う", () => {
     const found = findProjectAdvice(
       definition(`dsl_version: "1.0"

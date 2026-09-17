@@ -25,3 +25,6 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# 別チャットで書いた下書き（記事）。リポジトリには入れない
+docs/qiita/

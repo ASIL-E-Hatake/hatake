@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -90,5 +91,25 @@ class AppParserTest {
                 pages.stream().map(PageRef::type).toList());
         assertEquals("顧客マスタ", pages.get(1).title());
         assertEquals("customerRepository", pages.get(1).repository());
+    }
+
+    @Test
+    void parsesPagesInFullWhenTheBackendNeedsThem() throws IOException {
+        // サーバで検証を回すには `form` が要る。PageRef には無いので、こちらで読む。
+        String content = Files.readString(Path.of("../spec/examples/sales_app.yaml"));
+        Map<String, PageDefinition> pages = AppParser.parseAppPagesYaml(content, true);
+
+        // 並びは定義に書いた順のまま。
+        assertEquals(
+                List.of("sales_dashboard", "customer_master", "product_master", "order_search",
+                        "sales_report", "order_detail", "order_entry", "order_entry_paged"),
+                List.copyOf(pages.keySet()));
+
+        PageDefinition master = pages.get("customer_master");
+        assertEquals("master", master.type());
+        assertEquals("customerRepository", master.repository());
+        // 浅い一覧では見えなかったもの＝サーバが要るもの。
+        assertFalse(master.form().sections().isEmpty());
+        assertFalse(master.search().filters().isEmpty());
     }
 }

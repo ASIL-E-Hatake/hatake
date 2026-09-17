@@ -15,6 +15,70 @@ const rulesOf = (yaml: string): string[] =>
 const warningsOf = (yaml: string) =>
   findWarnings(parseYaml(yaml) as Record<string, unknown>);
 
+describe("形の違う値", () => {
+  it("`optionsFrom` に Repository を書いたら言う（正しくは `optionsSource`）", () => {
+    // **これが一番こわい種類**。キーの綴りは合っているので strict も通り、
+    // 画面も出て、選択肢だけが空になる（見本を作っていて実際に踏んだ）。
+    const found = warningsOf(`
+page:
+  type: crud
+  id: employee_master
+  title: 社員マスタ
+  repository: employeeRepository
+  key: employeeNo
+  form:
+    sections:
+      - fields:
+          - field: departmentCode
+            label: 所属部署
+            type: select
+            optionsFrom:
+              repository: departmentRepository
+              value: departmentCode
+              label: departmentName
+`);
+    const shape = found.filter((w) => w.rule === "key-wrong-shape");
+    expect(shape).toHaveLength(1);
+    expect(shape[0].path).toBe("page.form.sections[0].fields[0].optionsFrom");
+    expect(shape[0].message).toContain("黙って捨てます");
+    // 書きたかったキーまで言う（言われた人がそのまま直せる）。
+    expect(shape[0].fix).toContain("optionsSource");
+  });
+
+  it("役割を文字で書いたら言う（並びでないと誰にも当たらない）", () => {
+    const found = warningsOf(`
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+      - { field: salary, label: 給与, roles: hr }
+`);
+    const shape = found.filter((w) => w.rule === "key-wrong-shape");
+    expect(shape).toHaveLength(1);
+    expect(shape[0].path).toBe("page.table.columns[1].roles");
+    expect(shape[0].message).toContain("並び");
+  });
+
+  it("場所で形が変わるキーは見ない（カードの `filters` は入れ子でよい）", () => {
+    // 当てにいって外すくらいなら言わない＝言われたら必ず直す所にしておく。
+    expect(
+      rulesOf(`
+page:
+  type: dashboard
+  id: sales_dashboard
+  title: 売上
+  repository: orderRepository
+  items:
+    - { id: pending, title: 未出荷, filters: { status: 未出荷 } }
+`),
+    ).not.toContain("key-wrong-shape");
+  });
+});
+
 describe("行アクション", () => {
   it("宣言していない id は、ボタンが出ないことを指摘する", () => {
     // strict もスキーマも通る。実行すると黙ってボタンが消えるだけ。
