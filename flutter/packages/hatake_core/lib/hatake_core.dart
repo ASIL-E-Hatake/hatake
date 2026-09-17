@@ -85,6 +85,7 @@ export 'src/i18n/message_resolver.dart';
 // Logic (conditional display / computed fields / role-based access).
 export 'src/logic/aggregate.dart';
 export 'src/logic/condition_evaluator.dart';
+export 'src/logic/option_labels.dart';
 export 'src/logic/options.dart';
 
 // Output (CSV / report document — neutral, like QuerySpec).

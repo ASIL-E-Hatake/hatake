@@ -2220,6 +2220,38 @@
       }
     },
     {
+      "rule": "validator-missing-param",
+      "why": "`pattern` は `pattern` を見るのに `value` と書いた（解析もスキーマも通るが、検証は一度も効かない）",
+      "page": {
+        "type": "form",
+        "id": "customer_form",
+        "title": "顧客登録",
+        "repository": "customerRepository",
+        "key": "code",
+        "form": {
+          "sections": [
+            {
+              "title": "基本",
+              "fields": [
+                {
+                  "field": "code",
+                  "label": "コード",
+                  "type": "text",
+                  "validators": [
+                    {
+                      "type": "pattern",
+                      "value": "^[0-9]{6}$",
+                      "message": "6桁の数字です"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
       "rule": "unknown-validator",
       "why": "登録していない検証",
       "page": {
