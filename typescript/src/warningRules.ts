@@ -618,6 +618,17 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
     happens: "画面は出ますがデータが来ません（実行時に引き先が見つからない）。",
     fix: "アプリ側の `RepositoryRegistry` に同じ名前で登録するか、定義の名前を直してください。",
   },
+  "validator-missing-param": {
+    what: "見るものが書かれていない検証",
+    happens:
+      "検証は `type` のほかに何を見るかが種類ごとに違います（`maxLength` は `value`、"
+      + "`pattern` は `pattern`）。名前が違うと**その検証は一度も効きません**。"
+      + "解析もスキーマも通るので、書いた人は効いていると思い込みます。",
+    fix:
+      "その検証が見るキーを書いてください（`npx hatake reference <検証の名前>` で引けます）。"
+      + "組み込みは maxLength / minLength / min / max が `value`、pattern が `pattern`、"
+      + "compare が `field` と `operator`、unique が `of` です。",
+  },
   "unknown-validator": {
     what: "登録されていないバリデータ",
     happens: "その検証は**黙って行われません**（今まで弾いていた値が通ります）。",

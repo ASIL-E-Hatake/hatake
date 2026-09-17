@@ -44,6 +44,9 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
   }
 
   SearchPageDefinition get _def => widget.definition;
+
+  /// 一覧のコードを名前に直すための選択肢（**1度だけ集める**）。
+  late final List<OptionsOwner> _optionOwners = optionOwnersOf(_def);
   ListController get _controller => widget.controller;
   Set<String> get _roles => HatakeScope.of(context).roles;
 
@@ -255,9 +258,17 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
   }
 
   Widget _buildCell(ColumnDefinition column, Object? value) {
-    final text = column.format != null
-        ? _formatters.format(column.format!, value, column.config)
-        : value?.toString() ?? '';
+    // コードで持って名前で見せる（`active` → 在籍）。ラベルは**同じ画面の項目か
+    // 検索条件にもう書いてある**ので、そこから引く（列にもう一度書かせない＝
+    // 同じことを2か所に書くと、片方だけ直したときに一覧と入力で違う字が出る）。
+    // 見た目を決める `format` を書いてあるときは、そちらが先（書いた人の指定なので）。
+    final label = column.format != null
+        ? null
+        : optionLabelIn(_optionOwners, column.field, value);
+    final text = label ??
+        (column.format != null
+            ? _formatters.format(column.format!, value, column.config)
+            : value?.toString() ?? '');
     switch (column.type) {
       case ColumnTypes.badge:
         return Chip(

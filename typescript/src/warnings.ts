@@ -84,6 +84,52 @@ const str = (v: unknown): string | undefined =>
  * 歩き方は助言と同じ1本道（[pageParts]）を使う。2つ持つと、片方だけ増えたときに
  * 「定義に在るのに無いと言う」警告ができる＝道具が嘘をつく側に倒れる。
  */
+/**
+ * 組み込みの検証が**要るものを持っているか**。
+ *
+ * 検証は `type` のほかに何を見るかが種類ごとに違う（`maxLength` は `value`、`pattern` は
+ * `pattern`…）。名前を1つ間違えると、**その検証は一度も効かない**のに解析もスキーマも
+ * 通る＝書いた人は効いていると思い込む。実際、`{ type: pattern, value: "^[0-9]{6}$" }`
+ * と書いた定義が警告ゼロで通り、6桁の規則が素通りしていた（見本を作っていて出た）。
+ *
+ * 見るのは**組み込みだけ**。独自の検証は開いた文字列なので、何を見るか枠組みは知らない。
+ */
+const VALIDATOR_PARAMS: Record<string, string[]> = {
+  maxLength: ["value"],
+  minLength: ["value"],
+  min: ["value"],
+  max: ["value"],
+  pattern: ["pattern"],
+  compare: ["field", "operator"],
+  unique: ["of"],
+};
+
+function checkValidatorParams(raw: Dict, path: string, found: DefinitionWarning[]): void {
+  const type = str(raw.type);
+  if (type === undefined) return;
+  const wanted = VALIDATOR_PARAMS[type];
+  if (wanted === undefined) return;
+
+  const missing = wanted.filter((key) => raw[key] === undefined);
+  if (missing.length === 0) return;
+
+  // 何を書いてしまったか（`type` と `message` 以外）。綴り違いを名指しできると直しやすい。
+  const wrote = Object.keys(raw).filter((key) => key !== "type" && key !== "message");
+  const hint =
+    wrote.length === 0
+      ? ""
+      : `（書いてあるのは ${wrote.map((key) => `"${key}"`).join(" / ")}）`;
+  warn(
+    found,
+    "validator-missing-param",
+    path,
+    `検証 "${type}" は ${missing.map((key) => `\`${key}\``).join(" と ")} を見ますが、` +
+      `書かれていません${hint}。この検証は**一度も効きません**。`,
+    `${missing.map((key) => `\`${key}\``).join(" と ")} を書いてください` +
+      `（引くなら npx hatake reference ${type}）。`,
+  );
+}
+
 function pageFieldNames(page: Dict): Set<string> {
   const names = new Set<string>();
   for (const part of [
@@ -1470,13 +1516,16 @@ function checkFieldEntry(
   checkUnique(field, path, found);
   checkComputed(field, path, found, siblingDefs);
   list(field.validators).forEach((raw, i) => {
-    if (isDict(raw)) return;
-    warn(
-      found,
-      "required-as-validator-only",
-      `${path}.validators[${i}]`,
-      "validators の要素がオブジェクトではありません。検証は足されません。",
-    );
+    if (!isDict(raw)) {
+      warn(
+        found,
+        "required-as-validator-only",
+        `${path}.validators[${i}]`,
+        "validators の要素がオブジェクトではありません。検証は足されません。",
+      );
+      return;
+    }
+    checkValidatorParams(raw, `${path}.validators[${i}]`, found);
   });
   for (const key of ["visibleWhen", "enabledWhen", "requiredWhen", "readOnlyWhen"]) {
     const condition = field[key];

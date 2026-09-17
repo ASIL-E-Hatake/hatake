@@ -55,6 +55,38 @@ YAML Language Server 系のエディタなら、ファイル先頭にこの一�
 # yaml-language-server: $schema=https://github.com/ASIL-E-Hatake/hatake/raw/main/spec/hatake-page.schema.json
 ```
 
+## 一覧に出す字（コードと名前）
+
+業務のマスタは**コードで持って名前で見せる**（`active` を持って「在籍」と出す）。
+
+列に選択肢を書く場所は**無い**。その項目の選択肢は、同じ画面の入力欄か検索条件に
+もう書いてあるので、**そこから引く**:
+
+```yaml
+table:
+  columns:
+    - { field: employmentStatus, label: 在籍区分, type: badge }   # ← ここには書かない
+form:
+  sections:
+    - title: 在籍
+      fields:
+        - field: employmentStatus
+          label: 在籍区分
+          type: select
+          options:                                               # ← ここが正
+            - { value: active, label: 在籍 }
+            - { value: retired, label: 退職 }
+```
+
+一覧には「在籍」と出る。**同じことを2か所に書かせない**ためで、列にも書けるようにすると
+片方だけ直したときに一覧と入力で違う字が出る（しかも直すまで誰も気づかない）。
+
+- 入力欄と検索条件の両方に在れば、**入力欄の言い方**を採る
+- 選択肢に無い値は**そのまま**出す（勝手に作らない）
+- 列に `format` を書いてあれば、そちらが先（書いた人の指定なので）
+- 選択肢を Repository から引くもの（`optionsSource`）は画面が読むまで分からないので、
+  引けたときだけ名前になる
+
 ## 開いた型システム
 
 型識別子（フィールド型・フィルタ演算子・カラム描画型・バリデータ型・アクション型）は

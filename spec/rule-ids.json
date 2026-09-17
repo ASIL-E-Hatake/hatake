@@ -94,6 +94,7 @@
     "unknown-repository",
     "unknown-validator",
     "unregistered-sink",
+    "validator-missing-param",
     "visiblewhen-never-true"
   ],
   "advice": [
