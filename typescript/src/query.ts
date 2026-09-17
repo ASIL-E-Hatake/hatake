@@ -68,8 +68,13 @@ export function buildQuery(
   const sf = params["sortField"];
   const sortField =
     typeof sf === "string" && allowed.has(sf) ? sf : undefined;
+  // 昇順か降順か。**文字列の "false" も降順として読む**のが要点で、REST の契約
+  // （spec/conformance/rest_query.json）はクエリ文字列で送ると決めている＝
+  // `sortAscending=false` は **文字列** で届く。ここを真偽値だけで見ていると、
+  // 降順を頼まれているのに黙って昇順で返す（画面には並びが出るので気づけない）。
+  const asked = params["sortAscending"];
   const sortAscending =
-    params["sortAscending"] !== false && params["order"] !== "desc";
+    asked !== false && asked !== "false" && params["order"] !== "desc";
 
   return {
     conditions,

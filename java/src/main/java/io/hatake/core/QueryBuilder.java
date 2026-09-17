@@ -40,7 +40,11 @@ public final class QueryBuilder {
         if (params.get("sortField") instanceof String s && allowed.contains(s)) {
             sortField = s;
         }
-        boolean sortAscending = !Boolean.FALSE.equals(params.get("sortAscending"))
+        // 昇順か降順か。**文字列の "false" も降順として読む**（REST の契約はクエリ
+        // 文字列で送ると決めているので、真偽値だけで見ていると降順が黙って無視される）。
+        Object asked = params.get("sortAscending");
+        boolean sortAscending = !Boolean.FALSE.equals(asked)
+                && !"false".equals(asked)
                 && !"desc".equals(params.get("order"));
 
         return new QuerySpec(

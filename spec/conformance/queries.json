@@ -1,16 +1,45 @@
 [
   {
     "filters": [
-      { "field": "name", "type": "text", "operator": "contains" },
-      { "field": "price", "type": "number", "operator": "gte" },
-      { "field": "status", "type": "select", "operator": "equals" }
+      {
+        "field": "name",
+        "type": "text",
+        "operator": "contains"
+      },
+      {
+        "field": "price",
+        "type": "number",
+        "operator": "gte"
+      },
+      {
+        "field": "status",
+        "type": "select",
+        "operator": "equals"
+      }
     ],
-    "params": { "name": "りんご", "price": "100", "status": "active", "secret": "x" },
+    "params": {
+      "name": "りんご",
+      "price": "100",
+      "status": "active",
+      "secret": "x"
+    },
     "expected": {
       "conditions": [
-        { "field": "name", "operator": "contains", "value": "りんご" },
-        { "field": "price", "operator": "gte", "value": 100 },
-        { "field": "status", "operator": "equals", "value": "active" }
+        {
+          "field": "name",
+          "operator": "contains",
+          "value": "りんご"
+        },
+        {
+          "field": "price",
+          "operator": "gte",
+          "value": 100
+        },
+        {
+          "field": "status",
+          "operator": "equals",
+          "value": "active"
+        }
       ],
       "sortField": null,
       "sortAscending": true,
@@ -19,8 +48,18 @@
     }
   },
   {
-    "filters": [{ "field": "name", "type": "text", "operator": "contains" }],
-    "params": { "page": "2", "pageSize": "20", "sortField": "name" },
+    "filters": [
+      {
+        "field": "name",
+        "type": "text",
+        "operator": "contains"
+      }
+    ],
+    "params": {
+      "page": "2",
+      "pageSize": "20",
+      "sortField": "name"
+    },
     "expected": {
       "conditions": [],
       "sortField": "name",
@@ -30,12 +69,63 @@
     }
   },
   {
-    "filters": [{ "field": "name", "type": "text", "operator": "contains" }],
-    "params": { "sortField": "evil", "order": "desc" },
+    "filters": [
+      {
+        "field": "name",
+        "type": "text",
+        "operator": "contains"
+      }
+    ],
+    "params": {
+      "sortField": "evil",
+      "order": "desc"
+    },
     "expected": {
       "conditions": [],
       "sortField": null,
       "sortAscending": false,
+      "page": 0,
+      "pageSize": 50
+    }
+  },
+  {
+    "$comment": "降順の指定は**文字列で届く**（REST の契約はクエリ文字列。真偽値だけで見ていると、降順を頼まれたのに黙って昇順で返す）",
+    "filters": [
+      {
+        "field": "name",
+        "type": "text",
+        "operator": "contains"
+      }
+    ],
+    "params": {
+      "sortField": "name",
+      "sortAscending": "false"
+    },
+    "expected": {
+      "conditions": [],
+      "sortField": "name",
+      "sortAscending": false,
+      "page": 0,
+      "pageSize": 50
+    }
+  },
+  {
+    "$comment": "文字列の \"true\" は昇順（\"false\" だけを降順として読む＝知らない字を降順に倒さない）",
+    "filters": [
+      {
+        "field": "name",
+        "type": "text",
+        "operator": "contains"
+      }
+    ],
+    "params": {
+      "sortField": "name",
+      "sortAscending": "true"
+    },
+    "expected": {
+      "conditions": [],
+      "sortField": "name",
+      "sortAscending": true,
       "page": 0,
       "pageSize": 50
     }

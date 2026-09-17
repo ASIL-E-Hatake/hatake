@@ -1,6 +1,6 @@
 {
   "name": "@hatake-fw/api",
-  "version": "0.0.1",
+  "version": "0.9.0",
   "description": "Core definitions + parser + server-side validation for hatake (TypeScript edition). Consumes the language-agnostic hatake DSL.",
   "license": "Apache-2.0",
   "type": "module",
@@ -27,7 +27,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "bundle-spec": "node tool/bundle-spec.mjs",
-    "prepack": "node tool/bundle-spec.mjs && tsc"
+    "prepack": "node tool/bundle-spec.mjs && tsc",
+    "check-versions": "node tool/check-versions.mjs"
   },
   "dependencies": {
     "yaml": "^2.5.0"
