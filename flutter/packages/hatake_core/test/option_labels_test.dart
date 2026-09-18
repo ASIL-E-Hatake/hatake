@@ -76,4 +76,43 @@ void main() {
   test('crud / master は CrudLike として渡せる（Renderer が使う道）', () {
     expect(optionLabelIn(optionOwnersOfCrud(page), 'supplierType', 'corp'), '法人');
   });
+
+  test('数字とグラフの画面も、出力条件の選択肢から引く', () {
+    // カードの一覧（type: table）にも列が在る。入力は持たないので、引ける相手は
+    // 検索条件だけ ── それでも `draft` と出るよりは「入力中」と出るほうがいい。
+    final board = DashboardPageDefinition(
+      id: 'order_dashboard',
+      title: '受注ダッシュボード',
+      search: const SearchDefinition(filters: [
+        FilterDefinition(
+          field: 'orderStatus',
+          label: '受注状態',
+          type: 'select',
+          options: [
+            OptionItem(value: 'draft', label: '入力中'),
+            OptionItem(value: 'confirmed', label: '確定'),
+          ],
+        ),
+      ]),
+    );
+    expect(optionLabelOf(board, 'orderStatus', 'draft'), '入力中');
+    expect(optionLabelOf(board, 'orderStatus', 'shipped'), isNull);
+  });
+
+  test('帳票も、出力条件の選択肢から引く（紙の字と画面の字を変えない）', () {
+    final report = ReportPageDefinition(
+      id: 'order_slip',
+      title: '注文請書',
+      repository: 'orderLineRepository',
+      search: const SearchDefinition(filters: [
+        FilterDefinition(
+          field: 'orderStatus',
+          label: '受注状態',
+          type: 'select',
+          options: [OptionItem(value: 'confirmed', label: '確定')],
+        ),
+      ]),
+    );
+    expect(optionLabelOf(report, 'orderStatus', 'confirmed'), '確定');
+  });
 }

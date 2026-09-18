@@ -29,13 +29,13 @@ pub.dev 前提（`hatake_core: ^0.0.1`）で書いてあり、その中の overr
 ```yaml no-check:pubspec.yaml（hatake の定義ではない）
 dependencies:
   hatake_material:
-    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.9.1, path: flutter/packages/hatake_material }
+    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.9.2, path: flutter/packages/hatake_material }
 
 dependency_overrides:
   hatake:
-    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.9.1, path: flutter/packages/hatake }
+    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.9.2, path: flutter/packages/hatake }
   hatake_core:
-    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.9.1, path: flutter/packages/hatake_core }
+    git: { url: https://github.com/ASIL-E-Hatake/hatake.git, ref: v0.9.2, path: flutter/packages/hatake_core }
 ```
 
 書き忘れると `pub.dev に hatake_core が無い` で落ちる。**下に居るものを全部書く**のが
@@ -53,7 +53,7 @@ dependency_overrides:
 [Releases](https://github.com/ASIL-E-Hatake/hatake/releases) に貼ってある `.tgz` を指す。
 
 ```bash
-npm i -D https://github.com/ASIL-E-Hatake/hatake/releases/download/v0.9.1/hatake-fw-api-0.9.1.tgz
+npm i -D https://github.com/ASIL-E-Hatake/hatake/releases/download/v0.9.2/hatake-fw-api-0.9.2.tgz
 ```
 
 git の URL（`npm i github:…`）では入らない。理由は2つあって、**リポジトリの根に
@@ -73,7 +73,7 @@ repositories {
     maven { url 'https://jitpack.io' }
 }
 dependencies {
-    implementation 'com.github.ASIL-E-Hatake:hatake:v0.9.1'
+    implementation 'com.github.ASIL-E-Hatake:hatake:v0.9.2'
 }
 ```
 
@@ -94,15 +94,15 @@ dependencies {
 
 ## 出す手順（人がやること）
 
-1. `CHANGELOG.md` の「未リリース」に見出しを付ける（`## 0.9.1 — 2026-09-17`）
+1. `CHANGELOG.md` の「未リリース」に見出しを付ける（`## 0.9.2 — 2026-09-18`）
 2. 版を3版そろえて上げる — `typescript/package.json` / `java/build.gradle` /
    `flutter/packages/*/pubspec.yaml`
 3. `main` に入れる
 4. tag を打って push する
 
 ```bash
-git tag v0.9.1
-git push origin v0.9.1
+git tag v0.9.2
+git push origin v0.9.2
 ```
 
 あとは [Release ワークフロー](../../.github/workflows/release.yml)が、

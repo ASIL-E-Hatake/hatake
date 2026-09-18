@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.2
+
+一覧のコードを名前で出す所を、**数字とグラフの画面と帳票にも**広げた
+（0.9.1 では crud / search だけだった）。紙に刷る側（`hatake_print`）も同じにしてある。
+
+変更の一覧はリポジトリの
+[CHANGELOG](https://github.com/ASIL-E-Hatake/hatake/blob/main/CHANGELOG.md)、
+入れ方は
+[リリースと入れ方](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/release.ja.md)。
+
 ## 0.9.1
 
 Dart 版そのものに変更はない。**3版は同じ番号で出す**と決めてあるので、

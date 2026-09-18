@@ -42,6 +42,9 @@ PrintLayout layoutReport(
     return PrintLayout(paper: paper, pages: const [], title: page.title);
   }
   final registry = formatters ?? FormatterRegistry();
+  // **紙の字と画面の字を変えない**。出力条件に書いてある選択肢でコードを名前にする
+  // （`confirmed` のまま刷った紙は取引先に送れない）。行ごとに集め直さないよう1度だけ。
+  final owners = optionOwnersOf(page);
   final columns = [
     for (final column in page.table.columns)
       if (isAllowed(column.roles, roles)) column,
@@ -96,6 +99,7 @@ PrintLayout layoutReport(
               page: page,
               style: style,
               registry: registry,
+              owners: owners,
               columns: columns,
               widths: widths,
               xs: xs,
@@ -208,6 +212,7 @@ List<PrintItem> _block({
   required ReportPageDefinition page,
   required PrintStyle style,
   required FormatterRegistry registry,
+  required List<OptionsOwner> owners,
   required List<ColumnDefinition> columns,
   required List<double> widths,
   required List<double> xs,
@@ -244,7 +249,7 @@ List<PrintItem> _block({
             y: baseline,
             width: widths[i],
             text: clipToWidth(
-              _cell(registry, columns[i], block.row[columns[i].field]),
+              _cell(registry, owners, columns[i], block.row[columns[i].field]),
               size,
               widths[i],
             ),
@@ -287,13 +292,14 @@ List<PrintItem> _block({
 
 String _cell(
   FormatterRegistry registry,
+  List<OptionsOwner> owners,
   ColumnDefinition column,
   Object? value,
 ) {
   if (column.format != null) {
     return registry.format(column.format!, value, column.config);
   }
-  return value?.toString() ?? '';
+  return optionLabelIn(owners, column.field, value) ?? value?.toString() ?? '';
 }
 
 /// その列に属する小計・総計。同じ列に2つ（`sum` と `count`）あれば並べる。
@@ -314,7 +320,7 @@ String _totalFor(
     // 件数は数を数えただけなので、列の書式（金額など）を通さない。
     parts.add(total.aggregate == AggregateOps.count
         ? '${value.toInt()} ${style.countSuffix}'
-        : _cell(registry, column, value));
+        : _cell(registry, const [], column, value));
   }
   return parts.join(' / ');
 }
