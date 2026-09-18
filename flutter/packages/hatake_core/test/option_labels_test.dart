@@ -7,17 +7,17 @@ import 'package:test/test.dart';
 /// 一覧ではコードのまま出ていたので、同じ画面の選択肢から引くようにした。
 /// 列に `options` を書けるようにしなかったのは、**同じことを2か所に書かせない**ため。
 void main() {
-  final page = CrudPageDefinition(
+  const page = CrudPageDefinition(
     id: 'supplier_master',
     title: '取引先マスタ',
     repository: 'supplierRepository',
     keyField: 'supplierCode',
-    table: const TableDefinition(columns: [
+    table: TableDefinition(columns: [
       ColumnDefinition(field: 'supplierType', label: '区分', type: ColumnTypes.badge),
       ColumnDefinition(field: 'tradeStatus', label: '取引状態', type: ColumnTypes.badge),
       ColumnDefinition(field: 'supplierName', label: '取引先名'),
     ]),
-    search: const SearchDefinition(filters: [
+    search: SearchDefinition(filters: [
       FilterDefinition(
         field: 'tradeStatus',
         label: '取引状態',
@@ -27,7 +27,7 @@ void main() {
         ],
       ),
     ]),
-    form: const FormDefinition(sections: [
+    form: FormDefinition(sections: [
       SectionDefinition(title: '基本', fields: [
         FieldDefinition(
           field: 'supplierType',
@@ -80,10 +80,10 @@ void main() {
   test('数字とグラフの画面も、出力条件の選択肢から引く', () {
     // カードの一覧（type: table）にも列が在る。入力は持たないので、引ける相手は
     // 検索条件だけ ── それでも `draft` と出るよりは「入力中」と出るほうがいい。
-    final board = DashboardPageDefinition(
+    const board = DashboardPageDefinition(
       id: 'order_dashboard',
       title: '受注ダッシュボード',
-      search: const SearchDefinition(filters: [
+      search: SearchDefinition(filters: [
         FilterDefinition(
           field: 'orderStatus',
           label: '受注状態',
@@ -100,11 +100,11 @@ void main() {
   });
 
   test('帳票も、出力条件の選択肢から引く（紙の字と画面の字を変えない）', () {
-    final report = ReportPageDefinition(
+    const report = ReportPageDefinition(
       id: 'order_slip',
       title: '注文請書',
       repository: 'orderLineRepository',
-      search: const SearchDefinition(filters: [
+      search: SearchDefinition(filters: [
         FilterDefinition(
           field: 'orderStatus',
           label: '受注状態',

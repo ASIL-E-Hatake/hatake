@@ -44,8 +44,8 @@ List<OptionsOwner> optionOwnersOf(PageDefinition page) {
       if (search != null) owners.addAll(search.filters);
     case ReportPageDefinition(:final search):
       if (search != null) owners.addAll(search.filters);
-    default:
-      break;
+    // 逃げ道（default）は置かない。`PageDefinition` は sealed なので、**種類を足したら
+    // ここが赤くなる**＝新しい画面の分を書き忘れたまま黙って素通りする、が起きない。
   }
   return owners;
 }
