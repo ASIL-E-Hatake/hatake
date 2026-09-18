@@ -3,7 +3,7 @@ description: >-
   Print output for hatake reports: ReportDocument to a neutral PrintLayout, and
   PrintLayout to PDF bytes. An opt-in adapter — pure Dart, no dependencies
   beyond hatake_core, so a nightly batch can print without a UI.
-version: 0.9.2
+version: 0.9.3
 repository: https://github.com/ASIL-E-Hatake/hatake
 homepage: https://github.com/ASIL-E-Hatake/hatake
 issue_tracker: https://github.com/ASIL-E-Hatake/hatake/issues
@@ -17,10 +17,10 @@ environment:
   sdk: ^3.5.0
 
 dependencies:
-  hatake_core: ^0.9.2
+  hatake_core: ^0.9.3
 
 dev_dependencies:
-  hatake_yaml: ^0.9.2
+  hatake_yaml: ^0.9.3
   lints: ^4.0.0
   test: ^1.25.0
 

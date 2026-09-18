@@ -4098,6 +4098,161 @@
           }
         ]
       }
+    },
+    {
+      "rule": "navigate-without-key-param",
+      "why": "1件の画面へ行くのに、行き先が待っている名前（`itemCode`）で鍵を渡していない",
+      "document": {
+        "app": {
+          "id": "demo",
+          "title": "見本",
+          "home": "list",
+          "menu": [
+            {
+              "id": "list",
+              "label": "一覧",
+              "page": "item_list"
+            }
+          ],
+          "pages": [
+            {
+              "type": "search",
+              "id": "item_list",
+              "title": "一覧",
+              "repository": "itemRepository",
+              "key": "itemCode",
+              "search": {
+                "filters": [
+                  {
+                    "field": "itemCode",
+                    "label": "コード"
+                  }
+                ]
+              },
+              "table": {
+                "columns": [
+                  {
+                    "field": "itemCode",
+                    "label": "コード",
+                    "sortable": true
+                  }
+                ]
+              },
+              "actions": [
+                {
+                  "id": "detail",
+                  "type": "navigate",
+                  "label": "詳細",
+                  "scope": "row",
+                  "page": "item_detail",
+                  "params": {
+                    "code": "$row.itemCode"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "detail",
+              "id": "item_detail",
+              "title": "詳細",
+              "repository": "itemRepository",
+              "key": "itemCode",
+              "form": {
+                "sections": [
+                  {
+                    "fields": [
+                      {
+                        "field": "itemCode",
+                        "label": "コード"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "detail-page-in-menu",
+      "why": "詳細画面をメニューに直接置いている（メニューには鍵を渡す場所が無い）",
+      "document": {
+        "app": {
+          "id": "demo",
+          "title": "見本",
+          "home": "list",
+          "menu": [
+            {
+              "id": "list",
+              "label": "一覧",
+              "page": "item_list"
+            },
+            {
+              "id": "detailMenu",
+              "label": "詳細",
+              "page": "item_detail"
+            }
+          ],
+          "pages": [
+            {
+              "type": "search",
+              "id": "item_list",
+              "title": "一覧",
+              "repository": "itemRepository",
+              "key": "itemCode",
+              "search": {
+                "filters": [
+                  {
+                    "field": "itemCode",
+                    "label": "コード"
+                  }
+                ]
+              },
+              "table": {
+                "columns": [
+                  {
+                    "field": "itemCode",
+                    "label": "コード",
+                    "sortable": true
+                  }
+                ]
+              },
+              "actions": [
+                {
+                  "id": "detail",
+                  "type": "navigate",
+                  "label": "詳細",
+                  "scope": "row",
+                  "page": "item_detail",
+                  "params": {
+                    "itemCode": "$row.itemCode"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "detail",
+              "id": "item_detail",
+              "title": "詳細",
+              "repository": "itemRepository",
+              "key": "itemCode",
+              "form": {
+                "sections": [
+                  {
+                    "fields": [
+                      {
+                        "field": "itemCode",
+                        "label": "コード"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
     }
   ]
 }

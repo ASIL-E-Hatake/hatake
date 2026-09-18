@@ -18,6 +18,7 @@
 
 import { rowActionsOf } from "./actionNeeds.js";
 import { ActionScopes, DEFAULT_PAGE_SIZE } from "./definition.js";
+import { findAppAdvice } from "./adviseApp.js";
 import { checkCompare } from "./adviseCompare.js";
 import { checkRequired } from "./adviseRequire.js";
 import { type AdviceRules, DEFAULT_RULES, enabled, knob } from "./adviseRules.js";
@@ -171,6 +172,8 @@ export function findAdvice(
   const found: Advice[] = [];
   const app = isDict(document.app) ? document.app : undefined;
   if (app !== undefined) {
+    // **画面をまたいで見るもの**を先に（1枚だけ読んでも分からない）。
+    found.push(...findAppAdvice(document, rules));
     dicts(app.pages).forEach((page, i) =>
       checkPage(page, `app.pages[${i}]`, found, rules),
     );

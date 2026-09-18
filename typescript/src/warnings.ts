@@ -196,10 +196,12 @@ export function findWarnings(
       one.path,
       `\`${one.key}\` は${one.what}を${one.wanted}で書く所ですが、${one.wrote}が書いてあります。` +
         "解析器はここを**黙って捨てます**＝書いたことは一度も効きません。",
-      one.instead === undefined
-        ? `${one.wanted}で書き直してください（npx hatake reference ${one.key}）。`
-        : `Repository から引くなら \`${one.instead}\` です` +
-          `（npx hatake reference ${one.instead}）。`,
+      one.note !== undefined
+        ? one.note
+        : one.instead === undefined
+          ? `${one.wanted}で書き直してください（npx hatake reference ${one.key}）。`
+          : `Repository から引くなら \`${one.instead}\` です` +
+            `（npx hatake reference ${one.instead}）。`,
     );
   }
   const app = isDict(document.app) ? document.app : undefined;

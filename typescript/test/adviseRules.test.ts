@@ -23,6 +23,8 @@ const EVERYTHING = `app:
   title: 販売
   menu:
     - { id: orders, label: 受注, page: order_list }
+    # 詳細をメニューに置いてある（鍵を渡す場所が無いので必ず空）。
+    - { id: orderDetail, label: 受注詳細, page: order_detail }
   pages:
     - type: crud
       id: order_list
@@ -82,6 +84,18 @@ const EVERYTHING = `app:
           - { field: customer, label: 得意先 }
       report:
         sort: { field: customer }
+    # 行き先が待っている名前（orderNo）ではない名前で鍵を渡している。
+    - type: detail
+      id: order_detail
+      title: 受注詳細
+      repository: orderRepository
+      key: orderNo
+      form:
+        sections:
+          - fields: [{ field: customer, label: 得意先 }]
+      actions:
+        - { id: again, type: navigate, label: もう一度, page: order_detail,
+            params: { code: $record.orderNo } }
 `;
 
 const advise = (source: string, rules: AdviceRules = DEFAULT_RULES): Advice[] =>
@@ -370,8 +384,10 @@ describe("案件の決めごとを足す", () => {
 
   it("どの画面の話かが分かる（app の1枚に絞れるように）", () => {
     const found = advise(EVERYTHING);
+    // 画面をまたいで見る規則（`detail-page-in-menu` など）も、**どの画面の話か**は
+    // 言える（行き先の画面 id を添える）。
     expect(new Set(found.map((one) => one.page))).toEqual(
-      new Set(["order_list", "sales_report"]),
+      new Set(["order_list", "sales_report", "order_detail"]),
     );
   });
 });

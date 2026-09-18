@@ -157,8 +157,31 @@ class _MaterialAppShell extends StatelessWidget {
     return HatakePageView(
       key: key,
       definition: page,
-      recordKey: route.params['id'],
+      recordKey: _recordKeyOf(route, page),
     );
+  }
+
+  /// 1件の画面（詳細・入力・段階入力）に渡す鍵。
+  ///
+  /// **画面に書いてある `key` の名前で受け取る**。`key: itemCode` と書いてあるなら
+  /// `params: { itemCode: … }` がそのまま効く＝同じことを2か所に書かせない。
+  ///
+  /// `id` も残してある。`key` を省いた画面の既定が `id` で、`params: { id: … }` と
+  /// 書いている定義が既に在るため（**壊さない**）。
+  ///
+  /// どちらも無ければ null＝鍵の無い画面として描く（「データがありません」）。
+  /// それが意図でないことは `advise` の `navigate-without-key-param` が言う。
+  static Object? _recordKeyOf(AppRoute route, PageDefinition page) {
+    final named = switch (page) {
+      final DetailPageDefinition d => d.keyField,
+      final FormPageDefinition d => d.keyField,
+      final WizardPageDefinition d => d.keyField,
+      _ => null,
+    };
+    if (named != null && route.params.containsKey(named)) {
+      return route.params[named];
+    }
+    return route.params['id'];
   }
 
   Widget _buildMenu(

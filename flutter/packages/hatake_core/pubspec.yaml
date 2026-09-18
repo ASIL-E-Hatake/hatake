@@ -2,7 +2,7 @@ name: hatake_core
 description: >-
   Core definitions for hatake — a declarative, definition-driven UI framework
   for Flutter business applications. Pure Dart, no Flutter dependency.
-version: 0.9.2
+version: 0.9.3
 # TODO: replace the placeholder org with the real GitHub repository before publishing.
 repository: https://github.com/ASIL-E-Hatake/hatake
 homepage: https://github.com/ASIL-E-Hatake/hatake

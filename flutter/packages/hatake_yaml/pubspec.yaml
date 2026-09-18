@@ -2,7 +2,7 @@ name: hatake_yaml
 description: >-
   YAML / JSON parser for hatake — converts definition documents into
   hatake_core PageDefinitions. Pure Dart.
-version: 0.9.2
+version: 0.9.3
 repository: https://github.com/ASIL-E-Hatake/hatake
 homepage: https://github.com/ASIL-E-Hatake/hatake
 issue_tracker: https://github.com/ASIL-E-Hatake/hatake/issues
@@ -16,7 +16,7 @@ environment:
   sdk: ^3.5.0
 
 dependencies:
-  hatake_core: ^0.9.2
+  hatake_core: ^0.9.3
   yaml: ^3.1.2
 
 dev_dependencies:

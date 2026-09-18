@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.3
+
+一覧から詳細へ飛ぶときの鍵を、**画面に書いてある `key` の名前**で受け取るようにした
+（前は `id` という名前だけを見ていた）。あわせて、鍵が渡っていない画面移動と、
+メニューに直接置いた詳細画面を `advise` が言うようにした。
+
+変更の一覧はリポジトリの
+[CHANGELOG](https://github.com/ASIL-E-Hatake/hatake/blob/main/CHANGELOG.md)、
+入れ方は
+[リリースと入れ方](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/release.ja.md)。
+
 ## 0.9.2
 
 一覧のコードを名前で出す所を、**数字とグラフの画面と帳票にも**広げた
