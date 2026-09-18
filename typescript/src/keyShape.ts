@@ -26,6 +26,8 @@ interface Expected {
   what: string;
   /** 形を間違えたときに、たいてい書きたかったもの。 */
   instead?: string;
+  /** そう書きたくなる理由が分かっているときの、一言。 */
+  note?: string;
 }
 
 /**
@@ -41,6 +43,15 @@ interface Expected {
  * 当てにいって外すくらいなら言わない＝**言われたら必ず直す所**にしておく。
  */
 const EXPECTED: Record<string, Expected> = {
+  key: {
+    shape: "string",
+    what: "1件を指す項目の名前",
+    // 並びを書く人は、まず間違いなく複合キーを書こうとしている。
+    note:
+      "**複合キーは、いまは持っていません**（1件を指すのは項目1つ）。" +
+      "2つの列で1件が決まるなら、連結した列をビューに1つ作って、その名前を書いてください" +
+      "（`rowKey` のように）。",
+  },
   optionsFrom: {
     shape: "string",
     what: "連動する親の項目名",
@@ -122,6 +133,7 @@ export interface WrongShape {
   wanted: string;
   wrote: string;
   instead?: string;
+  note?: string;
 }
 
 /**
@@ -154,6 +166,7 @@ function walk(node: unknown, path: string, found: WrongShape[]): void {
         wanted: WANTED[expected.shape],
         wrote: shapeOf(value),
         ...(expected.instead === undefined ? {} : { instead: expected.instead }),
+        ...(expected.note === undefined ? {} : { note: expected.note }),
       });
       // 中は見ない（形が違う時点で、この枝は解析器に届いていない）。
       continue;

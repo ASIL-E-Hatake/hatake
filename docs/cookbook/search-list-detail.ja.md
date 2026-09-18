@@ -64,7 +64,19 @@ runApp(MaterialApp(
         page: order_detail, params: { id: "$row.orderNo" } }
 ```
 
-遷移先の詳細ページは、受け取った `id` で `repository.findByKey` が呼ばれてレコードが読まれる:
+> **渡す名前は、行き先の `key` と同じにする。** 詳細ページは自分の `key` の名前
+> （上の例なら `orderNo`）で鍵を受け取る。`id` も受け取る（`key` を省いた画面の既定が
+> `id` なので）。**それ以外の名前で渡すと、URL は変わるのに開いた画面は空**になり、
+> データを取りに行きもしない。定義の側では `hatake advise` が
+> `navigate-without-key-param` で言う。
+>
+> ```yaml
+> params: { orderNo: "$row.orderNo" }   # 行き先の key と同じ名前（推奨）
+> params: { id: "$row.orderNo" }        # これも効く（既定の名前）
+> params: { code: "$row.orderNo" }      # **効かない**。開いても空になる
+> ```
+
+遷移先の詳細ページは、受け取った鍵で `repository.findByKey` が呼ばれてレコードが読まれる:
 
 ```yaml context:detailPage
 - type: detail
@@ -103,12 +115,40 @@ actions:
 ### メニューのアイコン
 `icon` に名前を書く。組込は `people` `inventory` `list` `dashboard` `settings`（未知の名前はフォルダアイコン）。増やしたいときは Renderer 側の拡張で。
 
+## 2つの列で1件が決まるとき（複合キー）
+
+**`key` に並びは書けない。** 1件を指すのは項目1つで、`key: [orderNo, lineNo]` と
+書いても効かない（`hatake validate` が「複合キーは、いまは持っていません」と言う）。
+
+いま使える道は**連結した列をビューに1つ作る**こと。
+
+```sql
+-- ビュー側で1列にしておく
+select order_no || '-' || line_no as row_key, ...
+```
+
+```yaml
+key: rowKey
+params: { rowKey: "$row.rowKey" }
+```
+
+フレームワークから見れば**ただの単一キー**になり、REST も `GET /api/order-lines/SO001-3`
+で素直に通る。分解するのはサーバ側の担当。
+
+> 区切り文字がデータに出てくる場合は、URL に載る形にエンコードしてから連結すること
+> （`-` を含むコードが在るなら別の区切りにする）。
+>
+> 本当の複合キー（`{orderNo, lineNo}` をそのまま渡す）は**まだ持っていない**。
+> `keyField`・`Repository` の口・REST の契約の3つを同時に広げる話なので、
+> 1.0 のあとに後方互換で入れる予定。
+
 ## つまずきポイント
 
 | 症状 | 原因 |
 |---|---|
 | 「遷移先が解決できません」と出る | `navigate` に `page` が無い、または `HatakeApp` の外（単一ページ表示）で使っている |
 | 「ページ "x" が見つかりません」 | `page:` に書いた id が `pages` のどれとも一致していない |
-| 詳細が空 | `params.id` が渡っていない（`$row.<項目>` の項目名が一覧のデータキーと違う）／`findByKey` の実装が `key` と不一致 |
+| 詳細が空 | 渡した `params` の名前が、行き先の `key`（または `id`）と違う／`$row.<項目>` の項目名が一覧のデータキーと違う／`findByKey` の実装が `key` と不一致 |
+| 詳細をメニューに置いたら必ず空 | **メニューには鍵を渡す場所が無い。** 詳細は一覧の行から開く（`advise` の `detail-page-in-menu`） |
 | メニューが出ない | 表示できる葉が1つしかないとメニューは省略される（2つ以上で表示） |
 | 行ボタンが出ない | `table.rowActions` に アクション id を入れていない |

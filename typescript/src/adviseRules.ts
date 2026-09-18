@@ -23,6 +23,10 @@ export const BUILTIN_RULES: Record<string, Record<string, "number" | "strings">>
   "no-search-filter": { minColumns: "number" },
   // 1件を指すキーが一覧に出ていない。
   "key-not-in-table": {},
+  // 1件の画面へ行くのに、鍵になる値を渡していない（開いても空になる）。
+  "navigate-without-key-param": {},
+  // 詳細画面をメニューに直接置いている（鍵を渡す場所が無いので必ず空）。
+  "detail-page-in-menu": {},
   // 入力できるのに必須が1つも無い。
   "no-required-field": {},
   // 消せる・持ち出せるのに roles が無い。types = 危ないと見なすアクション種別。

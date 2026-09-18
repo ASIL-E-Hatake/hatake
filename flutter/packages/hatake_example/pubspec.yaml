@@ -2,7 +2,7 @@ name: hatake_example
 description: >-
   Example app demonstrating hatake — a YAML-defined CrudPage rendered with
   Material 3, backed by an in-memory repository.
-version: 0.9.2
+version: 0.9.3
 publish_to: none
 
 environment:
@@ -12,17 +12,17 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  hatake_material: ^0.9.2
-  hatake_yaml: ^0.9.2
+  hatake_material: ^0.9.3
+  hatake_yaml: ^0.9.3
   # 文字コード変換は opt-in アダプタ。Shift_JIS で出す画面があるので入れている。
-  hatake_encoding: ^0.9.2
+  hatake_encoding: ^0.9.3
   # 印刷も opt-in アダプタ。帳票に印刷ボタン（type: print）があるので入れている。
   # 刷らないアプリは入れなくてよい＝PDF を書くコードは1行も入らない。
-  hatake_print: ^0.9.2
+  hatake_print: ^0.9.3
   # REST の Repository も opt-in アダプタ。デモ本体はインメモリだが、
   # `hatake wire --base` が出す配線（tool/wired_everything.dart）がこれを使う
   # ＝生成物が flutter analyze に通ることで、生成器の嘘を防いでいる。
-  hatake_http: ^0.9.2
+  hatake_http: ^0.9.3
 
 dev_dependencies:
   flutter_test:
@@ -31,7 +31,7 @@ dev_dependencies:
   # 画面の試験の道具。`hatake run --widget-draft` が起こした下書き
   # （test/drafted_customer_master_test.dart）がこれを使う＝**生成した試験が
   # 本当に通ること**で、下書きの嘘を防いでいる（配線の下書きと同じ考え）。
-  hatake_test: ^0.9.2
+  hatake_test: ^0.9.3
 
 dependency_overrides:
   hatake_core:
