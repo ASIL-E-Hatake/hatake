@@ -38,8 +38,14 @@ List<OptionsOwner> optionOwnersOf(PageDefinition page) {
     // ウィザードは全ステップを畳んだ form を持っている。
     case WizardPageDefinition():
       owners.addAll(page.form.fields);
-    default:
-      break;
+    // 数字とグラフの画面・帳票にも一覧（カードの table / 明細の列）が在る。
+    // 入力は持たないので、引ける相手は検索条件だけ。
+    case DashboardPageDefinition(:final search):
+      if (search != null) owners.addAll(search.filters);
+    case ReportPageDefinition(:final search):
+      if (search != null) owners.addAll(search.filters);
+    // 逃げ道（default）は置かない。`PageDefinition` は sealed なので、**種類を足したら
+    // ここが赤くなる**＝新しい画面の分を書き忘れたまま黙って素通りする、が起きない。
   }
   return owners;
 }

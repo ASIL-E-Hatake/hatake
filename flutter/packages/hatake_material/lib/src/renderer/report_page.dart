@@ -354,11 +354,18 @@ class _MaterialReportPage extends StatelessWidget {
     return parts.join(' / ');
   }
 
+  /// この画面に書いてある選択肢（明細の列でコードを名前に直すため）。
+  /// 帳票が持つのは出力条件だけなので、引ける相手もそこだけ。
+  List<OptionsOwner> get _optionOwners => optionOwnersOf(definition);
+
   String _cell(ColumnDefinition column, Object? value) {
     if (column.format != null) {
       return formatters.format(column.format!, value, column.config);
     }
-    return value?.toString() ?? '';
+    // 紙に出る字と画面に出る字を変えない（コードのまま刷ると取引先に送れない）。
+    return optionLabelIn(_optionOwners, column.field, value) ??
+        value?.toString() ??
+        '';
   }
 
   /// Numbers read right-aligned on paper; everything else stays left.
