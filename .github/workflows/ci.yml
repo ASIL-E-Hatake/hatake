@@ -63,16 +63,6 @@ jobs:
           # 見ていないので、ここで配る 9 枚ぜんぶと3版の番号を見る。
           node tool/check-versions.mjs
 
-      - name: 画面の枚数が、書いてある所ぜんぶで揃っている
-        working-directory: typescript
-        run: |
-          # 枚数は「3版で同じ答えが出る」ことの確かめに使っていて、**4か所に直に
-          # 書いて**ある（この CI・Dart の試験・Java の試験・README）。例を1枚足すと
-          # 4つとも直すことになるが、**どこを直せばいいかは落ちたログに出てこない**
-          # （3か所目・4か所目は、直して回し直してから分かる）。ここで数え直して、
-          # 食い違っている所を**一度に名指し**する。
-          node tool/check-screen-count.mjs
-
       - name: 配る形のまま動く（固めて、入れて、叩く）
         working-directory: typescript
         run: |
@@ -95,6 +85,18 @@ jobs:
           # 起きないボタン）が入ったまま気づけなかった。配るものは全部通す。
           node dist/cli.js validate --warn-as-error \
             ../flutter/packages/hatake_example/assets/*.yaml
+      - name: 画面の枚数が、書いてある所ぜんぶで揃っている
+        working-directory: typescript
+        run: |
+          # 枚数は「3版で同じ答えが出る」ことの確かめに使っていて、**4か所に直に
+          # 書いて**ある（この CI・Dart の試験・Java の試験・README）。例を1枚足すと
+          # 4つとも直すことになるが、**どこを直せばいいかは落ちたログに出てこない**
+          # （3か所目・4か所目は、直して回し直してから分かる）。ここで数え直して、
+          # 食い違っている所を**一度に名指し**する。
+          #
+          # **build のあとに置くこと**（この道具は dist/ を読む。他の tool/ も同じ）。
+          node tool/check-screen-count.mjs
+
       - name: Reference & example catalog are reachable from a real run
         working-directory: typescript
         run: |

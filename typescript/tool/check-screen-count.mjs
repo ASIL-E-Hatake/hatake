@@ -18,13 +18,25 @@
 //
 // 使い方: node tool/check-screen-count.mjs
 
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { buildIndex } from "../dist/index.js";
+const HERE = dirname(fileURLToPath(import.meta.url));
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+// **`dist/` が無いと素の stack trace が出る**（`tool/` はどれも組み立て済みを読む）。
+// 何をすればいいかが読めないので、先に一言で言う。CI でも一度ここで止まった。
+if (!existsSync(join(HERE, "..", "dist", "index.js"))) {
+  console.error(
+    "組み立てたものが在りません（dist/）。先に `npm run build` を回してください" +
+      "（tool/ の道具はどれも dist/ を読みます）。",
+  );
+  process.exit(1);
+}
+
+const { buildIndex } = await import("../dist/index.js");
+
+const ROOT = resolve(HERE, "..", "..");
 const EXAMPLES = join(ROOT, "spec", "examples");
 
 /** いま実際に出る枚数（例から数える＝これが正）。 */
