@@ -630,6 +630,16 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
       + "書きたかったものが別のキーなら、そちらに移します"
       + "（Repository から選択肢を引くのは `optionsSource`）。",
   },
+  "step-visiblewhen-never-true": {
+    what: "誰にも出ないステップ",
+    happens:
+      "`steps[].visibleWhen` が永久に偽だと、そのステップは**誰にも出ません**。"
+      + "項目とボタンの条件は見ていたのに、ステップだけ見ていませんでした。"
+      + "1枚も出ないウィザードは画面が言いますが、**押す前に言えるならそちらが先**です。",
+    fix:
+      "条件が見ている項目を先のステップに足すか、条件を直してください"
+      + "（ステップの条件は、**前のステップで入れた値**を見ます）。",
+  },
   "key-duplicate-field": {
     what: "同じ項目を2回書いた複合キー",
     happens:

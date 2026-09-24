@@ -201,6 +201,10 @@ export const PLACEHOLDER_CONTEXTS: PlaceholderContext[] = [
 /** 畳んだ残りの言い方に書ける差し込み（ここに無いものは埋まらない）。 */
 export const OVERFLOW_PLACEHOLDERS: Placeholder[] = COMPUTED_OVERFLOW.placeholders;
 
+/** 検証のメッセージに書ける差し込み（ここに無いものは埋まらない）。 */
+export const VALIDATION_PLACEHOLDERS: Placeholder[] =
+  VALIDATION_MESSAGE.placeholders;
+
 /** ボタンの文言に書ける差し込み（ここに無いものは埋まらない）。 */
 export const ACTION_PLACEHOLDERS: Placeholder[] = ACTION_MESSAGE.placeholders;
 

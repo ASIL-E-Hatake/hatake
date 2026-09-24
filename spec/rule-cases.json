@@ -4717,6 +4717,46 @@
           ]
         }
       }
+    },
+    {
+      "rule": "step-visiblewhen-never-true",
+      "why": "ステップの出し分けが見ている項目が画面のどこにも無い＝そのステップは誰にも出ない",
+      "page": {
+        "type": "wizard",
+        "id": "signup",
+        "title": "申込",
+        "repository": "customerRepository",
+        "key": "code",
+        "steps": [
+          {
+            "id": "basic",
+            "title": "基本",
+            "fields": [
+              {
+                "field": "code",
+                "label": "コード",
+                "type": "text",
+                "required": true
+              }
+            ]
+          },
+          {
+            "id": "corp",
+            "title": "法人情報",
+            "visibleWhen": {
+              "field": "kind",
+              "value": "corp"
+            },
+            "fields": [
+              {
+                "field": "billingCode",
+                "label": "請求先",
+                "type": "text"
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }
