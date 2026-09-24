@@ -4490,6 +4490,45 @@
           ]
         }
       }
+    },
+    {
+      "rule": "computed-without-source",
+      "why": "`op: sum` に `fields` も `field` も無い（空欄ではなく 0 になるので、転んだことに気づけない）",
+      "page": {
+        "type": "form",
+        "id": "order",
+        "title": "受注",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "field": "amount",
+                  "label": "金額",
+                  "type": "number"
+                },
+                {
+                  "field": "total",
+                  "label": "合計",
+                  "type": "number",
+                  "computed": {
+                    "op": "sum",
+                    "of": "amount"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
     }
   ]
 }

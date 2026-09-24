@@ -59,6 +59,14 @@ const EXPECTED: Record<string, Expected> = {
   },
   optionsSource: { shape: "map", what: "選択肢の出どころ（Repository と項目）" },
   optionsOf: { shape: "string", what: "アプリに書いた語彙の名前" },
+  of: {
+    shape: "string",
+    what: "行のどの値を畳むか（項目名ひとつ）",
+    // 並びを書く人は、まず間違いなく「同じレコードの複数項目を足す」つもりでいる。
+    note:
+      "**同じレコードの項目をまとめて足す**なら `of` ではなく `fields` です"
+      + "（`of` は明細の行を畳むときに、行のどの値を見るかを言う所）。",
+  },
   vocabularies: { shape: "list", what: "アプリ全体の語彙の並び" },
   options: { shape: "list", what: "選択肢の並び" },
   roles: { shape: "list", what: "見てよい役割の並び" },

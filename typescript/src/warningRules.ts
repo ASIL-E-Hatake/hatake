@@ -630,6 +630,18 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
       + "書きたかったものが別のキーなら、そちらに移します"
       + "（Repository から選択肢を引くのは `optionsSource`）。",
   },
+  "computed-without-source": {
+    what: "畳む相手が無い計算",
+    happens:
+      "`sum` のように同じレコードにも明細にも使える計算は、`fields`（同じレコードの"
+      + "項目）か `field`（明細の行）のどちらかが要ります。どちらも無いと"
+      + "**空欄ではなく 0** になります。空欄なら気づけますが、0 は**正しい答えに見える**"
+      + "ので、請求書の金額が黙って 0 円で出ます。",
+    fix:
+      "同じレコードの項目を足すなら `fields: [項目名, …]`、明細の行を畳むなら "
+      + "`field: <明細の項目名>` を足してください（`of` は明細の行のどの値を見るかを"
+      + "言う所で、これだけでは畳む相手になりません）。",
+  },
   "unknown-vocabulary": {
     what: "在らない語彙を指している optionsOf",
     happens:
