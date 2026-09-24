@@ -830,6 +830,22 @@ jobs:
           grep -q '繋がっていない所はありませんでした' /tmp/p0c/gaps.log
           # **一覧を渡されていない種類は「見なかった」**（登録していないと断定しない）。
           grep -q '見なかった種類' /tmp/p0c/gaps.log
+          # **申告で回すと、無い種類まで言える。** 上で渡しているのは静的走査の紙
+          # なので、道具は「見なかった」としか言えない（手で書いた一覧では
+          # 「登録していない」と「書き忘れた」が区別できないから）。動いているアプリが
+          # 自分で名乗った紙（tool/hatake-registry.declared.json。デモの
+          # registry_snapshot_test.dart が書く）なら、そこまで断定できる。
+          node dist/cli.js gaps "$EX/sales_app.yaml"             --registry ../flutter/packages/hatake_example/tool/hatake-registry.declared.json             --unwired-as-error > /tmp/p0c/gaps-declared.log
+          grep -q '繋がっていない所はありませんでした' /tmp/p0c/gaps-declared.log
+          # 申告として読んだこと。
+          grep -q '動いているアプリの申告' /tmp/p0c/gaps-declared.log
+          # **弱い読み方が消えていること**が肝。静的走査では「登録していないのか
+          # 書き忘れたのか区別できません」としか言えなかった所が、申告では
+          # 「アプリは申告できない種類」と**断定した理由**に変わる。
+          if grep -q '区別できません' /tmp/p0c/gaps-declared.log; then
+            echo "申告を渡したのに、まだ「区別できません」と言っている"; exit 1
+          fi
+          grep -q '申告できません' /tmp/p0c/gaps-declared.log
           # 登録を1つ消したら、**押す所ごとに**出る（否定側＝落ちることを見る）。
           sed 's/"approveOrders",//' "$EX/hatake-registry.json" \
             > /tmp/p0c/registry.json

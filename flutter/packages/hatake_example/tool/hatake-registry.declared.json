@@ -1,0 +1,24 @@
+{
+  "$comment": "動いているアプリが申告した「登録済みのもの」の一覧（registrySnapshot）。hatake validate --registry にそのまま渡せる。",
+  "$source": "registrySnapshot",
+  "repositories": [
+    "customerRepository",
+    "orderLineRepository",
+    "orderRepository",
+    "productRepository"
+  ],
+  "plugins": [
+    "approveOrders",
+    "openPlayground",
+    "rejectOrders",
+    "showDefinition"
+  ],
+  "sinks": [
+    "exportSink",
+    "printSink"
+  ],
+  "roles": [
+    "manager",
+    "staff"
+  ]
+}
