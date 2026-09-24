@@ -39,7 +39,8 @@ page:
     rowsPerPage: 30
     limit: 1000
     # 印字順。groupBy はこの並びに依存する（コントロールブレイクなので）。
-    sort: { field: customer }
+    # 並べ替えは**Repository の担当**（届いていなければ効かない）。
+    sort: { field: customer, ascending: true }
     groupBy:
       # 顧客が変わったら小計を出して改ページする（得意先ごとに配る帳票）
       - { field: customer, label: 顧客, pageBreak: true }

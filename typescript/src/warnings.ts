@@ -44,6 +44,7 @@ import { rawFormFields, searchFilters, tableColumns } from "./pageParts.js";
 import {
   ACTION_PLACEHOLDERS,
   namesOf,
+  OVERFLOW_PLACEHOLDERS,
   placeholdersWhere,
 } from "./placeholders.js";
 import { roleNames } from "./roles.js";
@@ -1694,6 +1695,43 @@ const ROW_FOLD_OPS: string[] = [
   "join",
 ];
 
+/**
+ * 畳んだ残りの言い方（`overflow`）に、埋まらない差し込みを書いている。
+ *
+ * ここに書けるのは **`{count}`（隠れた行数）だけ**。ほかを書くと、計算はその文字を
+ * そのまま足すので、**画面に `{rest}` と出ます**（エラーにはならない）。
+ *
+ * 長いあいだ見ていませんでした。差し込みの一覧（`spec/placeholders.json`）に
+ * この文脈が載っておらず、規則は一覧から作っているためです。見本に `{rest}` と
+ * 書いて、動かして初めて気づきました。
+ */
+function checkOverflowPlaceholders(
+  computed: Dict,
+  at: string,
+  label: string,
+  found: DefinitionWarning[],
+): void {
+  const overflow = str(computed.overflow);
+  if (overflow === undefined) return;
+  const known = namesOf(OVERFLOW_PLACEHOLDERS);
+  const wrong = [
+    ...new Set(
+      [...overflow.matchAll(/\{[^{}]*\}/g)]
+        .map((one) => one[0])
+        .filter((one) => !known.includes(one)),
+    ),
+  ];
+  if (wrong.length === 0) return;
+  warn(
+    found,
+    "placeholder-not-filled",
+    `${at}.overflow`,
+    `「${label}」の残りの言い方にある ${wrong.join(" / ")} は埋まりません。` +
+      "そのまま文字として画面に出ます。",
+    `ここに書けるのは ${known.join(" / ")} だけです（隠れた行数。全体ではありません）。`,
+  );
+}
+
 /** 同じレコードの項目を畳む op（`fields` を取るもの）。 */
 const SAME_RECORD_OPS = ["concat", "sum", "subtract", "product"];
 
@@ -1795,6 +1833,8 @@ function checkComputed(
     checkComputedOrder(field, computed, at, found, siblingDefs);
     return;
   }
+
+  checkOverflowPlaceholders(computed, at, label, found);
 
   if (list(computed.fields).length > 0) {
     warn(

@@ -19,7 +19,9 @@ page:
             required: true
             normalize: [toHankaku, trim]
             validators:
-              - { type: maxLength, value: 20 }
+              # 文言は上書きできる（既定は枠組みの言い方）。差し込みは
+              # `{value}`（入れた値）と `{target}`（比べる相手）の2つだけ。
+              - { type: maxLength, value: 20, message: "コードは {target} 文字までです" }
             # コードは新規のときだけ入力できる（編集では変えさせない）。
             # キー項目が入っているかを見る回避策ではなく、mode をそのまま書く。
             enabledWhen: { mode: create }
@@ -61,6 +63,27 @@ page:
       - title: その他
         fields:
           - { field: note, label: 備考, type: textarea }
+          # 新規のときに入れておく値（編集では触らない）。
+          - { field: channel, label: 流入経路, type: text, defaultValue: web }
+          # 条件は**組み合わせられる**（`all` / `any` / `not`）。1つの条件で言えない
+          # 決めごとを、定義のまま書くための道。
+          #
+          #   法人 **かつ** 東京か大阪 → 訪問予定を出す
+          - field: visitPlan
+            label: 訪問予定
+            type: date
+            visibleWhen:
+              all:
+                - { field: kind, value: corp }
+                - any:
+                    - { field: prefecture, value: tokyo }
+                    - { field: prefecture, value: osaka }
+          #   その他**以外**の市区町村を選んだときだけ必須（`not`）
+          - field: visitNote
+            label: 訪問メモ
+            type: text
+            requiredWhen:
+              not: { field: city, value: other }
           # 更新者は編集のときだけ見せる（新規の時点では存在しない）。
           - { field: updatedBy, label: 更新者, type: text, readOnly: true,
               visibleWhen: { mode: edit } }

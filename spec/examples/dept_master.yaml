@@ -9,6 +9,25 @@ page:
   repository: deptRepository
   key: code
 
+  # 選択肢を**マスタから引く**例（`optionsSource`）。定義に並びを書けないもの
+  # ── 取引先・商品・部署のように増える表 ── はこちら。Framework は HTTP も SQL も
+  # 知らない＝一覧と同じ `search` を Repository に投げるだけ。
+  search:
+    filters:
+      - { field: name, label: 部門名, type: text, operator: contains }
+      - field: parentCode
+        label: 上位部門
+        type: select
+        operator: equals
+        # 検索条件でも入力欄と同じキーが同じ意味で効く。
+        optionsSource:
+          repository: deptRepository
+          value: code
+          label: name
+          limit: 200
+        # 見せ方の設定は `config`（Renderer とプラグインが読む）。
+        config: { placeholder: すべて }
+
   table:
     rowActions: [edit, delete]
     columns:
@@ -21,6 +40,27 @@ page:
         fields:
           - { field: code, label: 部門コード, type: text, required: true }
           - { field: name, label: 部門名,     type: text, required: true }
+          # 上位部門は自分自身のマスタから引く。
+          - field: parentCode
+            label: 上位部門
+            type: select
+            optionsSource:
+              repository: deptRepository
+              value: code
+              label: name
+              limit: 200
+          # 部門長は**選んだ部門に属する人**だけを出す（`parentKey` で親の値が
+          # 絞り込み条件として渡る＝`{ deptCode: <上で選んだ値> }`）。
+          - field: managerNo
+            label: 部門長
+            type: select
+            optionsFrom: code
+            optionsSource:
+              repository: employeeRepository
+              value: employeeNo
+              label: employeeName
+              parentKey: deptCode
+              limit: 100
 
   actions:
     - { id: create, type: create, label: 新規登録 }
