@@ -24,7 +24,7 @@ const _definition = CrudPageDefinition(
   id: 'billing',
   title: '請求',
   repository: 'repo',
-  keyField: 'id',
+  keyFields: ['id'],
   table: TableDefinition(columns: [
     ColumnDefinition(field: 'name', label: '名前'),
     ColumnDefinition(

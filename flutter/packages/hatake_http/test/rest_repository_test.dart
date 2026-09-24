@@ -123,6 +123,23 @@ void main() {
       expect(fake.last.url.path, '/api/customers/C%201%2F2');
     });
 
+    test('複合キーは、定義に書いた順に道の区切りとして並ぶ', () async {
+      // `key: [orderNo, lineNo]` → `/api/customers/SO-1/2`。
+      // 単一キーのときと形を変えない（`GET /{key}` の素直な一般化）。
+      final fake = _Fake([const HttpResponse(200, '{"orderNo":"SO-1"}')]);
+      await _repo(fake)
+          .findByKey(const RecordKey({'orderNo': 'SO-1', 'lineNo': 2}));
+      expect(fake.last.url.path, '/api/customers/SO-1/2');
+    });
+
+    test('複合キーの値も1つずつ escape する（区切りは潰さない）', () async {
+      // 値の中のスラッシュを逃がさないと、**黙って別の道を叩く**。
+      final fake = _Fake([const HttpResponse(200, '{}')]);
+      await _repo(fake)
+          .findByKey(const RecordKey({'orderNo': 'A/B', 'lineNo': 'C D'}));
+      expect(fake.last.url.path, '/api/customers/A%2FB/C%20D');
+    });
+
     test('404 は「無い」＝null（例外にしない）', () async {
       final fake = _Fake([const HttpResponse(404, '{"message":"not found"}')]);
       expect(await _repo(fake).findByKey('C-9'), isNull);

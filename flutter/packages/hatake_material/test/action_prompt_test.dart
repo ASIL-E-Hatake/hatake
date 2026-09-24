@@ -44,7 +44,7 @@ SearchPageDefinition _page({
     id: 'order_search',
     title: '受注照会',
     repository: 'orderRepository',
-    keyField: 'orderNo',
+    keyFields: ['orderNo'],
     table: _table,
     actions: [
       ActionDefinition(

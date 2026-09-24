@@ -172,16 +172,16 @@ class _MaterialAppShell extends StatelessWidget {
   /// どちらも無ければ null＝鍵の無い画面として描く（「データがありません」）。
   /// それが意図でないことは `advise` の `navigate-without-key-param` が言う。
   static Object? _recordKeyOf(AppRoute route, PageDefinition page) {
-    final named = switch (page) {
-      final DetailPageDefinition d => d.keyField,
-      final FormPageDefinition d => d.keyField,
-      final WizardPageDefinition d => d.keyField,
+    final fields = switch (page) {
+      final DetailPageDefinition d => d.keyFields,
+      final FormPageDefinition d => d.keyFields,
+      final WizardPageDefinition d => d.keyFields,
       _ => null,
     };
-    if (named != null && route.params.containsKey(named)) {
-      return route.params[named];
-    }
-    return route.params['id'];
+    if (fields == null) return route.params['id'];
+    // 複合キーは**全部そろって初めて**1件を指す。1つでも欠けていれば取りに行かない
+    // （欠けたまま組み立てると、別の1件が開く）。
+    return recordKeyFromParams(fields, route.params);
   }
 
   Widget _buildMenu(

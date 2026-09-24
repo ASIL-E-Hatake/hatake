@@ -69,7 +69,7 @@ Future<PumpedPage> pumpPage(
 
   final repository = FakeRepository(
     rows ?? sampleRows(_fieldNames(page)),
-    page.recordKeyField ?? 'id',
+    page.recordKeyFields ?? const ['id'],
     failWith,
   );
 
@@ -105,7 +105,7 @@ Future<PumpedPage> pumpPage(
 
 /// 定義に出てくる項目名（行を作るため）。鍵・列・項目・絞り込みを集める。
 Set<String> _fieldNames(PageDefinition page) => {
-      page.recordKeyField ?? 'id',
+      ...?page.recordKeyFields,
       for (final column in page.tableArea?.columns ?? const []) column.field,
       for (final field in _inputFields(page)) field.field,
       for (final filter in page.searchArea?.filters ?? const []) filter.field,

@@ -160,21 +160,23 @@ export function toOpenApi(
   }
   if (Object.keys(collection).length > 0) paths[basePath] = collection;
 
-  // Single-record route. `pathParams` always has exactly the key field.
-  const keyName = pathParams?.members[0]?.name;
-  if (keyName !== undefined) {
-    const keyParam = {
-      name: keyName,
+  // Single-record route. `pathParams` holds the key fields in the order the
+  // definition wrote them — a composite key becomes one segment per part, and
+  // reordering them addresses a different record.
+  const keyNames = (pathParams?.members ?? []).map((one) => one.name);
+  if (keyNames.length > 0) {
+    const keyParam = keyNames.map((name) => ({
+      name,
       in: "path",
       required: true,
       schema: { type: "string" },
-    };
+    }));
     const item: Record<string, unknown> = {};
     if (response) {
       item.get = {
         operationId: `${op}Get`,
         summary: `Fetch one ${spec.page}`,
-        parameters: [keyParam],
+        parameters: keyParam,
         responses: {
           200: jsonBody(response.name, "The record."),
           ...NOT_FOUND,
@@ -185,7 +187,7 @@ export function toOpenApi(
       item.put = {
         operationId: `${op}Update`,
         summary: `Update ${spec.page}`,
-        parameters: [keyParam],
+        parameters: keyParam,
         requestBody: { required: true, ...jsonBody(request.name, "The new values.") },
         responses: {
           200: jsonBody((response ?? request).name, "The updated record."),
@@ -196,12 +198,12 @@ export function toOpenApi(
       item.delete = {
         operationId: `${op}Delete`,
         summary: `Delete ${spec.page}`,
-        parameters: [keyParam],
+        parameters: keyParam,
         responses: { 204: { description: "Deleted." }, ...NOT_FOUND },
       };
     }
     if (Object.keys(item).length > 0) {
-      paths[`${basePath}/{${keyName}}`] = item;
+      paths[`${basePath}/${keyNames.map((one) => `{${one}}`).join("/")}`] = item;
     }
   }
 

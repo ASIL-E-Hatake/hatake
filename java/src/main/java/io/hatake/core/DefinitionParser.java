@@ -94,7 +94,7 @@ public final class DefinitionParser {
                 dashboard
                         ? (page.get("repository") instanceof String r ? r : null)
                         : reqStr(page, "repository"),
-                page.get("key") instanceof String k ? k : "id",
+                keyFieldsOf(page),
                 parseSearch(page.get("search")),
                 parseTable(page.get("table")),
                 form,
@@ -391,6 +391,31 @@ public final class DefinitionParser {
         return List.copyOf(result);
     }
 
+    /**
+     * <b>1件を指す項目</b>を読む（{@code key}）。
+     *
+     * <p>文字なら1つ、並びなら複合キー（{@code key: [orderNo, lineNo]}）。書いて
+     * いなければ {@code id}。並びの順番は<b>そのまま保つ</b>＝REST の道に並べる順が
+     * これで決まるので、並べ替えると別の1件を指す。Dart / TypeScript 版と同じ判断。
+     */
+    private static List<String> keyFieldsOf(Map<String, Object> m) {
+        if (m.get("key") instanceof List<?> list) {
+            List<String> fields = new ArrayList<>();
+            for (Object one : list) {
+                if (one != null) {
+                    fields.add(String.valueOf(one));
+                }
+            }
+            if (!fields.isEmpty()) {
+                return List.copyOf(fields);
+            }
+        }
+        if (m.get("key") instanceof String k && !k.isEmpty()) {
+            return List.of(k);
+        }
+        return List.of("id");
+    }
+
     /** 明細の {@code source}。無ければ null（＝子行は親レコード埋め込み）。 */
     private static SubTableSource parseSubTableSource(Map<String, Object> m) {
         if (m == null || m.isEmpty()) {
@@ -399,7 +424,7 @@ public final class DefinitionParser {
         return new SubTableSource(
                 reqStr(m, "repository"),
                 reqStr(m, "parentKey"),
-                m.get("key") instanceof String k ? k : "id",
+                keyFieldsOf(m),
                 m.get("pageSize") instanceof Number n ? n.intValue() : 20);
     }
 

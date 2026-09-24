@@ -35,7 +35,7 @@ FormPageDefinition _definition({Map<String, Object?> config = const {}}) {
     id: 'order_entry',
     title: '受注入力',
     repository: 'repo',
-    keyField: 'orderNo',
+    keyFields: ['orderNo'],
     form: FormDefinition(
       sections: [
         SectionDefinition(

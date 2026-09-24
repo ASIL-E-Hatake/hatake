@@ -24,7 +24,7 @@ const _definition = CrudPageDefinition(
   id: 'p',
   title: 'コード登録',
   repository: 'repo',
-  keyField: 'id',
+  keyFields: ['id'],
   table: TableDefinition(columns: [ColumnDefinition(field: 'code', label: 'コード')]),
   form: FormDefinition(sections: [
     SectionDefinition(fields: [

@@ -4529,6 +4529,140 @@
           ]
         }
       }
+    },
+    {
+      "rule": "key-duplicate-field",
+      "why": "複合キーに同じ項目が2回（API の道は2区切りを宣言するのに、鍵は1つにしかならない）",
+      "page": {
+        "type": "crud",
+        "id": "order_lines",
+        "title": "受注明細",
+        "repository": "orderLineRepository",
+        "key": [
+          "orderNo",
+          "orderNo"
+        ],
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            },
+            {
+              "field": "lineNo",
+              "label": "行番号"
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "field": "lineNo",
+                  "label": "行番号",
+                  "type": "number",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "key-single-in-list",
+      "why": "並びで書いてあるのに項目が1つ（複合キーではない）",
+      "page": {
+        "type": "crud",
+        "id": "order_lines",
+        "title": "受注明細",
+        "repository": "orderLineRepository",
+        "key": [
+          "orderNo"
+        ],
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            },
+            {
+              "field": "lineNo",
+              "label": "行番号"
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "field": "lineNo",
+                  "label": "行番号",
+                  "type": "number",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "rule": "key-empty",
+      "why": "`key: []` は既定の `id` で動く＝書いたことが効かない",
+      "page": {
+        "type": "crud",
+        "id": "order_lines",
+        "title": "受注明細",
+        "repository": "orderLineRepository",
+        "key": [],
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            },
+            {
+              "field": "lineNo",
+              "label": "行番号"
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "field": "lineNo",
+                  "label": "行番号",
+                  "type": "number",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        }
+      }
     }
   ]
 }

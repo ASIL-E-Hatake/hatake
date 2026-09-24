@@ -203,7 +203,7 @@ void main() {
       id: 'order_search',
       title: '受注照会',
       repository: 'orderRepository',
-      keyField: 'orderNo',
+      keyFields: ['orderNo'],
       table: TableDefinition(
         columns: [ColumnDefinition(field: 'orderNo', label: '受注番号')],
       ),

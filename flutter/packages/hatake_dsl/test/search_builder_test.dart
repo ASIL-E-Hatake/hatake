@@ -51,7 +51,7 @@ void main() {
 
   test('searchPage applies sensible defaults', () {
     final page = searchPage(id: 'p', title: 't', repository: 'r');
-    expect(page.keyField, 'id');
+    expect(page.keyFields, ['id']);
     expect(page.search, isNull);
     expect(page.table.columns, isEmpty);
     expect(page.actions, isEmpty);

@@ -50,9 +50,12 @@ class _RowSelection {
   }
 
   /// いま画面に出ている行のうち、選ばれているもの。
-  List<DataRecord> pick(List<DataRecord> rows, String keyField) => [
+  ///
+  /// 突き合わせる鍵は [recordKeyOf] が作る（複合キーは [RecordKey] で、**値で**
+  /// 比べられる＝素の `Map` だと同じ行を2回選べてしまい、一括が数え違える）。
+  List<DataRecord> pick(List<DataRecord> rows, List<String> keyFields) => [
         for (final row in rows)
-          if (_keys.contains(row[keyField])) row
+          if (_keys.contains(recordKeyOf(keyFields, row))) row
       ];
 
   /// その行だけを選んだ状態にする（一括が一部だけ失敗したときの選び直し）。
@@ -62,9 +65,9 @@ class _RowSelection {
   void keepOnly(
     Iterable<Object?> keys,
     List<DataRecord> rows,
-    String keyField,
+    List<String> keyFields,
   ) {
-    final visible = {for (final row in rows) row[keyField]};
+    final visible = {for (final row in rows) recordKeyOf(keyFields, row)};
     _rows = rows;
     _keys
       ..clear()

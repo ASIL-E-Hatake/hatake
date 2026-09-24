@@ -46,7 +46,7 @@ FormPageDefinition _parseFormPage(Map<String, Object?> m, String dslVersion) {
     title: m.reqString('title', at: 'page.title'),
     dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
-    keyField: m.optString('key') ?? 'id',
+    keyFields: _parseKeyFields(m),
     form: _parseForm(m.optMap('form')),
     actions: [
       for (var i = 0; i < m.optList('actions').length; i++)
@@ -71,7 +71,7 @@ WizardPageDefinition _parseWizardPage(
     title: m.reqString('title', at: 'page.title'),
     dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
-    keyField: m.optString('key') ?? 'id',
+    keyFields: _parseKeyFields(m),
     steps: [
       for (var i = 0; i < steps.length; i++)
         _parseWizardStep(_asMap(steps[i], 'page.steps[$i]'), i),
@@ -253,7 +253,7 @@ MasterPageDefinition _parseMasterPage(
     title: m.reqString('title', at: 'page.title'),
     dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
-    keyField: m.optString('key') ?? 'id',
+    keyFields: _parseKeyFields(m),
     search: _parseSearch(m.optMap('search')),
     table: _parseTable(m.optMap('table')),
     form: _parseForm(m.optMap('form')),
@@ -273,7 +273,7 @@ DetailPageDefinition _parseDetailPage(
     title: m.reqString('title', at: 'page.title'),
     dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
-    keyField: m.optString('key') ?? 'id',
+    keyFields: _parseKeyFields(m),
     form: _parseForm(m.optMap('form')),
     actions: [
       for (var i = 0; i < m.optList('actions').length; i++)
@@ -291,7 +291,7 @@ SearchPageDefinition _parseSearchPage(
     title: m.reqString('title', at: 'page.title'),
     dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
-    keyField: m.optString('key') ?? 'id',
+    keyFields: _parseKeyFields(m),
     search: _parseSearch(m.optMap('search')),
     table: _parseTable(m.optMap('table')),
     actions: [
@@ -307,7 +307,7 @@ CrudPageDefinition _parseCrud(Map<String, Object?> m, String dslVersion) {
     title: m.reqString('title', at: 'page.title'),
     dslVersion: dslVersion,
     repository: m.reqString('repository', at: 'page.repository'),
-    keyField: m.optString('key') ?? 'id',
+    keyFields: _parseKeyFields(m),
     search: _parseSearch(m.optMap('search')),
     table: _parseTable(m.optMap('table')),
     form: _parseForm(m.optMap('form')),
@@ -453,7 +453,7 @@ SubTableSource? _parseSubTableSource(Map<String, Object?>? m) {
   return SubTableSource(
     repository: m.reqString('repository', at: 'field.source.repository'),
     parentKey: m.reqString('parentKey', at: 'field.source.parentKey'),
-    keyField: m.optString('key') ?? 'id',
+    keyFields: _parseKeyFields(m),
     pageSize: m.optInt('pageSize') ?? 20,
   );
 }
@@ -635,4 +635,25 @@ LayoutDefinition _parseLayout(Map<String, Object?>? m, {int orElse = 1}) {
 Map<String, Object?> _asMap(Object? node, String path) {
   if (node is Map<String, Object?>) return node;
   throw DefinitionParseException('Expected a mapping', path: path);
+}
+
+/// **1件を指す項目**を読む（`key`）。
+///
+/// 文字なら1つ、並びなら複合キー（`key: [orderNo, lineNo]`）。書いていなければ `id`。
+/// 並びの順番は**そのまま保ちます**＝URL の道に並べる順がこれで決まるので、
+/// 並べ替えると別の1件を指すことになります。
+///
+/// 空の並び（`key: []`）は「鍵が無い」ではなく**書き間違い**なので、既定に倒します
+/// （検証が `key-empty` で言います）。
+List<String> _parseKeyFields(Map<String, Object?> m) {
+  final raw = m['key'];
+  if (raw is List) {
+    final fields = [
+      for (final one in raw)
+        if (one != null) one.toString(),
+    ];
+    if (fields.isNotEmpty) return fields;
+  }
+  final single = m.optString('key');
+  return [if (single != null && single.isNotEmpty) single else 'id'];
 }

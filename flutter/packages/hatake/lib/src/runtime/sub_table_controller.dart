@@ -97,7 +97,7 @@ class SubTableController extends ChangeNotifier {
     final result = _validator.validate(
       _rowForm,
       row,
-      mode: row[source.keyField] == null
+      mode: recordKeyOf(source.keyFields, row) == null
           ? ConditionModes.create
           : ConditionModes.edit,
     );
@@ -108,7 +108,7 @@ class SubTableController extends ChangeNotifier {
     notifyListeners();
     var persisted = false;
     try {
-      final key = row[source.keyField];
+      final key = recordKeyOf(source.keyFields, row);
       final data = {...row, source.parentKey: parentKey};
       if (key == null) {
         await repository.create(data);
@@ -131,7 +131,7 @@ class SubTableController extends ChangeNotifier {
   }
 
   Future<void> deleteRow(DataRecord row) async {
-    final key = row[source.keyField];
+    final key = recordKeyOf(source.keyFields, row);
     if (key == null) return;
     _error = null;
     try {

@@ -42,7 +42,7 @@ page:
     // definitions must come out the same number of screens. The TypeScript CLI
     // asserts 「画面 22 枚」 over this folder in CI, and Java asserts it too.
     // (12 files; sales_app has 8 pages and roles_app has 4, so 10 + 12 = 22.)
-    test('the shipped examples come out as 22 screens, same as every edition', () {
+    test('the shipped examples come out as 24 screens, same as every edition', () {
       final dir = Directory('../../../spec/examples');
       final inputs = <IndexInput>[
         for (final file in dir.listSync().whereType<File>())
@@ -51,7 +51,7 @@ page:
       ];
       final index = buildScreenIndex(inputs);
       expect(index.unreadable, isEmpty);
-      expect(index.screens.length, 22);
+      expect(index.screens.length, 24);
       // index.json（例のカタログ）は定義ではないので飛ばされる。
       expect(index.ignored, greaterThan(0));
     });

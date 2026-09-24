@@ -53,7 +53,7 @@ DetailPageDefinition _detail(List<ActionDefinition> actions) =>
       id: 'customer_detail',
       title: '顧客詳細',
       repository: 'repo',
-      keyField: 'id',
+      keyFields: ['id'],
       form: const FormDefinition(
         sections: [
           SectionDefinition(fields: [FieldDefinition(field: 'code', label: 'コード')]),
@@ -95,7 +95,7 @@ void main() {
           id: 'order_search',
           title: '受注照会',
           repository: 'repo',
-          keyField: 'id',
+          keyFields: ['id'],
           table: _table,
           actions: [
             ActionDefinition(

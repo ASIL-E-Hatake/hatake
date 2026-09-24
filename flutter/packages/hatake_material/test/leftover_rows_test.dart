@@ -46,7 +46,7 @@ SearchPageDefinition _page({BatchSize? batchSize}) => SearchPageDefinition(
       id: 'order_search',
       title: '受注照会',
       repository: 'orderRepository',
-      keyField: 'orderNo',
+      keyFields: ['orderNo'],
       table: _table,
       actions: [
         ActionDefinition(

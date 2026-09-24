@@ -50,7 +50,7 @@ const _definition = CrudPageDefinition(
   id: 'customer_master',
   title: '顧客マスタ',
   repository: 'customerRepository',
-  keyField: 'id',
+  keyFields: ['id'],
   search: SearchDefinition(
     filters: [
       FilterDefinition(field: 'name', label: '顧客名'),

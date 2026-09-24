@@ -896,6 +896,217 @@
           }
         ]
       }
+    },
+    {
+      "name": "a composite key becomes one path member per part, in the order written",
+      "page": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "crud",
+          "id": "order_lines",
+          "title": "受注明細",
+          "repository": "orderLineRepository",
+          "key": [
+            "orderNo",
+            "lineNo"
+          ],
+          "table": {
+            "columns": [
+              {
+                "field": "orderNo",
+                "label": "受注番号"
+              },
+              {
+                "field": "lineNo",
+                "label": "行番号"
+              },
+              {
+                "field": "item",
+                "label": "品名"
+              }
+            ]
+          },
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  {
+                    "field": "orderNo",
+                    "label": "受注番号",
+                    "type": "text",
+                    "required": true
+                  },
+                  {
+                    "field": "lineNo",
+                    "label": "行番号",
+                    "type": "number",
+                    "required": true
+                  },
+                  {
+                    "field": "item",
+                    "label": "品名",
+                    "type": "text"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "page": "order_lines",
+        "shapes": [
+          {
+            "name": "OrderLinesRequest",
+            "role": "request",
+            "members": [
+              {
+                "name": "orderNo",
+                "label": "受注番号",
+                "type": "string",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              },
+              {
+                "name": "lineNo",
+                "label": "行番号",
+                "type": "number",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              },
+              {
+                "name": "item",
+                "label": "品名",
+                "type": "string",
+                "optional": true,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              }
+            ]
+          },
+          {
+            "name": "OrderLinesResponse",
+            "role": "response",
+            "members": [
+              {
+                "name": "orderNo",
+                "label": "受注番号",
+                "type": "string",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              },
+              {
+                "name": "lineNo",
+                "label": "行番号",
+                "type": "number",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              },
+              {
+                "name": "item",
+                "label": "品名",
+                "type": "string",
+                "optional": true,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              }
+            ]
+          },
+          {
+            "name": "OrderLinesRow",
+            "role": "row",
+            "members": [
+              {
+                "name": "orderNo",
+                "label": "受注番号",
+                "type": "string",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              },
+              {
+                "name": "lineNo",
+                "label": "行番号",
+                "type": "string",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              },
+              {
+                "name": "item",
+                "label": "品名",
+                "type": "string",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              }
+            ]
+          },
+          {
+            "name": "OrderLinesListResponse",
+            "role": "listResponse",
+            "members": [
+              {
+                "name": "items",
+                "label": "",
+                "type": "array",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "itemType": "object",
+                "shape": "OrderLinesRow",
+                "constraints": {}
+              },
+              {
+                "name": "totalCount",
+                "label": "",
+                "type": "number",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              }
+            ]
+          },
+          {
+            "name": "OrderLinesKey",
+            "role": "pathParams",
+            "members": [
+              {
+                "name": "orderNo",
+                "label": "",
+                "type": "string",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              },
+              {
+                "name": "lineNo",
+                "label": "",
+                "type": "string",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

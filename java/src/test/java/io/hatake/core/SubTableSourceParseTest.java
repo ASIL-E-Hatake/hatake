@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** 明細の {@code source}（子Repository方式）のパース。 */
@@ -42,7 +43,7 @@ class SubTableSourceParseTest {
         assertTrue(lines.isSubTable());
         assertTrue(lines.hasSubTableSource());
         assertEquals(
-                new SubTableSource("orderLineRepository", "orderNo", "lineNo", 25),
+                new SubTableSource("orderLineRepository", "orderNo", List.of("lineNo"), 25),
                 lines.source());
     }
 
@@ -55,7 +56,7 @@ class SubTableSourceParseTest {
                             source: { repository: lineRepository, parentKey: orderNo }
                 """);
 
-        assertEquals("id", lines.source().keyField());
+        assertEquals(List.of("id"), lines.source().keyFields());
         assertEquals(20, lines.source().pageSize());
     }
 

@@ -31,7 +31,7 @@ const _definition = SearchPageDefinition(
   id: 'product_search',
   title: '商品照会',
   repository: 'productRepository',
-  keyField: 'id',
+  keyFields: ['id'],
   search: SearchDefinition(
     filters: [FilterDefinition(field: 'name', label: '商品名')],
   ),

@@ -73,6 +73,7 @@ export 'src/tooling/screen_index.dart';
 export 'src/tooling/widget_keys.dart';
 
 // Repository contract.
+export 'src/repository/record_key.dart';
 export 'src/repository/repository.dart';
 
 // Validation.

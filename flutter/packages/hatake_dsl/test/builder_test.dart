@@ -110,7 +110,7 @@ void main() {
 
   test('crudPage applies sensible defaults', () {
     final page = crudPage(id: 'p', title: 't', repository: 'r');
-    expect(page.keyField, 'id');
+    expect(page.keyFields, ['id']);
     expect(page.search, isNull);
     expect(page.table.columns, isEmpty);
     expect(page.form.sections, isEmpty);

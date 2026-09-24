@@ -112,13 +112,23 @@ class RestRepository implements Repository {
     _raiseFor(response, 'DELETE $url');
   }
 
-  /// `<collection>/<key>`, with the key escaped — a customer code may hold a
-  /// slash or a space, and pasting it raw would silently address another route.
+  /// `<collection>/<key>`（複合キーは `<collection>/<値1>/<値2>`）。
+  ///
+  /// 値は1つずつ逃がす。取引先コードにスラッシュや空白が入ることは普通に在り、
+  /// そのまま貼ると**黙って別の道を叩きます**。
+  ///
+  /// 複合キーを**宣言した順に道の区切りとして並べる**のは、単一キーのときと形を
+  /// 変えないためです（`GET /{key}` の素直な一般化）。順番が変われば別の1件を
+  /// 指すので、`key` の並びは URL の一部だと思って扱ってください。
   Uri _item(Object key) {
-    final encoded = Uri.encodeComponent('$key');
-    return collection.replace(
-      path: '${collection.path}/$encoded'.replaceAll('//', '/'),
-    );
+    final parts = key is RecordKey
+        ? [for (final one in key.values) '$one']
+        : ['$key'];
+    final path = [
+      collection.path,
+      for (final one in parts) Uri.encodeComponent(one),
+    ].join('/');
+    return collection.replace(path: path.replaceAll('//', '/'));
   }
 
   /// Filters as the query string. A null or empty value is left out entirely

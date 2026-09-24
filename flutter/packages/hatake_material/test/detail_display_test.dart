@@ -39,7 +39,7 @@ const _page = DetailPageDefinition(
   id: 'order_detail',
   title: '受注詳細',
   repository: 'repo',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   form: FormDefinition(
     sections: [
       SectionDefinition(

@@ -35,7 +35,7 @@ const _master = MasterPageDefinition(
   id: 'm',
   title: 'マスタ',
   repository: 'repo',
-  keyField: 'id',
+  keyFields: ['id'],
   table: TableDefinition(
     rowActions: ['edit', 'delete'],
     columns: [ColumnDefinition(field: 'code', label: 'コード')],
@@ -52,7 +52,7 @@ const _detail = DetailPageDefinition(
   id: 'd',
   title: '顧客詳細',
   repository: 'repo',
-  keyField: 'id',
+  keyFields: ['id'],
   form: FormDefinition(sections: [
     SectionDefinition(title: '基本情報', fields: [
       FieldDefinition(field: 'code', label: 'コード'),

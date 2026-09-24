@@ -1,0 +1,57 @@
+# 複合キー（1件が2つ以上の列で決まる画面）の例。
+#
+# 受注明細は受注番号だけでは1件に決まらない。行番号と合わせて初めて1件を指す。
+# 明細ビュー・履歴表・年度別の実績表など、業務では普通に出てくる形。
+#
+# **並べた順に意味がある。** REST の道もその順に並ぶ（`/api/orderLines/SO-1/2`）ので、
+# 並べ替えると別の1件を指す。画面から画面へ渡すときも、鍵の項目を1つずつ渡す。
+dsl_version: "1.0"
+app:
+  id: order_lines
+  title: 受注明細
+  home: lines
+  menu:
+    - { id: lines, label: 明細照会, icon: list_alt, page: order_line_search }
+  pages:
+    - type: search
+      id: order_line_search
+      title: 明細照会
+      repository: orderLineRepository
+      # 1件を指すのに2つ要る。
+      key: [orderNo, lineNo]
+      search:
+        filters:
+          - { field: orderNo, label: 受注番号, type: text, operator: startsWith }
+          - { field: item, label: 品名, type: text, operator: contains }
+      table:
+        rowActions: [openLine]
+        pagination: { pageSize: 50 }
+        columns:
+          - { field: orderNo, label: 受注番号, width: 140, sortable: true }
+          - { field: lineNo, label: 行番号, type: number, width: 90, sortable: true }
+          - { field: item, label: 品名 }
+          - { field: qty, label: 数量, type: number, width: 90 }
+          - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+      actions:
+        # 1件の画面へは**鍵の項目を1つずつ**渡す。行き先は自分の `key` の名前で
+        # 受け取るので、名前を合わせておけば届く（1つでも欠けると開かない）。
+        - id: openLine
+          type: navigate
+          label: 明細詳細
+          page: order_line_detail
+          params: { orderNo: $row.orderNo, lineNo: $row.lineNo }
+
+    - type: detail
+      id: order_line_detail
+      title: 明細詳細
+      repository: orderLineRepository
+      key: [orderNo, lineNo]
+      form:
+        sections:
+          - title: 明細
+            fields:
+              - { field: orderNo, label: 受注番号 }
+              - { field: lineNo, label: 行番号 }
+              - { field: item, label: 品名 }
+              - { field: qty, label: 数量 }
+              - { field: amount, label: 金額, format: currency, config: { symbol: "¥" } }

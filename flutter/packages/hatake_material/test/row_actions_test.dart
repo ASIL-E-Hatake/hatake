@@ -42,7 +42,7 @@ CrudPageDefinition _crud({
       id: 'orders',
       title: '受注マスタ',
       repository: 'repo',
-      keyField: 'id',
+      keyFields: ['id'],
       table: TableDefinition(
         rowActions: rowActions,
         columns: const [

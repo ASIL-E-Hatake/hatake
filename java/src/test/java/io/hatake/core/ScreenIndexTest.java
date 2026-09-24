@@ -49,10 +49,12 @@ class ScreenIndexTest {
 
     /**
      * エディションが揃っていることの一番強い確かめ: 同じ定義の山なら<b>同じ枚数</b>になる。
-     * TypeScript 版は CI で「画面 22 枚」を、Dart 版も試験で 22 枚を見ている。
+     *
+     * <p>枚数を直に書いているのはここだけ（TypeScript / Dart 版は相対で見ている）。
+     * 例を足したらここも足す ── 気づかずに読めなくなった例が在れば、ここで止まる。
      */
     @Test
-    void theShippedExamplesComeOutAs18Screens() throws IOException {
+    void theShippedExamplesComeOutAsTheSameScreenCount() throws IOException {
         List<ScreenIndex.Source> sources = new ArrayList<>();
         try (Stream<Path> files = Files.list(Path.of("../spec/examples"))) {
             for (Path path : files.toList()) {
@@ -64,7 +66,7 @@ class ScreenIndexTest {
         }
         ScreenIndex index = ScreenIndex.build(sources);
         assertTrue(index.unreadable().isEmpty(), index.unreadable().toString());
-        assertEquals(22, index.screens().size());
+        assertEquals(24, index.screens().size());
         // index.json（例のカタログ）は定義ではないので飛ばされる。
         assertTrue(index.ignored() > 0);
     }

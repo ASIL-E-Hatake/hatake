@@ -186,7 +186,7 @@ Future<bool> _runPageAction(
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
   void Function(List<Object?> keys)? onSelectRows,
-  String? keyField,
+  List<String>? keyFields,
   _LeftoverExporter? onExportLeftover,
 }) async {
   // 選んだ行にまとめて実行するなら、押す前に**何件動くのか**が分かっている。
@@ -211,7 +211,7 @@ Future<bool> _runPageAction(
       onPrint: onPrint,
       onCreate: onCreate,
       onSelectRows: onSelectRows,
-      keyField: keyField,
+      keyFields: keyFields,
       onExportLeftover: onExportLeftover);
   // null = 実行できなかった／失敗した。何が起きたかは dispatch が既に言っている
   // （言う場所を1つにしないと、失敗の文言が種類ごとに散る）。
@@ -231,16 +231,16 @@ _Leftover _leftoverOf(
   ActionOutcome outcome,
   List<DataRecord> records,
   List<DataRecord> unfinished,
-  String? keyField,
+  List<String>? keyFields,
 ) {
-  if (keyField == null) return const _Leftover();
+  if (keyFields == null) return const _Leftover();
   final keys = {for (final row in outcome.rows) row.key};
   // 終わっていない行は「失敗した行」に含めない（同じ行を2回出さない）。
-  final left = {for (final row in unfinished) row[keyField]};
+  final left = {for (final row in unfinished) recordKeyOf(keyFields, row)};
   return _Leftover(
     failed: [
       for (final row in records)
-        if (keys.contains(row[keyField]) && !left.contains(row[keyField])) row,
+        if (keys.contains(recordKeyOf(keyFields, row)) && !left.contains(recordKeyOf(keyFields, row))) row,
     ],
     unfinished: unfinished,
     reasons: {
@@ -260,13 +260,13 @@ _Leftover _leftoverOf(
 /// 全部終わっていれば何もしない（成功したときの選択解除は画面側の仕事）。
 void _keepUnfinished(
   _BulkRunner runner,
-  String? keyField,
+  List<String>? keyFields,
   void Function(List<Object?> keys)? onSelectRows,
 ) {
-  if (onSelectRows == null || keyField == null) return;
+  if (onSelectRows == null || keyFields == null) return;
   final rest = runner.unfinished;
   if (rest.isEmpty) return;
-  onSelectRows([for (final row in rest) row[keyField]]);
+  onSelectRows([for (final row in rest) recordKeyOf(keyFields, row)]);
 }
 
 /// The action itself.
@@ -289,7 +289,7 @@ Future<ActionOutcome?> _dispatchAction(
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
   void Function(List<Object?> keys)? onSelectRows,
-  String? keyField,
+  List<String>? keyFields,
   _LeftoverExporter? onExportLeftover,
 }) async {
   try {
@@ -301,7 +301,7 @@ Future<ActionOutcome?> _dispatchAction(
         onPrint: onPrint,
         onCreate: onCreate,
         onSelectRows: onSelectRows,
-        keyField: keyField,
+        keyFields: keyFields,
         onExportLeftover: onExportLeftover);
   } catch (error) {
     // 例外を外に投げると、押しても何も起きない（Flutter のログにだけ出る）。
@@ -321,7 +321,7 @@ Future<ActionOutcome?> _dispatch(
   _PageDataRunner? onPrint,
   Future<void> Function()? onCreate,
   void Function(List<Object?> keys)? onSelectRows,
-  String? keyField,
+  List<String>? keyFields,
   _LeftoverExporter? onExportLeftover,
 }) async {
   // 選んだ行に対して実行できるのは、いまはアプリ側の処理（plugin）だけ。
@@ -412,7 +412,7 @@ Future<ActionOutcome?> _dispatch(
               error: error,
               onSelectRows: onSelectRows,
               leftover: _leftoverOf(
-                  runner.reported, records, runner.unfinished, keyField),
+                  runner.reported, records, runner.unfinished, keyFields),
               onExportLeftover: onExportLeftover);
         }
         return null;
@@ -421,7 +421,7 @@ Future<ActionOutcome?> _dispatch(
         // （中断したときも、区切りが失敗したときも）。選択が全部残っていると、
         // 既に動いた行にもう一度実行することになる。
         unfinished = runner.unfinished;
-        _keepUnfinished(runner, keyField, onSelectRows);
+        _keepUnfinished(runner, keyFields, onSelectRows);
       }
     } else {
       outcome = await call(records);
@@ -433,7 +433,7 @@ Future<ActionOutcome?> _dispatch(
       _showActionFailure(context, action,
           outcome: outcome,
           onSelectRows: onSelectRows,
-          leftover: _leftoverOf(outcome, records, unfinished, keyField),
+          leftover: _leftoverOf(outcome, records, unfinished, keyFields),
           onExportLeftover: onExportLeftover);
     }
     return null;

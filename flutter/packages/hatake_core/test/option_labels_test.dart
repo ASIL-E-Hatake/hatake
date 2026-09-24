@@ -11,7 +11,7 @@ void main() {
     id: 'supplier_master',
     title: '取引先マスタ',
     repository: 'supplierRepository',
-    keyField: 'supplierCode',
+    keyFields: ['supplierCode'],
     table: TableDefinition(columns: [
       ColumnDefinition(field: 'supplierType', label: '区分', type: ColumnTypes.badge),
       ColumnDefinition(field: 'tradeStatus', label: '取引状態', type: ColumnTypes.badge),

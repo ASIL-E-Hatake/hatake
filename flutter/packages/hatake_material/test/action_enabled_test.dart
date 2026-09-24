@@ -64,7 +64,7 @@ const _rowPage = SearchPageDefinition(
   id: 'order_search',
   title: '受注照会',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   table: _table,
   actions: [_openEntry],
 );
@@ -73,7 +73,7 @@ const _bulkPage = SearchPageDefinition(
   id: 'order_search',
   title: '受注照会',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   table: TableDefinition(
     columns: [
       ColumnDefinition(field: 'orderNo', label: '受注番号'),
@@ -88,7 +88,7 @@ const _pageButtonPage = SearchPageDefinition(
   id: 'order_search',
   title: '受注照会',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   table: TableDefinition(
     columns: [ColumnDefinition(field: 'orderNo', label: '受注番号')],
   ),
@@ -107,7 +107,7 @@ const _formPage = FormPageDefinition(
   id: 'order_entry',
   title: '受注入力',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   form: FormDefinition(
     sections: [
       SectionDefinition(
@@ -134,7 +134,7 @@ const _computedPage = FormPageDefinition(
   id: 'order_entry',
   title: '受注入力',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   form: FormDefinition(
     sections: [
       SectionDefinition(
@@ -168,7 +168,7 @@ const _modePage = FormPageDefinition(
   id: 'order_entry',
   title: '受注入力',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   form: FormDefinition(
     sections: [
       SectionDefinition(
@@ -192,7 +192,7 @@ const _detailPage = DetailPageDefinition(
   id: 'order_detail',
   title: '受注詳細',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   form: FormDefinition(
     sections: [
       SectionDefinition(
@@ -219,7 +219,7 @@ const _wizardPage = WizardPageDefinition(
   id: 'order_wizard',
   title: '受注登録',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   steps: [
     WizardStepDefinition(
       id: 'basic',

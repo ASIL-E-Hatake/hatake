@@ -390,7 +390,7 @@ function common(page: Dict, dslVersion: string) {
     title: reqString(page, "title", "page.title"),
     dslVersion,
     repository: reqString(page, "repository", "page.repository"),
-    keyField: optString(page, "key") ?? "id",
+    keyFields: keyFieldsOf(page),
   };
 }
 
@@ -521,7 +521,7 @@ function parseSubTableSource(m: Dict | undefined): SubTableSource | undefined {
   return {
     repository: reqString(m, "repository", "field.source.repository"),
     parentKey: reqString(m, "parentKey", "field.source.parentKey"),
-    keyField: optString(m, "key") ?? "id",
+    keyFields: keyFieldsOf(m),
     pageSize: optNumber(m, "pageSize") ?? 20,
   };
 }
@@ -690,4 +690,23 @@ function parseActionSuccess(
     page: optString(m, "page"),
     params: optDict(m, "params") ?? {},
   };
+}
+
+/**
+ * **1件を指す項目**を読む（`key`）。
+ *
+ * 文字なら1つ、並びなら複合キー（`key: [orderNo, lineNo]`）。書いていなければ `id`。
+ * 並びの順番は**そのまま保つ**＝URL の道に並べる順がこれで決まるので、並べ替えると
+ * 別の1件を指すことになる。Dart / Java 版と同じ判断をすること。
+ */
+function keyFieldsOf(node: Dict): string[] {
+  const raw = node["key"];
+  if (Array.isArray(raw)) {
+    const fields = raw
+      .filter((one) => one !== null && one !== undefined)
+      .map((one) => String(one));
+    if (fields.length > 0) return fields;
+  }
+  const single = optString(node, "key");
+  return [single !== undefined && single.length > 0 ? single : "id"];
 }

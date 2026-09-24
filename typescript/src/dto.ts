@@ -325,21 +325,20 @@ export function deriveDto(page: PageDefinition): DtoSpec {
 
   // The DSL carries no type for the key, so it is described as a string.
   // A dashboard addresses no single record, so it has no key at all.
-  if ("keyField" in page) {
+  // **複合キーは項目ぶん並ぶ**（書いた順＝REST の道に並べる順）。
+  if ("keyFields" in page) {
     shapes.push({
       name: `${name}Key`,
       role: "pathParams",
-      members: [
-        {
-          name: page.keyField,
-          label: "",
-          type: "string",
-          optional: false,
-          readOnly: false,
-          computed: false,
-          constraints: {},
-        },
-      ],
+      members: page.keyFields.map((field) => ({
+        name: field,
+        label: "",
+        type: "string",
+        optional: false,
+        readOnly: false,
+        computed: false,
+        constraints: {},
+      })),
     });
   }
 

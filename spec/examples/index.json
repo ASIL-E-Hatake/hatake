@@ -317,6 +317,30 @@
         "人事",
         "給与"
       ]
+    },
+    {
+      "file": "order_lines.yaml",
+      "kind": "app",
+      "title": "受注明細",
+      "task": "受注番号だけでは1件に決まらない表を出したい（明細・履歴・年度別の実績）",
+      "keys": [
+        "key",
+        "search",
+        "filters",
+        "table",
+        "columns",
+        "rowActions",
+        "actions",
+        "params"
+      ],
+      "keywords": [
+        "複合キー",
+        "明細",
+        "2つの列で1件",
+        "履歴表",
+        "navigate",
+        "1件を指す"
+      ]
     }
   ]
 }

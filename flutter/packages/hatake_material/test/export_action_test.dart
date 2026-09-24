@@ -40,7 +40,7 @@ const _search = SearchPageDefinition(
   id: 'order_search',
   title: '受注照会',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   table: TableDefinition(
     pagination: PaginationDefinition(pageSize: 2),
     columns: [

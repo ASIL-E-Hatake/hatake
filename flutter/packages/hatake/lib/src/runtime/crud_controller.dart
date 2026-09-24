@@ -62,7 +62,7 @@ class CrudController extends ListController {
   /// Begins editing [record]; the draft is a copy so edits are cancellable.
   void startEdit(DataRecord record) {
     _mode = CrudMode.edit;
-    _editingKey = record[definition.keyField];
+    _editingKey = recordKeyOf(definition.keyFields, record);
     _validation = ValidationResult.valid;
     _draft = {...record};
     notifyListeners();
