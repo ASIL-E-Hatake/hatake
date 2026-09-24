@@ -16,6 +16,8 @@ Future<bool> _runExportAction(
   required Future<List<DataRecord>> Function(int limit) rows,
   required FormatterRegistry formatters,
   required String fallbackName,
+  // 落とした CSV と画面の字をそろえる（選択肢の名前を引く相手）。
+  List<OptionsOwner> owners = const [],
 }) async {
   final scope = HatakeScope.of(context);
   final messenger = ScaffoldMessenger.of(context);
@@ -48,6 +50,7 @@ Future<bool> _runExportAction(
         data,
         options: options,
         formatters: formatters,
+        owners: owners,
       ),
       charset: options.charset,
       actionId: action.id,

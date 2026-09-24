@@ -67,6 +67,7 @@ class _MaterialReportPage extends StatelessWidget {
 
   Future<bool> _export(BuildContext context, ActionDefinition action) {
     return _runExportAction(
+      owners: _optionOwners,
       context,
       action,
       columns: definition.table.columns,
@@ -358,15 +359,10 @@ class _MaterialReportPage extends StatelessWidget {
   /// 帳票が持つのは出力条件だけなので、引ける相手もそこだけ。
   List<OptionsOwner> get _optionOwners => optionOwnersOf(definition);
 
-  String _cell(ColumnDefinition column, Object? value) {
-    if (column.format != null) {
-      return formatters.format(column.format!, value, column.config);
-    }
-    // 紙に出る字と画面に出る字を変えない（コードのまま刷ると取引先に送れない）。
-    return optionLabelIn(_optionOwners, column.field, value) ??
-        value?.toString() ??
-        '';
-  }
+  /// 紙に出る字と画面に出る字を変えない（コードのまま刷ると取引先に送れない）ので、
+  /// 紙と同じ `cellText` を通す。
+  String _cell(ColumnDefinition column, Object? value) =>
+      cellText(formatters, _optionOwners, column, value);
 
   /// Numbers read right-aligned on paper; everything else stays left.
   Alignment _alignOf(ColumnDefinition column) =>

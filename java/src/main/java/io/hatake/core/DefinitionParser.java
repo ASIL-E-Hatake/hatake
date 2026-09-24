@@ -280,7 +280,8 @@ public final class DefinitionParser {
                 reqStr(m, "field"),
                 reqStr(m, "label"),
                 m.get("type") instanceof String t ? t : "text",
-                m.get("operator") instanceof String op ? op : "contains");
+                m.get("operator") instanceof String op ? op : "contains",
+                parseOptions(m.get("options")));
     }
 
     @SuppressWarnings("unchecked")
@@ -360,7 +361,34 @@ public final class DefinitionParser {
                 roles,
                 columns,
                 rowFields,
-                parseSubTableSource(optMap(m.get("source"))));
+                parseSubTableSource(optMap(m.get("source"))),
+                parseOptions(m.get("options")));
+    }
+
+    /**
+     * 選択肢（{@code options}）。無ければ空。
+     *
+     * <p>{@code value} は型を固定しない（YAML の {@code 10} と REST の {@code "10"} を
+     * 同じものとして比べる）。{@code label} が無いものは値をそのまま名前にする。
+     */
+    @SuppressWarnings("unchecked")
+    private static List<OptionItem> parseOptions(Object o) {
+        if (!(o instanceof List<?> list)) {
+            return List.of();
+        }
+        List<OptionItem> result = new ArrayList<>();
+        for (Object one : list) {
+            if (one instanceof Map<?, ?> map) {
+                Object value = ((Map<String, Object>) map).get("value");
+                Object label = ((Map<String, Object>) map).get("label");
+                result.add(new OptionItem(
+                        value, label instanceof String s ? s : String.valueOf(value)));
+            } else {
+                // `options: [A, B]` のような短い書き方は、値と名前が同じもの。
+                result.add(new OptionItem(one, String.valueOf(one)));
+            }
+        }
+        return List.copyOf(result);
     }
 
     /** 明細の {@code source}。無ければ null（＝子行は親レコード埋め込み）。 */

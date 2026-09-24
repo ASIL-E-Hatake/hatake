@@ -37,6 +37,9 @@ describe("conformance: csv", () => {
           (c.columns as any[]).map(column),
           c.rows,
           c.options ? csvOptionsFromConfig(c.options) : defaultCsvOptions,
+          undefined,
+          // 選択肢は「その画面に書いてあるもの」。3版とも同じ字で落ちること。
+          (c.owners as any[]) ?? [],
         ),
       ).toBe(c.expected);
     });

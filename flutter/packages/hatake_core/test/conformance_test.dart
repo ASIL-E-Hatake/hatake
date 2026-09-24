@@ -300,6 +300,11 @@ void main() {
             _column((col as Map).cast<String, Object?>()),
         ];
         final options = (c['options'] as Map?)?.cast<String, Object?>();
+        // 選択肢は「その画面に書いてあるもの」。3版とも同じ字で落ちること。
+        final owners = [
+          for (final raw in (c['owners'] as List?) ?? const [])
+            _owner((raw as Map).cast<String, Object?>()),
+        ];
         expect(
           toCsv(
             columns,
@@ -307,6 +312,7 @@ void main() {
             options: options == null
                 ? const CsvOptions()
                 : CsvOptions.fromConfig(options),
+            owners: owners,
           ),
           c['expected'],
         );
@@ -330,3 +336,16 @@ void main() {
     }
   });
 }
+
+/// conformance の `owners` を、選択肢を持つものに変える。
+FieldDefinition _owner(Map<String, Object?> m) => FieldDefinition(
+      field: m['field']! as String,
+      label: m['field']! as String,
+      options: [
+        for (final raw in (m['options'] as List?) ?? const [])
+          OptionItem(
+            value: (raw as Map)['value'],
+            label: raw['label'] as String,
+          ),
+      ],
+    );

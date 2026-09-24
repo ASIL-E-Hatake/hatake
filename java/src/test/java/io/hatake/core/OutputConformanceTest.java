@@ -54,13 +54,27 @@ class OutputConformanceTest {
                     }
                     Csv.Options options = Csv.Options.fromConfig(
                             (Map<String, Object>) c.get("options"));
+                    // 選択肢は「その画面に書いてあるもの」。3版とも同じ字で落ちること。
+                    List<CellText.Owner> owners = new ArrayList<>();
+                    for (Object o : (List<Object>) c.getOrDefault("owners", List.of())) {
+                        Map<String, Object> m = (Map<String, Object>) o;
+                        List<OptionItem> items = new ArrayList<>();
+                        for (Object p : (List<Object>) m.getOrDefault("options", List.of())) {
+                            Map<String, Object> one = (Map<String, Object>) p;
+                            items.add(new OptionItem(
+                                    one.get("value"), String.valueOf(one.get("label"))));
+                        }
+                        owners.add(new CellText.Owner(
+                                String.valueOf(m.get("field")), items));
+                    }
                     assertEquals(
                             c.get("expected"),
                             Csv.toCsv(
                                     columns,
                                     (List<Map<String, Object>>) c.get("rows"),
                                     options,
-                                    new FormatterRegistry()));
+                                    new FormatterRegistry(),
+                                    owners));
                 }));
     }
 

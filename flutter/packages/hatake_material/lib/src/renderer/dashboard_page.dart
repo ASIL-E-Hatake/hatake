@@ -258,7 +258,7 @@ class _MaterialDashboardPage extends StatelessWidget {
                   for (final column in columns)
                     Expanded(
                       child: Text(
-                        _cellText(column, row[column.field], owners),
+                        cellText(formatters, owners, column, row[column.field]),
                         style: theme.textTheme.bodyMedium,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -277,19 +277,6 @@ class _MaterialDashboardPage extends StatelessWidget {
   /// 数字とグラフの画面が持つのは検索条件だけなので、引ける相手もそこだけ。
   /// 引けなければ値をそのまま出す（**勝手に作らない**）。
   List<OptionsOwner> get _optionOwners => optionOwnersOf(definition);
-
-  String _cellText(
-    ColumnDefinition column,
-    Object? value,
-    List<OptionsOwner> owners,
-  ) {
-    if (column.format != null) {
-      return formatters.format(column.format!, value, column.config);
-    }
-    // 入力欄では名前が出るのに一覧ではコードが出る、を**画面の種類ごとに直さない**
-    // （crud / search と同じ引き方をここでも使う）。
-    return optionLabelIn(owners, column.field, value) ?? value?.toString() ?? '';
-  }
 
   ActionDefinition? _actionById(String? id) {
     if (id == null) return null;

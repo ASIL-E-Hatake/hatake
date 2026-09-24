@@ -1,10 +1,12 @@
 import 'package:equatable/equatable.dart';
 
 import 'column_types.dart';
+import 'displayed.dart';
 
 /// A single column in a data table.
-class ColumnDefinition extends Equatable {
+class ColumnDefinition extends Equatable implements Displayed {
   /// The backing data key rendered in this column.
+  @override
   final String field;
 
   /// Column header label.
@@ -21,9 +23,11 @@ class ColumnDefinition extends Equatable {
 
   /// Optional display formatter name (see `FormatterRegistry`), e.g. `currency`.
   /// Formatter options are read from [config].
+  @override
   final String? format;
 
   /// Plugin / renderer specific extra configuration (also formatter options).
+  @override
   final Map<String, Object?> config;
 
   /// Roles allowed to see this column (see `isAllowed`). Empty = everyone.

@@ -295,12 +295,8 @@ String _cell(
   List<OptionsOwner> owners,
   ColumnDefinition column,
   Object? value,
-) {
-  if (column.format != null) {
-    return registry.format(column.format!, value, column.config);
-  }
-  return optionLabelIn(owners, column.field, value) ?? value?.toString() ?? '';
-}
+) =>
+    cellText(registry, owners, column, value);
 
 /// その列に属する小計・総計。同じ列に2つ（`sum` と `count`）あれば並べる。
 String _totalFor(

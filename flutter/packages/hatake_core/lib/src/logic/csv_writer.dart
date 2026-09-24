@@ -7,7 +7,9 @@
 // Dart / TS / Java の3版で同じ文字列になるよう実装をそろえること（conformance）。
 
 import '../definition/column_definition.dart';
+import '../definition/options_owner.dart';
 import '../format/formatter_registry.dart';
+import 'cell_text.dart';
 
 /// CSV の書き方。既定は Excel（日本語 Windows）で開くのが楽な組み合わせ。
 class CsvOptions {
@@ -80,6 +82,7 @@ String toCsv(
   List<Map<String, Object?>> rows, {
   CsvOptions options = const CsvOptions(),
   FormatterRegistry? formatters,
+  List<OptionsOwner> owners = const [],
 }) {
   if (columns.isEmpty) return '';
   final registry = formatters ?? FormatterRegistry();
@@ -99,7 +102,7 @@ String toCsv(
   }
   for (final row in rows) {
     writeLine([
-      for (final column in columns) _cell(column, row[column.field], options, registry),
+      for (final column in columns) _cell(column, row[column.field], options, registry, owners),
     ]);
   }
   return buffer.toString();
@@ -110,11 +113,14 @@ String _cell(
   Object? value,
   CsvOptions options,
   FormatterRegistry formatters,
+  List<OptionsOwner> owners,
 ) {
-  if (!options.raw && column.format != null) {
-    return formatters.format(column.format!, value, column.config);
-  }
-  return value?.toString() ?? '';
+  // `raw: true` は**機械に渡すための書き出し**（取り込み直す相手が居る）。
+  // 見せ方も選択肢の名前も当てずに、持っている値をそのまま出す。
+  if (options.raw) return value?.toString() ?? '';
+  // `raw` でなければ**画面と同じ字**にする。前はここだけ `cellText` を通して
+  // いなかったので、一覧に「出荷済」と出ている列が CSV では `shipped` で落ちた。
+  return cellText(formatters, owners, column, value);
 }
 
 /// 引用が要るのは区切り・引用符・改行を含むときだけ。

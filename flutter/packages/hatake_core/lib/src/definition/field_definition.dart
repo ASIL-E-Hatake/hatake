@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import 'column_definition.dart';
+import 'displayed.dart';
 import 'field_types.dart';
 import 'option_item.dart';
 import 'options_owner.dart';
@@ -9,7 +10,7 @@ import 'sub_table_source.dart';
 import 'validator_definition.dart';
 
 /// A single input field within a form.
-class FieldDefinition extends Equatable implements OptionsOwner {
+class FieldDefinition extends Equatable implements OptionsOwner, Displayed {
   /// The backing data key (matches keys in a record `Map`).
   @override
   final String field;
@@ -63,6 +64,7 @@ class FieldDefinition extends Equatable implements OptionsOwner {
 
   /// Optional display formatter name (see `FormatterRegistry`). Options are
   /// read from [config].
+  @override
   final String? format;
 
   /// Input converters/normalizers applied before validation/persistence
@@ -71,6 +73,7 @@ class FieldDefinition extends Equatable implements OptionsOwner {
 
   /// Plugin / renderer specific extra configuration. Kept open so field
   /// plugins can carry arbitrary settings without changing the model.
+  @override
   final Map<String, Object?> config;
 
   /// Show this field only when the condition matches the current record
