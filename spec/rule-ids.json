@@ -29,6 +29,7 @@
     "computed-where-ignored",
     "computed-where-mode",
     "computed-where-unknown-field",
+    "computed-without-source",
     "condition-operator-unsupported",
     "create-action-unusable",
     "dsl-version-newer",

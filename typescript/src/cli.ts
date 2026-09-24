@@ -220,6 +220,10 @@ import {
   describeUnknownKey,
 } from "./parse.js";
 import { parseAppYaml } from "./appParse.js";
+import {
+  describeUnknownScenarioKey,
+  findUnknownScenarioKeys,
+} from "./scenarioKeys.js";
 import { closestKey } from "./strictKeys.js";
 import { scaffold, scaffoldKinds } from "./scaffold.js";
 import {
@@ -312,7 +316,9 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
   hatake run <file> [--page <id>] --draft [--out s.json] [--json]
   hatake run <file> [--page <id>] --widget-draft [--assets <道>] [--out x_test.dart]
       定義を**動かして**答えを見る。画面もブラウザも要らない。
-      1件（シナリオ）は「この値を入れたら、こうなる」。返すのは
+      1件（シナリオ）は「この値を入れたら、こうなる」（値は record、
+      確かめたいことは expect。**知らないキーが在れば動かさずに止める**＝
+      書いた値が使われないまま緑になるのを防ぐ）。返すのは
       **検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン**。
       答えの作り方は画面と同じ順（normalize → computed → 状態 → 検証）。
       期待（expect）は**書いた欄だけ**見る（全部書かなくてよい）。合わなければ
@@ -1415,6 +1421,21 @@ function run(files: string[], flags: Args["flags"], io: CliIo): number {
   }
   if (!Array.isArray(file.cases)) {
     io.err("シナリオに cases（配列）がありません。");
+    return 1;
+  }
+  // **知らない鍵はここで止める。** 値の入り口は `record` なので、`input` と書くと
+  // 黙って捨てられ、**空のレコードで動いて「すべて期待どおり」**になる。
+  // 動かして確かめる道具が、何も入れずに緑を返すのがいちばん困る。
+  const unknownKeys = findUnknownScenarioKeys(file);
+  if (unknownKeys.length > 0) {
+    io.err(`シナリオに知らないキーが ${unknownKeys.length} 件あります:`);
+    for (const one of unknownKeys) {
+      io.err(`  - ${describeUnknownScenarioKey(one)}`);
+    }
+    io.err(
+      "そのままだと**書いた値が使われないまま**動いて緑になります" +
+        "（値は `record`、確かめたいことは `expect` に書きます）。",
+    );
     return 1;
   }
 
