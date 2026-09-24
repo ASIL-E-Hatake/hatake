@@ -53,7 +53,9 @@ public final class AppParser {
                 : raw;
         // 画面を読む前に app として1回通す（dsl_version の門番と、strict の門番は
         // 1箇所でよい。「隣の画面が壊れている app」の1枚だけを読むと壊れに気づけない）。
-        fromDecoded(decoded, strict);
+        // **渡すのは生のほう**＝strict は人が書いたものにかける（展開後を渡すと、
+        // 機械が足した列の `options` を機械が弾く）。
+        fromDecoded(raw, strict);
         Map<String, Object> root = (Map<String, Object>) decoded;
         Map<String, Object> app = root.get("app") instanceof Map
                 ? (Map<String, Object>) root.get("app")
@@ -76,16 +78,23 @@ public final class AppParser {
         return fromDecoded(new Yaml().load(source), strict);
     }
 
-    /** 先に解析する（id / title の欠落のほうが根本的な問題なので）。 */
+    /**
+     * 先に解析する（id / title の欠落のほうが根本的な問題なので）。
+     *
+     * <p><b>strict は「人が書いたもの」にかける。</b>語彙の展開（{@code optionsOf} →
+     * 実体の並び）は機械が値を足すので、展開後を見ると<b>自分が入れた値を自分で弾く</b>。
+     * 列の {@code options} がまさにそれで、定義には書けない（書けるのは {@code optionsOf}
+     * だけ）のに、展開後の列には入っている。
+     */
     @SuppressWarnings("unchecked")
     private static AppDefinition fromDecoded(Object raw, boolean strict) {
         Object decoded = raw instanceof Map
                 ? Vocabularies.expand((Map<String, Object>) raw)
                 : raw;
         AppDefinition app = parseDecoded(decoded);
-        if (strict && decoded instanceof Map) {
+        if (strict && raw instanceof Map) {
             List<StrictKeys.UnknownKey> unknown =
-                    StrictKeys.find((Map<String, Object>) decoded);
+                    StrictKeys.find((Map<String, Object>) raw);
             if (!unknown.isEmpty()) {
                 throw new UnknownKeysException(unknown);
             }

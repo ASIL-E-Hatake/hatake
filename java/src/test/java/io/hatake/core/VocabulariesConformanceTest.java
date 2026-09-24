@@ -1,5 +1,6 @@
 package io.hatake.core;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 import org.yaml.snakeyaml.Yaml;
 
@@ -70,5 +72,46 @@ class VocabulariesConformanceTest {
                     }
                     assertEquals(expected, actual);
                 }));
+    }
+
+    /**
+     * <b>strict は「人が書いたもの」にかける。</b>
+     *
+     * <p>語彙の展開は機械が値を足すので、展開後を strict に渡すと<b>自分が入れた値を
+     * 自分で弾く</b>。列の {@code options} がまさにそれで、定義には書けない
+     * （書けるのは {@code optionsOf} だけ）のに展開後の列には入っている。
+     * 実際、そう書いてしまって CI が落ちた。
+     */
+    @Test
+    void strictLooksAtWhatAPersonWrote() {
+        String source = """
+                dsl_version: "1.0"
+                app:
+                  id: orders
+                  title: 受注
+                  home: orders
+                  vocabularies:
+                    - name: orderStatus
+                      options:
+                        - { value: shipped, label: 出荷済 }
+                  menu:
+                    - { id: orders, label: 受注一覧, page: orders }
+                  pages:
+                    - type: crud
+                      id: orders
+                      title: 受注一覧
+                      repository: orderRepository
+                      key: orderNo
+                      table:
+                        columns:
+                          - { field: orderNo, label: 受注番号 }
+                          - { field: status, label: 状態, optionsOf: orderStatus }
+                      form:
+                        sections:
+                          - fields:
+                              - { field: orderNo, label: 受注番号, type: text, required: true }
+                """;
+        assertDoesNotThrow(() -> AppParser.parseAppYaml(source, true));
+        assertDoesNotThrow(() -> AppParser.parseAppPagesYaml(source, true));
     }
 }

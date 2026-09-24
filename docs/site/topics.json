@@ -150,6 +150,18 @@
       "demo": "order_entry"
     },
     {
+      "id": "vocabularies",
+      "section": "dsl",
+      "title": "コード表をアプリに1回だけ書く",
+      "blurb": "同じ選択肢を画面ごとに書き写さない。名前を付けて、使う所から指す。",
+      "keys": [
+        "vocabularies",
+        "name",
+        "optionsOf"
+      ],
+      "demo": "order_search"
+    },
+    {
       "id": "linked-options",
       "section": "dsl",
       "title": "選択肢を連動させる",
