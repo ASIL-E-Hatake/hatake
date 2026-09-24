@@ -51,6 +51,7 @@ import { closestKey } from "./strictKeys.js";
 import { WARNING_RULES } from "./warningRules.js";
 import { checkDslVersion } from "./dslVersion.js";
 import { findWrongShapes } from "./keyShape.js";
+import { findVocabularyProblems } from "./vocabularyChecks.js";
 import { kDslVersion } from "./definition.js";
 import { COMPARE_OPERATORS } from "./validators.js";
 
@@ -203,6 +204,43 @@ export function findWarnings(
           : `Repository から引くなら \`${one.instead}\` です` +
             `（npx hatake reference ${one.instead}）。`,
     );
+  }
+  // **語彙の指し間違い**。語彙を1か所にまとめると、今度は「指した先が無い」が
+  // 新しい事故の種になる。指した先が無ければ選択肢は空のまま出るので、事実として言う。
+  for (const one of findVocabularyProblems(document)) {
+    if (one.rule === "unknown-vocabulary") {
+      const known = (one.known ?? []).length === 0
+        ? "`app.vocabularies` がまだ1つも書かれていません。"
+        : `いま在るのは ${(one.known ?? []).map((n) => `\`${n}\``).join(" / ")} です。`;
+      warn(
+        found,
+        "unknown-vocabulary",
+        one.path,
+        `\`optionsOf: ${one.name}\` が指す語彙が \`app.vocabularies\` にありません。` +
+          "選択肢は**空のまま**出ます（画面は出るので、開くまで気づけません）。",
+        one.near === undefined
+          ? `${known}語彙を足すか、名前を直してください。`
+          : `\`${one.near}\` の書き間違いではありませんか。`,
+      );
+    } else if (one.rule === "vocabulary-shadowed") {
+      warn(
+        found,
+        "vocabulary-shadowed",
+        one.path,
+        `ここには \`options\` も書いてあるので、\`optionsOf: ${one.name}\` は` +
+          "**一度も効きません**（その場に書いた並びが勝ちます）。",
+        "どちらか片方にしてください。語彙を使うなら `options` を消します。",
+      );
+    } else {
+      warn(
+        found,
+        "duplicate-vocabulary",
+        one.path,
+        `語彙 \`${one.name}\` が2回書かれています。**先に書いたほうが使われ**、` +
+          "後のものは一度も効きません。",
+        "片方を消すか、名前を分けてください。",
+      );
+    }
   }
   const app = isDict(document.app) ? document.app : undefined;
   const page = isDict(document.page) ? document.page : undefined;

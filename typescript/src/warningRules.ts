@@ -630,6 +630,33 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
       + "書きたかったものが別のキーなら、そちらに移します"
       + "（Repository から選択肢を引くのは `optionsSource`）。",
   },
+  "unknown-vocabulary": {
+    what: "在らない語彙を指している optionsOf",
+    happens:
+      "`optionsOf` は `app.vocabularies` に書いた名前を指します。指した先が無いと"
+      + "**選択肢は空のまま**画面が出ます。定義は通り、画面も出るので、"
+      + "その画面を開いて選択肢を押すまで誰も気づきません。",
+    fix:
+      "`app.vocabularies` にその名前で語彙を足すか、名前の綴りを直してください"
+      + "（`npx hatake reference optionsOf`）。",
+  },
+  "vocabulary-shadowed": {
+    what: "options と両方書いてある optionsOf",
+    happens:
+      "同じ所に `options` と `optionsOf` の両方が書いてあると、**その場に書いた"
+      + "並びが勝ちます**＝`optionsOf` は一度も効きません。語彙を直したのに"
+      + "その画面だけ古い字のまま、という形で出ます。",
+    fix:
+      "どちらか片方にしてください。語彙を使うなら `options` を消します。",
+  },
+  "duplicate-vocabulary": {
+    what: "名前が重なっている語彙",
+    happens:
+      "同じ名前の語彙が2つあると、**先に書いたほうが使われ**、後のものは"
+      + "一度も効きません。後から足したほうが効くつもりで書くと、画面の字が"
+      + "変わらない理由が分かりません。",
+    fix: "片方を消すか、名前を分けてください。",
+  },
   "validator-missing-param": {
     what: "見るものが書かれていない検証",
     happens:

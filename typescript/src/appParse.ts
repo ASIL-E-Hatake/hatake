@@ -15,6 +15,7 @@ import {
   type ParseOptions,
 } from "./parse.js";
 import { findUnknownKeys } from "./strictKeys.js";
+import { expandVocabularies } from "./vocabularies.js";
 
 type Dict = Record<string, unknown>;
 
@@ -91,7 +92,11 @@ function fromDecoded(
  * map may be the whole document (`{dsl_version, app: {...}}`) or the app map
  * directly.
  */
-export function parseAppMap(root: Dict): AppDefinition {
+export function parseAppMap(rawRoot: Dict): AppDefinition {
+  // **語彙をいちばん先に展開する。** `optionsOf: <名前>` を実体の並びに置き換えて
+  // から解析するので、この先（説明・図・API の形）は語彙を知らなくてよい。
+  // Dart / Java 版と同じ順番（3版で同じ定義から同じものが出る）。
+  const root = expandVocabularies(rawRoot);
   const dslVersion = acceptDslVersion(optString(root, "dsl_version"));
   const app = optDict(root, "app") ?? root;
   return {

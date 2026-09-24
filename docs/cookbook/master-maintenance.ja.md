@@ -56,6 +56,39 @@ columns:
     options: [ { value: "1", label: 社内 }, { value: "2", label: 社外 } ] }
 ```
 
+### 同じ区分を、一覧でも検索でも詳細でも使いたい
+
+コード表は**アプリに1回**書いて、使う所は名前で指します。
+
+```yaml no-check:app の断片（語彙とその指し方）
+app:
+  vocabularies:
+    - name: kind
+      options:
+        - { value: "1", label: 社内 }
+        - { value: "2", label: 社外 }
+  pages:
+    - # …
+      search:
+        filters:
+          - { field: kind, label: 区分, type: select, operator: equals, optionsOf: kind }
+      table:
+        columns:
+          - { field: kind, label: 区分, optionsOf: kind }
+      form:
+        sections:
+          - fields:
+              - { field: kind, label: 区分, type: select, required: true, optionsOf: kind }
+```
+
+`optionsOf` を書けるのは **`field` / `filter` / `column`** の3か所。列に並びを直接は
+書けません（見せる所に並びをもう一度書かせると、入力側と片方だけ直したときに
+**一覧と入力で違う字**が出るので）。
+
+列に何も書かなければ、**同じ画面の項目か検索条件から借ります**。ただし借りる相手が
+居ない画面（検索も入力も持たない帳票・詳細）では借りようがないので、そこは
+`optionsOf` で名指ししてください。
+
 ### 「社外のときだけ取引先名を出す」
 ```yaml context:field
 - { field: partner, label: 取引先名,
@@ -84,3 +117,6 @@ columns:
 | 削除ボタンが出ない | `table.rowActions` に `delete` を入れていない |
 | `key` を変えたのに編集が効かない | `key` はレコードの主キー項目名。`findByKey`/`update` の実装と揃える |
 | YAML で `no` を項目名に使うと変になる | YAML1.1 では `no` が **false** 扱い。`orderNo` 等に改名する |
+| 一覧はコードのまま、入力欄だけ名前が出る | その画面に借りる相手が居ない（帳票・詳細など）。列に `optionsOf` を書く |
+| `optionsOf` を書いたのに選択肢が空 | 指した名前が `app.vocabularies` に無い（`unknown-vocabulary` が言う） |
+| 語彙を直したのに1つの画面だけ古い字 | そこに `options` も書いてある（その場の並びが勝つ。`vocabulary-shadowed` が言う） |

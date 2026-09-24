@@ -45,7 +45,12 @@ public final class AppParser {
     /** {@code strict} なら知らないキーを1つも許さない（{@link StrictKeys}）。 */
     @SuppressWarnings("unchecked")
     public static Map<String, PageDefinition> parseAppPagesYaml(String source, boolean strict) {
-        Object decoded = new Yaml().load(source);
+        Object raw = new Yaml().load(source);
+        // **語彙をいちばん先に展開する。** `optionsOf: <名前>` を実体の並びに
+        // 置き換えてから解析するので、この先（検証・CSV・DTO）は語彙を知らなくてよい。
+        Object decoded = raw instanceof Map
+                ? Vocabularies.expand((Map<String, Object>) raw)
+                : raw;
         // 画面を読む前に app として1回通す（dsl_version の門番と、strict の門番は
         // 1箇所でよい。「隣の画面が壊れている app」の1枚だけを読むと壊れに気づけない）。
         fromDecoded(decoded, strict);
@@ -73,7 +78,10 @@ public final class AppParser {
 
     /** 先に解析する（id / title の欠落のほうが根本的な問題なので）。 */
     @SuppressWarnings("unchecked")
-    private static AppDefinition fromDecoded(Object decoded, boolean strict) {
+    private static AppDefinition fromDecoded(Object raw, boolean strict) {
+        Object decoded = raw instanceof Map
+                ? Vocabularies.expand((Map<String, Object>) raw)
+                : raw;
         AppDefinition app = parseDecoded(decoded);
         if (strict && decoded instanceof Map) {
             List<StrictKeys.UnknownKey> unknown =

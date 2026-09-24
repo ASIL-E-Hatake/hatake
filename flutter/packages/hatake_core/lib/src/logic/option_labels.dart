@@ -16,6 +16,7 @@
 // 引けなかったら**値をそのまま出す**（勝手に作らない）。選択肢を Repository から引く
 // もの（`optionsSource`）はここでは分からないので、そのまま出る。
 
+import '../definition/option_item.dart';
 import '../definition/options_owner.dart';
 import '../definition/page_definition.dart';
 
@@ -64,14 +65,23 @@ List<OptionsOwner> optionOwnersOfCrud(CrudLike page) => [
 /// 引けなければ null（呼ぶ側が値をそのまま出す）。**1行ごとに集め直さない**よう、
 /// 画面を組むときに1度だけ [optionOwnersOf] を呼んで、その結果を渡す。
 String? optionLabelIn(List<OptionsOwner> owners, String field, Object? value) {
-  if (value == null) return null;
   for (final owner in owners) {
     if (owner.field != field) continue;
-    for (final option in owner.options) {
-      // 型をまたいで比べる（YAML の `10` と REST の `"10"` が同じものを指すことがある）。
-      if (option.value == value || '${option.value}' == '$value') {
-        return option.label;
-      }
+    final label = optionLabelFrom(owner.options, value);
+    if (label != null) return label;
+  }
+  return null;
+}
+
+/// 渡された選択肢の中から [value] のラベルを引く。引けなければ null。
+///
+/// 比べ方をここ1か所に置く（「同じ値か」の判定が2か所にあると必ずズレる）。
+String? optionLabelFrom(List<OptionItem> options, Object? value) {
+  if (value == null) return null;
+  for (final option in options) {
+    // 型をまたいで比べる（YAML の `10` と REST の `"10"` が同じものを指すことがある）。
+    if (option.value == value || '${option.value}' == '$value') {
+      return option.label;
     }
   }
   return null;

@@ -417,7 +417,10 @@ public final class DefinitionParser {
                 m.get("type") instanceof String t ? t : "text",
                 m.get("format") instanceof String f ? f : null,
                 config == null ? Map.of() : Map.copyOf(config),
-                List.copyOf(roles));
+                List.copyOf(roles),
+                // 列に並びを直接は書けない（DSL キーは optionsOf だけ）。ここに入るのは
+                // 読み込み時に app.vocabularies から展開されたもの。
+                parseOptions(m.get("options")));
     }
 
     @SuppressWarnings("unchecked")

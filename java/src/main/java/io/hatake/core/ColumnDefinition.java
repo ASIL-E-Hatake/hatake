@@ -28,7 +28,8 @@ public record ColumnDefinition(
         String type,
         String format,
         Map<String, Object> config,
-        List<String> roles) {
+        List<String> roles,
+        List<OptionItem> options) {
 
     /**
      * 出し分けの無い列用の短縮コンストラクタ。
@@ -38,13 +39,13 @@ public record ColumnDefinition(
      */
     public ColumnDefinition(
             String field, String label, String type, String format, Map<String, Object> config) {
-        this(field, label, type, format, config, List.of());
+        this(field, label, type, format, config, List.of(), List.of());
     }
 
     /**
      * フォーマッタのオプションも出し分けも要らない列用の短縮コンストラクタ。
      */
     public ColumnDefinition(String field, String label, String type, String format) {
-        this(field, label, type, format, Map.of(), List.of());
+        this(field, label, type, format, Map.of(), List.of(), List.of());
     }
 }

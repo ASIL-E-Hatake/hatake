@@ -4,12 +4,16 @@ import 'definition_parser.dart';
 import 'dsl_version_gate.dart';
 import 'map_readers.dart';
 import 'parse_exception.dart';
+import 'vocabularies.dart';
 
 /// Converts a normalized app document into an [AppDefinition].
 ///
 /// The map may be the whole document (`{dsl_version, app: {...}}`) or the app
 /// map directly. Pages are parsed by the shared [parsePageMap].
-AppDefinition parseAppMap(Map<String, Object?> root) {
+AppDefinition parseAppMap(Map<String, Object?> rawRoot) {
+  // **語彙をいちばん先に展開する。** `optionsOf: <名前>` を実体の並びに置き換えて
+  // から解析するので、この先（解析器・Renderer・CSV・紙）は語彙を知らなくてよい。
+  final root = expandVocabularies(rawRoot);
   final dslVersion = acceptDslVersion(root.optString('dsl_version'));
   final app = root.optMap('app') ?? root;
   final menu = app.optList('menu');
