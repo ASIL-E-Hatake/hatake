@@ -128,6 +128,9 @@ var api = OpenApiEmitter.toOpenApi(
 | `DELETE {basePath}/{key}` | request | 204、404 |
 
 だから読み取り専用の `search` ページは**一覧だけ**、`form` / `wizard` ページは一覧なしになります。
+`detail` ページは**1件取得だけ**（読むだけなので `POST` / `PUT` / `DELETE` は出ません）。
+以前はここが空で**道を1本も出していませんでした**が、詳細画面は `findByKey` を必ず
+叩くので、叩く先が宣言に出てこないのは嘘でした。
 `ValidationErrorResponse` は `ValidationResult`（`{valid, errors: [{field, message}]}`）に一致し、
 リクエストを受け取るページにだけ足されます。
 

@@ -317,6 +317,45 @@ describe("hatake probe", () => {
   });
 });
 
+describe("一覧を持たない画面", () => {
+  const DETAIL = `
+dsl_version: "1.0"
+page:
+  type: detail
+  id: order_detail
+  title: 受注詳細
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - { field: orderNo, label: 受注番号 }
+          - { field: amount, label: 金額 }
+`;
+
+  it("一覧を叩かない（定義に無い口なので、404 を食い違いとして報告しない）", async () => {
+    // サーバが集合の GET を持っていなければ 404 が返る。以前はそれを
+    // 「その口がありません」と言っていたが、**定義はその口を要求していない**。
+    const { send, sent } = server({});
+    const report = await probe(targets(DETAIL), send);
+
+    expect(sent).toEqual([]);
+    expect(report.findings).toEqual([]);
+  });
+
+  it("叩かなかったことは黙らずに言う", async () => {
+    const { send } = server({});
+    const report = await probe(targets(DETAIL), send);
+
+    expect(report.skipped.map((one) => one.page)).toContain("order_detail");
+  });
+
+  it("送る前に見せるもの（--dry-run）も、実際に送るものと同じ", async () => {
+    // ここがズレると「見せてから違うものを送る」道具になる。
+    expect(probeRequests(targets(DETAIL))).toEqual([]);
+  });
+});
+
 describe("食い違いの印から直し方を引く", () => {
   const table = () =>
     parseProbeHelp(JSON.parse(readFileSync("../spec/probe-kinds.json", "utf8")));
