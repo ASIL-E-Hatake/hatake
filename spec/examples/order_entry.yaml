@@ -58,6 +58,15 @@ page:
           - { field: itemNames, label: 品名, type: textarea, readOnly: true,
               computed: { op: join, field: lines, of: item, separator: "、",
                           where: { field: cancelled, operator: notEquals, value: true } } }
+          # 行を**並べ替えて上から数件だけ**畳むこともできる（`sort` / `limit`）。
+          # 絞る → 並べる → 上から取る、の順。`overflow` は残りの言い方で、
+          # ここに書ける差し込みは `{count}`（**隠れた行数**。全体ではない）だけ。
+          - { field: topItems, label: 主な品名, type: textarea, readOnly: true,
+              computed: { op: join, field: lines, of: item, separator: "、",
+                          where: { field: cancelled, operator: notEquals, value: true },
+                          sort: { field: amount, ascending: false },
+                          limit: 2,
+                          overflow: "ほか {count} 件" } }
           # 同じレコードの項目を畳むのは `fields`。計算は**書いた順に1回**なので、
           # 小計より後ろに置く（前の結果を使える）。
           - { field: total, label: 合計金額, format: currency, config: { symbol: "¥" },

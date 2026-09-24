@@ -70,8 +70,14 @@ describe("触ると壊れる所を辿る", () => {
   it("行を絞る条件も計算の元として出す（`where` を見落とすと合計が変わる）", () => {
     const found = impactOf(EXAMPLE(), "cancelled");
     const computed = found.filter((one) => one.kind === "computed");
-    expect(computed.length).toBe(3);
-    for (const one of computed) expect(one.path).toContain("computed.where.field");
+    // 数ではなく**どの道か**で見る。数だけだと、例に計算が1つ増えたときに
+    // 「4 を期待して 3 でした」としか出ず、何が増えたのか読めない。
+    expect(computed.map((one) => one.path).sort()).toEqual([
+      "page.form.sections[2].fields[0].computed.where.field",
+      "page.form.sections[2].fields[1].computed.where.field",
+      "page.form.sections[2].fields[2].computed.where.field",
+      "page.form.sections[2].fields[3].computed.where.field",
+    ]);
   });
 
   it("畳む相手（`of`）も見る", () => {

@@ -180,20 +180,15 @@ jobs:
           diff -u --strip-trailing-cr ../spec/reference.json /tmp/reference.json
 
       - name: Diagrams match their source
+        working-directory: typescript
         run: |
-          set -e
-          # 図解は生成物。元データ（docs/diagrams/*.json）だけ直せば絵が付いてくる形にして
-          # あるので、作り直して差分が出たら「絵が古い」ということ。
-          for f in docs/diagrams/*.json; do
-            node typescript/dist/cli.js diagram "$f" --out "${f%.json}.svg"
-          done
-          # 定義から作る図も生成物（資料とサイトに出しているので、古いままにしない）。
-          node typescript/dist/cli.js diagram spec/examples/sales_app.yaml             --out docs/diagrams/sales-app-flow.svg
-          # 権限を重ねた図（全体と、admin で通れる道だけ）。元は roles-app.yaml。
-          node typescript/dist/cli.js diagram docs/diagrams/roles-app.yaml             --out docs/diagrams/roles-app-flow.svg
-          node typescript/dist/cli.js diagram docs/diagrams/roles-app.yaml --role admin             --out docs/diagrams/roles-app-admin.svg
-          # --ignore-cr-at-eol: Windows のチェックアウト（CRLF）で走らせても同じ判定にする。
-          git diff --exit-code --ignore-cr-at-eol -- docs/diagrams
+          # 図解と reference.json は生成物。元（元データ・定義・スキーマ）だけ直せば
+          # 付いてくる形にしてあるので、作り直して差分が出たら「生成物が古い」。
+          #
+          # **手元と CI で同じ道具を回す**（`node tool/regen.mjs`）。以前はこの手順が
+          # CI にしか書いておらず、どれが生成物なのかは**落ちて初めて分かった**
+          # ＝見本にボタンを1つ足しただけで、遷移図を作り直し忘れて落ちた。
+          node tool/regen.mjs --check
 
       - name: Diagram and index from real definitions
         working-directory: typescript

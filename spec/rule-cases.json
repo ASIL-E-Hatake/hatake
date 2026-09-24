@@ -4663,6 +4663,60 @@
           ]
         }
       }
+    },
+    {
+      "rule": "placeholder-not-filled",
+      "why": "畳んだ残りの言い方に、埋まらない差し込み（`{rest}`）を書いている。計算はその文字をそのまま足すので、画面に `{rest}` と出る",
+      "page": {
+        "type": "form",
+        "id": "order_entry",
+        "title": "受注入力",
+        "repository": "orderRepository",
+        "key": "orderNo",
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "orderNo",
+                  "label": "受注番号",
+                  "type": "text",
+                  "required": true
+                },
+                {
+                  "field": "lines",
+                  "label": "明細",
+                  "type": "subTable",
+                  "columns": [
+                    {
+                      "field": "item",
+                      "label": "品名"
+                    },
+                    {
+                      "field": "amount",
+                      "label": "金額",
+                      "type": "number"
+                    }
+                  ]
+                },
+                {
+                  "field": "topItems",
+                  "label": "主な品名",
+                  "type": "textarea",
+                  "readOnly": true,
+                  "computed": {
+                    "op": "join",
+                    "field": "lines",
+                    "of": "item",
+                    "limit": 2,
+                    "overflow": "ほか {rest} 件"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
     }
   ]
 }

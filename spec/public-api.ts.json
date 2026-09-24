@@ -1,6 +1,6 @@
 {
   "_comment": "TypeScript 版（@hatake-fw/api）が**約束する公開 API**。公開したあとに減らすのは破壊的変更なので、いま出ているものを1枚にして凍らせる。試験はこの一覧と実際の export が**完全一致**することを見る＝内部の道具をうっかり index から出すと落ちる（気づかずに公開 API が広がるのを止める）。足すのは自由だが、ここに1行足すのが条件＝**約束する**という意思表示になる。型だけの export（interface / type）はここに出ない（実行時に見えない）が、**同じ約束の対象**。減らすときは major を上げる。",
-  "count": 586,
+  "count": 587,
   "exports": [
     "ACCESS_OVERVIEW_TITLE",
     "ACCESS_TITLE",
@@ -95,6 +95,7 @@
     "NotWiringError",
     "ORPHAN_KINDS",
     "OUTSIDE_PAGE",
+    "OVERFLOW_PLACEHOLDERS",
     "Orientations",
     "PAGE_KINDS",
     "PAGE_KINDS_WITH_FORM_ROWS",

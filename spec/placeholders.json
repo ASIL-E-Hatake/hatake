@@ -112,6 +112,24 @@
           "note": "`$row` と同じ形。行から来たか、開いている1件から来たかの違い"
         }
       ]
+    },
+    {
+      "id": "computed-overflow",
+      "title": "畳んだ残りの言い方",
+      "filledBy": "計算（ComputedRegistry。`op: join` に `limit` を付けたときだけ）",
+      "where": [
+        "field.computed.overflow"
+      ],
+      "placeholders": [
+        {
+          "name": "{count}",
+          "means": "**隠れた行数**（全体ではない）",
+          "bulkOnly": false,
+          "afterRun": false,
+          "failureOnly": false,
+          "note": "ここだけ `{count}` の意味が違う（ボタンの文言では「件数」、ここでは「出さなかった行数」）。`overflow: \"\"` と書けば何も足さない＝黙って切ると決めたことが読める"
+        }
+      ]
     }
   ]
 }

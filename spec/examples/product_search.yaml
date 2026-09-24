@@ -35,7 +35,8 @@ page:
           - { value: detergent, label: 洗剤,     when: daily }
 
   table:
-    pagination: { pageSize: 50 }
+    # ページ送りを出さない（件数が少ないマスタは、全部出したほうが速い）。
+    pagination: { pageSize: 50, enabled: false }
     rowActions: [detail]
     columns:
       - { field: code,     label: コード,   width: 120, sortable: true }

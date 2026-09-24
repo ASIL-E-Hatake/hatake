@@ -162,12 +162,44 @@ const ROUTE_PARAMS: PlaceholderContext = {
   ],
 };
 
+/**
+ * 畳んだ残りの言い方（`op: join` に `limit` を付けたときだけ）。
+ *
+ * **ここだけ `{count}` の意味が違う**（ボタンの文言では「件数」、ここでは
+ * 「出さなかった行数」）。この文脈が一覧に載っていなかったせいで、検証が
+ * `overflow` を一度も見ておらず、書けない差し込みを書いても**黙って文字として
+ * 出て**いました（見本に `{rest}` と書いて気づいた）。
+ */
+const COMPUTED_OVERFLOW: PlaceholderContext = {
+  id: "computed-overflow",
+  title: "畳んだ残りの言い方",
+  filledBy: "計算（ComputedRegistry。`op: join` に `limit` を付けたときだけ）",
+  where: ["field.computed.overflow"],
+  placeholders: [
+    {
+      name: "{count}",
+      means: "**隠れた行数**（全体ではない）",
+      bulkOnly: false,
+      afterRun: false,
+      failureOnly: false,
+      note:
+        "ここだけ `{count}` の意味が違う（ボタンの文言では「件数」、ここでは" +
+        "「出さなかった行数」）。`overflow: \"\"` と書けば何も足さない" +
+        "＝黙って切ると決めたことが読める",
+    },
+  ],
+};
+
 /** 差し込みの全部（文脈ごと）。 */
 export const PLACEHOLDER_CONTEXTS: PlaceholderContext[] = [
   ACTION_MESSAGE,
   VALIDATION_MESSAGE,
   ROUTE_PARAMS,
+  COMPUTED_OVERFLOW,
 ];
+
+/** 畳んだ残りの言い方に書ける差し込み（ここに無いものは埋まらない）。 */
+export const OVERFLOW_PLACEHOLDERS: Placeholder[] = COMPUTED_OVERFLOW.placeholders;
 
 /** ボタンの文言に書ける差し込み（ここに無いものは埋まらない）。 */
 export const ACTION_PLACEHOLDERS: Placeholder[] = ACTION_MESSAGE.placeholders;

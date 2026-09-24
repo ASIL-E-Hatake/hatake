@@ -8,10 +8,18 @@ app:
   home: dashboard
   # 見た目は定義で差す（Renderer が自分の流儀に落とす）。業務画面は情報密度が
   # 高い方が使いやすいので density: compact が既定の選択。
+  # 画面をどう開くか。`single`（既定）は1画面ずつ、`tabs` は横に並べて開いたまま。
+  # 定義が言うのは**その業務システムの既定**で、アプリ側は上書きできる。
+  navigation: single
   theme:
     primaryColor: "#1B5E20"
+    secondaryColor: "#FFA000"
+    brightness: light
     density: compact
+    fontFamily: "Noto Sans JP"
     radius: 8
+    # Renderer 固有の見た目を足す口（読めないものは無視される）。
+    config: { tableStripe: true }
   # 業務のコード表は**アプリに1回**書いて、使う所は名前で指す（`optionsOf`）。
   # この表は下の4か所（検索条件2・入力項目2）から指されている。バラで書くと、
   # 言い回しを直したときに片方だけ古いまま残り、画面ごとに違う字が出る。
@@ -210,6 +218,10 @@ app:
               - { field: orderDate, label: 受注日 }
               - { field: status, label: 状態 }
               - { field: amount, label: 金額, format: currency, config: { symbol: "¥" } }
+      # 1件の画面にもボタンは置ける（読むだけの画面から、直しに行く）。
+      actions:
+        - { id: openEntry, type: navigate, label: この受注を修正, page: order_entry,
+            params: { orderNo: $row.orderNo } }
 
     # 親子・明細（master-detail）: ヘッダ＋明細行を1画面で入力し、まとめて保存する。
     - type: form

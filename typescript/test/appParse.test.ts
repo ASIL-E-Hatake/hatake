@@ -88,14 +88,17 @@ describe("parseAppYaml: shipped example", () => {
   });
 
   it("carries the theme (a backend does not render, but must not drop it)", () => {
+    // 同梱の例は**テーマのキーを全部**書いてある（一度も書かれていないキーは
+    // 「動かしたことがない」ので、1.0 の前に全部書いて動かすと決めた）。
+    // ここが落ちたら、読める形になっているのに**落としている**ということ。
     expect(app.theme).toEqual({
       primaryColor: "#1B5E20",
-      secondaryColor: undefined,
+      secondaryColor: "#FFA000",
       brightness: Brightnesses.light,
       density: Densities.compact,
-      fontFamily: undefined,
+      fontFamily: "Noto Sans JP",
       radius: 8,
-      config: {},
+      config: { tableStripe: true },
     });
   });
 });

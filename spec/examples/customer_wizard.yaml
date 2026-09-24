@@ -49,3 +49,16 @@ page:
         # 前のステップの入力を計算項目で見せる（読み取り表示）
         - { field: summary, label: 登録内容,
             computed: { op: concat, fields: [code, name], separator: " / " } }
+
+  # ウィザードにもボタンは置ける（最後のステップで押す保存など）。
+  # 進む・戻るは枠組みが出すので、ここに書くのは**業務のボタン**だけ。
+  actions:
+    - id: save
+      type: plugin
+      plugin: saveCustomer
+      label: 登録する
+      confirm:
+        title: 顧客の登録
+        message: この内容で登録します。よろしいですか？
+      onSuccess: { message: 登録しました }
+      onError: { message: 登録できませんでした }

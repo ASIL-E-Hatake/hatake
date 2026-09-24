@@ -16,6 +16,8 @@
 dsl_version: "1.0"
 app:
   id: hr_admin
+  # 画面を横に並べて開いたままにする（一覧を開いたまま1件を見る、が業務の意図）。
+  navigation: tabs
   title: 人事管理
   home: hrDashboard
   # このアプリが配りうる役割の語彙。ここに無い名前をどこかに書いたら、hatake validate が
@@ -78,7 +80,11 @@ app:
           # 列ごとに隠せる（見えない列は CSV 出力にも出ない）。
           - { field: salary, label: 給与, type: number, format: currency, roles: [hr], width: 140 }
       actions:
-        - { id: detail, type: navigate, label: 詳細, page: employee_detail, params: { id: "$row.employeeNo" } }
+        # 一覧は開いたままにして、1件を**隣に**出す（`open: tab`）。既定の `same` は
+        # いまの画面を置き換える＝一覧に戻るのに1手かかる。`navigation: tabs` の
+        # ときだけ意味を持つ（そうでなければ検証がそう言う）。
+        - { id: detail, type: navigate, label: 詳細, page: employee_detail,
+            open: tab, params: { id: "$row.employeeNo" } }
         # 一括は役割で上限を変える（1回の操作が件数ぶん動くので）。
         - id: approveRaise
           type: plugin
@@ -92,6 +98,44 @@ app:
             message: "{count} 件の昇給を承認します。よろしいですか？"
           onError: { message: "{count} 件のうち {failed} 件を承認できませんでした" }
           onSuccess: { message: "{count} 件を承認しました" }
+        # **押す前に聞く**一括（`prompt`）。聞いた値は `input` としてハンドラに届く。
+        # 1回で送る件数は `batchSize`（`maxRows` は1回の操作で動かせる上限、
+        # `batchSize` は**何件ずつに分けて投げるか**＝別の話）。
+        - id: transferDept
+          type: plugin
+          plugin: transferEmployees
+          label: 所属をまとめて変える
+          scope: selection
+          roles: [hr]
+          # 触れる条件。選んでいない状態でも押せてしまうと、0 件で投げることになる。
+          enabledWhen: { field: employeeNo, operator: isNotEmpty }
+          maxRows: { default: 20 }
+          batchSize: { default: 5, byRole: { hr: 10 } }
+          prompt:
+            title: 異動先の指定
+            okLabel: この内容で異動
+            cancelLabel: やめる
+            fields:
+              - field: toDeptCode
+                label: 異動先部門
+                type: select
+                required: true
+                optionsSource:
+                  repository: deptRepository
+                  value: code
+                  label: name
+                  limit: 200
+              - { field: effectiveOn, label: 適用日, type: date, required: true }
+          confirm:
+            title: 所属の変更
+            message: "{count} 件の所属を変えます。よろしいですか？"
+            cancelLabel: やめる
+          # 終わったら一覧へ戻す（どこへ行くかを定義で言う）。
+          onSuccess:
+            message: "{count} 件の所属を変えました"
+            page: salary_search
+            params: { deptCode: "$row.deptCode" }
+          onError: { message: "{count} 件のうち {failed} 件を変えられませんでした" }
         # 持ち出しは hr だけ（画面の外に出たものは取り戻せない）。
         - { id: csv, type: export, label: CSV 出力, roles: [hr], config: { filename: 社員一覧 } }
 

@@ -1502,6 +1502,9 @@ describe("hatake reference", () => {
       "action-message",
       "validation-message",
       "route-params",
+      // 畳んだ残りの言い方。長いあいだ一覧から漏れていて、そのせいで検証が
+      // `overflow` を一度も見ていなかった（書けない差し込みが黙って文字で出た）。
+      "computed-overflow",
     ]);
   });
 
