@@ -66,6 +66,7 @@ class ScreenIndexTest {
         }
         ScreenIndex index = ScreenIndex.build(sources);
         assertTrue(index.unreadable().isEmpty(), index.unreadable().toString());
+        // hatake:shipped-screen-count（tool/check-screen-count.mjs が見ている）
         assertEquals(24, index.screens().size());
         // index.json（例のカタログ）は定義ではないので飛ばされる。
         assertTrue(index.ignored() > 0);

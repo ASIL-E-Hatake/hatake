@@ -51,6 +51,7 @@ page:
       ];
       final index = buildScreenIndex(inputs);
       expect(index.unreadable, isEmpty);
+      // hatake:shipped-screen-count（tool/check-screen-count.mjs が見ている）
       expect(index.screens.length, 24);
       // index.json（例のカタログ）は定義ではないので飛ばされる。
       expect(index.ignored, greaterThan(0));
