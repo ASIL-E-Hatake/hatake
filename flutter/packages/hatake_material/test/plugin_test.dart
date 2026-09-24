@@ -19,7 +19,7 @@ const _definition = CrudPageDefinition(
   id: 'plugins',
   title: 'プラグインデモ',
   repository: 'repo',
-  keyField: 'id',
+  keyFields: ['id'],
   table: TableDefinition(
     columns: [ColumnDefinition(field: 'id', label: 'ID')],
   ),

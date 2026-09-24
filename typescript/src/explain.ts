@@ -226,8 +226,8 @@ export function explainPage(
   if ("repository" in page && page.repository !== undefined) {
     source.push(v.repositoryIs(page.repository));
   }
-  if ("keyField" in page) {
-    source.push(v.keyIs(page.keyField));
+  if ("keyFields" in page) {
+    source.push(v.keyIs(page.keyFields.join(" + ")));
   }
   if (source.length > 0) sections.push({ title: v.data, lines: source });
 

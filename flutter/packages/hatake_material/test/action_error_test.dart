@@ -49,7 +49,7 @@ SearchPageDefinition _page({
     id: 'order_search',
     title: '受注照会',
     repository: 'orderRepository',
-    keyField: 'orderNo',
+    keyFields: ['orderNo'],
     table: _table,
     actions: [
       ActionDefinition(
@@ -342,7 +342,7 @@ void _deleteTests() {
       id: 'order_list',
       title: '受注一覧',
       repository: 'orderRepository',
-      keyField: 'orderNo',
+      keyFields: ['orderNo'],
       table: TableDefinition(
         rowActions: ['delete'],
         columns: [ColumnDefinition(field: 'orderNo', label: '受注番号')],

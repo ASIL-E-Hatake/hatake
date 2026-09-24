@@ -40,7 +40,7 @@ SearchPageDefinition _page({String scope = ActionScopes.page}) =>
       id: 'order_search',
       title: '受注照会',
       repository: 'orderRepository',
-      keyField: 'orderNo',
+      keyFields: ['orderNo'],
       table: _table,
       actions: [
         ActionDefinition(
@@ -121,7 +121,7 @@ void main() {
       id: 'order_search',
       title: '受注照会',
       repository: 'orderRepository',
-      keyField: 'orderNo',
+      keyFields: ['orderNo'],
       table: _table,
       actions: [
         ActionDefinition(id: 'csv', type: ActionTypes.export, label: 'CSV出力'),

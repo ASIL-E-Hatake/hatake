@@ -102,7 +102,8 @@ export interface SubTableSource {
   /** Child field holding the parent key. */
   parentKey: string;
   /** Primary-key field of a child row. DSL key: `key`. */
-  keyField: string;
+  /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
+  keyFields: string[];
   /** Rows per page. */
   pageSize: number;
 }
@@ -343,7 +344,8 @@ export interface CrudPageDefinition {
   title: string;
   dslVersion: string;
   repository: string;
-  keyField: string;
+  /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
+  keyFields: string[];
   search?: SearchDefinition;
   table: TableDefinition;
   form: FormDefinition;
@@ -361,7 +363,8 @@ export interface MasterPageDefinition {
   title: string;
   dslVersion: string;
   repository: string;
-  keyField: string;
+  /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
+  keyFields: string[];
   search?: SearchDefinition;
   table: TableDefinition;
   form: FormDefinition;
@@ -378,7 +381,8 @@ export interface DetailPageDefinition {
   title: string;
   dslVersion: string;
   repository: string;
-  keyField: string;
+  /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
+  keyFields: string[];
   form: FormDefinition;
   actions: ActionDefinition[];
 }
@@ -389,7 +393,8 @@ export interface SearchPageDefinition {
   title: string;
   dslVersion: string;
   repository: string;
-  keyField: string;
+  /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
+  keyFields: string[];
   search?: SearchDefinition;
   table: TableDefinition;
   actions: ActionDefinition[];
@@ -401,7 +406,8 @@ export interface FormPageDefinition {
   title: string;
   dslVersion: string;
   repository: string;
-  keyField: string;
+  /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
+  keyFields: string[];
   form: FormDefinition;
   actions: ActionDefinition[];
 }
@@ -434,7 +440,8 @@ export interface WizardPageDefinition {
   title: string;
   dslVersion: string;
   repository: string;
-  keyField: string;
+  /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
+  keyFields: string[];
   steps: WizardStepDefinition[];
   actions: ActionDefinition[];
 }
@@ -528,7 +535,7 @@ export interface DashboardItemDefinition {
 /**
  * A dashboard page: a grid of read-only cards. It has no single record and no
  * single repository — `repository` is only the default for items that omit one,
- * and there is no `keyField`. An optional `search` applies to every card.
+ * and there is no `keyFields`. An optional `search` applies to every card.
  */
 export interface DashboardPageDefinition {
   kind: "dashboard";
@@ -587,7 +594,7 @@ export interface ReportDefinition {
 /**
  * A report page (帳票): the printable counterpart of a list. Detail columns come
  * from `table`, so the report and the list of the same data cannot drift apart.
- * It addresses no single record, so it has no `keyField`.
+ * It addresses no single record, so it has no `keyFields`.
  */
 export interface ReportPageDefinition {
   kind: "report";

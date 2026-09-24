@@ -97,7 +97,7 @@ const _page = SearchPageDefinition(
   id: 'order_search',
   title: '受注照会',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   search: SearchDefinition(
     filters: [FilterDefinition(field: 'status', label: '状態')],
   ),
@@ -144,7 +144,7 @@ void main() {
         id: 'order_search',
         title: '受注照会',
         repository: 'orderRepository',
-        keyField: 'orderNo',
+        keyFields: ['orderNo'],
         table: _table,
       ),
     ));
@@ -242,7 +242,7 @@ void main() {
         id: 'order_search',
         title: '受注照会',
         repository: 'orderRepository',
-        keyField: 'orderNo',
+        keyFields: ['orderNo'],
         table: _table,
         actions: [
           ActionDefinition(
@@ -271,7 +271,7 @@ void main() {
         id: 'order_search',
         title: '受注照会',
         repository: 'orderRepository',
-        keyField: 'orderNo',
+        keyFields: ['orderNo'],
         table: _table,
         actions: [
           ActionDefinition(
@@ -302,7 +302,7 @@ void main() {
         id: 'order_search',
         title: '受注照会',
         repository: 'orderRepository',
-        keyField: 'orderNo',
+        keyFields: ['orderNo'],
         table: _table,
         actions: [_approveAsking],
       ),
@@ -332,7 +332,7 @@ void main() {
         id: 'order_search',
         title: '受注照会',
         repository: 'orderRepository',
-        keyField: 'orderNo',
+        keyFields: ['orderNo'],
         table: _table,
         actions: [_approveAsking],
       ),
@@ -364,7 +364,7 @@ void main() {
         id: 'order_search',
         title: '受注照会',
         repository: 'orderRepository',
-        keyField: 'orderNo',
+        keyFields: ['orderNo'],
         table: _table,
         actions: [_approveUpTo1],
       ),
@@ -397,7 +397,7 @@ void main() {
     id: 'order_search',
     title: '受注照会',
     repository: 'orderRepository',
-    keyField: 'orderNo',
+    keyFields: ['orderNo'],
     table: _table,
     actions: [_approveByRole],
   );

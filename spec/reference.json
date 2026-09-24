@@ -938,10 +938,13 @@
         },
         {
           "key": "key",
-          "type": "string",
+          "type": "object",
           "required": false,
-          "description": "Primary-key field name of a record.",
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "nodes": [
+            "crudPage.key",
+            "crudPage.key"
+          ]
         },
         {
           "key": "search",
@@ -980,6 +983,16 @@
           ]
         }
       ]
+    },
+    "crudPage.key": {
+      "closed": false,
+      "pageKinds": [
+        "crud"
+      ],
+      "parents": [
+        "crudPage"
+      ],
+      "keys": []
     },
     "dashboardItem": {
       "description": "One dashboard card: a query (repository + filters + limit + sort) and how to show its result (metric / table / chart).",
@@ -1312,9 +1325,13 @@
         },
         {
           "key": "key",
-          "type": "string",
+          "type": "object",
           "required": false,
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "nodes": [
+            "detailPage.key",
+            "detailPage.key"
+          ]
         },
         {
           "key": "form",
@@ -1334,6 +1351,16 @@
           ]
         }
       ]
+    },
+    "detailPage.key": {
+      "closed": false,
+      "pageKinds": [
+        "detail"
+      ],
+      "parents": [
+        "detailPage"
+      ],
+      "keys": []
     },
     "document": {
       "description": "A hatake document: either a single `page` or an `app` (pages + navigation).",
@@ -1914,9 +1941,13 @@
         },
         {
           "key": "key",
-          "type": "string",
+          "type": "object",
           "required": false,
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "nodes": [
+            "formPage.key",
+            "formPage.key"
+          ]
         },
         {
           "key": "form",
@@ -1936,6 +1967,16 @@
           ]
         }
       ]
+    },
+    "formPage.key": {
+      "closed": false,
+      "pageKinds": [
+        "form"
+      ],
+      "parents": [
+        "formPage"
+      ],
+      "keys": []
     },
     "layout": {
       "closed": true,
@@ -2004,9 +2045,13 @@
         },
         {
           "key": "key",
-          "type": "string",
+          "type": "object",
           "required": false,
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "nodes": [
+            "masterPage.key",
+            "masterPage.key"
+          ]
         },
         {
           "key": "search",
@@ -2044,6 +2089,16 @@
           ]
         }
       ]
+    },
+    "masterPage.key": {
+      "closed": false,
+      "pageKinds": [
+        "master"
+      ],
+      "parents": [
+        "masterPage"
+      ],
+      "keys": []
     },
     "maxRows": {
       "description": "A per-role row limit. `default` applies to anyone the roles do not name. With several matching roles the **most permissive** one wins, the same way `roles` grants access when any role matches.",
@@ -2623,9 +2678,13 @@
         },
         {
           "key": "key",
-          "type": "string",
+          "type": "object",
           "required": false,
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "nodes": [
+            "searchPage.key",
+            "searchPage.key"
+          ]
         },
         {
           "key": "search",
@@ -2655,6 +2714,16 @@
           ]
         }
       ]
+    },
+    "searchPage.key": {
+      "closed": false,
+      "pageKinds": [
+        "search"
+      ],
+      "parents": [
+        "searchPage"
+      ],
+      "keys": []
     },
     "section": {
       "closed": true,
@@ -2731,10 +2800,13 @@
         },
         {
           "key": "key",
-          "type": "string",
+          "type": "object",
           "required": false,
-          "description": "Primary-key field of a child row, used to update/delete it.",
-          "default": "id"
+          "description": "Which field identifies one child row. A list names a composite key; the order is part of the REST path, as on a page.",
+          "nodes": [
+            "subTableSource.key",
+            "subTableSource.key"
+          ]
         },
         {
           "key": "pageSize",
@@ -2745,6 +2817,23 @@
           "minimum": 1
         }
       ]
+    },
+    "subTableSource.key": {
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "subTableSource"
+      ],
+      "keys": []
     },
     "table": {
       "description": "The results table.",
@@ -2972,9 +3061,13 @@
         },
         {
           "key": "key",
-          "type": "string",
+          "type": "object",
           "required": false,
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "nodes": [
+            "wizardPage.key",
+            "wizardPage.key"
+          ]
         },
         {
           "key": "steps",
@@ -2994,6 +3087,16 @@
           ]
         }
       ]
+    },
+    "wizardPage.key": {
+      "closed": false,
+      "pageKinds": [
+        "wizard"
+      ],
+      "parents": [
+        "wizardPage"
+      ],
+      "keys": []
     },
     "wizardStep": {
       "description": "One wizard step — a section with an id and a heading. Only this step's fields are validated when advancing.",

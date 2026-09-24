@@ -72,7 +72,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
   /// `onSuccess` behave the same wherever the action sits.
   Future<void> _onAction(ActionDefinition action, {DataRecord? record}) async {
     final selected = action.scope == ActionScopes.selection
-        ? _selection.pick(_controller.items, _def.keyField)
+        ? _selection.pick(_controller.items, _def.keyFields)
         : const <DataRecord>[];
     final ran = await _runPageAction(
       context,
@@ -86,7 +86,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
         return _openForm();
       },
       onSelectRows: _selectRows,
-      keyField: _def.keyField,
+      keyFields: _def.keyFields,
       onExportLeftover: _exportLeftoverRows,
     );
     // 実行できたら選択を解く（同じ行に二度実行するのは、まず事故）。
@@ -103,7 +103,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
   /// いま画面に無い行は選ばない（[_RowSelection.keepOnly] が絞る）。
   void _selectRows(List<Object?> keys) {
     if (!mounted) return;
-    setState(() => _selection.keepOnly(keys, _controller.items, _def.keyField));
+    setState(() => _selection.keepOnly(keys, _controller.items, _def.keyFields));
   }
 
   /// Re-query so the CSV holds the whole result, not just the page shown.
@@ -124,7 +124,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
       sink: scope.exportSink,
       roles: scope.roles,
       columns: _def.table.columns,
-      keyField: _def.keyField,
+      keyFields: _def.keyFields,
       formatters: _formatters,
     );
   }
@@ -156,7 +156,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
                   _bulkButton(
                     action: action,
                     count: _selection
-                        .pick(_controller.items, _def.keyField)
+                        .pick(_controller.items, _def.keyFields)
                         .length,
                     onPressed: () => _onAction(action),
                     roles: _roles,
@@ -168,7 +168,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
                     // 選んだ行が全部満たすときだけ押せる（合わない件数はラベルへ）。
                     failing: _actionEnabled(
                       action,
-                      rows: _selection.pick(_controller.items, _def.keyField),
+                      rows: _selection.pick(_controller.items, _def.keyFields),
                     ).failing,
                   )
                 else
@@ -245,11 +245,11 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
           rows: [
             for (final record in _controller.items)
               DataRow(
-                selected: selectable && _selection.has(record[_def.keyField]),
+                selected: selectable && _selection.has(recordKeyOf(_def.keyFields, record)),
                 onSelectChanged: !selectable
                     ? null
                     : (value) => setState(() => _selection.toggle(
-                          record[_def.keyField],
+                          recordKeyOf(_def.keyFields, record),
                           selected: value ?? false,
                           rows: _controller.items,
                         )),
@@ -356,7 +356,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
   /// 同じ書き方が画面の種別で違う所に出ると覚えられないので、`search` と揃えてある
   /// （引き当ても判定も [_rowActions] / [_rowActionButton] を通る）。出る順は定義のまま。
   Widget _buildRowActions(DataRecord record) {
-    final key = record[_def.keyField];
+    final key = recordKeyOf(_def.keyFields, record);
     final labels = {
       for (final column in _def.table.columns) column.field: column.label,
     };
@@ -524,7 +524,8 @@ class _FormDialogState extends State<_FormDialog> {
                 // Child rows need the parent key; null while creating.
                 recordKey: isCreate
                     ? null
-                    : controller.draft[widget.definition.keyField],
+                    : recordKeyOf(
+                        widget.definition.keyFields, controller.draft),
               ),
             ),
           ),

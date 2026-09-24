@@ -18,7 +18,7 @@
 // 場所で形が変わるキーは見ない＝当てにいって外すくらいなら言わない。
 
 /** 期待する形。 */
-type Shape = "string" | "list" | "map" | "number-or-map";
+type Shape = "string" | "list" | "map" | "number-or-map" | "string-or-list";
 
 interface Expected {
   shape: Shape;
@@ -44,13 +44,12 @@ interface Expected {
  */
 const EXPECTED: Record<string, Expected> = {
   key: {
-    shape: "string",
-    what: "1件を指す項目の名前",
-    // 並びを書く人は、まず間違いなく複合キーを書こうとしている。
+    shape: "string-or-list",
+    what: "1件を指す項目の名前（複合キーなら並び）",
+    // 0.9.7 から並びも取る。入れ子を書く人は `{ fields: [...] }` のつもりでいる。
     note:
-      "**複合キーは、いまは持っていません**（1件を指すのは項目1つ）。" +
-      "2つの列で1件が決まるなら、連結した列をビューに1つ作って、その名前を書いてください" +
-      "（`rowKey` のように）。",
+      "複合キーは**項目名を並べて**書きます（`key: [orderNo, lineNo]`）。" +
+      "並べた順は URL の道の順になるので、並べ替えると別の1件を指します。",
   },
   optionsFrom: {
     shape: "string",
@@ -125,6 +124,8 @@ function fits(value: unknown, shape: Shape): boolean {
       return isDict(value);
     case "number-or-map":
       return typeof value === "number" || isDict(value);
+    case "string-or-list":
+      return typeof value === "string" || Array.isArray(value);
   }
 }
 
@@ -133,6 +134,7 @@ const WANTED: Record<Shape, string> = {
   list: "並び",
   map: "入れ子",
   "number-or-map": "数か入れ子",
+  "string-or-list": "文字か並び",
 };
 
 /** 見つけた1件。`warnings.ts` がこれを警告に変える。 */

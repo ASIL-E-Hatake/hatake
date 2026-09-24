@@ -613,6 +613,61 @@ function walkMenu(
 }
 
 /** 1ページの中の辻褄。[pageIds] が null なら遷移先の検査だけ飛ばす。 */
+/**
+ * 複合キー（`key: [orderNo, lineNo]`）の辻褄。
+ *
+ * 同じ項目を2回書くと、**宣言と実際がずれます**。`OpenAPI` は区切りを2つ宣言する
+ * のに、実際の鍵は項目名で束ねるので1つにしかならない＝叩く URL の区切りが
+ * 足りず、サーバは在りもしない道を受け取ります。しかも定義としては通ります。
+ */
+function checkCompositeKey(
+  page: Dict,
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  const raw = page.key;
+  if (!Array.isArray(raw)) return;
+  const fields = raw
+    .filter((one) => one !== null && one !== undefined)
+    .map((one) => String(one));
+  const seen = new Set<string>();
+  const twice = new Set<string>();
+  for (const one of fields) {
+    if (seen.has(one)) twice.add(one);
+    seen.add(one);
+  }
+  if (twice.size > 0) {
+    warn(
+      found,
+      "key-duplicate-field",
+      `${path}.key`,
+      `複合キーに同じ項目が2回書かれています（${[...twice].map((one) => `\`${one}\``).join(" / ")}）。` +
+        "**宣言と実際がずれます**＝出す API の道は区切りを " +
+        `${fields.length} つ宣言するのに、鍵は ${seen.size} つにしかなりません。`,
+      "重なっているほうを消してください（1件を決めるのに要る項目だけを、要る順に並べます）。",
+    );
+  }
+  if (fields.length === 1) {
+    warn(
+      found,
+      "key-single-in-list",
+      `${path}.key`,
+      "複合キーとして並びで書かれていますが、項目が1つしかありません。",
+      "項目が1つなら文字で書いてください（`key: " + fields[0] + "`）。",
+    );
+  }
+  if (fields.length === 0) {
+    warn(
+      found,
+      "key-empty",
+      `${path}.key`,
+      "`key` が空の並びです。**1件を指す項目が無い**ので、既定の `id` で動きます" +
+        "（書いたことは効きません）。",
+      "1件を決める項目を書いてください（`key: orderNo` か `key: [orderNo, lineNo]`）。",
+    );
+  }
+}
+
 function checkPage(
   page: Dict,
   path: string,
@@ -626,6 +681,7 @@ function checkPage(
     actions.map((a) => str(a.id)).filter((id): id is string => id !== undefined),
   );
 
+  checkCompositeKey(page, path, found);
   checkActions(actions, `${path}.actions`, pageIds, found);
   checkDeadActions(page, actions, `${path}.actions`, found, tabsOpen);
   checkSelection(page, actions, path, found, appRoles);

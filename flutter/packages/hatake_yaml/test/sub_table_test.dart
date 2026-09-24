@@ -119,7 +119,7 @@ page:
       const SubTableSource(
         repository: 'orderLineRepository',
         parentKey: 'orderNo',
-        keyField: 'lineNo',
+        keyFields: ['lineNo'],
         pageSize: 25,
       ),
     );
@@ -141,7 +141,7 @@ page:
             source: { repository: lineRepository, parentKey: orderNo }
 '''));
 
-    expect(lines.source!.keyField, 'id');
+    expect(lines.source!.keyFields, ['id']);
     expect(lines.source!.pageSize, 20);
   });
 
@@ -195,7 +195,7 @@ page:
       const SubTableSource(
         repository: 'orderLineRepository',
         parentKey: 'orderNo',
-        keyField: 'lineNo',
+        keyFields: ['lineNo'],
         pageSize: 20,
       ),
     );

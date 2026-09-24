@@ -32,7 +32,7 @@ const _definition = FormPageDefinition(
   id: 'customer_form',
   title: '顧客入力',
   repository: 'repo',
-  keyField: 'id',
+  keyFields: ['id'],
   form: FormDefinition(sections: [
     SectionDefinition(title: '基本情報', fields: [
       FieldDefinition(field: 'code', label: 'コード', required: true),

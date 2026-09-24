@@ -25,7 +25,7 @@ const _definition = CrudPageDefinition(
   id: 'p',
   title: 'テスト',
   repository: 'repo',
-  keyField: 'id',
+  keyFields: ['id'],
   table: TableDefinition(
     columns: [ColumnDefinition(field: 'last', label: '姓')],
   ),

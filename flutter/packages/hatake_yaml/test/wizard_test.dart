@@ -58,7 +58,7 @@ void main() {
 
     expect(page.id, 'customer_onboarding');
     expect(page.repository, 'customerRepository');
-    expect(page.keyField, 'id');
+    expect(page.keyFields, ['id']);
     expect(page.steps.map((s) => s.id), ['basic', 'contact']);
 
     final basic = page.steps.first;

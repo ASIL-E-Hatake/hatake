@@ -101,9 +101,13 @@ public final class DtoDeriver {
 
         // DSL は主キーの型を持たないので string として記述する。
         // DSL は主キーにラベルを持たないので空。
-        shapes.add(new DtoSpec.Shape(name + "Key", "pathParams", List.of(
-                new DtoSpec.Member(page.keyField(), "", "string", false, false, false,
-                        null, null, Map.of()))));
+        // 複合キーは項目ぶん並ぶ（書いた順＝REST の道に並べる順）。
+        List<DtoSpec.Member> keyMembers = new ArrayList<>();
+        for (String field : page.keyFields()) {
+            keyMembers.add(new DtoSpec.Member(
+                    field, "", "string", false, false, false, null, null, Map.of()));
+        }
+        shapes.add(new DtoSpec.Shape(name + "Key", "pathParams", List.copyOf(keyMembers)));
 
         shapes.addAll(children);
         return new DtoSpec(page.id(), List.copyOf(shapes));

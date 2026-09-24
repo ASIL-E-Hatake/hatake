@@ -31,7 +31,7 @@ const _definition = SearchPageDefinition(
   id: 'order_search',
   title: '受注照会',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   search: SearchDefinition(
     layout: LayoutDefinition(columns: 2),
     filters: [

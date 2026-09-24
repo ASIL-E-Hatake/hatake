@@ -754,9 +754,11 @@ $ npx hatake explain page.yaml --review
 定義が増えると**どこに何があるか**が分からなくなる。grep では「その画面が何をするか」が出て
 こないので、YAML を開いて読むことになる。
 
+<!-- hatake:shipped-screen-count（tool/check-screen-count.mjs が見ている） -->
+
 ```
 $ npx hatake index definitions/ --by size
-画面 18 枚（規模の大きい順）:
+画面 24 枚（規模の大きい順）:
  15  customer_form      顧客入力      1件の入力                     definitions/customer_form.yaml
  15  customer_master    顧客マスタ    検索＋一覧＋登録・修正・削除  definitions/customer_master.yaml
  13  order_search       受注照会      照会（読み取り専用）          definitions/sales_app.yaml

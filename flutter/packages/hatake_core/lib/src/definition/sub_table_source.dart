@@ -15,9 +15,9 @@ class SubTableSource extends Equatable {
   /// `{parentKey: <parent key value>}`.
   final String parentKey;
 
-  /// Primary-key field of a child row, used to update/delete it.
-  /// DSL key: `key`.
-  final String keyField;
+  /// **子の行を1件に指す項目**（定義に書いた順）。2つ以上なら複合キー。
+  /// DSL キー: `key`。
+  final List<String> keyFields;
 
   /// Rows per page.
   final int pageSize;
@@ -25,10 +25,10 @@ class SubTableSource extends Equatable {
   const SubTableSource({
     required this.repository,
     required this.parentKey,
-    this.keyField = 'id',
+    this.keyFields = const ['id'],
     this.pageSize = 20,
   });
 
   @override
-  List<Object?> get props => [repository, parentKey, keyField, pageSize];
+  List<Object?> get props => [repository, parentKey, keyFields, pageSize];
 }

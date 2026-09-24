@@ -35,7 +35,10 @@ class FormController extends ChangeNotifier {
   /// become editable as soon as the parent has been saved. It also stops a
   /// second save from creating a duplicate.
   Object? get effectiveKey =>
-      recordKey ?? _savedRecord?[definition.keyField];
+      recordKey ??
+      (_savedRecord == null
+          ? null
+          : recordKeyOf(definition.keyFields, _savedRecord!));
 
   bool _loading = false;
   bool get loading => _loading;

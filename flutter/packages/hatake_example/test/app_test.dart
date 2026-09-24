@@ -165,7 +165,7 @@ void main() {
       const SubTableSource(
         repository: 'orderLineRepository',
         parentKey: 'orderNo',
-        keyField: 'lineNo',
+        keyFields: ['lineNo'],
         pageSize: 10,
       ),
     );

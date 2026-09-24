@@ -54,7 +54,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
   /// `onSuccess` behave the same wherever the action sits.
   Future<void> _runAction(ActionDefinition action, {DataRecord? record}) async {
     final selected = action.scope == ActionScopes.selection
-        ? _selection.pick(_controller.items, _def.keyField)
+        ? _selection.pick(_controller.items, _def.keyFields)
         : const <DataRecord>[];
     final ran = await _runPageAction(
       context,
@@ -64,7 +64,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
       records: selected,
       onExport: _export,
       onSelectRows: _selectRows,
-      keyField: _def.keyField,
+      keyFields: _def.keyFields,
       onExportLeftover: _exportLeftoverRows,
     );
     // 実行できたら選択を解く（同じ行に二度実行するのは、まず事故）。
@@ -81,7 +81,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
   /// いま画面に無い行は選ばない（[_RowSelection.keepOnly] が絞る）。
   void _selectRows(List<Object?> keys) {
     if (!mounted) return;
-    setState(() => _selection.keepOnly(keys, _controller.items, _def.keyField));
+    setState(() => _selection.keepOnly(keys, _controller.items, _def.keyFields));
   }
 
   /// Re-query so the CSV holds the whole result, not just the page on screen.
@@ -102,7 +102,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
       sink: scope.exportSink,
       roles: scope.roles,
       columns: _def.table.columns,
-      keyField: _def.keyField,
+      keyFields: _def.keyFields,
       formatters: _formatters,
     );
   }
@@ -139,7 +139,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
                   action: action,
                   unwired: unwiredReason(context, action),
                   count:
-                      _selection.pick(_controller.items, _def.keyField).length,
+                      _selection.pick(_controller.items, _def.keyFields).length,
                   onPressed: () => _runAction(action),
                   roles: HatakeScope.of(context).roles,
                   // 読み込み中は「行が無い」と決めつけない（待っている間だけ嘘になる）。
@@ -148,7 +148,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
                   // 選んだ行が全部満たすときだけ押せる（合わない件数はラベルへ）。
                   failing: _actionEnabled(
                     action,
-                    rows: _selection.pick(_controller.items, _def.keyField),
+                    rows: _selection.pick(_controller.items, _def.keyFields),
                   ).failing,
                 )
               else
@@ -224,11 +224,11 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
           rows: [
             for (final record in _controller.items)
               DataRow(
-                selected: selectable && _selection.has(record[_def.keyField]),
+                selected: selectable && _selection.has(recordKeyOf(_def.keyFields, record)),
                 onSelectChanged: !selectable
                     ? null
                     : (value) => setState(() => _selection.toggle(
-                          record[_def.keyField],
+                          recordKeyOf(_def.keyFields, record),
                           selected: value ?? false,
                           rows: _controller.items,
                         )),
@@ -244,7 +244,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
                           _rowActionButton(
                             action: action,
                             record: record,
-                            rowKey: record[_def.keyField],
+                            rowKey: recordKeyOf(_def.keyFields, record),
                             labels: labels,
                             unwired: unwiredReason(context, action),
                             onPressed: () => _runAction(action, record: record),

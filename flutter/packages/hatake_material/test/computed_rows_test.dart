@@ -75,7 +75,7 @@ const _definition = FormPageDefinition(
   id: 'order_entry',
   title: '受注入力',
   repository: 'repo',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   form: FormDefinition(
     sections: [
       SectionDefinition(fields: [_lines]),

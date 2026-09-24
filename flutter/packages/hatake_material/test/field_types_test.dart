@@ -25,7 +25,7 @@ const _definition = CrudPageDefinition(
   id: 'employees',
   title: '社員',
   repository: 'repo',
-  keyField: 'id',
+  keyFields: ['id'],
   table: TableDefinition(columns: [ColumnDefinition(field: 'name', label: '氏名')]),
   form: FormDefinition(
     sections: [

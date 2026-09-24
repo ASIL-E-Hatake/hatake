@@ -197,14 +197,14 @@ async function probeList(
     }
   }
   // 一覧に出さない列でも、鍵は返って来ないと**行を特定できない**（開く・消すが動かない）。
-  if (
-    target.keyField !== undefined &&
-    !rows.some((row) => target.keyField! in row)
-  ) {
+  const missingKey = (target.keyFields ?? []).filter(
+    (field) => !rows.some((row) => field in row),
+  );
+  if (missingKey.length > 0) {
     add(
       "no-key",
       "error",
-      `行に鍵（${target.keyField}）がありません`,
+      `行に鍵（${missingKey.join(" / ")}）がありません`,
       "行を特定できないので、開く・直す・消すが動きません（列に出さなくても返してください）。",
     );
   }
@@ -212,14 +212,20 @@ async function probeList(
 }
 
 /** 1件取得（`GET <collection>/<key>`）を見る。 */
+/**
+ * 1件取得を叩く。
+ *
+ * [path] は**逃がし済みの道**（複合キーなら `SO-1/2` のように区切りが入っている）。
+ * ここで逃がし直すと区切りまで潰れて、別の道を叩くことになる。
+ */
 async function probeItem(
   target: RestTarget,
-  key: string,
+  path: string,
   send: HttpSend,
   headers: Record<string, string>,
   findings: ProbeFinding[],
 ): Promise<void> {
-  const url = `${target.collection}/${encodeURIComponent(key)}`;
+  const url = `${target.collection}/${path}`;
   const request = `GET ${url}`;
   const add = (
     kind: ProbeKind,
@@ -238,7 +244,7 @@ async function probeItem(
     add(
       "item-missing",
       "error",
-      `一覧に在る行（${key}）が1件取得で見つかりません`,
+      `一覧に在る行（${decodeURIComponent(path)}）が1件取得で見つかりません`,
       "鍵の綴りか経路が違います（詳細も編集も開けません）。",
     );
     return;
@@ -269,8 +275,9 @@ export function probeRequests(targets: RestTargets): string[] {
   const found: string[] = [];
   for (const target of targets.targets) {
     found.push(`GET ${target.listUrl}`);
-    if (target.record !== undefined && target.keyField !== undefined) {
-      found.push(`GET ${target.collection}/{${target.keyField}}`);
+    if (target.record !== undefined && target.keyFields !== undefined) {
+      const path = target.keyFields.map((one) => `{${one}}`).join("/");
+      found.push(`GET ${target.collection}/${path}`);
     }
   }
   return found;
@@ -294,7 +301,7 @@ export async function probe(
   for (const target of targets.targets) {
     requests.push(`GET ${target.listUrl}`);
     const first = await probeList(target, send, headers, findings);
-    if (target.record === undefined || target.keyField === undefined) {
+    if (target.record === undefined || target.keyFields === undefined) {
       skipped.push({
         page: target.page,
         reason: "1件を指す画面ではない（1件取得は叩かない）",
@@ -302,16 +309,24 @@ export async function probe(
       continue;
     }
     if (first === undefined) continue;
-    const key = first[target.keyField];
-    if (key === null || key === undefined || `${key}` === "") {
+    // 複合キーは**全部そろって初めて**1件を指す。1つでも欠けていれば叩かない。
+    const missing = target.keyFields.filter((field) => {
+      const value = first[field];
+      return value === null || value === undefined || `${value}` === "";
+    });
+    if (missing.length > 0) {
       skipped.push({
         page: target.page,
-        reason: `1行目に鍵（${target.keyField}）の値が無いので、1件取得は叩けない`,
+        reason: `1行目に鍵（${missing.join(" / ")}）の値が無いので、1件取得は叩けない`,
       });
       continue;
     }
-    requests.push(`GET ${target.collection}/${encodeURIComponent(`${key}`)}`);
-    await probeItem(target, `${key}`, send, headers, findings);
+    // 道に並べる順は**定義に書いた順**（順番が変われば別の1件を指す）。
+    const path = target.keyFields
+      .map((field) => encodeURIComponent(`${first[field]}`))
+      .join("/");
+    requests.push(`GET ${target.collection}/${path}`);
+    await probeItem(target, path, send, headers, findings);
   }
   return {
     findings,

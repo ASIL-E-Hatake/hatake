@@ -95,7 +95,7 @@ const _expected = CrudPageDefinition(
   id: 'customer_master',
   title: '顧客マスタ',
   repository: 'customerRepository',
-  keyField: 'id',
+  keyFields: ['id'],
   search: SearchDefinition(
     layout: LayoutDefinition(columns: 2),
     filters: [

@@ -117,30 +117,38 @@ actions:
 
 ## 2つの列で1件が決まるとき（複合キー）
 
-**`key` に並びは書けない。** 1件を指すのは項目1つで、`key: [orderNo, lineNo]` と
-書いても効かない（`hatake validate` が「複合キーは、いまは持っていません」と言う）。
+受注明細は受注番号だけでは1件に決まらない。行番号と合わせて初めて1件を指す。
+`key` に**項目を並べて**書く。
 
-いま使える道は**連結した列をビューに1つ作る**こと。
-
-```sql
--- ビュー側で1列にしておく
-select order_no || '-' || line_no as row_key, ...
+```yaml no-check:画面の断片（複合キーの書き方）
+key: [orderNo, lineNo]
 ```
 
-```yaml
-key: rowKey
-params: { rowKey: "$row.rowKey" }
+**並べた順に意味がある。** その順が REST の道の順になるので（`/api/orderLines/SO-1/2`）、
+並べ替えると別の1件を指す。
+
+画面から画面へ渡すときは、**鍵の項目を1つずつ**渡す。行き先は自分の `key` の名前で
+受け取るので、名前を合わせておけば届く。
+
+```yaml no-check:ボタンの断片（1件の画面へ渡す）
+params: { orderNo: $row.orderNo, lineNo: $row.lineNo }
 ```
 
-フレームワークから見れば**ただの単一キー**になり、REST も `GET /api/order-lines/SO001-3`
-で素直に通る。分解するのはサーバ側の担当。
+**1つでも欠けたら取りに行かない。** 欠けたまま組み立てると別の1件が開くので、
+そろうまで待つ（画面は「データがありません」のまま）。
 
-> 区切り文字がデータに出てくる場合は、URL に載る形にエンコードしてから連結すること
-> （`-` を含むコードが在るなら別の区切りにする）。
+サーバ側は道の区切りを順に受け取るだけ。
+
+```java no-check:受け口の例（hatake の定義ではない）
+@GetMapping("/api/orderLines/{orderNo}/{lineNo}")
+public OrderLine find(@PathVariable String orderNo, @PathVariable int lineNo) { … }
+```
+
+> **Repository は直さなくていい。** 1件を指す項目が1つの画面は、いままでどおり
+> 素の値（`"SO-1"`）が `findByKey` に渡る。複合キーの画面だけ `RecordKey` が渡る。
 >
-> 本当の複合キー（`{orderNo, lineNo}` をそのまま渡す）は**まだ持っていない**。
-> `keyField`・`Repository` の口・REST の契約の3つを同時に広げる話なので、
-> 1.0 のあとに後方互換で入れる予定。
+> 連結した列をビューに1つ作る逃げ道も、もちろんまだ使える（`key: rowKey`）。
+> サーバを触れないときや、既にその列が在るときはそのほうが早い。
 
 ## つまずきポイント
 

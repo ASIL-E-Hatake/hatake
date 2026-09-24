@@ -8,7 +8,7 @@ void main() {
         id: 'customer_master',
         title: '顧客マスタ',
         repository: 'customerRepository',
-        keyField: 'id',
+        keyFields: ['id'],
         search: SearchDefinition(
           filters: [
             FilterDefinition(
@@ -57,7 +57,7 @@ void main() {
         table: TableDefinition(),
         form: FormDefinition(),
       );
-      expect(page.keyField, 'id');
+      expect(page.keyFields, ['id']);
       expect(page.dslVersion, kDslVersion);
       expect(page.search, isNull);
       expect(page.actions, isEmpty);

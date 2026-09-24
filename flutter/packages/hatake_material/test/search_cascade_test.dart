@@ -74,7 +74,7 @@ const _staticPage = SearchPageDefinition(
   id: 'order_search',
   title: '受注照会',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   search: SearchDefinition(
     filters: [
       _prefecture,
@@ -100,7 +100,7 @@ const _sourcedPage = SearchPageDefinition(
   id: 'order_search',
   title: '受注照会',
   repository: 'orderRepository',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   search: SearchDefinition(
     filters: [
       _prefecture,

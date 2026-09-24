@@ -260,9 +260,20 @@
           "description": "Key resolving the user-provided Repository implementation."
         },
         "key": {
-          "type": "string",
-          "description": "Primary-key field name of a record.",
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          ]
         },
         "search": {
           "$ref": "#/$defs/search"
@@ -309,8 +320,20 @@
           "type": "string"
         },
         "key": {
-          "type": "string",
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          ]
         },
         "search": {
           "$ref": "#/$defs/search"
@@ -354,8 +377,20 @@
           "type": "string"
         },
         "key": {
-          "type": "string",
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          ]
         },
         "search": {
           "$ref": "#/$defs/search"
@@ -401,8 +436,20 @@
           "type": "string"
         },
         "key": {
-          "type": "string",
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          ]
         },
         "form": {
           "$ref": "#/$defs/form"
@@ -442,8 +489,20 @@
           "type": "string"
         },
         "key": {
-          "type": "string",
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          ]
         },
         "form": {
           "$ref": "#/$defs/form"
@@ -484,8 +543,20 @@
           "type": "string"
         },
         "key": {
-          "type": "string",
-          "default": "id"
+          "description": "Which field identifies one record. A list names a composite key (`[orderNo, lineNo]`): the parts are read in the order written, and that order is part of the REST path (`<collection>/<orderNo>/<lineNo>`), so reordering them addresses a different record. Default `id`.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          ]
         },
         "steps": {
           "type": "array",
@@ -1004,9 +1075,20 @@
           "description": "Child field holding the parent key; passed as the search filter { parentKey: <parent key value> }."
         },
         "key": {
-          "type": "string",
-          "description": "Primary-key field of a child row, used to update/delete it.",
-          "default": "id"
+          "description": "Which field identifies one child row. A list names a composite key; the order is part of the REST path, as on a page.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "string"
+              },
+              "uniqueItems": true
+            }
+          ]
         },
         "pageSize": {
           "type": "integer",

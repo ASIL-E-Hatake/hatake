@@ -46,7 +46,7 @@ AppDefinition _app({required String paramName}) => AppDefinition(
           id: 'items',
           title: '一覧',
           repository: 'repo',
-          keyField: 'itemCode',
+          keyFields: ['itemCode'],
           table: const TableDefinition(
             rowActions: ['open'],
             columns: [ColumnDefinition(field: 'itemCode', label: 'コード')],
@@ -67,7 +67,7 @@ AppDefinition _app({required String paramName}) => AppDefinition(
           id: 'item_detail',
           title: '詳細',
           repository: 'repo',
-          keyField: 'itemCode',
+          keyFields: ['itemCode'],
           form: FormDefinition(
             sections: [
               SectionDefinition(

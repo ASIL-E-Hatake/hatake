@@ -16,11 +16,11 @@ import java.util.List;
  * {@link #stepById(String)} → {@link WizardStepDefinition#form()}。
  *
  * <p>{@code type: report} のページは {@link #report}（紙の構造）を持ち、明細の列は
- * {@link #table} から取る。単一レコードを指さないので {@code keyField} に意味は無い。
+ * {@link #table} から取る。単一レコードを指さないので {@code keyFields} に意味は無い。
  *
  * <p>{@code type: dashboard} のページは form を持たず {@link #items} を持つ。
  * 単一レコードを指さないので {@code repository} は<b>カードの既定値</b>でしかなく
- * （null もあり得る）、{@code keyField} には意味が無い。
+ * （null もあり得る）、{@code keyFields} には意味が無い。
  */
 public record PageDefinition(
         String id,
@@ -28,7 +28,7 @@ public record PageDefinition(
         String dslVersion,
         String type,
         String repository,
-        String keyField,
+        List<String> keyFields,
         SearchDefinition search,
         TableDefinition table,
         FormDefinition form,
@@ -57,10 +57,10 @@ public record PageDefinition(
             String dslVersion,
             String type,
             String repository,
-            String keyField,
+            List<String> keyFields,
             SearchDefinition search,
             FormDefinition form) {
-        this(id, title, dslVersion, type, repository, keyField, search,
+        this(id, title, dslVersion, type, repository, keyFields, search,
                 TableDefinition.EMPTY, form, List.of(), List.of(), null);
     }
 

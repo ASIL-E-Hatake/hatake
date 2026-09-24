@@ -70,17 +70,17 @@ extension PageParts on PageDefinition {
         ReportPageDefinition(:final actions) => actions,
       };
 
-  /// The primary-key field of a record, for the kinds that point at records.
+  /// **1件を指す項目**（定義に書いた順）。1件を指さない画面では null。
   ///
-  /// Null on a report and a dashboard: neither points at a single record, so
-  /// "which field is the key" has no answer there (rather than a wrong `id`).
-  String? get recordKeyField => switch (this) {
-        CrudPageDefinition(:final keyField) => keyField,
-        SearchPageDefinition(:final keyField) => keyField,
-        MasterPageDefinition(:final keyField) => keyField,
-        DetailPageDefinition(:final keyField) => keyField,
-        FormPageDefinition(:final keyField) => keyField,
-        WizardPageDefinition(:final keyField) => keyField,
+  /// 帳票とダッシュボードが null なのは、どちらも1件を指さないから＝「どの項目が
+  /// 鍵か」に答えが無い（当てずっぽうの `id` を返すよりよい）。
+  List<String>? get recordKeyFields => switch (this) {
+        CrudPageDefinition(:final keyFields) => keyFields,
+        SearchPageDefinition(:final keyFields) => keyFields,
+        MasterPageDefinition(:final keyFields) => keyFields,
+        DetailPageDefinition(:final keyFields) => keyFields,
+        FormPageDefinition(:final keyFields) => keyFields,
+        WizardPageDefinition(:final keyFields) => keyFields,
         _ => null,
       };
 

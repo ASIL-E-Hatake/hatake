@@ -74,7 +74,7 @@ const _definition = FormPageDefinition(
   id: 'order_entry',
   title: '受注入力',
   repository: 'orderRepo',
-  keyField: 'orderNo',
+  keyFields: ['orderNo'],
   form: FormDefinition(
     sections: [
       SectionDefinition(
@@ -88,7 +88,7 @@ const _definition = FormPageDefinition(
             source: SubTableSource(
               repository: 'lineRepo',
               parentKey: 'orderNo',
-              keyField: 'lineNo',
+              keyFields: ['lineNo'],
               pageSize: 2,
             ),
             columns: [

@@ -52,7 +52,7 @@ Future<bool> _exportLeftover(
   required ExportSink? sink,
   required Set<String> roles,
   required List<ColumnDefinition> columns,
-  required String keyField,
+  required List<String> keyFields,
   required FormatterRegistry formatters,
   // 落とした CSV と画面の字をそろえる（選択肢の名前を引く相手）。
   List<OptionsOwner> owners = const [],
@@ -66,7 +66,7 @@ Future<bool> _exportLeftover(
   // 失敗した行を先に出す（直してからやり直す相手＝手が要る側）。
   final rows = <DataRecord>[
     for (final row in leftover.failed)
-      {...row, _reasonField: leftover.reasons[row[keyField]] ?? '失敗しました'},
+      {...row, _reasonField: leftover.reasons[recordKeyOf(keyFields, row)] ?? '失敗しました'},
     for (final row in leftover.unfinished) {...row, _reasonField: _notRunReason},
   ];
   await sink(ExportRequest(

@@ -43,7 +43,7 @@ SearchPageDefinition _page({BatchSize? batchSize, String? onError}) =>
       id: 'order_search',
       title: '受注照会',
       repository: 'orderRepository',
-      keyField: 'orderNo',
+      keyFields: ['orderNo'],
       table: _table,
       actions: [
         ActionDefinition(
@@ -194,7 +194,7 @@ void main() {
       id: 'order_search',
       title: '受注照会',
       repository: 'orderRepository',
-      keyField: 'orderNo',
+      keyFields: ['orderNo'],
       table: _table,
       actions: [
         ActionDefinition(

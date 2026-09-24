@@ -130,13 +130,13 @@ describe("subTable field parsing", () => {
     expect(withSource.form.sections[0].fields[0].source).toEqual({
       repository: "orderLineRepository",
       parentKey: "orderNo",
-      keyField: "lineNo",
+      keyFields: ["lineNo"],
       pageSize: 25,
     });
     expect(withSource.form.sections[0].fields[1].source).toEqual({
       repository: "noteRepository",
       parentKey: "orderNo",
-      keyField: "id",
+      keyFields: ["id"],
       pageSize: 20,
     });
   });

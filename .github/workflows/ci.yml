@@ -85,6 +85,18 @@ jobs:
           # 起きないボタン）が入ったまま気づけなかった。配るものは全部通す。
           node dist/cli.js validate --warn-as-error \
             ../flutter/packages/hatake_example/assets/*.yaml
+      - name: 画面の枚数が、書いてある所ぜんぶで揃っている
+        working-directory: typescript
+        run: |
+          # 枚数は「3版で同じ答えが出る」ことの確かめに使っていて、**4か所に直に
+          # 書いて**ある（この CI・Dart の試験・Java の試験・README）。例を1枚足すと
+          # 4つとも直すことになるが、**どこを直せばいいかは落ちたログに出てこない**
+          # （3か所目・4か所目は、直して回し直してから分かる）。ここで数え直して、
+          # 食い違っている所を**一度に名指し**する。
+          #
+          # **build のあとに置くこと**（この道具は dist/ を読む。他の tool/ も同じ）。
+          node tool/check-screen-count.mjs
+
       - name: Reference & example catalog are reachable from a real run
         working-directory: typescript
         run: |
@@ -193,10 +205,17 @@ jobs:
           # 出した元データを描き直せる（定義から作った図も手で直せる形になっている）。
           node dist/cli.js diagram /tmp/app.diagram.json --out /tmp/app2.svg
           diff -u /tmp/app.svg /tmp/app2.svg
-          # 画面の索引。同梱の例11枚から18枚の画面が出る（app の中身も1枚ずつ数える）。
-          # 同じ枚数を Dart 版・Java 版の試験でも見ている（エディションで答えが変わらない）。
+          # 画面の索引（app の中身も1枚ずつ数える）。同じ枚数を3版で見ているので、
+          # **エディションで答えが変わらない**ことの確かめになる。
+          #
+          # 例を1枚足したら、枚数を書いてある所を**3つとも**直すこと:
+          #   ・ここ（下の grep）
+          #   ・flutter/packages/hatake_yaml/test/screen_index_source_test.dart
+          #   ・java/src/test/java/io/hatake/core/ScreenIndexTest.java
+          # 直し忘れると、例を足しただけで CI が落ちる（落ちること自体は正しい）。
           node dist/cli.js index ../spec/examples --by size | tee /tmp/index.log
-          grep -q '画面 22 枚' /tmp/index.log
+          # hatake:shipped-screen-count（tool/check-screen-count.mjs が見ている）
+          grep -q '画面 24 枚' /tmp/index.log
           node dist/cli.js index ../spec/examples --find "顧客 検索"
           # 定義から作った遷移図に、線が1本ずつ引かれていること（まとめ矢印に戻っていない）。
           grep -q 'class="flow link"' /tmp/app.svg

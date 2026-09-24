@@ -29,7 +29,8 @@ export interface RestTarget {
   /** 1回に取る件数（定義に書いてある値）。返ってきた行数を突き合わせる相手。 */
   pageSize: number;
   /** 1件を特定する項目。無い画面（ダッシュボード・帳票）もある。 */
-  keyField?: string;
+  /** **1件を特定する項目**（定義に書いた順）。無い画面（ダッシュボード・帳票）もある。 */
+  keyFields?: string[];
   /** 一覧に出す列（一覧の返りを突き合わせる相手）。 */
   row?: DtoShape;
   /** 1件の返り（1件取得を突き合わせる相手）。 */
@@ -106,7 +107,7 @@ const WRITE_METHODS: Record<string, string> = {
 function writesOf(
   page: PageDefinition,
   collection: string,
-  keyField: string | undefined,
+  keyFields: string[] | undefined,
 ): WriteAction[] {
   const found: WriteAction[] = [];
   for (const action of page.actions) {
@@ -117,9 +118,9 @@ function writesOf(
       label: action.label,
       method,
       url:
-        method === "POST" || keyField === undefined
+        method === "POST" || keyFields === undefined
           ? collection
-          : `${collection}/{${keyField}}`,
+          : `${collection}/${keyFields.map((one) => `{${one}}`).join("/")}`,
       roles: action.roles,
     });
   }
@@ -151,10 +152,14 @@ function targetOf(
     collection,
     listUrl: `${collection}?${listQuery(pageSize)}`,
     pageSize,
-    keyField: "keyField" in page ? page.keyField : undefined,
+    keyFields: "keyFields" in page ? page.keyFields : undefined,
     row: shapeOf(spec, "row"),
     record: shapeOf(spec, "response"),
-    writes: writesOf(page, collection, "keyField" in page ? page.keyField : undefined),
+    writes: writesOf(
+      page,
+      collection,
+      "keyFields" in page ? page.keyFields : undefined,
+    ),
   };
 }
 

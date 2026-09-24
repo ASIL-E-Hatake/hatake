@@ -45,7 +45,7 @@ abstract interface class CrudLike {
   String get id;
   String get title;
   String get repository;
-  String get keyField;
+  List<String> get keyFields;
   SearchDefinition? get search;
   TableDefinition get table;
   FormDefinition get form;
@@ -59,9 +59,9 @@ class CrudPageDefinition extends PageDefinition implements CrudLike {
   @override
   final String repository;
 
-  /// The primary-key field name of a record.
+  /// **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。
   @override
-  final String keyField;
+  final List<String> keyFields;
 
   /// Optional search area. When null, the table lists all records.
   @override
@@ -84,7 +84,7 @@ class CrudPageDefinition extends PageDefinition implements CrudLike {
     required super.title,
     super.dslVersion,
     required this.repository,
-    this.keyField = 'id',
+    this.keyFields = const ['id'],
     this.search,
     required this.table,
     required this.form,
@@ -97,7 +97,7 @@ class CrudPageDefinition extends PageDefinition implements CrudLike {
         title,
         dslVersion,
         repository,
-        keyField,
+        keyFields,
         search,
         table,
         form,
@@ -114,7 +114,8 @@ class SearchPageDefinition extends PageDefinition {
   final String repository;
 
   /// The primary-key field name of a record.
-  final String keyField;
+  /// **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。
+  final List<String> keyFields;
 
   /// Optional search area. When null, the table lists all records.
   final SearchDefinition? search;
@@ -130,7 +131,7 @@ class SearchPageDefinition extends PageDefinition {
     required super.title,
     super.dslVersion,
     required this.repository,
-    this.keyField = 'id',
+    this.keyFields = const ['id'],
     this.search,
     required this.table,
     this.actions = const [],
@@ -142,7 +143,7 @@ class SearchPageDefinition extends PageDefinition {
         title,
         dslVersion,
         repository,
-        keyField,
+        keyFields,
         search,
         table,
         actions,
@@ -156,7 +157,8 @@ class MasterPageDefinition extends PageDefinition implements CrudLike {
   @override
   final String repository;
   @override
-  final String keyField;
+  /// **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。
+  final List<String> keyFields;
   @override
   final SearchDefinition? search;
   @override
@@ -171,7 +173,7 @@ class MasterPageDefinition extends PageDefinition implements CrudLike {
     required super.title,
     super.dslVersion,
     required this.repository,
-    this.keyField = 'id',
+    this.keyFields = const ['id'],
     this.search,
     required this.table,
     required this.form,
@@ -180,7 +182,7 @@ class MasterPageDefinition extends PageDefinition implements CrudLike {
 
   @override
   List<Object?> get props =>
-      [id, title, dslVersion, repository, keyField, search, table, form, actions];
+      [id, title, dslVersion, repository, keyFields, search, table, form, actions];
 }
 
 /// A standalone form page (single-record create or edit) — the form portion of
@@ -188,7 +190,8 @@ class MasterPageDefinition extends PageDefinition implements CrudLike {
 /// creates. Useful for wizard steps, "new X" screens, and edit routes.
 class FormPageDefinition extends PageDefinition {
   final String repository;
-  final String keyField;
+  /// **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。
+  final List<String> keyFields;
   final FormDefinition form;
   final List<ActionDefinition> actions;
 
@@ -197,14 +200,14 @@ class FormPageDefinition extends PageDefinition {
     required super.title,
     super.dslVersion,
     required this.repository,
-    this.keyField = 'id',
+    this.keyFields = const ['id'],
     this.form = const FormDefinition(),
     this.actions = const [],
   });
 
   @override
   List<Object?> get props =>
-      [id, title, dslVersion, repository, keyField, form, actions];
+      [id, title, dslVersion, repository, keyFields, form, actions];
 }
 
 /// A stepped-input page (ウィザード): the form split into [steps], each validated
@@ -215,7 +218,8 @@ class FormPageDefinition extends PageDefinition {
 /// [WizardStepDefinition.form] scopes validation to a single step.
 class WizardPageDefinition extends PageDefinition {
   final String repository;
-  final String keyField;
+  /// **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。
+  final List<String> keyFields;
 
   /// Steps in declaration order. At least one.
   final List<WizardStepDefinition> steps;
@@ -227,7 +231,7 @@ class WizardPageDefinition extends PageDefinition {
     required super.title,
     super.dslVersion,
     required this.repository,
-    this.keyField = 'id',
+    this.keyFields = const ['id'],
     this.steps = const [],
     this.actions = const [],
   });
@@ -272,7 +276,7 @@ class WizardPageDefinition extends PageDefinition {
 
   @override
   List<Object?> get props =>
-      [id, title, dslVersion, repository, keyField, steps, actions];
+      [id, title, dslVersion, repository, keyFields, steps, actions];
 }
 
 /// A report page (帳票): read-only rows laid out on sheets, grouped with
@@ -359,7 +363,8 @@ class DashboardPageDefinition extends PageDefinition {
 /// to the view at runtime (e.g. from navigation).
 class DetailPageDefinition extends PageDefinition {
   final String repository;
-  final String keyField;
+  /// **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。
+  final List<String> keyFields;
 
   /// Fields to display (same structure as a form; rendered read-only).
   final FormDefinition form;
@@ -371,12 +376,12 @@ class DetailPageDefinition extends PageDefinition {
     required super.title,
     super.dslVersion,
     required this.repository,
-    this.keyField = 'id',
+    this.keyFields = const ['id'],
     this.form = const FormDefinition(),
     this.actions = const [],
   });
 
   @override
   List<Object?> get props =>
-      [id, title, dslVersion, repository, keyField, form, actions];
+      [id, title, dslVersion, repository, keyFields, form, actions];
 }
