@@ -368,6 +368,9 @@ ColumnDefinition _parseColumn(Map<String, Object?> m) {
     format: m.optString('format'),
     config: m.optMap('config') ?? const {},
     roles: [for (final r in m.optList('roles')) r.toString()],
+    // 列に並びを直接は書けない（DSL キーは `optionsOf` だけ）。ここに入るのは
+    // 読み込み時に `app.vocabularies` から展開されたもの。
+    options: _parseOptions(m.optList('options')),
   );
 }
 

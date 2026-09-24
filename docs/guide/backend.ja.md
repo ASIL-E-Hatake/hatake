@@ -114,7 +114,7 @@ var api = OpenApiEmitter.toOpenApi(
 書き換えが必要で、Phase 2 の出力と乖離します）。
 
 **`basePath` は呼び出し側が渡します。** DSL は URL を知りません（定義がトランスポートに
-依存してはいけないため）。ページ id や `repository` キーからの推測もしません。
+依存してはいけないため）。**この関数は**ページ id や `repository` キーからの推測もしません。
 **渡さなければ `components.schemas` だけ**を出します（＝文字どおりの「断片」）。
 
 出す操作は「必要な形が存在するときだけ」です:
@@ -133,6 +133,29 @@ var api = OpenApiEmitter.toOpenApi(
 
 出力が妥当な OpenAPI 3.1 か、操作・パラメータ・`$ref` の約束を守れているかは
 `spec/tools/check_openapi.py` が独立に検証します（CI 込み）。
+
+### app ぜんたいを1枚にする（`hatake openapi <app.yaml>`）
+
+業務システムの定義は画面1枚ではなく app（画面が5〜10枚）です。1枚ずつしか出せないと
+**サーバの API 一覧は結局手で書く**ことになります（見本1本目で実際にそうなりました）。
+
+```bash
+npx hatake openapi definitions/app.yaml --base-path /api > docs/api.json
+```
+
+app を渡したときだけ、上の関数を画面ごとに回して**1枚にまとめます**。ここでは
+`--base-path` は**基点だけ**で、区切りは `repository` から推測します
+（`orderRepository` → `/api/orders`）。**推測は `hatake wire` / `hatake probe` と同じもの**です
+（違う推測をする道具が2つあると、「wire で繋いだのに openapi は別の所を書いている」
+が起きます）。別の名前にしたいときは、まとめずに画面ごとに出してください。
+
+**同じ Repository を見る画面が複数あるのは普通**です（受注照会と受注入力）。その2枚は
+同じ集合を指すので**1つの資源にまとまります**。同じメソッドがぶつかったときは
+**先に出てきたほうを残し、ぶつかったことを標準エラーに出します**（黙って片方を捨てると、
+書いたはずの口が一覧から消えます）。受け口を持たない画面（`repository` の無い
+ダッシュボードなど）も、入れなかったと言います。
+
+`hatake schema` も同じく app を読み、**画面 id をキーにした1枚**を出します。
 
 ### 型定義を吐く（`toTypeScript` / `toJavaRecords`）
 

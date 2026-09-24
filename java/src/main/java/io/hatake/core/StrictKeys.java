@@ -47,8 +47,9 @@ public final class StrictKeys {
      */
     public static final Map<String, Set<String>> TABLE = Map.ofEntries(
             Map.entry("", keys("dsl_version", "page", "app")),
-            Map.entry("app", keys("id", "title", "home", "navigation", "roles", "theme", "menu",
-                    "pages")),
+            Map.entry("app", keys("id", "title", "home", "navigation", "roles", "theme",
+                    "vocabularies", "menu", "pages")),
+            Map.entry("vocabulary", keys("name", "options")),
             Map.entry("theme", keys("primaryColor", "secondaryColor", "brightness",
                     "density", "fontFamily", "radius", "config")),
             Map.entry("menuItem", keys("id", "label", "group", "icon", "page", "items", "roles")),
@@ -84,16 +85,17 @@ public final class StrictKeys {
             Map.entry("reportTotal", keys("field", "aggregate")),
             Map.entry("search", keys("layout", "filters")),
             Map.entry("filter", keys("field", "label", "type", "operator", "options",
-                    "optionsFrom", "optionsSource", "config")),
+                    "optionsOf", "optionsFrom", "optionsSource", "config")),
             Map.entry("table", keys("columns", "pagination", "rowActions")),
             Map.entry("column", keys("field", "label", "type", "width", "sortable", "format",
-                    "config", "roles")),
+                    "optionsOf", "config", "roles")),
             Map.entry("pagination", keys("pageSize", "enabled")),
             Map.entry("form", keys("sections")),
             Map.entry("section", keys("title", "layout", "fields", "visibleWhen")),
             Map.entry("field", keys("field", "label", "type", "required", "requiredWhen",
                     "readOnly", "readOnlyWhen",
-                    "defaultValue", "validators", "options", "optionsFrom", "optionsSource",
+                    "defaultValue", "validators", "options", "optionsOf", "optionsFrom",
+                    "optionsSource",
                     "format", "normalize", "config", "visibleWhen", "enabledWhen", "computed",
                     "roles", "columns", "fields", "source")),
             Map.entry("subTableSource", keys("repository", "parentKey", "key", "pageSize")),
@@ -114,7 +116,9 @@ public final class StrictKeys {
     /** 子ノードへの道。{@code []} 付きはそのノードの配列。無いキーは葉／自由な入れ物。 */
     private static final Map<String, Map<String, String>> CHILDREN = Map.ofEntries(
             Map.entry("", Map.of("app", "app", "page", "page")),
-            Map.entry("app", Map.of("theme", "theme", "menu", "menuItem[]", "pages", "page[]")),
+            Map.entry("app", Map.of("theme", "theme", "menu", "menuItem[]", "pages", "page[]",
+                    "vocabularies", "vocabulary[]")),
+            Map.entry("vocabulary", Map.of("options", "option[]")),
             Map.entry("menuItem", Map.of("items", "menuItem[]")),
             // byRole の中は役割名（自由な入れ物）なので降りない。
             Map.entry("action", Map.of("confirm", "confirm", "onSuccess", "actionSuccess",

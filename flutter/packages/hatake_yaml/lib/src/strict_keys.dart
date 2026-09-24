@@ -18,7 +18,11 @@ import 'unknown_key.dart';
 /// そして「このノードに何が書けるか」を引く道具（リファレンス生成）に使うため。
 const Map<String, Set<String>> strictKeyTable = {
   '': {'dsl_version', 'page', 'app'},
-  'app': {'id', 'title', 'home', 'navigation', 'roles', 'theme', 'menu', 'pages'},
+  'app': {
+    'id', 'title', 'home', 'navigation', 'roles', 'theme', 'vocabularies',
+    'menu', 'pages',
+  },
+  'vocabulary': {'name', 'options'},
   'theme': {
     'primaryColor',
     'secondaryColor',
@@ -66,20 +70,21 @@ const Map<String, Set<String>> strictKeyTable = {
   'reportTotal': {'field', 'aggregate'},
   'search': {'layout', 'filters'},
   'filter': {
-    'field', 'label', 'type', 'operator', 'options', 'optionsFrom',
+    'field', 'label', 'type', 'operator', 'options', 'optionsOf', 'optionsFrom',
     'optionsSource', 'config',
   },
   'table': {'columns', 'pagination', 'rowActions'},
   'column': {
-    'field', 'label', 'type', 'width', 'sortable', 'format', 'config', 'roles',
+    'field', 'label', 'type', 'width', 'sortable', 'format', 'optionsOf',
+    'config', 'roles',
   },
   'pagination': {'pageSize', 'enabled'},
   'form': {'sections'},
   'section': {'title', 'layout', 'fields', 'visibleWhen'},
   'field': {
     'field', 'label', 'type', 'required', 'requiredWhen', 'readOnly',
-    'readOnlyWhen', 'defaultValue', 'validators', 'options', 'optionsFrom',
-    'optionsSource', 'format', 'normalize', 'config', 'visibleWhen',
+    'readOnlyWhen', 'defaultValue', 'validators', 'options', 'optionsOf',
+    'optionsFrom', 'optionsSource', 'format', 'normalize', 'config', 'visibleWhen',
     'enabledWhen', 'computed', 'roles', 'columns', 'fields', 'source',
   },
   'optionsSource': {'repository', 'value', 'label', 'parentKey', 'limit'},
@@ -104,7 +109,13 @@ const Map<String, Set<String>> strictKeyTable = {
 /// ここに無いキーは葉、または**自由な入れ物**なので中を見ない。
 const Map<String, Map<String, String>> _children = {
   '': {'app': 'app', 'page': 'page'},
-  'app': {'theme': 'theme', 'menu': 'menuItem[]', 'pages': 'page[]'},
+  'app': {
+    'theme': 'theme',
+    'vocabularies': 'vocabulary[]',
+    'menu': 'menuItem[]',
+    'pages': 'page[]',
+  },
+  'vocabulary': {'options': 'option[]'},
   'menuItem': {'items': 'menuItem[]'},
   'action': {
     'confirm': 'confirm',

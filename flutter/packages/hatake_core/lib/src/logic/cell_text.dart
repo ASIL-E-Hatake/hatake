@@ -12,8 +12,9 @@
 // 見せ方の順番は1つだけ決めてあります:
 //
 //   1. `format` が書いてあれば、それに従う（人が明示したものが最優先）
-//   2. 選択肢に在る値なら、その**名前**（`shipped` → 出荷済）
-//   3. どちらでもなければ、値をそのまま
+//   2. **自分が持っている選択肢**（`options` / `optionsOf` で名指しした語彙）
+//   3. 同じ画面に書いてある選択肢から借りる（列に何も書いていないときの助け）
+//   4. どれでもなければ、値をそのまま
 //
 // 2 を 1 より後ろに置いているのは、`format` は人が書いたもので、選択肢は
 // 「たまたま同じ項目名が在った」で当たることがあるからです。
@@ -35,6 +36,9 @@ String cellText(
 ) {
   final format = at.format;
   if (format != null) return formatters.format(format, value, at.config);
+  // 名指しした語彙が在れば、それで出す（借りる仕掛けに邪魔をさせない）。
+  final own = optionLabelFrom(at.options, value);
+  if (own != null) return own;
   return optionLabelIn(owners, at.field, value) ?? textOf(value);
 }
 

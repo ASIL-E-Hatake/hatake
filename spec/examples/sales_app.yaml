@@ -12,6 +12,14 @@ app:
     primaryColor: "#1B5E20"
     density: compact
     radius: 8
+  # 業務のコード表は**アプリに1回**書いて、使う所は名前で指す（`optionsOf`）。
+  # この表は下の4か所（検索条件2・入力項目2）から指されている。バラで書くと、
+  # 言い回しを直したときに片方だけ古いまま残り、画面ごとに違う字が出る。
+  vocabularies:
+    - name: shipStatus
+      options:
+        - { value: 未出荷, label: 未出荷 }
+        - { value: 出荷済, label: 出荷済 }
   menu:
     - { id: dashboard, label: ダッシュボード, icon: insights, page: sales_dashboard }
     - { id: customers, label: 顧客, icon: people, page: customer_master }
@@ -74,7 +82,7 @@ app:
             - { field: orderNo, label: 受注番号, width: 140 }
             - { field: customer, label: 顧客名 }
             - { field: orderDate, label: 受注日, width: 120 }
-            - { field: status, label: 状態, width: 100 }
+            - { field: status, label: 状態, width: 100, optionsOf: shipStatus }
             - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
       actions:
         - { id: openOrders, type: navigate, label: 受注照会, page: order_search }
@@ -131,9 +139,7 @@ app:
             label: 状態
             type: select
             operator: equals
-            options:
-              - { value: 未出荷, label: 未出荷 }
-              - { value: 出荷済, label: 出荷済 }
+            optionsOf: shipStatus
           - { field: shipped, label: 出荷済, type: checkbox, operator: equals }
           # between は開始／終了の2入力になり、[開始, 終了] で渡る。
           - { field: orderDate, label: 受注日, type: date, operator: between }
@@ -169,14 +175,14 @@ app:
             label: 状態
             type: select
             operator: equals
-            options:
-              - { value: 未出荷, label: 未出荷 }
-              - { value: 出荷済, label: 出荷済 }
+            optionsOf: shipStatus
       table:
         columns:
           - { field: orderNo, label: 受注番号, width: 140 }
           - { field: orderDate, label: 受注日, width: 120 }
-          - { field: status, label: 状態, width: 100 }
+          # 列も語彙を指せる。指さなければ同じ画面の項目から借りるが、
+          # 検索も入力も持たない画面（帳票など）には借りる相手が居ない。
+          - { field: status, label: 状態, width: 100, optionsOf: shipStatus }
           - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
       report:
         paper: { size: A4, orientation: portrait }
@@ -222,9 +228,7 @@ app:
                 label: 状態
                 type: select
                 required: true
-                options:
-                  - { value: 未出荷, label: 未出荷 }
-                  - { value: 出荷済, label: 出荷済 }
+                optionsOf: shipStatus
           # セクション見出しは付けない: subTable 自身の label が見出しになるため。
           - fields:
               # この項目の値が子行の配列になる（type: subTable）。
@@ -261,9 +265,7 @@ app:
                 label: 状態
                 type: select
                 required: true
-                options:
-                  - { value: 未出荷, label: 未出荷 }
-                  - { value: 出荷済, label: 出荷済 }
+                optionsOf: shipStatus
           # セクション見出しは付けない: subTable 自身の label が見出しになるため。
           - fields:
               # 値は親レコードに入らない。行は orderLineRepository が持つ。

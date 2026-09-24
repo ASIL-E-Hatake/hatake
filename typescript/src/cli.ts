@@ -208,6 +208,7 @@ import {
 } from "./reference.js";
 import { toJsonSchema } from "./jsonSchema.js";
 import { toOpenApi } from "./openApi.js";
+import { toOpenApiApp } from "./openApiApp.js";
 import {
   type PageDefinition,
   type ReportPageDefinition,
@@ -819,10 +820,14 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       「変更前のファイル」を手で書き出さずに CI に置ける。
 
   hatake schema <file>
-      JSON Schema 2020-12 を出す。
+      JSON Schema 2020-12 を出す。app なら画面 id をキーにした1枚。
 
-  hatake openapi <file> [--base-path /api/orders] [--title T] [--api-version 1.0.0]
+  hatake openapi <file> [--base-path /api] [--title T] [--api-version 1.0.0]
       OpenAPI 3.1 を出す。--base-path を省くと components.schemas だけ。
+      app なら**全画面ぶんを1枚**にまとめる（--base-path は基点だけ渡す。
+      区切りは Repository 名から推測＝wire / probe と同じ推測）。
+      同じ Repository を見る画面が複数あれば1つの資源にまとめ、
+      口がぶつかったものと入れなかった画面は標準エラーに出す。
 
   hatake types <file> --lang ts|java [--package io.example.api] [--out dir]
       ネイティブ型を出す。--out でファイルに書く（省略時は標準出力）。
@@ -988,21 +993,9 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
           JSON.stringify(deriveDto(page), null, 2),
         );
       case "schema":
-        return emit(positional, io, (page) =>
-          JSON.stringify(toJsonSchema(deriveDto(page)), null, 2),
-        );
+        return schema(positional, io);
       case "openapi":
-        return emit(positional, io, (page) =>
-          JSON.stringify(
-            toOpenApi(deriveDto(page), {
-              basePath: str(flags, "base-path"),
-              title: str(flags, "title"),
-              version: str(flags, "api-version"),
-            }),
-            null,
-            2,
-          ),
-        );
+        return openapi(positional, flags, io);
       case "same":
         return same(positional, flags, io);
       case "diff":
@@ -4519,6 +4512,74 @@ function output(text: string, flags: Args["flags"], io: CliIo): number {
   } else {
     io.writeFile(out, `${text}\n`);
     io.out(`書きました: ${out}`);
+  }
+  return 0;
+}
+
+/**
+ * `schema` — **app なら画面 id をキーにした1枚**にする。
+ *
+ * 1枚しか読めないと、画面ごとにコマンドを打ち直すことになる（受け口の形は
+ * 画面ごとに違うので、まとめて欲しいのはこちらも同じ）。
+ */
+function schema(files: string[], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const source = io.readFile(files[0]);
+  if (!isAppSource(source)) {
+    return emit(files, io, (page) =>
+      JSON.stringify(toJsonSchema(deriveDto(page)), null, 2),
+    );
+  }
+  const byPage: Record<string, unknown> = {};
+  for (const page of parseAppSource(source).pages) {
+    byPage[page.id] = toJsonSchema(deriveDto(page));
+  }
+  io.out(JSON.stringify(byPage, null, 2));
+  return 0;
+}
+
+/**
+ * `openapi` — **app なら全画面ぶんを1枚にまとめる**。
+ *
+ * 画面1枚しか読めなかったので、app（画面が5〜10枚）を渡すとサーバの受け口の
+ * 一覧が出せず、結局手で書くことになっていた。`--base-path` は**基点だけ**を渡す
+ * （区切りは Repository 名から推測する＝`wire` / `probe` と同じ推測）。
+ */
+function openapi(files: string[], flags: Args["flags"], io: CliIo): number {
+  if (files.length !== 1) {
+    io.err("定義ファイルを1つ指定してください。");
+    return 1;
+  }
+  const source = io.readFile(files[0]);
+  const options = {
+    basePath: str(flags, "base-path"),
+    title: str(flags, "title"),
+    version: str(flags, "api-version"),
+  };
+  if (!isAppSource(source)) {
+    return emit(files, io, (page) =>
+      JSON.stringify(toOpenApi(deriveDto(page), options), null, 2),
+    );
+  }
+  const app = parseAppSource(source);
+  const result = toOpenApiApp(app.pages, {
+    ...options,
+    title: options.title ?? app.app.title,
+  });
+  io.out(JSON.stringify(result.document, null, 2));
+  // **黙って落とさない。** 受け口を持たない画面と、まとめる時にぶつかった口は、
+  // 一覧に出ないぶんだけ人に言う（出ていないことに気づけないのがいちばん困る）。
+  for (const one of result.skipped) {
+    io.err(`※ ${one.page} は入れていません … ${one.why}`);
+  }
+  for (const one of result.clashes) {
+    io.err(
+      `※ ${one.method.toUpperCase()} ${one.path} は ${one.kept} のものを残しました` +
+        `（${one.dropped} も同じ所を指しています）。`,
+    );
   }
   return 0;
 }

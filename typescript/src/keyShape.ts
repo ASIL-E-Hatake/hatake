@@ -58,6 +58,8 @@ const EXPECTED: Record<string, Expected> = {
     instead: "optionsSource",
   },
   optionsSource: { shape: "map", what: "選択肢の出どころ（Repository と項目）" },
+  optionsOf: { shape: "string", what: "アプリに書いた語彙の名前" },
+  vocabularies: { shape: "list", what: "アプリ全体の語彙の並び" },
   options: { shape: "list", what: "選択肢の並び" },
   roles: { shape: "list", what: "見てよい役割の並び" },
   validators: { shape: "list", what: "検証の並び" },

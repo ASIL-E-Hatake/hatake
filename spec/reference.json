@@ -504,6 +504,15 @@
           ]
         },
         {
+          "key": "vocabularies",
+          "type": "array",
+          "required": false,
+          "description": "Code lists shared by every page. A screen refers to one with `optionsOf: <name>` instead of repeating the list, so a reworded label changes in one place instead of drifting between the list, the search box and the detail screen.",
+          "nodes": [
+            "vocabulary"
+          ]
+        },
+        {
           "key": "menu",
           "type": "array",
           "required": false,
@@ -702,6 +711,12 @@
             "mask"
           ],
           "open": true
+        },
+        {
+          "key": "optionsOf",
+          "type": "string",
+          "required": false,
+          "description": "Name of a vocabulary declared in `app.vocabularies`. The options come from there, so one code list is written once and read by every screen that shows it. Inline `options` on the same node wins; an undeclared name is a warning (`unknown-vocabulary`) because the list would silently be empty."
         },
         {
           "key": "config",
@@ -1466,6 +1481,12 @@
           ]
         },
         {
+          "key": "optionsOf",
+          "type": "string",
+          "required": false,
+          "description": "Name of a vocabulary declared in `app.vocabularies`. The options come from there, so one code list is written once and read by every screen that shows it. Inline `options` on the same node wins; an undeclared name is a warning (`unknown-vocabulary`) because the list would silently be empty."
+        },
+        {
           "key": "optionsFrom",
           "type": "string",
           "required": false,
@@ -1796,6 +1817,12 @@
           "nodes": [
             "option"
           ]
+        },
+        {
+          "key": "optionsOf",
+          "type": "string",
+          "required": false,
+          "description": "Name of a vocabulary declared in `app.vocabularies`. The options come from there, so one code list is written once and read by every screen that shows it. Inline `options` on the same node wins; an undeclared name is a warning (`unknown-vocabulary`) because the list would silently be empty."
         },
         {
           "key": "optionsFrom",
@@ -2159,7 +2186,8 @@
       ],
       "parents": [
         "field",
-        "filter"
+        "filter",
+        "vocabulary"
       ],
       "keys": [
         {
@@ -2882,6 +2910,30 @@
         }
       ]
     },
+    "vocabulary": {
+      "description": "One code list: a name and the options it holds.",
+      "closed": true,
+      "pageKinds": [],
+      "parents": [
+        "app"
+      ],
+      "keys": [
+        {
+          "key": "name",
+          "type": "string",
+          "required": true,
+          "description": "Name used by `optionsOf`. Unique within the app."
+        },
+        {
+          "key": "options",
+          "type": "array",
+          "required": true,
+          "nodes": [
+            "option"
+          ]
+        }
+      ]
+    },
     "wizardPage": {
       "description": "A stepped-input page: the form is split into steps, each validated on its own before advancing. Persisted once, on the final step.",
       "closed": true,
@@ -3216,6 +3268,9 @@
     "mode": [
       "condition"
     ],
+    "name": [
+      "vocabulary"
+    ],
     "navigation": [
       "app"
     ],
@@ -3250,9 +3305,15 @@
     ],
     "options": [
       "field",
-      "filter"
+      "filter",
+      "vocabulary"
     ],
     "optionsFrom": [
+      "field",
+      "filter"
+    ],
+    "optionsOf": [
+      "column",
       "field",
       "filter"
     ],
@@ -3449,6 +3510,9 @@
       "field",
       "section",
       "wizardStep"
+    ],
+    "vocabularies": [
+      "app"
     ],
     "when": [
       "option"

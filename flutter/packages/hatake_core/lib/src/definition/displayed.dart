@@ -1,3 +1,5 @@
+import 'option_item.dart';
+
 /// 値を**1つの文字にして見せる**もの。列 [ColumnDefinition] と
 /// 入力項目 [FieldDefinition] が、どちらもこの形をしている。
 ///
@@ -17,4 +19,11 @@ abstract interface class Displayed {
 
   /// 見せ方に渡す設定（`decimals` など）。
   Map<String, Object?> get config;
+
+  /// **自分が持っている選択肢**（無ければ空）。
+  ///
+  /// 列は `optionsOf: <語彙の名前>` で名指しでき、読み込み時にここへ実体が入る。
+  /// 自分が持っているものが在れば、同じ画面から借りるより先に使う＝
+  /// **名指しした所は、名指しした語彙で出る**（借りる仕掛けに邪魔をさせない）。
+  List<OptionItem> get options;
 }

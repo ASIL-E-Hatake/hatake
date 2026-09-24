@@ -22,7 +22,11 @@ export interface UnknownKey {
  */
 export const strictKeyTable: Record<string, string[]> = {
   "": ["dsl_version", "page", "app"],
-  app: ["id", "title", "home", "navigation", "roles", "theme", "menu", "pages"],
+  app: [
+    "id", "title", "home", "navigation", "roles", "theme", "vocabularies",
+    "menu", "pages",
+  ],
+  vocabulary: ["name", "options"],
   theme: [
     "primaryColor", "secondaryColor", "brightness", "density", "fontFamily",
     "radius", "config",
@@ -51,18 +55,21 @@ export const strictKeyTable: Record<string, string[]> = {
   reportTotal: ["field", "aggregate"],
   search: ["layout", "filters"],
   filter: [
-    "field", "label", "type", "operator", "options", "optionsFrom",
+    "field", "label", "type", "operator", "options", "optionsOf", "optionsFrom",
     "optionsSource", "config",
   ],
   table: ["columns", "pagination", "rowActions"],
-  column: ["field", "label", "type", "width", "sortable", "format", "config", "roles"],
+  column: [
+    "field", "label", "type", "width", "sortable", "format", "optionsOf",
+    "config", "roles",
+  ],
   pagination: ["pageSize", "enabled"],
   form: ["sections"],
   section: ["title", "layout", "fields", "visibleWhen"],
   field: [
     "field", "label", "type", "required", "requiredWhen", "readOnly",
     "readOnlyWhen", "defaultValue",
-    "validators", "options", "optionsFrom", "optionsSource", "format",
+    "validators", "options", "optionsOf", "optionsFrom", "optionsSource", "format",
     "normalize", "config", "visibleWhen", "enabledWhen", "computed", "roles",
     "columns", "fields", "source",
   ],
@@ -86,7 +93,13 @@ export const strictKeyTable: Record<string, string[]> = {
 /** 子ノードへの道。`[]` 付きはそのノードの配列。無いキーは葉／自由な入れ物。 */
 const children: Record<string, Record<string, string>> = {
   "": { app: "app", page: "page" },
-  app: { theme: "theme", menu: "menuItem[]", pages: "page[]" },
+  app: {
+    theme: "theme",
+    vocabularies: "vocabulary[]",
+    menu: "menuItem[]",
+    pages: "page[]",
+  },
+  vocabulary: { options: "option[]" },
   menuItem: { items: "menuItem[]" },
   action: {
     confirm: "confirm",

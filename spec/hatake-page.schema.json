@@ -99,6 +99,13 @@
         "theme": {
           "$ref": "#/$defs/theme"
         },
+        "vocabularies": {
+          "type": "array",
+          "description": "Code lists shared by every page. A screen refers to one with `optionsOf: <name>` instead of repeating the list, so a reworded label changes in one place instead of drifting between the list, the search box and the detail screen.",
+          "items": {
+            "$ref": "#/$defs/vocabulary"
+          }
+        },
         "menu": {
           "type": "array",
           "items": {
@@ -605,6 +612,10 @@
             "$ref": "#/$defs/option"
           }
         },
+        "optionsOf": {
+          "description": "Name of a vocabulary declared in `app.vocabularies`. The options come from there, so one code list is written once and read by every screen that shows it. Inline `options` on the same node wins; an undeclared name is a warning (`unknown-vocabulary`) because the list would silently be empty.",
+          "type": "string"
+        },
         "optionsFrom": {
           "type": "string",
           "description": "Parent filter name in the same search area. The options shown are those whose `when` matches the parent's current value (plus any option without a `when`). Changing the parent clears a child value that is no longer offered."
@@ -690,6 +701,10 @@
             "postal",
             "mask"
           ]
+        },
+        "optionsOf": {
+          "description": "Name of a vocabulary declared in `app.vocabularies`. The options come from there, so one code list is written once and read by every screen that shows it. Inline `options` on the same node wins; an undeclared name is a warning (`unknown-vocabulary`) because the list would silently be empty.",
+          "type": "string"
         },
         "config": {
           "$ref": "#/$defs/config"
@@ -817,6 +832,10 @@
           "items": {
             "$ref": "#/$defs/option"
           }
+        },
+        "optionsOf": {
+          "description": "Name of a vocabulary declared in `app.vocabularies`. The options come from there, so one code list is written once and read by every screen that shows it. Inline `options` on the same node wins; an undeclared name is a warning (`unknown-vocabulary`) because the list would silently be empty.",
+          "type": "string"
         },
         "optionsFrom": {
           "type": "string",
@@ -1807,6 +1826,27 @@
             "min",
             "max"
           ]
+        }
+      }
+    },
+    "vocabulary": {
+      "type": "object",
+      "description": "One code list: a name and the options it holds.",
+      "required": [
+        "name",
+        "options"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Name used by `optionsOf`. Unique within the app.",
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/option"
+          }
         }
       }
     }

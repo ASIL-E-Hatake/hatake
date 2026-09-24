@@ -1,0 +1,384 @@
+{
+  "$comment": "`app.vocabularies` と `optionsOf` の展開。**3版で同じ定義から同じ選択肢が入る**ことを縛る。展開は読み込み時なので、ここが揃っていれば下流（画面・CSV・紙）も揃う。",
+  "cases": [
+    {
+      "name": "列が名指しした語彙は、実体の並びに置き換わる",
+      "document": {
+        "dsl_version": "1.0",
+        "app": {
+          "id": "orders",
+          "title": "受注",
+          "home": "orders",
+          "vocabularies": [
+            {
+              "name": "orderStatus",
+              "options": [
+                {
+                  "value": "draft",
+                  "label": "作成中"
+                },
+                {
+                  "value": "shipped",
+                  "label": "出荷済"
+                }
+              ]
+            }
+          ],
+          "menu": [
+            {
+              "id": "orders",
+              "label": "受注一覧",
+              "page": "orders"
+            }
+          ],
+          "pages": [
+            {
+              "type": "crud",
+              "id": "orders",
+              "title": "受注一覧",
+              "repository": "orderRepository",
+              "key": "orderNo",
+              "table": {
+                "columns": [
+                  {
+                    "field": "orderNo",
+                    "label": "受注番号"
+                  },
+                  {
+                    "field": "status",
+                    "label": "受注状態",
+                    "optionsOf": "orderStatus"
+                  }
+                ]
+              },
+              "form": {
+                "sections": [
+                  {
+                    "fields": [
+                      {
+                        "field": "orderNo",
+                        "label": "受注番号",
+                        "type": "text",
+                        "required": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "column": "status",
+      "expected": [
+        {
+          "value": "draft",
+          "label": "作成中"
+        },
+        {
+          "value": "shipped",
+          "label": "出荷済"
+        }
+      ]
+    },
+    {
+      "name": "その場に書いた options が勝つ（optionsOf は効かない）",
+      "document": {
+        "dsl_version": "1.0",
+        "app": {
+          "id": "orders",
+          "title": "受注",
+          "home": "orders",
+          "vocabularies": [
+            {
+              "name": "orderStatus",
+              "options": [
+                {
+                  "value": "draft",
+                  "label": "作成中"
+                },
+                {
+                  "value": "shipped",
+                  "label": "出荷済"
+                }
+              ]
+            }
+          ],
+          "menu": [
+            {
+              "id": "orders",
+              "label": "受注一覧",
+              "page": "orders"
+            }
+          ],
+          "pages": [
+            {
+              "type": "crud",
+              "id": "orders",
+              "title": "受注一覧",
+              "repository": "orderRepository",
+              "key": "orderNo",
+              "table": {
+                "columns": [
+                  {
+                    "field": "orderNo",
+                    "label": "受注番号"
+                  },
+                  {
+                    "field": "status",
+                    "label": "受注状態",
+                    "optionsOf": "orderStatus",
+                    "options": [
+                      {
+                        "value": "shipped",
+                        "label": "発送済"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "form": {
+                "sections": [
+                  {
+                    "fields": [
+                      {
+                        "field": "orderNo",
+                        "label": "受注番号",
+                        "type": "text",
+                        "required": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "column": "status",
+      "expected": [
+        {
+          "value": "shipped",
+          "label": "発送済"
+        }
+      ]
+    },
+    {
+      "name": "引けない名前のときは、空の並びを置かない",
+      "document": {
+        "dsl_version": "1.0",
+        "app": {
+          "id": "orders",
+          "title": "受注",
+          "home": "orders",
+          "vocabularies": [
+            {
+              "name": "orderStatus",
+              "options": [
+                {
+                  "value": "draft",
+                  "label": "作成中"
+                },
+                {
+                  "value": "shipped",
+                  "label": "出荷済"
+                }
+              ]
+            }
+          ],
+          "menu": [
+            {
+              "id": "orders",
+              "label": "受注一覧",
+              "page": "orders"
+            }
+          ],
+          "pages": [
+            {
+              "type": "crud",
+              "id": "orders",
+              "title": "受注一覧",
+              "repository": "orderRepository",
+              "key": "orderNo",
+              "table": {
+                "columns": [
+                  {
+                    "field": "orderNo",
+                    "label": "受注番号"
+                  },
+                  {
+                    "field": "status",
+                    "label": "受注状態",
+                    "optionsOf": "nope"
+                  }
+                ]
+              },
+              "form": {
+                "sections": [
+                  {
+                    "fields": [
+                      {
+                        "field": "orderNo",
+                        "label": "受注番号",
+                        "type": "text",
+                        "required": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "column": "status",
+      "expected": []
+    },
+    {
+      "name": "同じ名前が2回あれば、先に書いたほうが残る",
+      "document": {
+        "dsl_version": "1.0",
+        "app": {
+          "id": "orders",
+          "title": "受注",
+          "home": "orders",
+          "vocabularies": [
+            {
+              "name": "orderStatus",
+              "options": [
+                {
+                  "value": "draft",
+                  "label": "作成中"
+                },
+                {
+                  "value": "shipped",
+                  "label": "出荷済"
+                }
+              ]
+            },
+            {
+              "name": "orderStatus",
+              "options": [
+                {
+                  "value": "shipped",
+                  "label": "発送済"
+                }
+              ]
+            }
+          ],
+          "menu": [
+            {
+              "id": "orders",
+              "label": "受注一覧",
+              "page": "orders"
+            }
+          ],
+          "pages": [
+            {
+              "type": "crud",
+              "id": "orders",
+              "title": "受注一覧",
+              "repository": "orderRepository",
+              "key": "orderNo",
+              "table": {
+                "columns": [
+                  {
+                    "field": "orderNo",
+                    "label": "受注番号"
+                  },
+                  {
+                    "field": "status",
+                    "label": "受注状態",
+                    "optionsOf": "orderStatus"
+                  }
+                ]
+              },
+              "form": {
+                "sections": [
+                  {
+                    "fields": [
+                      {
+                        "field": "orderNo",
+                        "label": "受注番号",
+                        "type": "text",
+                        "required": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "column": "status",
+      "expected": [
+        {
+          "value": "draft",
+          "label": "作成中"
+        },
+        {
+          "value": "shipped",
+          "label": "出荷済"
+        }
+      ]
+    },
+    {
+      "name": "語彙を書いていなければ、何も入らない",
+      "document": {
+        "dsl_version": "1.0",
+        "app": {
+          "id": "orders",
+          "title": "受注",
+          "home": "orders",
+          "vocabularies": [],
+          "menu": [
+            {
+              "id": "orders",
+              "label": "受注一覧",
+              "page": "orders"
+            }
+          ],
+          "pages": [
+            {
+              "type": "crud",
+              "id": "orders",
+              "title": "受注一覧",
+              "repository": "orderRepository",
+              "key": "orderNo",
+              "table": {
+                "columns": [
+                  {
+                    "field": "orderNo",
+                    "label": "受注番号"
+                  },
+                  {
+                    "field": "status",
+                    "label": "受注状態",
+                    "optionsOf": "orderStatus"
+                  }
+                ]
+              },
+              "form": {
+                "sections": [
+                  {
+                    "fields": [
+                      {
+                        "field": "orderNo",
+                        "label": "受注番号",
+                        "type": "text",
+                        "required": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "column": "status",
+      "expected": []
+    }
+  ]
+}

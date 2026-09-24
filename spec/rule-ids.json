@@ -35,6 +35,7 @@
     "duplicate-action-id",
     "duplicate-field",
     "duplicate-page-id",
+    "duplicate-vocabulary",
     "enabledwhen-never-true",
     "enabledwhen-without-record",
     "export-without-rows",
@@ -94,9 +95,11 @@
     "unknown-plugin",
     "unknown-repository",
     "unknown-validator",
+    "unknown-vocabulary",
     "unregistered-sink",
     "validator-missing-param",
-    "visiblewhen-never-true"
+    "visiblewhen-never-true",
+    "vocabulary-shadowed"
   ],
   "advice": [
     "bulk-confirm-without-count",
