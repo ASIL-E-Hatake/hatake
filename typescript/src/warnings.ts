@@ -46,6 +46,7 @@ import {
   namesOf,
   OVERFLOW_PLACEHOLDERS,
   placeholdersWhere,
+  VALIDATION_PLACEHOLDERS,
 } from "./placeholders.js";
 import { roleNames } from "./roles.js";
 import { closestKey } from "./strictKeys.js";
@@ -106,6 +107,59 @@ const VALIDATOR_PARAMS: Record<string, string[]> = {
   compare: ["field", "operator"],
   unique: ["of"],
 };
+
+/**
+ * 検証のメッセージに、埋まらない差し込みを書いている。
+ *
+ * ここに書けるのは **`{value}`（規則に書いた値）と `{target}`（比べる相手の
+ * ラベル）だけ**。ほかを書いても値は渡っていないので、**画面にそのまま文字で
+ * 出ます**（`{金額} は…` と書くと、利用者に `{金額}` と見えます）。
+ *
+ * 差し込みは**閉じた集合**なのに、開いていると思われがちなのが問題です。開いた形
+ * なのは遷移のパラメータ（`$row.<項目名>`）だけで、そこと混同して項目名を書きます。
+ *
+ * `{target}` は比べる相手が要るので、`compare` 以外に書いても埋まりません。
+ */
+function checkValidatorMessage(
+  raw: Dict,
+  path: string,
+  found: DefinitionWarning[],
+): void {
+  const message = str(raw.message);
+  if (message === undefined) return;
+  const known = namesOf(VALIDATION_PLACEHOLDERS);
+  const used = [
+    ...new Set([...message.matchAll(/\{[^{}]*\}/g)].map((one) => one[0])),
+  ];
+
+  const unknown = used.filter((one) => !known.includes(one));
+  if (unknown.length > 0) {
+    warn(
+      found,
+      "placeholder-not-filled",
+      `${path}.message`,
+      `検証の文言にある ${unknown.join(" / ")} は埋まりません。` +
+        "そのまま文字として画面に出ます（利用者に見えます）。",
+      `ここに書けるのは ${known.join(" / ")} だけです` +
+        "（項目の値は文言に渡っていません。開いた形で書けるのは遷移のパラメータだけです）。",
+    );
+    return;
+  }
+
+  // `{target}` は**比べる相手**の名前。相手が居ない検証では埋まらない。
+  if (used.includes("{target}") && str(raw.type) !== "compare") {
+    warn(
+      found,
+      "placeholder-not-filled",
+      `${path}.message`,
+      `検証 "${str(raw.type) ?? "この検証"}" の文言にある \`{target}\` は` +
+        "埋まりません（比べる相手が居るのは `compare` だけです）。" +
+        "そのまま文字として画面に出ます。",
+      "比べる検証なら `type: compare` にしてください。" +
+        "そうでなければ `{target}` を外します。",
+    );
+  }
+}
 
 function checkValidatorParams(raw: Dict, path: string, found: DefinitionWarning[]): void {
   const type = str(raw.type);
@@ -1375,6 +1429,7 @@ function checkFieldConditions(
   found: DefinitionWarning[],
 ): void {
   const names = pageFieldNames(page);
+  checkStepConditions(page, path, names, found);
   for (const part of rawFormFields(page)) {
     const field = part.node;
     const label = str(field.label) ?? str(field.field) ?? "項目";
@@ -1420,6 +1475,66 @@ function checkFieldConditions(
   }
 }
 
+/**
+ * ステップの出し分け（`steps[].visibleWhen`）が**永久に偽**。
+ *
+ * そのステップは**誰にも出ません**。項目とボタンは見ていたのに、ステップだけ
+ * 見ていませんでした。1枚も出ないウィザードは Renderer が言いますが、
+ * **押す前に言えるならそちらが先**です（画面を出す前に分かる）。
+ *
+ * 判定は項目と同じもの（[contradiction] と [leaves]）＝同じことを2つの言い方で
+ * 言わない。
+ */
+function checkStepConditions(
+  page: Dict,
+  path: string,
+  names: Set<string>,
+  found: DefinitionWarning[],
+): void {
+  list(page.steps)
+    .filter(isDict)
+    .forEach((step, index) => {
+      const condition = isDict(step.visibleWhen) ? step.visibleWhen : undefined;
+      if (condition === undefined) return;
+      const label = str(step.title) ?? str(step.id) ?? `${index + 1} 枚目`;
+      const at = `${path}.steps[${index}].visibleWhen`;
+
+      const clash = contradiction(condition);
+      if (clash !== null) {
+        warn(
+          found,
+          "step-visiblewhen-never-true",
+          at,
+          `ステップ「${label}」の \`visibleWhen\` は**永久に成り立ちません**` +
+            `（${clash}）。このステップは誰にも出ません。`,
+        );
+        return;
+      }
+      if (names.size === 0) return;
+      for (const leaf of leaves(condition)) {
+        const name = str(leaf.field);
+        if (name === undefined || names.has(name)) continue;
+        if (leaf.operator === "isEmpty") continue;
+        const operator = str(leaf.operator) ?? "equals";
+        if (!(ConditionOperators as readonly string[]).includes(operator)) continue;
+        const near = closestKey(name, [...names]);
+        warn(
+          found,
+          "step-visiblewhen-never-true",
+          `${at}.field`,
+          `ステップ「${label}」の \`visibleWhen\` が見ている "${name}" が、` +
+            `この画面のどこにもありません` +
+            `${near === null ? "" : `（${near} の間違いではないですか？）`}。` +
+            "値が来ないので条件は成り立たず、このステップは誰にも出ません。",
+          near === null
+            ? "その項目を先のステップに足すか、条件を外してください。"
+            : `${near} に直してください。`,
+        );
+        break;
+      }
+    });
+}
+
 /** [pageParts] の道（配列）を、警告の道（文字）にする。 */
 const partPath = (path: (string | number)[]): string =>
   path
@@ -1459,14 +1574,18 @@ function contradiction(condition: Dict): string | null {
       const field = str(same[a].field);
       if (field === undefined || field !== str(same[b].field)) continue;
       const [x, y] = [same[a], same[b]];
+      // **書かなければ `equals`**（DSL の既定）。`operator` の明示を求めていたので、
+      // 同じ意味の条件が「書けば言われ、省くと黙る」になっていた。省くほうが
+      // 普通の書き方なので、黙るほうが多かったことになる。
+      const how = (one: Dict): string => str(one.operator) ?? "equals";
       if (
-        x.operator === "equals" &&
-        y.operator === "equals" &&
+        how(x) === "equals" &&
+        how(y) === "equals" &&
         String(x.value) !== String(y.value)
       ) {
         return `${field} が "${String(x.value)}" と "${String(y.value)}" の両方`;
       }
-      const ops = [x.operator, y.operator];
+      const ops = [how(x), how(y)];
       if (ops.includes("isEmpty") && ops.includes("isNotEmpty")) {
         return `${field} が「空」と「空でない」の両方`;
       }
@@ -1639,6 +1758,7 @@ function checkFieldEntry(
       return;
     }
     checkValidatorParams(raw, `${path}.validators[${i}]`, found);
+    checkValidatorMessage(raw, `${path}.validators[${i}]`, found);
   });
   for (const key of ["visibleWhen", "enabledWhen", "requiredWhen", "readOnlyWhen"]) {
     const condition = field[key];

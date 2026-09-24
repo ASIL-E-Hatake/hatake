@@ -19,9 +19,10 @@ page:
             required: true
             normalize: [toHankaku, trim]
             validators:
-              # 文言は上書きできる（既定は枠組みの言い方）。差し込みは
-              # `{value}`（入れた値）と `{target}`（比べる相手）の2つだけ。
-              - { type: maxLength, value: 20, message: "コードは {target} 文字までです" }
+              # 文言は上書きできる（既定は枠組みの言い方）。書けるのは
+              # `{value}`（**その規則に書いた値**。ここでは 20）と、
+              # `{target}`（比べる相手のラベル。`compare` のときだけ）。
+              - { type: maxLength, value: 20, message: "コードは {value} 文字までです" }
             # コードは新規のときだけ入力できる（編集では変えさせない）。
             # キー項目が入っているかを見る回避策ではなく、mode をそのまま書く。
             enabledWhen: { mode: create }

@@ -75,6 +75,7 @@
     "selection-unsupported-type",
     "selection-without-table",
     "sink-not-declared",
+    "step-visiblewhen-never-true",
     "total-without-column",
     "unique-on-paged-subtable",
     "unique-unknown-field",

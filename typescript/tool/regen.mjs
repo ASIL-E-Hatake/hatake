@@ -112,28 +112,36 @@ if (!check) {
   process.exit(0);
 }
 
-// **CI と同じ判定**（改行は Windows のチェックアウトで変わるので揃えて比べる）。
-let changed;
+// **コミットしてある中身と比べる。**
+//
+// git の旗（--ignore-cr-at-eol）に頼っていたが、**環境によって効かない**
+// （Windows の checkout は CRLF、Linux の容器の中では生の CRLF のまま比べられる）。
+// 手元で「古い」と嘘を言う道具は、そのうち誰も見なくなる。なので**自分で改行を
+// 揃えて比べる**（旗の細かい挙動に依らない）。
+const slash = (one) => one.split("\\").join("/");
+const normalized = (text) => text.split("\r\n").join("\n");
+
+let stale;
 try {
-  changed = execFileSync(
-    "git",
-    ["diff", "--name-only", "--ignore-cr-at-eol", "--", ...MADE],
-    { cwd: ROOT, encoding: "utf8" },
-  )
-    .split("\n")
-    .filter((one) => one.length > 0);
+  stale = MADE.filter((one) => {
+    const committed = execFileSync("git", ["show", `HEAD:${slash(one)}`], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    return normalized(committed) !== normalized(readFileSync(join(ROOT, one), "utf8"));
+  });
 } catch {
   console.log("git が居ないので差分を見られません（作り直しはしました）。");
   process.exit(0);
 }
 
-if (changed.length === 0) {
+if (stale.length === 0) {
   console.log(`コミットしてある生成物は、いまの元と一致しています（${MADE.length} 件）。`);
   process.exit(0);
 }
 
 console.log("**生成物が古いままです:**");
-for (const one of changed) console.log(`  - ${one}`);
+for (const one of stale) console.log(`  - ${slash(one)}`);
 console.log(
   "\n作り直したので、そのままコミットに入れてください" +
     "（`node tool/regen.mjs` で作り直せます）。元を直したら生成物も付いてきます。",
