@@ -106,6 +106,7 @@ flowchart LR
   lineCount["明細行数<br/>・ op: count<br/>・ 畳む: 「明細」の行の数<br/>・ 絞り込み: 取消 が true でないとき"]
   lines_item["品名<br/>明細 lines の行"]
   itemNames["品名<br/>・ op: join<br/>・ 畳む: 「明細」の 品名<br/>・ 絞り込み: 取消 が true でないとき"]
+  topItems["主な品名<br/>・ op: join<br/>・ 畳む: 「明細」の 品名<br/>・ 絞り込み: 取消 が true でないとき"]
   total["合計金額<br/>・ op: sum<br/>・ もと: 小計"]
   lines_qty --> lines_amount
   lines_price --> lines_amount
@@ -115,11 +116,13 @@ flowchart LR
   lines_cancelled -.->|絞り込み| lineCount
   lines_item -->|join| itemNames
   lines_cancelled -.->|絞り込み| itemNames
+  lines_item -->|join| topItems
+  lines_cancelled -.->|絞り込み| topItems
   subtotal --> total
   classDef input fill:#e8f0fe,stroke:#4285f4,color:#202124
   class lines_qty,lines_price,lines_cancelled,lines,lines_item input
   classDef output fill:#fff7e0,stroke:#f9ab00,color:#202124
-  class lines_amount,subtotal,lineCount,itemNames,total output
+  class lines_amount,subtotal,lineCount,itemNames,topItems,total output
 ```
 
 この図は **SVG では出さない**。依存は行を飛ぶ線が出る（合計が小計と消費税の両方から
