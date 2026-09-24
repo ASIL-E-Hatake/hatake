@@ -50,7 +50,26 @@ public final class DtoDeriver {
             shapes.add(new DtoSpec.Shape(name + "Response", "response",
                     List.copyOf(responseMembers)));
         }
-        for (FieldDefinition field : fields) {
+        // 読むだけの画面は、返す形だけを持つ。並びは request の次＝3版で同じ順に
+        // なるよう、response の場所は変えない。
+        List<FieldDefinition> readOnly = responseOnlyFields(page);
+        if (!readOnly.isEmpty()) {
+            List<DtoSpec.Member> readMembers = new ArrayList<>();
+            for (FieldDefinition field : readOnly) {
+                DtoSpec.Member member = responseMember(page.id(), field);
+                if (member != null) {
+                    readMembers.add(member);
+                }
+            }
+            if (!readMembers.isEmpty()) {
+                shapes.add(new DtoSpec.Shape(name + "Response", "response",
+                        List.copyOf(readMembers)));
+            }
+        }
+
+        List<FieldDefinition> withChildren = new ArrayList<>(fields);
+        withChildren.addAll(readOnly);
+        for (FieldDefinition field : withChildren) {
             if (!field.isSubTable()) {
                 continue;
             }
@@ -119,11 +138,28 @@ public final class DtoDeriver {
             return List.of();
         }
         // detail は読み取り専用なので、その form は「返ってくる形」であって
-        // 「送る形」ではない（TypeScript 版と揃えるための除外）。
+        // 「送る形」ではない。返す形だけは持つ（responseOnlyFields）。
         if ("detail".equals(page.type())) {
             return List.of();
         }
         // ウィザードの form はパーサが既に全ステップを畳んである。
+        return page.form().fields();
+    }
+
+    /**
+     * <b>読むだけの画面が返す形</b>（{@code detail} の {@code form}）。
+     *
+     * <p>詳細画面は {@code findByKey} を呼ぶので {@code GET <collection>/<鍵>} を
+     * <b>必ず叩く</b>。なのにここが空だったせいで、その画面から<b>道を1本も
+     * 出していなかった</b>（画面は叩くのに宣言には出てこない）。
+     *
+     * <p>返すのは {@code response} だけ＝書く形は持たない。読むだけの画面に
+     * {@code POST} や {@code PUT} を生やすと、定義に書いていない口を宣言することになる。
+     */
+    private static List<FieldDefinition> responseOnlyFields(PageDefinition page) {
+        if (page.form() == null || !"detail".equals(page.type())) {
+            return List.of();
+        }
         return page.form().fields();
     }
 

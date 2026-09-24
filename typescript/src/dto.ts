@@ -212,9 +212,9 @@ function queryMember(filter: FilterDefinition): DtoMember {
 /**
  * Every field that contributes a request member, for any page kind.
  *
- * `detail` is deliberately absent: it is read-only, so its `form` describes what
- * comes back, not what goes in. Deriving a response-only shape from it needs a
- * separate role (see the proposal's follow-ups).
+ * `detail` is absent on purpose: it is read-only, so its `form` describes what
+ * comes back, not what goes in. It contributes a response instead
+ * ([responseOnlyFields]).
  */
 function requestFields(page: PageDefinition): FieldDefinition[] {
   if (page.kind === "wizard") return formFields(wizardForm(page));
@@ -222,6 +222,21 @@ function requestFields(page: PageDefinition): FieldDefinition[] {
     return formFields(page.form);
   }
   return [];
+}
+
+/**
+ * **読むだけの画面が返す形**（`detail` の `form`）。
+ *
+ * 詳細画面は `findByKey` を呼ぶので、`GET <collection>/<鍵>` を**必ず叩きます**。
+ * なのに、ここが空だったせいで `hatake openapi` はその画面から**道を1本も
+ * 出していませんでした**（画面は叩くのに、宣言には出てこない）。サーバを書く人は、
+ * 詳細画面のぶんだけ手で足すことになります。
+ *
+ * 返すのは `response` だけ＝書く形は持ちません。読むだけの画面に `POST` や `PUT` を
+ * 生やすと、**定義に書いていない口を宣言する**ことになります。
+ */
+function responseOnlyFields(page: PageDefinition): FieldDefinition[] {
+  return page.kind === "detail" ? formFields(page.form) : [];
 }
 
 /**
@@ -269,6 +284,19 @@ export function deriveDto(page: PageDefinition): DtoSpec {
     }
   }
   for (const field of fields) collectChild(field);
+
+  // 読むだけの画面（`detail`）は、返す形だけを持つ。並びは request の次＝
+  // 3版で同じ順になるよう、`response` の場所は変えない。
+  const readOnly = responseOnlyFields(page);
+  if (readOnly.length > 0) {
+    const members = readOnly
+      .map((f) => responseMember(page.id, f))
+      .filter((m): m is DtoMember => m !== undefined);
+    if (members.length > 0) {
+      shapes.push({ name: `${name}Response`, role: "response", members });
+    }
+    for (const field of readOnly) collectChild(field);
+  }
 
   const columns = "table" in page ? page.table.columns : [];
   if (columns.length > 0) {

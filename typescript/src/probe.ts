@@ -274,6 +274,9 @@ async function probeItem(
 export function probeRequests(targets: RestTargets): string[] {
   const found: string[] = [];
   for (const target of targets.targets) {
+    // 一覧を持たない画面は叩かない（`probe` と同じ判断＝送る前に見せるものが
+    // 実際に送るものと違う、を起こさない）。
+    if (target.row === undefined) continue;
     found.push(`GET ${target.listUrl}`);
     if (target.record !== undefined && target.keyFields !== undefined) {
       const path = target.keyFields.map((one) => `{${one}}`).join("/");
@@ -289,6 +292,10 @@ export function probeRequests(targets: RestTargets): string[] {
  * 画面ごとに「一覧 → その1行目で1件取得」の2回まで。1件取得は**1件を指せる画面
  * だけ**（フォームを持たない一覧は `findByKey` を呼ばないので、叩くと在りもしない
  * 食い違いを報告する）。
+ *
+ * **一覧を持たない画面（詳細）の一覧は叩きません。** 叩く先が定義に無いので、
+ * サーバがその口を持っていなければ 404 が返り、**在りもしない食い違い**
+ * （「その口がありません」）を報告することになります。
  */
 export async function probe(
   targets: RestTargets,
@@ -299,6 +306,16 @@ export async function probe(
   const requests: string[] = [];
   const skipped: SkippedPage[] = [...targets.skipped];
   for (const target of targets.targets) {
+    // 一覧を宣言していない画面（列が無い＝詳細）は、一覧を叩かない。
+    if (target.row === undefined) {
+      skipped.push({
+        page: target.page,
+        reason:
+          "一覧を持たない画面（一覧は叩かない。1件取得は、鍵の値をどこから取るか" +
+          "定義からは決まらないので叩けない）",
+      });
+      continue;
+    }
     requests.push(`GET ${target.listUrl}`);
     const first = await probeList(target, send, headers, findings);
     if (target.record === undefined || target.keyFields === undefined) {

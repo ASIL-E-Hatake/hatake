@@ -1107,6 +1107,79 @@
           }
         ]
       }
+    },
+    {
+      "name": "a read-only detail page declares the GET it actually calls (response only)",
+      "page": {
+        "dsl_version": "1.0",
+        "page": {
+          "type": "detail",
+          "id": "customer_detail",
+          "title": "顧客詳細",
+          "repository": "customerRepository",
+          "key": "customerCode",
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  {
+                    "field": "customerCode",
+                    "label": "顧客コード"
+                  },
+                  {
+                    "field": "name",
+                    "label": "顧客名"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "expected": {
+        "page": "customer_detail",
+        "shapes": [
+          {
+            "name": "CustomerDetailResponse",
+            "role": "response",
+            "members": [
+              {
+                "name": "customerCode",
+                "label": "顧客コード",
+                "type": "string",
+                "optional": true,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              },
+              {
+                "name": "name",
+                "label": "顧客名",
+                "type": "string",
+                "optional": true,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              }
+            ]
+          },
+          {
+            "name": "CustomerDetailKey",
+            "role": "pathParams",
+            "members": [
+              {
+                "name": "customerCode",
+                "label": "",
+                "type": "string",
+                "optional": false,
+                "readOnly": false,
+                "computed": false,
+                "constraints": {}
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

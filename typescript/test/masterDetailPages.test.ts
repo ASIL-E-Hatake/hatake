@@ -62,9 +62,13 @@ page:
     expect(page.form.sections[0].fields[0].field).toBe("code");
   });
 
-  it("implies no request payload — it is read-only", () => {
-    // Its `form` describes what comes back, not what goes in, so the only shape
-    // is the key in the path.
-    expect(deriveDto(page).shapes.map((s) => s.role)).toEqual(["pathParams"]);
+  it("implies no request payload, but does declare what comes back", () => {
+    // Its `form` describes what comes back, not what goes in — so it has a
+    // response and no request. 以前は response も無く、その結果 `hatake openapi`
+    // が**道を1本も出していなかった**（画面は `findByKey` を叩くのに）。
+    expect(deriveDto(page).shapes.map((s) => s.role)).toEqual([
+      "response",
+      "pathParams",
+    ]);
   });
 });
