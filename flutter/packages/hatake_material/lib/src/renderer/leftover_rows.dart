@@ -54,6 +54,8 @@ Future<bool> _exportLeftover(
   required List<ColumnDefinition> columns,
   required String keyField,
   required FormatterRegistry formatters,
+  // 落とした CSV と画面の字をそろえる（選択肢の名前を引く相手）。
+  List<OptionsOwner> owners = const [],
 }) async {
   if (sink == null) return false;
   final visible = [
@@ -77,6 +79,7 @@ Future<bool> _exportLeftover(
       rows,
       options: const CsvOptions(bom: true),
       formatters: formatters,
+      owners: owners,
     ),
     charset: 'utf-8',
     actionId: action.id,

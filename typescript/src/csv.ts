@@ -4,6 +4,7 @@
 // させたいときは raw: true。文字コード変換は Framework の外＝出力先の責務。
 
 import { type ColumnDefinition } from "./definition.js";
+import { cellText, type OptionsOwnerLike } from "./cellText.js";
 import { FormatterRegistry } from "./formatter.js";
 
 /** CSV の書き方。既定は Excel（日本語 Windows）で開くのが楽な組み合わせ。 */
@@ -72,6 +73,8 @@ export function toCsv(
   rows: Record<string, unknown>[],
   options: CsvOptions = defaultCsvOptions,
   formatters: FormatterRegistry = new FormatterRegistry(),
+  // 落とした CSV と画面の字をそろえる（選択肢の名前を引く相手）。
+  owners: OptionsOwnerLike[] = [],
 ): string {
   if (columns.length === 0) return "";
   const lineBreak = options.newline === "lf" ? "\n" : "\r\n";
@@ -85,7 +88,7 @@ export function toCsv(
   for (const row of rows) {
     lines.push(
       columns
-        .map((c) => escape(cell(c, row[c.field], options, formatters), options.delimiter))
+        .map((c) => escape(cell(c, row[c.field], options, formatters, owners), options.delimiter))
         .join(options.delimiter),
     );
   }
@@ -98,11 +101,14 @@ function cell(
   value: unknown,
   options: CsvOptions,
   formatters: FormatterRegistry,
+  owners: OptionsOwnerLike[],
 ): string {
-  if (!options.raw && column.format) {
-    return formatters.format(column.format, value, column.config);
-  }
-  return value == null ? "" : String(value);
+  // `raw: true` は**機械に渡すための書き出し**（取り込み直す相手が居る）。
+  // 見せ方も選択肢の名前も当てずに、持っている値をそのまま出す。
+  if (options.raw) return value == null ? "" : String(value);
+  // `raw` でなければ**画面と同じ字**にする。前はここが Dart 版と食い違っていて、
+  // 一覧に「出荷済」と出ている列が CSV では `shipped` で落ちた。
+  return cellText(formatters, owners, column, value);
 }
 
 /** 引用が要るのは区切り・引用符・改行を含むときだけ。 */

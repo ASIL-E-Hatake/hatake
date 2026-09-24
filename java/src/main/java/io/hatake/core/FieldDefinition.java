@@ -33,7 +33,8 @@ public record FieldDefinition(
         List<String> roles,
         List<ColumnDefinition> columns,
         List<FieldDefinition> rowFields,
-        SubTableSource source) {
+        SubTableSource source,
+        List<OptionItem> options) {
 
     /** 明細（master-detail）項目の type。 */
     public static final String SUB_TABLE = "subTable";
@@ -55,7 +56,8 @@ public record FieldDefinition(
             String format,
             List<String> normalize) {
         this(field, label, type, required, null, readOnly, null, validators, format,
-                normalize, null, null, null, List.of(), List.of(), List.of(), null);
+                normalize, null, null, null, List.of(), List.of(), List.of(), null,
+                List.of());
     }
 
     /** この項目が明細かどうか。 */

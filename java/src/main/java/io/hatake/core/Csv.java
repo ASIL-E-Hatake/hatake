@@ -76,7 +76,7 @@ public final class Csv {
 
     public static String toCsv(
             List<ColumnDefinition> columns, List<Map<String, Object>> rows) {
-        return toCsv(columns, rows, Options.DEFAULT, new FormatterRegistry());
+        return toCsv(columns, rows, Options.DEFAULT, new FormatterRegistry(), List.of());
     }
 
     /**
@@ -88,6 +88,19 @@ public final class Csv {
             List<Map<String, Object>> rows,
             Options options,
             FormatterRegistry formatters) {
+        return toCsv(columns, rows, options, formatters, List.of());
+    }
+
+    /**
+     * 選択肢の名前つき。{@code owners} はその画面に書いてある選択肢で、
+     * <b>落とした CSV と画面の字をそろえる</b>ために渡す。
+     */
+    public static String toCsv(
+            List<ColumnDefinition> columns,
+            List<Map<String, Object>> rows,
+            Options options,
+            FormatterRegistry formatters,
+            List<CellText.Owner> owners) {
         if (columns.isEmpty()) {
             return "";
         }
@@ -111,7 +124,7 @@ public final class Csv {
                 }
                 ColumnDefinition column = columns.get(i);
                 out.append(escape(
-                        cell(column, row.get(column.field()), options, formatters),
+                        cell(column, row.get(column.field()), options, formatters, owners),
                         options.delimiter()));
             }
             out.append(options.lineBreak());
@@ -123,11 +136,16 @@ public final class Csv {
             ColumnDefinition column,
             Object value,
             Options options,
-            FormatterRegistry formatters) {
-        if (!options.raw() && column.format() != null) {
-            return formatters.format(column.format(), value, column.config());
+            FormatterRegistry formatters,
+            List<CellText.Owner> owners) {
+        // raw: true は**機械に渡すための書き出し**（取り込み直す相手が居る）。
+        // 見せ方も選択肢の名前も当てずに、持っている値をそのまま出す。
+        if (options.raw()) {
+            return value == null ? "" : value.toString();
         }
-        return value == null ? "" : value.toString();
+        // raw でなければ**画面と同じ字**にする。前はここが Dart 版と食い違っていて、
+        // 一覧に「出荷済」と出ている列が CSV では shipped で落ちた。
+        return CellText.cellText(formatters, owners, column, value);
     }
 
     /** 引用が要るのは区切り・引用符・改行を含むときだけ。 */

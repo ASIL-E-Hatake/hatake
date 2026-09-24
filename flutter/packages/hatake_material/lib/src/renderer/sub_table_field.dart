@@ -207,13 +207,10 @@ class _SubTableField extends StatelessWidget {
     );
   }
 
-  String _cellText(ColumnDefinition column, DataRecord row) {
-    final value = row[column.field];
-    if (column.format != null) {
-      return formatters.format(column.format!, value, column.config);
-    }
-    return value?.toString() ?? '';
-  }
+  /// 明細の升も `cellText` を通す。**明細の中の選択肢は明細の中で引く**
+  /// （親の画面の選択肢とは別物なので、`rowFields` だけを渡す）。
+  String _cellText(ColumnDefinition column, DataRecord row) =>
+      cellText(formatters, field.rowFields, column, row[column.field]);
 }
 
 /// Edits one child row. Reuses [_HatakeFormFields] so the row's `required`,
