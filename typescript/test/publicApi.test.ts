@@ -38,6 +38,42 @@ describe("約束する面（@hatake-fw/api）", () => {
   });
 });
 
+describe("CI の中の使い方", () => {
+  /**
+   * CI には `node -e '…'` で枠組みを直に叩く段がいくつか在る。**そこは試験でも
+   * 道具でもないので、口を付け替えるときに見落とす**（実際 0.9.14 で見落として、
+   * 手元は全部緑なのに CI だけが `wizardForm is not a function` で落ちた）。
+   *
+   * ここで見るのは1つ: **`dist/index.js` から取っている名前は、約束した面に在るか**。
+   * 無いなら `dist/internal.js` に向ける（名前も形もそのまま使える）。
+   *
+   * 見るのは `const { … } = require(…)` の形だけ。深い道（`dist/parse.js` のような
+   * 個別のファイル）は口を通らないので対象外＝そちらは今までどおり動く。
+   */
+  it("`dist/index.js` から取っている名前は、約束した面に在る", () => {
+    const yml = readFileSync("../.github/workflows/ci.yml", "utf8");
+    const door = "dist/index.js";
+    const taken: string[] = [];
+
+    for (let at = yml.indexOf(door); at !== -1; at = yml.indexOf(door, at + 1)) {
+      const opened = yml.lastIndexOf("const {", at);
+      const closed = yml.indexOf("}", opened);
+      if (opened === -1 || closed === -1 || closed > at) continue;
+      for (const one of yml.slice(opened + "const {".length, closed).split(",")) {
+        // `a: b` は別名。**取っている側**の名前が約束の対象。
+        const name = one.split(":")[0].trim();
+        if (name !== "") taken.push(name);
+      }
+    }
+
+    // 取っている所が1つも見つからないなら、この試験は**黙って何も見ていない**。
+    expect(taken.length).toBeGreaterThan(0);
+
+    const promisedNames = new Set(frozen.exports);
+    expect(taken.filter((one) => !promisedNames.has(one))).toEqual([]);
+  });
+});
+
 describe("内部の口（@hatake-fw/api/internal）", () => {
   it("約束したものは、内部からも引ける（道を2つに割らない）", () => {
     // 同じものを2か所から出しているのではなく、**内部が上位集合**という関係。
