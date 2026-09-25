@@ -7,7 +7,7 @@ import {
   IMPACT_WORDS,
   impactLines,
   impactOf,
-} from "../src/index.js";
+} from "../src/internal.js";
 import { runCli, type CliIo } from "../src/cli.js";
 
 /**

@@ -10,7 +10,7 @@ import {
   parseDiagram,
   renderDiagram,
   roomForBoxes,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const SIMPLE: Diagram = {
   title: "図の題",

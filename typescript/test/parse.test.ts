@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DefinitionParseError } from "../src/index.js";
+import { DefinitionParseError } from "../src/internal.js";
 import { parsePageJson, parsePageYaml } from "../src/parse.js";
 import type { CrudPageDefinition } from "../src/definition.js";
 

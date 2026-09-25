@@ -12,7 +12,7 @@ import {
   explainSource,
   reviewMarkdown,
   reviewSource,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const PAGE = `
 page:

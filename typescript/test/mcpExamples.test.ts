@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { hatakeTools } from "../src/index.js";
+import { hatakeTools } from "../src/internal.js";
 
 /**
  * **説明に載せた例を、機械が実際に呼ぶ。**

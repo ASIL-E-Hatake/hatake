@@ -12,7 +12,7 @@ import {
   renderMinimize,
   shrink,
   without,
-} from "../src/index.js";
+} from "../src/internal.js";
 import { parse as parseYaml } from "yaml";
 
 const reference: DslReference = buildReference(

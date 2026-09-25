@@ -6,7 +6,7 @@ import {
   findWarnings,
   parsePageYaml,
   placeholdersWhere,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /// 一括を**区切って実行する**（`action.batchSize`）。
 ///

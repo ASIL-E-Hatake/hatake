@@ -6,7 +6,7 @@ import {
   type PlaceholderContext,
   PLACEHOLDER_CONTEXTS,
   renderPlaceholders,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /// 文言に書ける差し込みの一覧（`spec/placeholders.json` が正）。
 ///

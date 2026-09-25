@@ -9,7 +9,7 @@ import {
   fill,
   type PhraseCategory,
   SHORT_KINDS,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /** 語彙の正。各エディションはここを転記する。 */
 const vocabulary = JSON.parse(

@@ -5,7 +5,7 @@ import {
   parsePageJson,
   type FormPageDefinition,
   type ValidationError,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 // 項目間の検証（compare）と、**どれを先に言うか**の共有フィクスチャ。Dart 版・Java 版も
 // 同じものを食べる（検証がフロントとバックでズレないことが、この DSL の値打ちなので）。

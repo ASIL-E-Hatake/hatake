@@ -6,7 +6,7 @@ import {
   EFFECT_NOTE,
   effectLines,
   type EffectPair,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * 助言の効き目（`advise --effect`）。

@@ -8,7 +8,7 @@ import {
   failureSource,
   harvestFailures,
   reproOf,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const catalog = JSON.parse(
   readFileSync("../spec/failures.json", "utf8"),

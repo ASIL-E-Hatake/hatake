@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { YAML11_WORDS } from "../src/index.js";
+import { YAML11_WORDS } from "../src/internal.js";
 
 /**
  * spec のスキーマが決めるキー名は、**どちらの読み手でも同じキーになる**こと。

@@ -10,7 +10,7 @@ import {
   renderAdvice,
   unwritableAdvice,
   withDrafts,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const reference = buildReference(
   JSON.parse(readFileSync("../spec/hatake-page.schema.json", "utf8")),

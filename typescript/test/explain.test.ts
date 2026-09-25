@@ -8,7 +8,7 @@ import {
   parseAppYaml,
   parsePageYaml,
   renderExplain,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /** 定義（YAML）→ 説明。素の document も渡す（遷移先はモデルに無い）。 */
 const explain = (source: string) => {

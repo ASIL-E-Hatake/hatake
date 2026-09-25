@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeGitRange, parseGitRange, readGitPair } from "../src/index.js";
+import { describeGitRange, parseGitRange, readGitPair } from "../src/internal.js";
 
 /** 呼ばれた引数を記録する偽の git（試験に git を要らなくする）。 */
 function fakeGit(answers: Record<string, string> = {}) {

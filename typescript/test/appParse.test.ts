@@ -6,8 +6,8 @@ import {
   Densities,
   DefinitionParseError,
   UnknownKeysError,
-} from "../src/index.js";
-import { menuIsGroup, parseAppJson, parseAppYaml } from "../src/index.js";
+} from "../src/internal.js";
+import { menuIsGroup, parseAppJson, parseAppYaml } from "../src/internal.js";
 
 describe("parseAppYaml: shipped example", () => {
   const app = parseAppYaml(readFileSync("../spec/examples/sales_app.yaml", "utf8"));

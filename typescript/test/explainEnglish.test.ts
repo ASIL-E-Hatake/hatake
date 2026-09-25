@@ -6,7 +6,7 @@ import {
   renderBrief,
   renderExplain,
   voice,
-} from "../src/index.js";
+} from "../src/internal.js";
 import { runCli, type CliIo } from "../src/cli.js";
 
 /// 説明を英語で出す（`explain --lang en`）。

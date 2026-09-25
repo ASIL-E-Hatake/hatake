@@ -8,7 +8,7 @@ import {
   groupRefs,
   refsNeedingRegistration,
   unusedRegistrations,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /** 素の document（refs も警告も、解析後のモデルではなくこれを見る）。 */
 const doc = (source: string): Record<string, unknown> =>

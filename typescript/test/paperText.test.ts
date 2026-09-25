@@ -6,7 +6,7 @@ import {
   renderPaperText,
   type ReportPageDefinition,
   sampleRows,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const report = (body: string, columns: string): ReportPageDefinition =>
   parsePageYaml(

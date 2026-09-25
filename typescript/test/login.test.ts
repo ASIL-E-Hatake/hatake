@@ -8,7 +8,7 @@ import {
   masked,
   parseLogin,
   tokenFrom,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /// 資格の取り方を道具に持たせる（`probe` / `attack` の `--login`）。
 ///

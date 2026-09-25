@@ -6,7 +6,7 @@ import {
   type HttpRequest,
   renderAttack,
   restTargets,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /// 画面から見えない口を、その役割で実際に叩く（`hatake attack`）。
 ///

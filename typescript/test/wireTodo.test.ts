@@ -8,7 +8,7 @@ import {
   renderWireTodo,
   scanRegistrations,
   wireTodo,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * 埋める仕事を渡す形（`wire --merge --todo`）。

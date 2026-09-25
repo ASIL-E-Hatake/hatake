@@ -16,7 +16,7 @@ import {
   type PrintItem,
   type PrintLayout,
   type ReportPageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const PATH = "../spec/conformance/report_layout.json";
 

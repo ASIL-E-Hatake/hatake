@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { PAPERS, paperName, paperSize } from "../src/index.js";
+import { PAPERS, paperName, paperSize } from "../src/internal.js";
 
 /** 用紙の実寸の正（`spec/papers.json`）。 */
 const spec = JSON.parse(readFileSync("../spec/papers.json", "utf8")) as {

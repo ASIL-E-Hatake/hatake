@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { IntentParseError, parseIntent } from "../src/index.js";
+import { IntentParseError, parseIntent } from "../src/internal.js";
 
 /**
  * 意図の1枚（言ったこと）の読み方。

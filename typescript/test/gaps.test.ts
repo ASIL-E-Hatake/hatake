@@ -10,7 +10,7 @@ import {
   RefKinds,
   RUNTIME_KINDS,
   wiringGaps,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * 繋がっていない所を1枚で（`hatake gaps`）。

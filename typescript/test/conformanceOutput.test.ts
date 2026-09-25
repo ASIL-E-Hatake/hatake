@@ -10,7 +10,7 @@ import {
   type ColumnDefinition,
   type ReportBlock,
   type ReportPageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 // Shared output fixtures (spec/conformance), consumed identically by the Dart
 // and Java editions: a CSV comes out byte for byte the same, and a 帳票 breaks

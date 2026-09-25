@@ -6,7 +6,7 @@ import {
   isAppSource,
   type PageBrief,
   renderBrief,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const brief = (source: string, page?: string): PageBrief =>
   briefSource(source, { page }) as PageBrief;

@@ -14,7 +14,7 @@ import {
   WIDGET_DRAFT_NOTE,
   TRACE_DIFF_NOTE,
   type PageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * P0 の3本（画面の試験の下書き・変更の由来・`app.roles`）。

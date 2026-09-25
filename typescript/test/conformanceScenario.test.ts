@@ -6,7 +6,7 @@ import {
   runCase,
   type PageDefinition,
   type ScenarioCase,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 // シナリオ（定義を動かして答えを見る）の共有フィクスチャ。Dart 版も同じものを食べる
 // ＝**画面の中と道具の答えがズレない**ことが、この道具の値打ちなので。

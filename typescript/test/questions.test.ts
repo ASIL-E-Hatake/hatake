@@ -15,7 +15,7 @@ import {
   questionKindLines,
   questionLines,
   type QuestionKind,
-} from "../src/index.js";
+} from "../src/internal.js";
 import { runCli } from "../src/cli.js";
 
 /**

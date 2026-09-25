@@ -7,7 +7,7 @@ import {
   PROTOCOL_VERSIONS,
   type JsonRpcMessage,
 } from "../src/mcp.js";
-import { hatakeTools, parsePageYaml } from "../src/index.js";
+import { hatakeTools, parsePageYaml } from "../src/internal.js";
 
 // 本物の spec/ を読ませる（モックにすると「仕様と合っているか」を確かめられない）。
 const tools = hatakeTools({

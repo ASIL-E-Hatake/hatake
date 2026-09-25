@@ -6,7 +6,7 @@ import {
   parsePageJson,
   type FormPageDefinition,
   type ValidationError,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 // Shared master-detail validation fixture (spec/conformance), consumed
 // identically by the Dart and Java editions, so server-side row validation

@@ -8,7 +8,7 @@ import {
   findWarnings,
   scaffold,
   scaffoldKinds,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 type Dict = Record<string, unknown>;
 

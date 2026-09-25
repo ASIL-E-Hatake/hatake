@@ -6,7 +6,7 @@ import {
   kDslVersion,
   parsePageYaml,
   DefinitionParseError,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * DSL の版の受け取り方を、Dart 版・Java 版と同じ契約で回す。

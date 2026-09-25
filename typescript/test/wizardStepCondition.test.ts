@@ -9,7 +9,7 @@ import {
   wizardForm,
   wizardStepForm,
   type WizardPageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * ウィザードのステップ条件（`steps[].visibleWhen`）。

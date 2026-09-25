@@ -10,7 +10,7 @@ import {
   sortedLines,
   sortInstruction,
   WHERE_KINDS,
-} from "../src/index.js";
+} from "../src/internal.js";
 import { runCli, type CliIo } from "../src/cli.js";
 
 /**

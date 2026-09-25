@@ -4,7 +4,7 @@ import {
   parsePageYaml,
   type DetailPageDefinition,
   type MasterPageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 // `master` / `detail` were the two page kinds this edition could not parse, which
 // made the CLI unable to validate 2 of the 8 kinds. These pin the behaviour.

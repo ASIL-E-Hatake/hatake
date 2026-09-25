@@ -13,7 +13,7 @@ import {
   usesInCode,
   wireApp,
   wireTodo,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /// 「足した所が本当に埋まったか」を数える（`refs --filled`）と、足した所を渡す
 /// （`wire --merge --todo`）。

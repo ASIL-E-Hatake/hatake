@@ -9,7 +9,7 @@ import {
   explainDiffSources,
   explainSource,
   renderExplain,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /** 見出しの節を引く（無ければ undefined）。 */
 const section = (source: string, title: string, page?: string) =>

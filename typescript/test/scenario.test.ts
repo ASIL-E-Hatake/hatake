@@ -9,7 +9,7 @@ import {
   runScenario,
   type PageDefinition,
   type ScenarioCase,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /** 明細つきの入力画面1枚（条件・計算・行どうしの規則が一通り入っている）。 */
 const source = `page:

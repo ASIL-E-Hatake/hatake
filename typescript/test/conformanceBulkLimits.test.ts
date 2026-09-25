@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { bulkLimitOf, checkBulkLimit } from "../src/index.js";
+import { bulkLimitOf, checkBulkLimit } from "../src/internal.js";
 
 /**
  * 1回で動かせる行数の上限の共有フィクスチャを、Dart 版・Java 版と同じ契約で回す。

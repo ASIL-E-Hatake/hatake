@@ -7,7 +7,7 @@ import {
   filterExamples,
   parseAppYaml,
   parsePageYaml,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const DIR = "../spec/examples";
 

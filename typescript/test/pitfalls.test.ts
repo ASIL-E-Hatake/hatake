@@ -9,7 +9,7 @@ import {
   pitfallsForKeys,
   snippet,
   UnknownKeysError,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const catalog = JSON.parse(
   readFileSync("../spec/pitfalls.json", "utf8"),

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { buildReference, type ReferenceKey } from "../src/index.js";
+import { buildReference, type ReferenceKey } from "../src/internal.js";
 
 // チートシートは「AI に渡す1枚」なので、ここがズレると一番効く形で嘘になる。
 // 手で書く文書だが、**組み込みの名前だけは機械で縛る**（実際に過去、フィルタ演算子の

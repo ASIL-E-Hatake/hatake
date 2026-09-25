@@ -9,7 +9,7 @@ import {
   renderRunDiff,
   requestKey,
   restTargets,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /// 前回叩いた結果と比べる（`probe` / `attack` の `--since`）。
 ///

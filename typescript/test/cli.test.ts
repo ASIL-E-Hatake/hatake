@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseArgs, runCli, runCliAsync, type CliIo } from "../src/cli.js";
-import { parsePageYaml, scaffold, scaffoldKinds } from "../src/index.js";
+import { parsePageYaml, scaffold, scaffoldKinds } from "../src/internal.js";
 
 /** Collects what the CLI wrote, and serves files from memory. */
 function fakeIo(

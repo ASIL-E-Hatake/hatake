@@ -7,7 +7,7 @@ import {
   parseAdviceRules,
   renderHarvestRules,
   rulesDraft,
-} from "../src/index.js";
+} from "../src/internal.js";
 import { parse as parseYamlText } from "yaml";
 
 /**

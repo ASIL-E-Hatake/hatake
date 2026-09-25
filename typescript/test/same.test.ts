@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { minimizeSource, SAME_NOTE, sameLines, sameSources } from "../src/index.js";
-import { buildReference } from "../src/index.js";
+import { minimizeSource, SAME_NOTE, sameLines, sameSources } from "../src/internal.js";
+import { buildReference } from "../src/internal.js";
 
 /**
  * 書き方が違っても同じ画面か（`hatake same`）。

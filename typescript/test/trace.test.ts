@@ -8,7 +8,7 @@ import {
   traceIntent,
   traceLines,
   type PageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * 言ったこと（意図）と書いたもの（定義）の突き合わせ。

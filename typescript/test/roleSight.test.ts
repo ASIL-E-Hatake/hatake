@@ -7,7 +7,7 @@ import {
   roleSights,
   rolesInDocument,
   sightSummary,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * 「その役割から見ると、この定義はどう見えるか」。

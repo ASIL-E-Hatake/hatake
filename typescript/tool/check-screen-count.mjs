@@ -26,7 +26,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 
 // **`dist/` が無いと素の stack trace が出る**（`tool/` はどれも組み立て済みを読む）。
 // 何をすればいいかが読めないので、先に一言で言う。CI でも一度ここで止まった。
-if (!existsSync(join(HERE, "..", "dist", "index.js"))) {
+if (!existsSync(join(HERE, "..", "dist", "internal.js"))) {
   console.error(
     "組み立てたものが在りません（dist/）。先に `npm run build` を回してください" +
       "（tool/ の道具はどれも dist/ を読みます）。",
@@ -34,7 +34,7 @@ if (!existsSync(join(HERE, "..", "dist", "index.js"))) {
   process.exit(1);
 }
 
-const { buildIndex } = await import("../dist/index.js");
+const { buildIndex } = await import("../dist/internal.js");
 
 const ROOT = resolve(HERE, "..", "..");
 const EXAMPLES = join(ROOT, "spec", "examples");
