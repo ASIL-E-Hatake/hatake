@@ -4,7 +4,7 @@ A compressed reference for writing hatake definitions — **you do not need to r
 
 Japanese is the primary language of this project; this sheet is the English condensate. When in doubt, look things up rather than guess:
 
-```bash
+```bash uses:customer_master.yaml
 npx hatake reference <key>      # type, default, allowed values, where it may be written
 npx hatake examples <task>      # nearest example to copy
 npx hatake pitfalls <key>       # common mistake → correct form

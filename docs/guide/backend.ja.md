@@ -142,7 +142,7 @@ var api = OpenApiEmitter.toOpenApi(
 業務システムの定義は画面1枚ではなく app（画面が5〜10枚）です。1枚ずつしか出せないと
 **サーバの API 一覧は結局手で書く**ことになります（見本1本目で実際にそうなりました）。
 
-```bash
+```bash uses:customer_master.yaml
 npx hatake openapi definitions/app.yaml --base-path /api > docs/api.json
 ```
 

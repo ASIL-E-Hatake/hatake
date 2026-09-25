@@ -145,7 +145,7 @@ page:
 
 ## 4. 書いたのに効かない所を潰す
 
-```bash
+```bash uses:order_entry.yaml
 npx hatake validate order_entry.yaml
 ```
 
@@ -188,7 +188,7 @@ CI に置くなら `--warn-as-error`（警告でも終了コード 1）。
 
 **ここが一番大事**。綴りと構造は機械が見たが、「頼まれたことと合っているか」は機械には分からない。
 
-```bash
+```bash uses:order_entry.yaml
 npx hatake explain order_entry.yaml
 ```
 
@@ -263,7 +263,7 @@ npx hatake advise order_entry.yaml --apply picks.json --write
 役割（`roles`）を書くときは、先に定義に出てくる役割を数える。役割名は定義の中だけの
 取り決めなので、綴りを間違えても画面は出る（誰にも見えないだけ）。
 
-```bash
+```bash uses:order_entry.yaml
 npx hatake explain order_entry.yaml --roles
 ```
 
@@ -271,7 +271,7 @@ npx hatake explain order_entry.yaml --roles
 
 定義が**外に何を要求しているか**を数える。
 
-```bash
+```bash uses:order_entry.yaml
 npx hatake refs order_entry.yaml --needs-registration
 ```
 

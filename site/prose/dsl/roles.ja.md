@@ -127,7 +127,7 @@ HatakeScope(
 
 書く前・直したあとに、定義に出てくる役割を数える。
 
-```bash
+```bash uses:roles_app.yaml
 npx hatake explain app.yaml --roles
 ```
 
@@ -178,7 +178,7 @@ manager … 2 か所に書いてある
 
 5か所に散って書けるということは、**役割から引くには定義を全部開く**ということでもある。人事異動のたびに聞かれるのは逆向き（「この役割で何ができるか」）なので、道具に聞く。
 
-```bash
+```bash uses:roles_app.yaml
 npx hatake index app.yaml --role staff          # その役割で開ける画面だけ
 npx hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×の表
 ```
@@ -217,7 +217,7 @@ npx hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×�
 
 5か所に散って書けるということは、**役割から引くには定義を全部開く**ということでもある。人事異動のたびに聞かれるのは逆向き（「この役割で何ができるか」）なので、道具に聞く。
 
-```bash
+```bash uses:roles_app.yaml
 npx hatake index app.yaml --role staff          # その役割で開ける画面だけ
 npx hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×の表
 ```

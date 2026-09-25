@@ -120,7 +120,7 @@
 
 繋がないときは、仕様書を全部読ませるのではなく**引かせる**:
 
-```bash
+```bash uses:customer_master.yaml
 npx hatake project                  # 案件の前書き（何のシステムか・用語・名前の決めごと）
 npx hatake reference rowsPerPage    # キー名から：型・既定値・書ける場所
 npx hatake examples 小計            # やりたいことから：近い例

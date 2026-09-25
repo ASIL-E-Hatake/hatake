@@ -70,7 +70,7 @@ page:
 
 **CLI で検証する**（人も AI も同じ入口。問題があれば終了コード 1。**警告**＝解析は通るが意図どおり動かない書き方も既定で出る）:
 
-```bash
+```bash uses:customer_master.yaml
 npx hatake validate page.yaml          # 解析 + strict。--json で機械可読
 npx hatake new crud --id customer_master --title 顧客マスタ   # 雛形（8種別）
 npx hatake types page.yaml --lang java --out gen/            # ネイティブ型
