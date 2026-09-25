@@ -74,6 +74,24 @@ describe("シナリオの知らない鍵", () => {
     expect(found).toEqual([]);
   });
 
+  it("覚え書き（`$comment`）は、どこに書いてもよい", () => {
+    // 値でも確かめたいことでもなく、読む人へのひとこと。束にも1件にも書けるのに
+    // `expect` の中だけ許していなかったので、見本の網羅アプリが上げたときに
+    // 3件まとめて止まった。**止める理由が無い所で止めると、道具が信用されなくなる。**
+    const found = findUnknownScenarioKeys({
+      $comment: "この紙の説明",
+      cases: [
+        {
+          name: "a",
+          record: {},
+          $comment: "なぜこの1件か",
+          expect: { computed: { total: 1 }, $comment: "なぜこの値か" },
+        },
+      ],
+    });
+    expect(found).toEqual([]);
+  });
+
   it("値の中は見ない（業務の値は何でも入る）", () => {
     const found = findUnknownScenarioKeys({
       cases: [{ name: "a", record: { whateverTheBusinessCallsIt: 1 } }],

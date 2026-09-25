@@ -3,7 +3,7 @@ description: >-
   REST Repository for hatake: talks to exactly the API the definition's OpenAPI
   declares. An opt-in adapter — pure Dart with no transport dependency (you hand
   it a send function), so it works on web, mobile and in a batch.
-version: 0.9.11
+version: 0.9.12
 repository: https://github.com/ASIL-E-Hatake/hatake
 homepage: https://github.com/ASIL-E-Hatake/hatake
 issue_tracker: https://github.com/ASIL-E-Hatake/hatake/issues
@@ -17,7 +17,7 @@ environment:
   sdk: ^3.5.0
 
 dependencies:
-  hatake_core: ^0.9.11
+  hatake_core: ^0.9.12
 
 dev_dependencies:
   lints: ^4.0.0
