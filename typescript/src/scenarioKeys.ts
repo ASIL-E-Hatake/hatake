@@ -15,11 +15,21 @@
 // 落とすより**言って止める**ほうが直しやすいところ。なので警告ではなくエラーに
 // しますが、**1件目で止めずに全部並べます**（1往復で直せるように）。
 
+/**
+ * **覚え書きは、どこに書いてもよい。**
+ *
+ * `$comment` は値でも確かめたいことでもなく、**読む人へのひとこと**です。束にも
+ * 1件にも書けるのに、確かめたいことの中（`expect`）だけ許していなかったので、
+ * 見本の網羅アプリが上げたときに3件まとめて止まりました。**止める理由が無い所で
+ * 止めると、道具そのものが信用されなくなります。**
+ */
+const NOTE = "$comment";
+
 /** シナリオの束が取る鍵。 */
-const FILE_KEYS = new Set(["page", "cases", "$comment"]);
+const FILE_KEYS = new Set(["page", "cases", NOTE]);
 
 /** 1件が取る鍵。 */
-const CASE_KEYS = new Set(["name", "record", "mode", "expect", "$comment"]);
+const CASE_KEYS = new Set(["name", "record", "mode", "expect", NOTE]);
 
 /** 確かめたいことが取る鍵。 */
 const EXPECT_KEYS = new Set([
@@ -28,6 +38,7 @@ const EXPECT_KEYS = new Set([
   "enabled",
   "hidden",
   "required",
+  NOTE,
 ]);
 
 /** よくある書き間違い（言われて一番早いのは「これでは？」）。 */

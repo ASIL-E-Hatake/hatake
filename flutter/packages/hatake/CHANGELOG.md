@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.12
+
+シナリオの覚え書き（`$comment`）を、確かめたいことの中でも書けるようにした。
+
+変更の一覧はリポジトリの
+[CHANGELOG](https://github.com/ASIL-E-Hatake/hatake/blob/main/CHANGELOG.md)。
+
 ## 0.9.11
 
 **0.9.4 から 0.9.11 までをまとめて出す版**（この間はタグを切っていない）。
