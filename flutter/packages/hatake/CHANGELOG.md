@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.11
+
+**0.9.4 から 0.9.11 までをまとめて出す版**（この間はタグを切っていない）。
+外から使って出た不具合を直し、1.0 で凍らせる前に**破壊的な変更を入れきった**。
+
+使う側に効く大きいものは4つ:
+
+- **複合キー**（`key: [orderNo, lineNo]`）。3版の `keyField` が `keyFields` になった
+- **アプリ全体の語彙**（`app.vocabularies` ＋ `optionsOf`）。同じコード表を画面ごとに書かない
+- 値を文字にする所を1本にまとめ、**詳細画面と CSV の字が一覧と揃う**ようにした
+- `hatake openapi` が **app 1枚から全画面ぶん**を出す（詳細画面の口も宣言する）
+
+上げ方は
+[マイグレーション手引き](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/migration-0.9.11.ja.md)。
+変更の一覧はリポジトリの
+[CHANGELOG](https://github.com/ASIL-E-Hatake/hatake/blob/main/CHANGELOG.md)、
+入れ方は
+[リリースと入れ方](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/release.ja.md)。
+
 ## 0.9.3
 
 一覧から詳細へ飛ぶときの鍵を、**画面に書いてある `key` の名前**で受け取るようにした

@@ -50,6 +50,31 @@ if (numbers.length !== 1 || numbers[0] === undefined) {
   );
 }
 
+// --- 1.5. リポジトリの CHANGELOG が、名乗っている版より先に進んでいないか ----
+//
+// **版を上げ忘れても、ここまでは誰も気づきませんでした。** リポジトリの CHANGELOG
+// には 0.9.4〜0.9.11 の8節が積まれているのに、3版は 0.9.3 のままでタグも v0.9.3 止まり
+// ── それでもこの点検は通っていました（3版が揃っていて、その版の節が在ったので）。
+//
+// 上げ忘れたまま配ると、**利用者から見て「直したはずのものが入っていない」**に
+// なります。CHANGELOG のいちばん上が、名乗っている版と同じであることまで見ます。
+{
+  const top = /^## (\d+\.\d+\.\d+)/m.exec(readFileSync(join(ROOT, "CHANGELOG.md"), "utf8"));
+  const declared = numbers[0];
+  if (top !== null && declared !== undefined && top[1] !== declared) {
+    const order = (one) => one.split(".").map(Number);
+    const [a, b] = [order(top[1]), order(declared)];
+    const newer = a.some((part, at) => part > b[at] && a.slice(0, at).every((x, i) => x === b[i]));
+    fail.push(
+      newer
+        ? `CHANGELOG のいちばん上は ${top[1]} ですが、3版は ${declared} を名乗っています` +
+          "（版を上げ忘れています。上げないと、直したものが利用者に届きません）"
+        : `CHANGELOG のいちばん上は ${top[1]} で、3版が名乗る ${declared} より古いです` +
+          "（版を上げたら CHANGELOG にも1節足してください）",
+    );
+  }
+}
+
 // --- 2. 配る Dart パッケージの CHANGELOG がその版に触れているか ----------
 const packages = join(ROOT, "flutter/packages");
 let checked = 0;

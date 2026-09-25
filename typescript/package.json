@@ -1,6 +1,6 @@
 {
   "name": "@hatake-fw/api",
-  "version": "0.9.3",
+  "version": "0.9.11",
   "description": "Core definitions + parser + server-side validation for hatake (TypeScript edition). Consumes the language-agnostic hatake DSL.",
   "license": "Apache-2.0",
   "type": "module",
