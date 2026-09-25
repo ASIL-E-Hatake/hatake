@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
-import { wireApp } from "../src/index.js";
+import { wireApp } from "../src/internal.js";
 
 /// 定義から出す「アプリ側の配線」の下書き。
 ///

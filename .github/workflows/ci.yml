@@ -1170,8 +1170,11 @@ jobs:
           '
           # 条件つきのステップは、**区画の条件として畳まれる**（判定を2つ持たない）。
           node -e '
+            // 枠組みの中を覗くので **internal** から取る（`wizardForm` も
+            // `visibleWizardSteps` も約束する面には載せていない）。
+            // 0.9.14 で口を2つに分けた → typescript/src/index.ts の頭。
             const { parsePageYaml, wizardForm, visibleWizardSteps } =
-              require("./dist/index.js");
+              require("./dist/internal.js");
             const fs = require("fs");
             const page = parsePageYaml(
               fs.readFileSync("../spec/examples/customer_wizard.yaml", "utf8"),

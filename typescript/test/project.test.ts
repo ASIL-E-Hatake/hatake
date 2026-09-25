@@ -13,7 +13,7 @@ import {
   scaffold,
   toShape,
   NAMING_TARGETS,
-} from "../src/index.js";
+} from "../src/internal.js";
 import { parse as parseYamlText } from "yaml";
 import { runCli, type CliIo } from "../src/cli.js";
 

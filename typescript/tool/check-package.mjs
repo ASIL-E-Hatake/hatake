@@ -33,7 +33,16 @@ const packed = JSON.parse(run("npm", ["pack", "--json", "--silent"], { cwd: PKG 
 const tarball = join(PKG, packed[0].filename);
 const inside = new Set(packed[0].files.map((one) => one.path));
 
-for (const must of ["dist/cli.js", "dist/index.js", "spec/hatake-page.schema.json", "LICENSE"]) {
+// `dist/internal.js` も要る。**`exports` が指している口は、配った中に在ること。**
+// 無ければ `@hatake-fw/api/internal` が入れた先で解決できず、しかも壊れ方が
+// 「入れるまで分からない」（リポジトリの中では in-place で見えてしまう）。
+for (const must of [
+  "dist/cli.js",
+  "dist/index.js",
+  "dist/internal.js",
+  "spec/hatake-page.schema.json",
+  "LICENSE",
+]) {
   if (!inside.has(must)) fail(`固めた中に ${must} が入っていません`, [...inside].slice(0, 20).join("\n"));
 }
 console.log(`固めました: ${packed[0].filename}（${inside.size} ファイル / ${Math.round(packed[0].unpackedSize / 1024)} KB）`);

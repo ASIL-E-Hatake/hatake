@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AggregateRegistry } from "../src/index.js";
+import { AggregateRegistry } from "../src/internal.js";
 
 // Shared dashboard aggregate fixture (spec/conformance), consumed identically by
 // the Dart and Java editions, so a metric card shows the same number wherever it

@@ -7,7 +7,7 @@ import {
   MAX_TABS,
   parseAppYaml,
   parsePageYaml,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /// 画面を**並べて開く**（`app.navigation`）と、**遷移のボタンがどこに開くか**
 /// （`action.open`）。

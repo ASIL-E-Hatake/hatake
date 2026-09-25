@@ -11,7 +11,7 @@ import {
   parseAppSource,
   toDot,
   toMermaid,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /// 計算の依存を絵にする（`hatake diagram --computed`）と、図を貼れる形で出す。
 ///

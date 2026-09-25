@@ -5,7 +5,7 @@ import {
   scanRegistrations,
   type SourceFile,
   stripComments,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const scan = (source: string, path = "lib/main.dart") =>
   scanRegistrations([{ path, source }]);

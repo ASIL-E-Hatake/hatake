@@ -7,7 +7,7 @@ import {
   harvestFailures,
   type HarvestInput,
   renderHarvest,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const catalog = JSON.parse(
   readFileSync("../spec/failures.json", "utf8"),

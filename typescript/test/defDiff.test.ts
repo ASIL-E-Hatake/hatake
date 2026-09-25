@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
-import { type DefinitionChange, diffDefinitions } from "../src/index.js";
+import { type DefinitionChange, diffDefinitions } from "../src/internal.js";
 
 const doc = (source: string): Record<string, unknown> =>
   parseYaml(source) as Record<string, unknown>;

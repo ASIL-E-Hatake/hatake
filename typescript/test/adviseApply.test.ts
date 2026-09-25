@@ -7,7 +7,7 @@ import {
   findWarnings,
   parsePageYaml,
   renderAdviceApply,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /** 一括のある照会画面（助言が何本も出る形）。 */
 const search = (parts: { actions?: string; table?: string; key?: string } = {}) => `page:

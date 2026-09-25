@@ -5,7 +5,7 @@ import {
   explainDiffSources,
   renderExplainDiff,
   subjectOf,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /** 前後の定義を作る。[change] は before に対する置換（書き換えたい所だけ書く）。 */
 const form = (fields: string, sections = ""): string => `

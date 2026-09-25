@@ -7,7 +7,7 @@ import {
   canOpen,
   describeAudience,
   parseAppSource,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * 定義の文字列から「誰が開けるか」を数える。

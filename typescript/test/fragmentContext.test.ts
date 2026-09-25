@@ -6,7 +6,7 @@ import {
   type DslReference,
   fragmentContexts,
   UnknownFragmentContextError,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * 手引きの**断片**を、書ける場所まで見る。

@@ -5,7 +5,7 @@ import {
   ACTION_FALLBACKS,
   PRESS_KINDS,
   SAID_BY,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * 押した時の言い方（Flutter の最後の砦）と、押す前に言う側の突き合わせ。

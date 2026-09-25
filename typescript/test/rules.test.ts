@@ -9,7 +9,7 @@ import {
   rulesCatalog,
   WARNING_RULES,
   WHERE_OWNERS,
-} from "../src/index.js";
+} from "../src/internal.js";
 import { runCli, type CliIo } from "../src/cli.js";
 
 /**
@@ -114,7 +114,7 @@ describe("引く", () => {
 
 describe("規則の表は、1件ごとの言い方の正でもある", () => {
   it("直し方を渡していない警告は、表の字がそのまま出る", async () => {
-    const { findWarnings } = await import("../src/index.js");
+    const { findWarnings } = await import("../src/internal.js");
     const found = findWarnings({
       page: {
         type: "crud",
@@ -132,7 +132,7 @@ describe("規則の表は、1件ごとの言い方の正でもある", () => {
   });
 
   it("対照表への繋ぎも表から入る（呼び出し側は持たない）", async () => {
-    const { findWarnings } = await import("../src/index.js");
+    const { findWarnings } = await import("../src/internal.js");
     const found = findWarnings({
       page: {
         type: "report",

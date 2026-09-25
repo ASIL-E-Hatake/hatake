@@ -1,6 +1,6 @@
 import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
-import { mergeWiring, renderWireMerge, wireApp } from "../src/index.js";
+import { mergeWiring, renderWireMerge, wireApp } from "../src/internal.js";
 
 /// 既にある配線に、足りない登録だけを足す（`hatake wire --merge`）。
 ///

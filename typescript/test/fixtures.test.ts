@@ -4,7 +4,7 @@ import {
   parsePageYaml,
   runCase,
   type PageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * サーバ側の試験データ。

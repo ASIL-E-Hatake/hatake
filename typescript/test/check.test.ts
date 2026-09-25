@@ -15,7 +15,7 @@ import {
   parseQuestionKinds,
   parseResponsibility,
   withDrafts,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * AI の1往復を1本で（`hatake check`）。

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ADVICE_NOTE, parseAdviceRules, renderReview, reviewSource } from "../src/index.js";
+import { ADVICE_NOTE, parseAdviceRules, renderReview, reviewSource } from "../src/internal.js";
 
 const app = readFileSync("../spec/examples/sales_app.yaml", "utf8");
 const master = readFileSync("../spec/examples/customer_master.yaml", "utf8");

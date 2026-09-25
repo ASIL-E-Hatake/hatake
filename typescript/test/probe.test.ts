@@ -12,7 +12,7 @@ import {
   parseProbeHelp,
   renderProbe,
   restTargets,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /// 定義とサーバの食い違いを、実際に叩いて見る（`hatake probe`）。
 ///

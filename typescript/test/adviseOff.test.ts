@@ -6,7 +6,7 @@ import {
   findAdvice,
   parseAdviseOff,
   silencedNote,
-} from "../src/index.js";
+} from "../src/internal.js";
 import { parse as parseYamlText } from "yaml";
 import { runCli, type CliIo } from "../src/cli.js";
 import { readFileSync } from "node:fs";
@@ -160,7 +160,7 @@ describe("hatake advise と印", () => {
 
 describe("前書きから来る規則名の表", () => {
   it("**projectAdvise が出す名前と食い違わない**（片方だけ足したら落ちる）", async () => {
-    const { PROJECT_ADVICE_RULES } = await import("../src/index.js");
+    const { PROJECT_ADVICE_RULES } = await import("../src/internal.js");
     const source = readFileSync(
       new URL("../src/projectAdvise.ts", import.meta.url),
       "utf8",

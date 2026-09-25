@@ -6,7 +6,7 @@ import {
   parsePageYaml,
   strictKeyTable,
   UnknownKeysError,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 // Shared strict-keys fixture (spec/conformance), consumed identically by the
 // Dart and Java editions: the same typo is reported at the same place with the

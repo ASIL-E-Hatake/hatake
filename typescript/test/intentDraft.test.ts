@@ -6,7 +6,7 @@ import {
   parsePageYaml,
   suggestCovers,
   type PageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * 指示文から意図の下書きを起こす。

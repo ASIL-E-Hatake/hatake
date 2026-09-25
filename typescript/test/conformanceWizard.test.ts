@@ -7,7 +7,7 @@ import {
   wizardStepForm,
   type ValidationError,
   type WizardPageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 // Shared wizard validation fixture (spec/conformance), consumed identically by
 // the Dart and Java editions: a case names the `step` to validate, or null for

@@ -12,7 +12,7 @@ import {
   findDrift,
   namedSpots,
   parseProject,
-} from "../src/index.js";
+} from "../src/internal.js";
 import { runCli, type CliIo } from "../src/cli.js";
 
 /**

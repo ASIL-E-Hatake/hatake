@@ -4,7 +4,7 @@ import {
   parsePageJson,
   parsePageYaml,
   type DashboardPageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 // A dashboard has no single record: no `key`, and `repository` is only the
 // default for cards that omit one.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.14
+
+TypeScript 版の公開 API を2つに分けた（約束する面と、内部の口）。
+
+変更の一覧はリポジトリの
+[CHANGELOG](https://github.com/ASIL-E-Hatake/hatake/blob/main/CHANGELOG.md)。
+
 ## 0.9.13
 
 手引きに載せたコマンドを、定義を渡す形でも走らせるようにした（道具側の改善）。
@@ -27,7 +34,7 @@
 - `hatake openapi` が **app 1枚から全画面ぶん**を出す（詳細画面の口も宣言する）
 
 上げ方は
-[マイグレーション手引き](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/migration-0.9.11.ja.md)。
+[マイグレーション手引き](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/migration-0.9.14.ja.md)。
 変更の一覧はリポジトリの
 [CHANGELOG](https://github.com/ASIL-E-Hatake/hatake/blob/main/CHANGELOG.md)、
 入れ方は

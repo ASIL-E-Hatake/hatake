@@ -10,7 +10,7 @@ import {
   NULL_IS_AN_ANSWER,
   renderFilled,
   scanRegistrations,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * 配線の数え方が嘘をつかないこと（`refs --filled`）。

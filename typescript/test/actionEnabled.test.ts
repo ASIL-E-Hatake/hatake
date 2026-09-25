@@ -5,7 +5,7 @@ import {
   explainSource,
   findWarnings,
   parsePageYaml,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /// 押す前に**行の状態で出し分ける**（`action.enabledWhen`）。
 ///

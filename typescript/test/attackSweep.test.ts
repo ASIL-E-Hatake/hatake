@@ -8,7 +8,7 @@ import {
   restTargets,
   rolesToSweep,
   sweepHasHole,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /// 役割ぜんぶ＋誰でもない人で叩く（`hatake attack --all-roles`）。
 ///

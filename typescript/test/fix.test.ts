@@ -11,7 +11,7 @@ import {
   renderFix,
   renderFixTodo,
   soleClosestKey,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const document = (source: string): Record<string, unknown> =>
   parseYaml(source) as Record<string, unknown>;

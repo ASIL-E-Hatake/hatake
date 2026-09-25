@@ -6,7 +6,7 @@ import {
   ConditionOperators,
   findWarnings,
   type PitfallCatalog,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /** YAML を1つ食わせて、出た規則名を並べる。 */
 const rulesOf = (yaml: string): string[] =>
@@ -2267,7 +2267,7 @@ page:
   });
 
   it("**何が起きるかは節点ごとに違う**（重さを測れるように）", async () => {
-    const { WARNING_RULES } = await import("../src/index.js");
+    const { WARNING_RULES } = await import("../src/internal.js");
     expect(WARNING_RULES["visiblewhen-never-true"].happens).toContain("永久に出ません");
     expect(WARNING_RULES["requiredwhen-never-true"].happens).toContain("空のまま保存");
     expect(WARNING_RULES["readonlywhen-never-true"].happens).toContain("編集できます");

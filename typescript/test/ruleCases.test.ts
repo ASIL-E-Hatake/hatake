@@ -8,8 +8,8 @@ import {
   ruleCaseEntries,
   rulesCatalog,
   runRuleCases,
-} from "../src/index.js";
-import { parseAppYaml, parsePageYaml } from "../src/index.js";
+} from "../src/internal.js";
+import { parseAppYaml, parsePageYaml } from "../src/internal.js";
 import { stringify as toYaml } from "yaml";
 
 /**

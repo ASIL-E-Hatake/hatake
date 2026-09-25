@@ -24,7 +24,7 @@ import {
   ruleCaseEntries,
   rulesCatalog,
   runRuleCases,
-} from "../dist/index.js";
+} from "../dist/internal.js";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
 const SPEC = join(ROOT, "spec");

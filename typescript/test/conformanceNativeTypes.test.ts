@@ -5,7 +5,7 @@ import {
   parsePageJson,
   toJavaRecords,
   toTypeScript,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 // Shared native-type fixture (spec/conformance). Both targets are emitted from
 // both editions, so this proves TypeScript and Java produce identical source.

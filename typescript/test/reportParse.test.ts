@@ -4,7 +4,7 @@ import {
   parsePageJson,
   parsePageYaml,
   type ReportPageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const yaml = `
 dsl_version: "1.0"

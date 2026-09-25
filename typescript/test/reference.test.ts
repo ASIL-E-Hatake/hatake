@@ -20,7 +20,7 @@ import {
   PaperSizes,
   strictKeyTable,
   type ReferenceKey,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const schema = JSON.parse(
   readFileSync("../spec/hatake-page.schema.json", "utf8"),

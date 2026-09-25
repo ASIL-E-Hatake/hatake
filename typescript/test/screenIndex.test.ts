@@ -6,7 +6,7 @@ import {
   renderIndex,
   searchIndex,
   sizeOf,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const dir = "../spec/examples";
 const shipped: IndexInput[] = readdirSync(dir)

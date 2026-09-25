@@ -9,7 +9,7 @@ import {
   parsePageYaml,
   runScenario,
   type PageDefinition,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * まだ試していない分岐から「次に書く1件」を起こす（`run --cover --draft`）。

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
-import { applyAdvice, findAdvice, withDrafts } from "../src/index.js";
+import { applyAdvice, findAdvice, withDrafts } from "../src/internal.js";
 
 const raw = (source: string) => parseYaml(source) as Record<string, unknown>;
 const advise = (source: string) => withDrafts(raw(source), findAdvice(raw(source)));

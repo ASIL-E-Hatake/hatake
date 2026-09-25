@@ -7,7 +7,7 @@ import {
   RenameError,
   renameLines,
   RENAME_NOTE,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 /**
  * 名前を変えた先も辿る（`ask --impact <前>:<後>`）。

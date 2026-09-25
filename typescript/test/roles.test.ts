@@ -9,7 +9,7 @@ import {
   roleNames,
   roleSpots,
   roleTitleOf,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 const raw = (source: string) => parseYaml(source) as Record<string, unknown>;
 

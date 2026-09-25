@@ -24,7 +24,7 @@ import {
   type FilterDefinition,
   type OptionsOwner,
   ValidatorRegistry,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 // Shared conformance fixtures (spec/conformance), consumed identically by the
 // Dart and Java editions.

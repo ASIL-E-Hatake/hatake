@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { deriveDto, parsePageJson, toJsonSchema } from "../src/index.js";
+import { deriveDto, parsePageJson, toJsonSchema } from "../src/internal.js";
 
 // Shared JSON Schema emitter fixture (spec/conformance), consumed identically by
 // the Java edition. Scalars are compared as strings so numeric representations

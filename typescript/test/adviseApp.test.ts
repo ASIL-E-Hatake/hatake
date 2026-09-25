@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
-import { findAdvice } from "../src/index.js";
+import { findAdvice } from "../src/internal.js";
 
 /** 画面をまたいで見る助言（1枚だけ読んでも分からないもの）。 */
 const adviceOf = (yaml: string) =>

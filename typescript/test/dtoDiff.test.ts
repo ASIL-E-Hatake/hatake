@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { deriveDto, diffDto, parsePageYaml } from "../src/index.js";
+import { deriveDto, diffDto, parsePageYaml } from "../src/internal.js";
 
 /** 定義2つを比べる。 */
 function diff(before: string, after: string) {

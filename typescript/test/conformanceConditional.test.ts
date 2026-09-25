@@ -5,7 +5,7 @@ import {
   parsePageJson,
   type FormPageDefinition,
   type ValidationError,
-} from "../src/index.js";
+} from "../src/internal.js";
 
 // Shared conditional-validation fixture (spec/conformance), consumed identically
 // by the Dart and Java editions: hidden fields are not validated, `requiredWhen`

@@ -1,10 +1,10 @@
-# 0.9.3 → 0.9.11 の上げ方
+# 0.9.3 → 0.9.14 の上げ方
 
-> **中身**: 0.9.4 から 0.9.11 までをまとめて上げるときに、**手で直す所**だけ。
+> **中身**: 0.9.4 から 0.9.14 までをまとめて上げるときに、**手で直す所**だけ。
 > **読むとき**: `ref: v0.9.3` を指している案件を上げるとき。
 > 変更の全部は [CHANGELOG](../../CHANGELOG.md)。ここは**動かなくなる所**に絞る。
 
-この間はタグを切っていないので、**v0.9.3 の次は v0.9.11** です。1.0 で凍らせる前に、
+この間に入った破壊的な変更は**5つ**です。1.0 で凍らせる前に、
 破壊的な変更を入れきりました。**1.0 のあとは、ここに並ぶような変更は入れません**。
 
 ## 手で直す所は4つだけ
@@ -17,6 +17,7 @@
 | ② | `toCsv` の引数が1つ増えた | CSV を自分で書き出している案件 |
 | ③ | `ColumnDefinition` に `options` が増えた | 列を Dart / Java から組み立てている案件 |
 | ④ | Java の `FieldDefinition` / `FilterDefinition` に `options` が増えた | Java で項目を組み立てている案件 |
+| ⑤ | **TypeScript の公開 API を2つに分けた** | `@hatake-fw/api` から**内部の道具**を取っている案件 |
 
 **YAML で定義を書いて、Repository を実装しているだけの案件は、①〜④のどれにも
 当たりません。** `ref:` を差し替えるだけで上がります。
@@ -147,6 +148,49 @@ new ColumnDefinition(field, label, type, format, config)
 
 ---
 
+## ⑤ TypeScript の公開 API が2つに分かれた
+
+根の口（`@hatake-fw/api`）が **142 モジュールを丸ごと**出していたので、**内部に定数を
+1つ足すだけで公開 API が1つ増えて**いました。1.0 で凍らせると、人に見せる字を良くする
+だけで「約束を破った」ことになるので、分けました。
+
+| 口 | 約束するか | 何が在るか |
+|---|---|---|
+| `@hatake-fw/api` | **する** | 手引きが名前で案内しているもの（35個＋型） |
+| `@hatake-fw/api/internal` | **しない** | 枠組みの中身そのもの（588個） |
+
+**道は消していません。** 根の口から取れなくなったものは、`/internal` から
+そのまま取れます。
+
+```ts
+// 前
+import { findWarnings } from "@hatake-fw/api";
+// 後（名前も形もそのまま。約束しないだけ）
+import { findWarnings } from "@hatake-fw/api/internal";
+```
+
+当たるかどうかは1行で分かります。
+
+```bash
+grep -rn 'from "@hatake-fw/api"' . --include=*.ts --include=*.mjs --include=*.js   | grep -v node_modules
+```
+
+出てきた import の中身が**下の35個に入っていれば、直す所はありません**。
+
+```
+parsePageYaml parsePageJson parseAppYaml parseAppJson parsePageMap parseAppMap
+parseAppSource DefinitionParseError UnknownKeysError checkDslVersion kDslVersion
+FormValidator ValidatorRegistry buildQuery deriveDto toJsonSchema toOpenApi
+toTypeScript toJavaRecords FormatterRegistry ConverterRegistry ComputedRegistry
+AggregateRegistry toCsv checkBulkLimit
+ageAt tenure eraOf fiscalYear fiscalQuarter
+isBusinessDay nextBusinessDay prevBusinessDay computeTax computeInvoice
+```
+
+> 見本3本が使っていたのは `FormValidator` / `buildQuery` / `checkBulkLimit` /
+> `deriveDto` / `parseAppSource` / `toOpenApi` の6個で、**全部この中**でした
+> （＝直す所ゼロ）。
+
 ## 直さなくていいのに、良くなっている所
 
 上げるだけで効きます（**手で直す所はありません**）。
@@ -215,4 +259,5 @@ npx hatake check definitions/app.yaml
 | これまで緑だった検証が赤くなった | 黙っていた間違いを言うようになった。**中身を見てから**直す |
 | シナリオが「知らないキー」で止まる | 値の入り口は `record`。`input` などは黙って捨てられていた |
 | サーバが 500 で落ちる（`reading 'replace'` など） | 解析後のモデルから `keyField` を読んでいる。`keyFields[0]` に直す |
+| `@hatake-fw/api` から取れなくなった名前がある | ⑤ の分割。`@hatake-fw/api/internal` に向け直す（名前も形もそのまま） |
 | 合計が 0 になると言われた | `computed` に `fields` も `field` も無い。前から 0 だったのが、言うようになった |
