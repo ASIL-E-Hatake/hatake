@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.13
+
+手引きに載せたコマンドを、定義を渡す形でも走らせるようにした（道具側の改善）。
+
+変更の一覧はリポジトリの
+[CHANGELOG](https://github.com/ASIL-E-Hatake/hatake/blob/main/CHANGELOG.md)。
+
 ## 0.9.12
 
 シナリオの覚え書き（`$comment`）を、確かめたいことの中でも書けるようにした。

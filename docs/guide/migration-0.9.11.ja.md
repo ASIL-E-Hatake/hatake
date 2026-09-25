@@ -23,6 +23,21 @@
 
 ---
 
+## まず、当たる所を探す
+
+```bash
+grep -rn "keyField\|toCsv\|new ColumnDefinition\|new FieldDefinition" .   --include=*.dart --include=*.java --include=*.js --include=*.mjs --include=*.ts   | grep -v keyFields
+```
+
+**言語を絞らないでください。** 見本を上げたとき、`.dart` と `.java` だけを見て
+「当たり無し」と判断し、**Node サーバの1行を見落とし**ました。
+
+しかも壊れ方が分かりにくい形でした。`page.keyField` が `undefined` になり、
+それがそのまま SQL の列名を作る所へ流れて
+`Cannot read properties of undefined (reading 'replace')` という
+**枠組みと無関係に見えるエラー**で 500 を返しました。
+**定義の検証も Flutter の解析も通っていた**ので、API を叩くまで出ませんでした。
+
 ## ① `keyField` → `keyFields`
 
 1件を指すのに**2つ以上の項目**が要る画面（受注明細＝受注番号＋行番号）を
@@ -147,9 +162,37 @@ new ColumnDefinition(field, label, type, format, config)
 
 ---
 
+## 上げただけでは直らないものがある
+
+0.9.4 で「詳細画面も選択肢の名前を引く」ようにしました。ところが見本を上げても、
+詳細画面の受注状態は **`shipped` のまま**でした。
+
+理由は、**その画面に選択肢が書かれていなかった**こと。同じコード表が定義の2か所に
+あり、詳細画面には無かったのです。枠組みが「引ける」ようになっても、
+**引く相手を書いていなければ出ません**。
+
+0.9.5 の語彙（`app.vocabularies`）がこのための機能です。
+
+```yaml no-check:app の断片（語彙とその指し方）
+app:
+  vocabularies:
+    - name: orderStatus
+      options:
+        - { value: shipped, label: 出荷済 }
+  pages:
+    - # …
+      form:
+        sections:
+          - fields:
+              - { field: orderStatus, label: 受注状態, optionsOf: orderStatus }
+```
+
+当てたら「出荷済」になり、定義の重複も 2か所 → 1か所になりました。
+**上げたあとに画面を見る**と、こういう余地が見つかります。
+
 ## 上げる手順
 
-```bash
+```bash uses:sales_app.yaml
 # 1. 参照を差し替える（pubspec.yaml / package.json / build.gradle）
 #    v0.9.3 → v0.9.11
 # 2. 取り直す
@@ -171,4 +214,5 @@ npx hatake check definitions/app.yaml
 | 一覧の選択がおかしい（同じ行が2回数えられる） | 鍵を `record[...]` で直に作っている。`recordKeyOf` を通す |
 | これまで緑だった検証が赤くなった | 黙っていた間違いを言うようになった。**中身を見てから**直す |
 | シナリオが「知らないキー」で止まる | 値の入り口は `record`。`input` などは黙って捨てられていた |
+| サーバが 500 で落ちる（`reading 'replace'` など） | 解析後のモデルから `keyField` を読んでいる。`keyFields[0]` に直す |
 | 合計が 0 になると言われた | `computed` に `fields` も `field` も無い。前から 0 だったのが、言うようになった |
