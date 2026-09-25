@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import * as promised from "../src/index.js";
 import * as internal from "../src/internal.js";
@@ -38,39 +39,65 @@ describe("約束する面（@hatake-fw/api）", () => {
   });
 });
 
-describe("CI の中の使い方", () => {
+describe("枠組み自身の使い方", () => {
   /**
-   * CI には `node -e '…'` で枠組みを直に叩く段がいくつか在る。**そこは試験でも
-   * 道具でもないので、口を付け替えるときに見落とす**（実際 0.9.14 で見落として、
-   * 手元は全部緑なのに CI だけが `wizardForm is not a function` で落ちた）。
+   * **自分の CI と道具が、自分の口をどう叩いているか。**
    *
-   * ここで見るのは1つ: **`dist/index.js` から取っている名前は、約束した面に在るか**。
-   * 無いなら `dist/internal.js` に向ける（名前も形もそのまま使える）。
+   * CI には `node -e '…'` で枠組みを直に叩く段が 60 以上あり、`tool/*.mjs` も
+   * `dist/` を直に読む。どちらも**試験ではないので `npm test` では1行も走らない**。
+   * 0.9.14 で口を2つに分けたとき、手元は 2354 件すべて緑なのに CI だけが
+   * 続けて落ちた（`wizardForm` → `checkFragmentInContext`）。
    *
-   * 見るのは `const { … } = require(…)` の形だけ。深い道（`dist/parse.js` のような
-   * 個別のファイル）は口を通らないので対象外＝そちらは今までどおり動く。
+   * 見るのは1つ: **`index` から取っている名前は、約束した面に在るか**。
+   * 無いなら `internal` に向ける（名前も形もそのまま使える）。
+   *
+   * ここは**速い見張り**で、通し実行の代わりではない。CI の段を本当に走らせるなら
+   * `node tool/ci-local.mjs`（落ちても止まらず、落ちた段を全部並べる）。
    */
-  it("`dist/index.js` から取っている名前は、約束した面に在る", () => {
-    const yml = readFileSync("../.github/workflows/ci.yml", "utf8");
-    const door = "dist/index.js";
+  const door = (text: string, mark: string): string[] => {
     const taken: string[] = [];
+    for (let at = text.indexOf(mark); at !== -1; at = text.indexOf(mark, at + 1)) {
+      // **本当に取っている所だけ**を見る。`check-package.mjs` は配る中身の必須として
+      // `"dist/index.js"` という字を並べているだけで、取ってはいない。字の一致だけで
+      // 拾うと、そこを指して「約束の面に無い」と言い出す（実際に一度言った）。
+      // なので、この字が**取り込みの行き先として書かれている**ことを先に確かめる。
+      const quote = Math.max(text.lastIndexOf('"', at), text.lastIndexOf("'", at));
+      if (quote === -1) continue;
+      const before = text.slice(Math.max(0, quote - 12), quote).trimEnd();
+      if (!before.endsWith("from") && !before.endsWith("require(")) continue;
 
-    for (let at = yml.indexOf(door); at !== -1; at = yml.indexOf(door, at + 1)) {
-      const opened = yml.lastIndexOf("const {", at);
-      const closed = yml.indexOf("}", opened);
-      if (opened === -1 || closed === -1 || closed > at) continue;
-      for (const one of yml.slice(opened + "const {".length, closed).split(",")) {
-        // `a: b` は別名。**取っている側**の名前が約束の対象。
-        const name = one.split(":")[0].trim();
+      // 直前の `{ … }`（`import { a, b } from` / `const { a } = require(`）。
+      const closed = text.lastIndexOf("}", at);
+      const opened = text.lastIndexOf("{", closed);
+      if (opened === -1 || closed === -1) continue;
+      for (const one of text.slice(opened + 1, closed).split(",")) {
+        // `a: b` は別名。**取っている側**の名前が約束の対象。`type` は付け外し自由。
+        const name = one.split(":")[0].replace(/\btype\b/, "").trim();
         if (name !== "") taken.push(name);
       }
     }
+    return taken;
+  };
 
-    // 取っている所が1つも見つからないなら、この試験は**黙って何も見ていない**。
-    expect(taken.length).toBeGreaterThan(0);
+  // 深い道（`dist/parse.js` のような個別のファイル）は口を通らないので対象外。
+  const doors = [
+    { path: "../.github/workflows/ci.yml", mark: "dist/index.js" },
+    ...readdirSync("tool")
+      .filter((one) => one.endsWith(".mjs"))
+      .map((one) => ({ path: join("tool", one), mark: "dist/index.js" })),
+  ];
 
-    const promisedNames = new Set(frozen.exports);
-    expect(taken.filter((one) => !promisedNames.has(one))).toEqual([]);
+  const promisedNames = new Set(frozen.exports);
+
+  it.each(doors)("$path が index から取る名前は、約束した面に在る", ({ path, mark }) => {
+    const off = door(readFileSync(path, "utf8"), mark).filter((one) => !promisedNames.has(one));
+    expect(off).toEqual([]);
+  });
+
+  it("`ci.yml` を本当に読めている（黙って何も見ない状態にならない）", () => {
+    // 読む所を動かしたときに、試験が**静かに空振り**するのを止める。
+    expect(door(readFileSync("../.github/workflows/ci.yml", "utf8"), "dist/index.js").length)
+      .toBeGreaterThan(0);
   });
 });
 

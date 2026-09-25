@@ -11,9 +11,16 @@
 //
 // 回し方（Windows からは Docker で。CI と同じ Linux で走らせる）:
 //
-//   docker run --rm -v "$(pwd -W):/w" -w /w/typescript node:22-slim \
-//     sh -c 'apt-get update -qq && apt-get install -y -qq git python3 >/dev/null \
-//            && node tool/ci-local.mjs'
+//   docker run --rm -v "$(pwd -W):/w" -w /w/typescript node:22-slim sh -c '
+//     apt-get update -qq && apt-get install -y -qq git curl python3 python3-pip >/dev/null
+//     git config --global --add safe.directory "*"
+//     node tool/ci-local.mjs'
+//
+// **道具を入れ忘れると、中身が正しくても落ちます**（`curl: command not found` /
+// `pip: command not found`）。GitHub の ubuntu には最初から在るので、CI では起きない。
+// `--list` で番号を見て、落ちた段が exit 127 ならまずこれを疑うこと。
+// なお Debian の pip は外から入れるのを嫌がるので、要るなら
+// `pip install --break-system-packages …` にする（CI 側は素の `pip install`）。
 //
 //   node tool/ci-local.mjs --list          … 段の一覧（番号つき）
 //   node tool/ci-local.mjs --from 30       … 30 番目から

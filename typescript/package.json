@@ -39,7 +39,8 @@
     "test": "vitest run",
     "bundle-spec": "node tool/bundle-spec.mjs",
     "prepack": "node tool/bundle-spec.mjs && tsc",
-    "check-versions": "node tool/check-versions.mjs"
+    "check-versions": "node tool/check-versions.mjs",
+    "ci-local": "node tool/ci-local.mjs"
   },
   "dependencies": {
     "yaml": "^2.5.0"
