@@ -69,7 +69,7 @@ tarball なら関係ないし、**`spec/` を同梱できる**のが大きい（
 同じやり方で `.tgz` を貼る。**3つとも同じ番号**で出す（→ [版の足並み](../compat.ja.md#版の足並み)）。
 
 ```bash no-check:見本の案件で入れるとき
-npm i https://github.com/ASIL-E-Hatake/hatake/releases/download/v0.9.16/hatake-fw-runtime-0.9.16.tgz       https://github.com/ASIL-E-Hatake/hatake/releases/download/v0.9.16/hatake-fw-vue3-0.9.16.tgz
+npm i https://github.com/ASIL-E-Hatake/hatake/releases/download/v0.9.17/hatake-fw-runtime-0.9.17.tgz       https://github.com/ASIL-E-Hatake/hatake/releases/download/v0.9.17/hatake-fw-vue3-0.9.17.tgz
 ```
 
 **組む順番が要る。** `runtime` は `api` の型を、Renderer は `runtime` の型を見るので、
@@ -80,7 +80,17 @@ npm install
 npm run build --workspace @hatake-fw/api
 npm run build --workspace @hatake-fw/runtime
 for pkg in runtime vue3 react19; do (cd "web/$pkg" && npm pack); done
+node web/tool/check-tarballs.mjs 0.9.17
 ```
+
+**ふつうは手で固めなくていい。** tag を push すれば
+[Release のワークフロー](../../.github/workflows/release.yml)が同じことをやって貼る。
+手で回すのは、貼り直したいときだけ（Actions から `workflow_dispatch` で tag を渡す）。
+
+固める前に各パッケージの `prepack` が `tsc` を回すので、**組み忘れたまま固まることは
+無い**。それでも `check-tarballs.mjs` が中身を見るのは、0.9.16 で実際に
+**`dist/` が空の tarball を作りかけた**（Renderer を組まずに固めていた）ため。
+npm は空でも何も言わない。
 
 Renderer は `peerDependencies` でホストを要求するだけなので、案件側に Vue か React が
 入っていれば足りる（こちらは持ち込まない）。見た目は `@hatake-fw/runtime/hatake.css` を
