@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import * as promised from "../src/index.js";
@@ -110,6 +110,45 @@ describe("枠組み自身の使い方", () => {
     // 読む所を動かしたときに、試験が**静かに空振り**するのを止める。
     expect(door(readFileSync("../.github/workflows/ci.yml", "utf8"), "dist/index.js").length)
       .toBeGreaterThan(0);
+  });
+});
+
+describe("ブラウザに載ること", () => {
+  /**
+   * **約束する面は、ブラウザでそのまま動く。**
+   *
+   * Web の Renderer（`@hatake-fw/vue3` / `@hatake-fw/react19`）は、定義を読む所に
+   * この口をそのまま使う。だから専用の `core` パッケージを切り出していない
+   * （→ [Web の Renderer](../../docs/proposals/web-renderers.ja.md)）。
+   *
+   * これが成り立っているのは偶然ではなく、0.9.14 で**呼ぶ相手が業務のコード**という
+   * 線を引いたから。CLI も MCP も probe も `internal` 側なので `index` から辿れない。
+   * ただし**線を引いた事実は、足すときに思い出されない**。`index` に `node:fs` を
+   * 引くものを1つ足した瞬間に、Renderer の束ね直しが壊れる（しかも壊れるのは
+   * 案件のビルドなので、こちらの CI では出ない）。だからここで見る。
+   */
+  it("`index` から `node:` を引くものを辿れない", () => {
+    const seen = new Set<string>();
+    const offenders: string[] = [];
+
+    const walk = (file: string): void => {
+      if (seen.has(file) || !existsSync(file)) return;
+      seen.add(file);
+      const src = readFileSync(file, "utf8");
+      for (const found of src.matchAll(/from "([^"]+)"/g)) {
+        const to = found[1];
+        if (to.startsWith("node:")) {
+          offenders.push(`${file} → ${to}`);
+        } else if (to.startsWith(".")) {
+          walk(join("src", to.replace(/^\.\//, "").replace(/\.js$/, ".ts")));
+        }
+      }
+    };
+    walk(join("src", "index.ts"));
+
+    // 辿れていること自体も見る（歩き方を間違えたら黙って通る）。
+    expect(seen.size).toBeGreaterThan(20);
+    expect(offenders).toEqual([]);
   });
 });
 

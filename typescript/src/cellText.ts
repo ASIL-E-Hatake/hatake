@@ -25,6 +25,8 @@ export interface DisplayedLike {
   field: string;
   format?: string | null;
   config?: Record<string, unknown>;
+  /** **自分が持っている選択肢**（列の `optionsOf` が展開されたもの）。無ければ空。 */
+  options?: { value: unknown; label: string }[];
 }
 
 /**
@@ -65,6 +67,10 @@ export function cellText(
   value: unknown,
 ): string {
   if (at.format) return formatters.format(at.format, value, at.config ?? {});
+  // **自分が持っている選択肢が先。** 列に `optionsOf` を書いた画面は、その列の
+  // 語彙で字を出す（画面のどこかに同じ項目名の入力欄が在るとは限らない）。
+  const own = optionLabelIn([{ field: at.field, options: at.options }], at.field, value);
+  if (own !== undefined) return own;
   return optionLabelIn(owners, at.field, value) ?? textOf(value);
 }
 

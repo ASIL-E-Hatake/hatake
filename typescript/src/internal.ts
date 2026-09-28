@@ -16,6 +16,8 @@
 // **道は残して、約束だけを分け**ました。
 
 export * from "./definition.js";
+export * from "./vocabularies.js";
+export * from "./cellText.js";
 export * from "./parse.js";
 export * from "./strictKeys.js";
 export * from "./reference.js";
@@ -74,6 +76,7 @@ export * from "./paperText.js";
 export * from "./sampleRows.js";
 export * from "./report.js";
 export * from "./query.js";
+export * from "./recordKey.js";
 export * from "./dslVersion.js";
 export * from "./dto.js";
 export * from "./dtoDiff.js";

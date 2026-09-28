@@ -1,0 +1,35 @@
+{
+  "name": "@hatake-fw/runtime",
+  "version": "0.9.16",
+  "description": "Framework-agnostic front-end runtime for hatake: controllers, registries and routing driven by the definition. The Vue and React renderers only draw what this decides.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./hatake.css": "./hatake.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "hatake.css",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hatake-fw/api": "0.9.16"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

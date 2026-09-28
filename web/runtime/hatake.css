@@ -1,0 +1,233 @@
+/*
+ * hatake の見た目 — **素の CSS だけ**。
+ *
+ * 外の UI ライブラリには乗らない。乗ると速いが、その版に引っ張られる
+ * （名前にホストの版を入れてまで引っ張られないようにしたのに、見た目で別の版に
+ * 縛られては意味が無い）。
+ *
+ * 上書きの道は2つ:
+ *
+ *   1. **CSS 変数を差し替える**（下の :root か、囲みの要素に当てる）。ここが普通
+ *   2. **クラス名を狙う**（`.hatake-table th { … }`）。細かく変えたいとき
+ *
+ * **クラス名は契約。** Renderer の都合で変えない（案件の CSS が黙って効かなくなる）。
+ * Vue と React は**同じクラス名を出す**ので、案件の見た目を作り直さずに Renderer を
+ * 差し替えられる。
+ */
+
+:root {
+  /* 色 */
+  --hatake-color-primary: #3f51b5;
+  --hatake-color-on-primary: #ffffff;
+  --hatake-color-danger: #c62828;
+  --hatake-color-text: #1a1a1a;
+  --hatake-color-muted: #666666;
+  --hatake-color-border: #dddddd;
+  --hatake-color-surface: #ffffff;
+  --hatake-color-canvas: #f7f7fa;
+  --hatake-table-stripe: #fafafa;
+
+  /* 間と形 */
+  --hatake-space: 8px;
+  --hatake-radius: 6px;
+  --hatake-border: 1px solid var(--hatake-color-border);
+
+  /* 字 */
+  --hatake-font: system-ui, -apple-system, "Segoe UI", "Hiragino Sans",
+    "Noto Sans JP", sans-serif;
+  --hatake-font-size: 14px;
+}
+
+/* 暗いほうは**上書きの例**として置く（自動では切り替えない＝業務系は指定が多い）。
+   使うなら :root[data-hatake-theme="dark"] を当てる。 */
+:root[data-hatake-theme="dark"] {
+  --hatake-color-text: #eeeeee;
+  --hatake-color-muted: #aaaaaa;
+  --hatake-color-border: #444444;
+  --hatake-color-surface: #1e1e22;
+  --hatake-color-canvas: #141417;
+  --hatake-table-stripe: #26262b;
+}
+
+.hatake-page {
+  font-family: var(--hatake-font);
+  font-size: var(--hatake-font-size);
+  color: var(--hatake-color-text);
+  background: var(--hatake-color-canvas);
+  padding: calc(var(--hatake-space) * 2);
+}
+
+.hatake-title {
+  font-size: 1.4em;
+  margin: 0 0 calc(var(--hatake-space) * 2);
+}
+
+/* ── 検索 ───────────────────────────────────────────────── */
+.hatake-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--hatake-space);
+  margin-bottom: calc(var(--hatake-space) * 2);
+}
+
+/* ── 項目 ───────────────────────────────────────────────── */
+.hatake-field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hatake-space) / 2);
+}
+
+.hatake-field-label {
+  color: var(--hatake-color-muted);
+  font-size: 0.9em;
+}
+
+.hatake-field-required::after {
+  content: "*";
+  color: var(--hatake-color-danger);
+  margin-left: 2px;
+}
+
+.hatake-field input,
+.hatake-field select,
+.hatake-field textarea {
+  font: inherit;
+  color: inherit;
+  padding: var(--hatake-space);
+  border: var(--hatake-border);
+  border-radius: var(--hatake-radius);
+  background: var(--hatake-color-surface);
+}
+
+.hatake-field-error input,
+.hatake-field-error select,
+.hatake-field-error textarea {
+  border-color: var(--hatake-color-danger);
+}
+
+.hatake-field-message {
+  color: var(--hatake-color-danger);
+  font-size: 0.9em;
+}
+
+/* ── 表 ─────────────────────────────────────────────────── */
+.hatake-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--hatake-color-surface);
+  border: var(--hatake-border);
+  border-radius: var(--hatake-radius);
+  overflow: hidden;
+}
+
+.hatake-table th,
+.hatake-table td {
+  text-align: left;
+  padding: var(--hatake-space);
+  border-bottom: var(--hatake-border);
+}
+
+.hatake-table th {
+  color: var(--hatake-color-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 数値の列は右に寄せる（業務の表では読みやすさが違う）。 */
+.hatake-cell-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.hatake-table tbody tr:nth-child(even) {
+  background: var(--hatake-table-stripe);
+}
+
+.hatake-table-empty {
+  color: var(--hatake-color-muted);
+  padding: calc(var(--hatake-space) * 3);
+  text-align: center;
+}
+
+/* ── ボタン ─────────────────────────────────────────────── */
+.hatake-button {
+  font: inherit;
+  padding: var(--hatake-space) calc(var(--hatake-space) * 2);
+  border: var(--hatake-border);
+  border-radius: var(--hatake-radius);
+  background: var(--hatake-color-surface);
+  color: inherit;
+  cursor: pointer;
+}
+
+.hatake-button-primary {
+  background: var(--hatake-color-primary);
+  color: var(--hatake-color-on-primary);
+  border-color: transparent;
+}
+
+.hatake-button-danger {
+  color: var(--hatake-color-danger);
+}
+
+/* **押せない理由は色だけで言わない**（画面の外にも伝わるように title / aria で言う）。 */
+.hatake-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── ページ送り ─────────────────────────────────────────── */
+.hatake-pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--hatake-space);
+  margin-top: calc(var(--hatake-space) * 2);
+  color: var(--hatake-color-muted);
+}
+
+/* ── 帳票 ───────────────────────────────────────────────── */
+.hatake-sheet {
+  background: var(--hatake-color-surface);
+  border: var(--hatake-border);
+  padding: calc(var(--hatake-space) * 3);
+  margin-bottom: calc(var(--hatake-space) * 2);
+}
+
+/* ── ダッシュボード ─────────────────────────────────────── */
+.hatake-dashboard {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: calc(var(--hatake-space) * 2);
+}
+
+.hatake-card {
+  background: var(--hatake-color-surface);
+  border: var(--hatake-border);
+  border-radius: var(--hatake-radius);
+  padding: calc(var(--hatake-space) * 2);
+}
+
+.hatake-metric {
+  font-size: 2em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── ウィザード ─────────────────────────────────────────── */
+.hatake-steps {
+  display: flex;
+  gap: var(--hatake-space);
+  margin-bottom: calc(var(--hatake-space) * 2);
+  color: var(--hatake-color-muted);
+}
+
+.hatake-step-current {
+  color: var(--hatake-color-primary);
+  font-weight: 600;
+}
+
+/* 画面が狭いときは表を横に送る（業務の表は列が多い）。 */
+@media (max-width: 640px) {
+  .hatake-table-scroll {
+    overflow-x: auto;
+  }
+}

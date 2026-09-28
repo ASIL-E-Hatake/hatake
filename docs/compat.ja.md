@@ -147,7 +147,7 @@ cd java && HATAKE_WRITE_PUBLIC_API=1 gradle test --tests '*PublicApiTest'
 | | 名前空間 | 名前 | 例 |
 |---|---|---|---|
 | pub.dev | 無し | `hatake_<役割>` | `hatake_core` / `hatake_material` |
-| npm | `@hatake-fw` | `<役割>` | `@hatake-fw/api` / `@hatake-fw/vue` |
+| npm | `@hatake-fw` | `<役割>` | `@hatake-fw/api` / `@hatake-fw/runtime` |
 | Maven | `io.github.asil-e-hatake` | `hatake-<役割>` | `hatake-core` |
 | GitHub | `ASIL-E-Hatake` | `hatake` | |
 
@@ -156,8 +156,25 @@ cd java && HATAKE_WRITE_PUBLIC_API=1 gradle test --tests '*PublicApiTest'
 Renderer を、それぞれ名前で誤ラベルする）。無印の `hatake` は 2024 年に別人が取っていた
 ので、**中立な修飾**（`-fw`）を付けて逃げた。
 
-**Renderer は描画先の名前で呼ぶ**（`hatake_material` / `@hatake-fw/vue`）。
+**Renderer は描画先の名前で呼ぶ**（`hatake_material` / `@hatake-fw/vue3`）。
 「どの Renderer か」は交換の単位そのものなので、名前がそれを言う。
+
+### 例外：npm の Renderer は、名前にホストのメジャー版を入れる
+
+    @hatake-fw/vue3     … peerDependencies: vue ^3
+    @hatake-fw/react19  … peerDependencies: react ^19
+
+Vue 4 が来たら `@hatake-fw/vue4` という**別パッケージ**を出す（`@hatake-fw/vue` の
+major を上げるのではない）。理由は2つ:
+
+- **ホストの版に引っ張られない。** Vue 3 の案件と Vue 4 の案件が並走できる。役割だけの
+  名前にして自分の major で表すやり方（`vue-router` 方式）だと、Vue 3 の案件は古い major
+  に取り残される。
+- **[版の足並み](#版の足並み)と衝突しない。** `vue3` と `react19` が同じ番号を名乗れる。
+  役割だけの名前だと `@hatake-fw/vue` が 2.x で core が 1.5、のように番号が割れる。
+
+**Dart 側には版を入れない**（`hatake_material` のまま）。Flutter の Material に、
+競合するメジャーが無いため。設計は [Web の Renderer](proposals/web-renderers.ja.md)。
 
 ### 役割の名前（版をまたいで同じ意味で使う）
 

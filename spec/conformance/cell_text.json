@@ -1,0 +1,117 @@
+{
+  "$comment": "値を人に見せる字にするところ（cellText）。0.9.4 で3版のコードを1か所にまとめたが、**同じ答えになることを縛るフィクスチャが無かった**ため、Dart だけが「列が自分で持っている選択肢」を見ていて TypeScript と Java は見ていない、という食い違いが 0.9.15 まで残った（列に optionsOf を書いた画面が、Flutter ではラベル・他の版では生の値で出ていた）。見る順番は 整形（format） → 自分の選択肢 → 画面の選択肢 → 素の字 で、どの版でも同じ。並びと入れ子を空にするのは、[{orderNo: …}] のような中身を人に見せないため。",
+  "cases": [
+    {
+      "name": "選択肢が無ければ素の字",
+      "column": { "field": "name" },
+      "owners": [],
+      "value": "あおぞら商事",
+      "text": "あおぞら商事"
+    },
+    {
+      "name": "列が自分で持っている選択肢でラベルにする",
+      "column": {
+        "field": "status",
+        "options": [
+          { "value": "active", "label": "取引中" },
+          { "value": "closed", "label": "取引終了" }
+        ]
+      },
+      "owners": [],
+      "value": "closed",
+      "text": "取引終了"
+    },
+    {
+      "name": "画面のどこかに在る選択肢でもラベルにする",
+      "column": { "field": "status" },
+      "owners": [
+        {
+          "field": "status",
+          "options": [
+            { "value": "active", "label": "取引中" },
+            { "value": "closed", "label": "取引終了" }
+          ]
+        }
+      ],
+      "value": "active",
+      "text": "取引中"
+    },
+    {
+      "name": "**自分の選択肢が先**（画面の選択肢より優先する）",
+      "column": {
+        "field": "status",
+        "options": [{ "value": "active", "label": "列の言い方" }]
+      },
+      "owners": [{ "field": "status", "options": [{ "value": "active", "label": "画面の言い方" }] }],
+      "value": "active",
+      "text": "列の言い方"
+    },
+    {
+      "name": "整形は選択肢より先（format が在れば選択肢を見ない）",
+      "column": {
+        "field": "total",
+        "format": "currency",
+        "options": [{ "value": 1234567, "label": "選択肢の言い方" }]
+      },
+      "owners": [],
+      "value": 1234567,
+      "text": "1,234,567"
+    },
+    {
+      "name": "整形の細かい指定は config から読む",
+      "column": { "field": "total", "format": "currency", "config": { "symbol": "¥", "decimals": 2 } },
+      "owners": [],
+      "value": 1234,
+      "text": "¥1,234.00"
+    },
+    {
+      "name": "型が違っても同じものを指していれば引ける（REST が文字で返す）",
+      "column": { "field": "rank", "options": [{ "value": 10, "label": "上位" }] },
+      "owners": [],
+      "value": "10",
+      "text": "上位"
+    },
+    {
+      "name": "引けない値は素の字（黙って空にしない）",
+      "column": { "field": "status", "options": [{ "value": "active", "label": "取引中" }] },
+      "owners": [],
+      "value": "unknown",
+      "text": "unknown"
+    },
+    {
+      "name": "null は空",
+      "column": { "field": "name" },
+      "owners": [],
+      "value": null,
+      "text": ""
+    },
+    {
+      "name": "並びは空にする（[{orderNo: …}] を人に見せない）",
+      "column": { "field": "lines" },
+      "owners": [],
+      "value": [{ "orderNo": "SO-1" }],
+      "text": ""
+    },
+    {
+      "name": "入れ子も空にする",
+      "column": { "field": "address" },
+      "owners": [],
+      "value": { "city": "渋谷区" },
+      "text": ""
+    },
+    {
+      "name": "数も文字にする",
+      "column": { "field": "quantity" },
+      "owners": [],
+      "value": 12,
+      "text": "12"
+    },
+    {
+      "name": "真偽も文字にする",
+      "column": { "field": "closed" },
+      "owners": [],
+      "value": true,
+      "text": "true"
+    }
+  ]
+}
