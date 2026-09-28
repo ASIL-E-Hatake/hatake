@@ -27,6 +27,15 @@
 //   node tool/ci-local.mjs --only wizard   … 名前に wizard を含む段だけ
 //   node tool/ci-local.mjs --stop          … 最初に落ちた所で止める
 //
+// 別のワークフロー・別のジョブも回せる（配るときの手順を確かめるのに使う）:
+//
+//   node tool/ci-local.mjs --workflow release.yml --job tarball --ref v0.9.17
+//
+// **手で同じ手順を打ち直さないこと。** 0.9.17 で、手順は合っているのに
+// **動かす場所（working-directory）が違って**いて、手元では通るのに本番で落ちた
+// （`typescript/` の中で `npm install` すると、そのワークスペースの分しか入らない）。
+// ファイルをそのまま回せば、その食い違いは起きない。
+//
 // `npm install` と `npm test` を含む最初の段は重いので、口の付け替えのような
 // 「枠組みの外側」を確かめたいときは `--from 2` で飛ばしてよい。
 
@@ -37,7 +46,6 @@ import { resolve } from "node:path";
 import { parse } from "yaml";
 
 const ROOT = resolve(import.meta.dirname, "..", "..");
-const JOB = "typescript";
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -46,20 +54,59 @@ const value = (name) => {
   return at === -1 ? undefined : argv[at + 1];
 };
 
-const workflow = parse(readFileSync(resolve(ROOT, ".github/workflows/ci.yml"), "utf8"));
-const job = workflow.jobs?.[JOB];
-if (job === undefined) {
-  console.error(`✗ ci.yml に job "${JOB}" が在りません`);
+const FILE = value("--workflow") ?? "ci.yml";
+const JOB = value("--job") ?? (FILE === "ci.yml" ? "typescript" : undefined);
+if (JOB === undefined) {
+  console.error("✗ --job を渡してください（そのワークフローの既定は決めていません）");
   process.exit(1);
 }
 
-// `uses:`（checkout / setup-node）は手元では要らない。走らせるのは `run:` だけ。
+const workflow = parse(readFileSync(resolve(ROOT, ".github/workflows", FILE), "utf8"));
+const job = workflow.jobs?.[JOB];
+if (job === undefined) {
+  console.error(`✗ ${FILE} に job "${JOB}" が在りません`);
+  process.exit(1);
+}
+
+// GitHub の式（`${{ … }}`）は手元では開かない。tag を指す式だけ `--ref` で埋めて、
+// **他の式が残っていたら落とす**（黙って空文字にすると、動いたように見えて違うものを
+// 確かめることになる）。
+const REF = value("--ref");
+
+// 式を探すのは**字の位置**で見る（正規表現にすると、書いているのが `${{` そのもの
+// なので、入れ子のエスケープで黙って何も当たらないものが出来上がる。実際にやった）。
+const expressionIn = (text, from = 0) => {
+  const opened = text.indexOf("${{", from);
+  if (opened === -1) return null;
+  const closed = text.indexOf("}}", opened);
+  if (closed === -1) return null;
+  return { from: opened, to: closed + 2, text: text.slice(opened, closed + 2) };
+};
+
+const fill = (text) => {
+  let out = "";
+  let at = 0;
+  for (let found = expressionIn(text); found !== null; found = expressionIn(text, at)) {
+    const points = found.text.includes("ref_name") || found.text.includes("inputs.tag");
+    if (!points || REF === undefined) {
+      console.error("✗ 手元では開けない式が残っています（--ref を渡してください）:");
+      console.error(`   ${found.text}`);
+      process.exit(1);
+    }
+    out += text.slice(at, found.from) + REF;
+    at = found.to;
+  }
+  return out + text.slice(at);
+};
+
+// `uses:`（checkout / setup-node / release を貼る所）は手元では要らない。
+// 走らせるのは `run:` だけ。
 const steps = job.steps
   .filter((one) => typeof one.run === "string")
   .map((one, index) => ({
     no: index + 1,
     name: one.name ?? "(名無し)",
-    run: one.run,
+    run: fill(one.run),
     cwd: resolve(ROOT, one["working-directory"] ?? "."),
   }));
 

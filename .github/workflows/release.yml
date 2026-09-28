@@ -48,11 +48,17 @@ jobs:
             fi
           done
 
+      # **根で入れる。** ワークスペースの子（`typescript/`）の中で `npm install` すると、
+      # **その子の分しか入らない**（`vue` も `@hatake-fw/runtime` の繋ぎも入らず、
+      # ブラウザ側を固める所で "Cannot find module 'vue'" になる）。0.9.17 で実際に
+      # これで落とした。
+      - name: 入れる（ワークスペースごと）
+        run: npm install
+
       - name: 固めて、入れて、叩く（TypeScript）
         working-directory: typescript
         run: |
           set -e
-          npm install
           # 配る形のまま動くことを見てから貼る（spec 同梱・bin の張り方・定義が通るか）。
           node tool/check-package.mjs
           # 見た形と同じものをもう一度作る（check-package は確かめたあと消す）。
