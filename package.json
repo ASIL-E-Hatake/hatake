@@ -1,0 +1,11 @@
+{
+  "name": "hatake-monorepo",
+  "private": true,
+  "description": "npm 側のワークスペース。配るのは中の1つずつで、この根は publish しない。web/* が typescript（@hatake-fw/api）を参照するために要る。",
+  "workspaces": [
+    "typescript",
+    "web/runtime",
+    "web/vue3",
+    "web/react19"
+  ]
+}

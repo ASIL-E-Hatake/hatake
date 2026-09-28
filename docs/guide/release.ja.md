@@ -56,12 +56,35 @@ dependency_overrides:
 npm i -D https://github.com/ASIL-E-Hatake/hatake/releases/download/v0.9.2/hatake-fw-api-0.9.2.tgz
 ```
 
-git の URL（`npm i github:…`）では入らない。理由は2つあって、**リポジトリの根に
-`package.json` が無い**のと、**npm は subdir 指定に対応していない**から（pnpm / yarn は
-できる）。tarball なら両方とも関係ないし、**`spec/` を同梱できる**のが大きい
-（CLI と MCP は実行時に `spec/` を読むので、同梱しないと `--spec` を毎回渡すことになる）。
+git の URL（`npm i github:…`）では入らない。**npm は subdir 指定に対応していない**
+ため（pnpm / yarn はできる）。0.9.16 で根に `package.json` を置いたが、あれは
+ワークスペースの根（`private: true`）で配るものではないので、この話は変わらない。
+tarball なら関係ないし、**`spec/` を同梱できる**のが大きい（CLI と MCP は実行時に
+`spec/` を読むので、同梱しないと `--spec` を毎回渡すことになる）。
 
 入れたあとは `npx hatake …` がそのまま効く（npx はレジストリより先にローカルの bin を見る）。
+
+### ブラウザ側（`@hatake-fw/runtime` / `vue3` / `react19`）
+
+同じやり方で `.tgz` を貼る。**3つとも同じ番号**で出す（→ [版の足並み](../compat.ja.md#版の足並み)）。
+
+```bash no-check:見本の案件で入れるとき
+npm i https://github.com/ASIL-E-Hatake/hatake/releases/download/v0.9.16/hatake-fw-runtime-0.9.16.tgz       https://github.com/ASIL-E-Hatake/hatake/releases/download/v0.9.16/hatake-fw-vue3-0.9.16.tgz
+```
+
+**組む順番が要る。** `runtime` は `api` の型を、Renderer は `runtime` の型を見るので、
+固める前に `api` → `runtime` の順で組む:
+
+```bash no-check:タグを切るとき
+npm install
+npm run build --workspace @hatake-fw/api
+npm run build --workspace @hatake-fw/runtime
+for pkg in runtime vue3 react19; do (cd "web/$pkg" && npm pack); done
+```
+
+Renderer は `peerDependencies` でホストを要求するだけなので、案件側に Vue か React が
+入っていれば足りる（こちらは持ち込まない）。見た目は `@hatake-fw/runtime/hatake.css` を
+読み込む。
 
 ### Java
 

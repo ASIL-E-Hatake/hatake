@@ -335,6 +335,37 @@ void main() {
       });
     }
   });
+
+  group('conformance: cell text', () {
+    // **値を人に見せる字にするところ。** 0.9.4 で3版のコードを1か所にまとめたのに、
+    // 同じ答えになることを縛る fixture を作っていなかったので、ここ（Dart）だけが
+    // 「列が自分で持っている選択肢」を見ていて、TypeScript と Java は見ていない
+    // という食い違いが 0.9.15 まで残った。これが在れば、片方だけ直すと落ちる。
+    final fixture = _loadMap('cell_text.json');
+    final formatters = FormatterRegistry();
+    for (final raw in fixture['cases'] as List<Object?>) {
+      final c = (raw as Map).cast<String, Object?>();
+      test(c['name'] as String, () {
+        final spec = (c['column'] as Map).cast<String, Object?>();
+        final column = ColumnDefinition(
+          field: spec['field'] as String,
+          label: spec['field'] as String,
+          format: spec['format'] as String?,
+          config: ((spec['config'] as Map?) ?? const {}).cast<String, Object?>(),
+          options: _optionsOf(spec['options']),
+        );
+        final owners = [
+          for (final o in (c['owners'] as List).cast<Map>())
+            FieldDefinition(
+              field: o['field'] as String,
+              label: o['field'] as String,
+              options: _optionsOf(o['options']),
+            ),
+        ];
+        expect(cellText(formatters, owners, column, c['value']), c['text']);
+      });
+    }
+  });
 }
 
 /// conformance の `owners` を、選択肢を持つものに変える。
@@ -349,3 +380,8 @@ FieldDefinition _owner(Map<String, Object?> m) => FieldDefinition(
           ),
       ],
     );
+
+List<OptionItem> _optionsOf(Object? raw) => [
+      for (final o in ((raw as List?) ?? const []).cast<Map>())
+        OptionItem(value: o['value'], label: o['label'] as String),
+    ];

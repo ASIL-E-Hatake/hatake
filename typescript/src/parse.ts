@@ -449,6 +449,10 @@ function parseColumn(m: Dict): ColumnDefinition {
     sortable: optBool(m, "sortable"),
     format: optString(m, "format"),
     config: optDict(m, "config") ?? {},
+    // **列の選択肢。** DSL に直接は書けず、`optionsOf: <語彙>` が展開されて届く。
+    // これを落とすと、列に `optionsOf` を書いた画面が**生の値のまま出る**
+    // （Flutter は出していたので、版で字が違っていた）。
+    options: parseOptions(optList(m, "options")),
     roles: optList(m, "roles").map(String),
   };
 }

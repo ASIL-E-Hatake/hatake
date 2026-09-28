@@ -4967,6 +4967,36 @@ jobs:
           pip install --quiet 'jsonschema[format]' pyyaml
           python spec/tools/validate_schema.py /tmp/scaffold/*.yaml
 
+  web:
+    name: Web renderers (Vue / React)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      # ワークスペースごと入れる（web/* が @hatake-fw/api を参照する）。
+      - name: Install
+        run: npm install
+      # 土台は api の型を、Renderer は土台の型を見るので、**組む順番が要る**。
+      - name: Build in order (api → runtime)
+        run: |
+          set -e
+          npm run build --workspace @hatake-fw/api
+          npm run build --workspace @hatake-fw/runtime
+      - name: Typecheck & test
+        run: |
+          set -e
+          for pkg in runtime vue3 react19; do
+            echo "::group::$pkg"
+            (cd "web/$pkg" && npx tsc --noEmit && npx vitest run)
+            echo "::endgroup::"
+          done
+      # **Vue と React が同じ印を出しているか。** 片方だけ直したら落ちる
+      # （案件の CSS と画面の試験は印とクラス名に乗っている＝契約）。
+      - name: The two renderers answer the same
+        run: node web/tool/check-same-marks.mjs
+
   java:
     name: Java edition
     runs-on: ubuntu-latest

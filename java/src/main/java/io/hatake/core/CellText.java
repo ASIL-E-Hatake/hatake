@@ -80,6 +80,14 @@ public final class CellText {
         if (column.format() != null) {
             return formatters.format(column.format(), value, column.config());
         }
+        // **自分が持っている選択肢が先。** 列に `optionsOf` を書いた画面は、その列の
+        // 語彙で字を出す（画面のどこかに同じ項目名の入力欄が在るとは限らない）。
+        // Dart 版は最初からこうなっていて、ここと TypeScript だけが見ていなかった
+        // ＝同じ定義から版ごとに違う字が出ていた。
+        String own = optionLabelIn(List.of(new Owner(column.field(), column.options())), column.field(), value);
+        if (own != null) {
+            return own;
+        }
         String label = optionLabelIn(owners, column.field(), value);
         return label != null ? label : textOf(value);
     }

@@ -134,6 +134,13 @@ export interface ColumnDefinition {
   /** Display formatter name (see FormatterRegistry). Options from config. */
   format?: string;
   config: Record<string, unknown>;
+  /**
+   * この列の選択肢。**定義に直接は書けない**（DSL キーは `optionsOf` だけ）。
+   *
+   * 語彙（`app.vocabularies`）が展開されてここに入る。値をラベルにするとき、
+   * `cellText` が**いちばん先に**これを見る。
+   */
+  options: OptionItem[];
   /** Roles allowed to see this column (see isAllowed). Empty = everyone. */
   roles: string[];
 }

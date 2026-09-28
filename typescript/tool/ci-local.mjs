@@ -19,8 +19,8 @@
 // **道具を入れ忘れると、中身が正しくても落ちます**（`curl: command not found` /
 // `pip: command not found`）。GitHub の ubuntu には最初から在るので、CI では起きない。
 // `--list` で番号を見て、落ちた段が exit 127 ならまずこれを疑うこと。
-// なお Debian の pip は外から入れるのを嫌がるので、要るなら
-// `pip install --break-system-packages …` にする（CI 側は素の `pip install`）。
+// Debian の pip が system-wide を断る件（PEP 668）は、この道具が
+// `PIP_BREAK_SYSTEM_PACKAGES=1` を渡して吸っている（ci.yml は素の `pip install` のまま）。
 //
 //   node tool/ci-local.mjs --list          … 段の一覧（番号つき）
 //   node tool/ci-local.mjs --from 30       … 30 番目から
@@ -87,6 +87,9 @@ const env = {
   GITHUB_WORKSPACE: ROOT,
   GITHUB_OUTPUT: "/tmp/ci-local-output.txt",
   GITHUB_STEP_SUMMARY: "/tmp/ci-local-summary.md",
+  // Debian の pip は system-wide のインストールを断る（PEP 668）。CI の runner は
+  // 断らないので、**ci.yml を手元の都合で書き換えずに**ここで吸う。
+  PIP_BREAK_SYSTEM_PACKAGES: "1",
 };
 
 const failed = [];

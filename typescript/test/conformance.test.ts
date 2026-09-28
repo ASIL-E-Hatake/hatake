@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ageAt,
   buildQuery,
+  cellText,
   computeInvoice,
   ComputedRegistry,
   computeTax,
@@ -232,6 +233,20 @@ describe("conformance: business day", () => {
       expect(isBusinessDay(c.date, c.holidays)).toBe(c.expected.isBusinessDay);
       expect(nextBusinessDay(c.date, c.holidays)).toBe(c.expected.next);
       expect(prevBusinessDay(c.date, c.holidays)).toBe(c.expected.prev);
+    });
+  }
+});
+
+describe("conformance: cell text", () => {
+  // **値を人に見せる字にするところ。** 0.9.4 で3版のコードを1か所にまとめたのに、
+  // 同じ答えになることを縛るフィクスチャを作っていなかったので、Dart だけが
+  // 「列が自分で持っている選択肢」を見ている状態が 0.9.15 まで残った。
+  // ここが在れば、片方だけ直したときに落ちる。
+  const fixture = JSON.parse(readFileSync(`${DIR}/cell_text.json`, "utf8")) as { cases: any[] };
+  const formatters = new FormatterRegistry();
+  for (const c of fixture.cases) {
+    it(c.name, () => {
+      expect(cellText(formatters, c.owners, c.column, c.value)).toBe(c.text);
     });
   }
 });

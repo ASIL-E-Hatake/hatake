@@ -16,6 +16,36 @@
 
 DSL の版（`dsl_version`）はパッケージの版とは別に動く。DSL が上がった版にはその旨を書く。
 
+## 0.9.16 — 2026-09-28
+
+**Web の Renderer を足した（Vue 3 / React 19）。** 定義から画面を出す先が Flutter
+以外にも広がった。作ったのは Renderer 2つではなく**土台1つ＋ Renderer 2つ**で、
+業務の判断は全部土台（`@hatake-fw/runtime`）に在る。Renderer は描くだけ。
+設計は [Web の Renderer](docs/proposals/web-renderers.ja.md)。
+
+- 追加: **`@hatake-fw/runtime`** — 画面を動かす土台（controller 7種・Repository の
+  契約・ActionRegistry・Export/Print の口）。Flutter の `hatake` パッケージに当たる。
+  依存は `@hatake-fw/api` だけ。
+- 追加: **`@hatake-fw/vue3`** / **`@hatake-fw/react19`** — 8種類の画面
+  （crud / search / master / detail / form / wizard / dashboard / report）。
+  依存はホスト本体だけ（`peerDependencies`）。**名前にホストのメジャー版を入れる**
+  ので、Vue 4 が来たら `@hatake-fw/vue4` を別に出せる（→ [名前の決めごと](docs/compat.ja.md#名前の決めごと)）。
+- 追加: **見た目は素の CSS 1枚**（`@hatake-fw/runtime/hatake.css`）。CSS 変数で
+  上書きする（Ionic と同じ考え方）。外の UI ライブラリには乗らない＝その版にも
+  引っ張られないため。**Vue と React は同じクラス名・同じ印を出す**ので、案件の
+  見た目と画面の試験を作り直さずに Renderer を差し替えられる。
+- **直し（3版に影響）**: 列に `optionsOf` を書いたとき、**Flutter だけがラベルを出し、
+  TypeScript と Java は生の値のまま**だった。0.9.4 で `cellText` のコードは1か所に
+  まとめたが、**同じ答えになることを縛る共有フィクスチャを作っていなかった**ため
+  残っていた。3版とも直し、`spec/conformance/cell_text.json`（13件）を足して縛った。
+- 追加: **複合キーの道具を TypeScript にも**（`RecordKey` / `recordKeyOf` …）。
+  0.9.7 から Dart にしか無く、Renderer を書き始めて足りないと分かった。
+- 追加: CI に **Web の段**と、**2つの Renderer が同じ印を出しているか**の点検。
+  版の点検（`check-versions`）も `web/*` を見るようにした。
+- 内部: 根に npm のワークスペースを置いた（`web/*` が `@hatake-fw/api` を参照する）。
+  `@hatake-fw/core` の切り出しは**要らないと分かった**（約束する面から辿れる36ファイルは
+  `node:` を1つも使っていない＝そのままブラウザに載る）。試験で見張っている。
+
 ## 0.9.15 — 2026-09-28
 
 **公開 API の見張りを3版そろえた。** 0.9.14 で TypeScript の面を固めたが、

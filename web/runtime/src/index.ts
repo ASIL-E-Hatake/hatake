@@ -1,0 +1,45 @@
+// @hatake-fw/runtime — 定義で画面を動かす土台（描く所は持たない）。
+//
+// **ここに業務の判断を全部寄せる。** Vue と React の Renderer はこの状態を読んで
+// 描くだけにする。同じ判断を2回書くと必ず食い違い、食い違ったときに「どちらが
+// 正しいか」を決める場所がどこにも無くなる（3版を conformance で縛っているのと
+// 同じ理由）。
+//
+// 目安: Flutter 側の `hatake_material` は約6000行あるが**公開は7名**。Web の
+// Renderer も各10名前後に収まるはずで、収まらないならそれは**土台に置くべきものが
+// Renderer に漏れている合図**。
+//
+// 依存は `@hatake-fw/api` だけ（Vue / React は Renderer 側の peerDependencies）。
+// 見た目は `@hatake-fw/runtime/hatake.css` を読み込んで、CSS 変数で上書きする。
+
+// ── 外との境目 ────────────────────────────────────────────────
+export {
+  emptyPage,
+  type DataRecord,
+  type PageResult,
+  type Repository,
+  type RepositoryQuery,
+  RepositoryRegistry,
+  repositoryQuery,
+} from "./repository.js";
+export { FakeRepository } from "./fakeRepository.js";
+export {
+  type ActionContext,
+  type ActionHandler,
+  ActionOutcome,
+  ActionRegistry,
+  type FailedRow,
+} from "./action.js";
+export type { ExportRequest, ExportSink, PrintRequest, PrintSink } from "./sinks.js";
+
+// ── 画面ごとの土台 ────────────────────────────────────────────
+export { ListController } from "./listController.js";
+export { CrudController, CrudMode, type CrudLike } from "./crudController.js";
+export { FormController } from "./formController.js";
+export { DetailController } from "./detailController.js";
+export { WizardController } from "./wizardController.js";
+export { DashboardController, type DashboardItemState } from "./dashboardController.js";
+export { ReportController } from "./reportController.js";
+
+// ── 変わったと伝える土台（Renderer が購読する） ────────────────
+export { Notifier, type Unsubscribe } from "./notifier.js";
