@@ -85,14 +85,37 @@ id と終了コードは相手の CI に埋まる＝同じように直せなく�
 
 ## 公開 API
 
-各版が `index` から出しているものは、全部「約束」になる。うっかり内部の道具を出すと、
+各版が外に出しているものは、全部「約束」になる。うっかり内部の道具を出すと、
 それも消せなくなる。
 
-- TypeScript … **口が2つ**ある（下）
-- Dart … `lib/src/` は言語の仕組みで隠れているので、`export` した分だけが約束
-- Java … `io.hatake.core` の public が約束
+**3版とも、面を台帳に固めて試験が完全一致を見る。** 増えても減っても落ちるので、
+**約束の面が変わったら必ず目に入る**。
 
-### TypeScript は2つに分けてある
+| 版 | 何を数えているか | 台帳 | いま |
+|---|---|---|---|
+| TypeScript | `@hatake-fw/api` が出す名前（`internal` は数えない） | [`spec/public-api.ts.json`](../spec/public-api.ts.json) | 35 |
+| Dart | 配るパッケージの公開エントリから辿れる名前（`part` の先も） | [`spec/public-api.dart.json`](../spec/public-api.dart.json) | 296 |
+| Java | 組んだ結果の中の public な型（入れ子も） | [`spec/public-api.java.json`](../spec/public-api.java.json) | 99 |
+
+見ているのは**名前**で、形（引数・戻り値）ではない。形は conformance が縛る。
+
+台帳を書き直すのは「足す・消す」と決めたときだけ:
+
+```
+# TypeScript
+cd typescript && HATAKE_WRITE_PUBLIC_API=1 npx vitest run test/publicApi.test.ts
+# Dart
+cd flutter/packages/hatake_core && HATAKE_WRITE_PUBLIC_API=1 dart test test/public_api_test.dart
+# Java
+cd java && HATAKE_WRITE_PUBLIC_API=1 gradle test --tests '*PublicApiTest'
+```
+
+**なぜ3版そろえたか。** 0.9.14 で TypeScript だけを固めたが、この節の約束は3版に
+掛かっている。**Dart で `export` を1行、Java で `public` を1つ足すだけで約束が1つ増える**
+状態が残っていて、しかも誰も気づけなかった。片方だけ見張るのは、見張っていないのと
+同じ種類の嘘になる。
+
+### TypeScript は口が2つある
 
 | 口 | 約束するか | 何が在るか |
 |---|---|---|
@@ -173,6 +196,22 @@ Renderer（`vue` / `react`）を足す段で `core` を切り出し、`api` は 
 
 **DSL の版（`dsl_version`）はパッケージの版とは別**。DSL は仕様の版で、パッケージは実装の版。
 実装を直しただけで DSL の版は上がらない。
+
+### 1.0 からは、3版そろって初めて版を上げる
+
+0.9 の間は「TypeScript に入れて、Dart と Java は次の版で」を許していた（実際、
+公開面を固めたのは 0.9.14 の TypeScript だけで、Dart と Java は 0.9.15 まで
+見張られていなかった）。**1.0 からはこれをやらない。**
+
+番号が同じなのに中身が揃っていないと、**同じ番号を名乗っている意味が無くなる**。
+「1.2 の Java にはその検査が無い」を相手が知る方法が、どこにも無いため。
+
+つまり 1.0 のあとは:
+
+- 機能・検査・診断の id は、**3版に入ってから**版を上げる
+- 1版だけ先に入れたいときは、**版を上げずに main に置く**（次の版でまとめて出す）
+- 版ごとの差は [言語間の足並み](roadmap.ja.md#b-言語間の足並みパリティ)ではなく
+  **0 件であること**が前提になる
 
 ## 約束を破る必要が出たとき
 

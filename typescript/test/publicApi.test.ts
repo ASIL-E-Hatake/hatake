@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import * as promised from "../src/index.js";
@@ -21,12 +21,24 @@ import * as internal from "../src/internal.js";
  * **約束の面が変わったら必ず目に入る**ようにすること。
  */
 const frozen = JSON.parse(readFileSync("../spec/public-api.ts.json", "utf8")) as {
+  $comment: string;
   count: number;
   exports: string[];
 };
 
 describe("約束する面（@hatake-fw/api）", () => {
   it("index から出ている名前が、一覧と完全に一致する", () => {
+    // 台帳を書き直すのは「足す・消す」と決めたときだけ（3版とも同じ合図）:
+    //   HATAKE_WRITE_PUBLIC_API=1 npx vitest run test/publicApi.test.ts
+    if (process.env.HATAKE_WRITE_PUBLIC_API !== undefined) {
+      const names = Object.keys(promised).sort();
+      writeFileSync(
+        "../spec/public-api.ts.json",
+        `${JSON.stringify({ $comment: frozen.$comment, count: names.length, exports: names }, null, 2)}
+`,
+      );
+      return;
+    }
     expect(Object.keys(promised).sort()).toEqual([...frozen.exports].sort());
   });
 
