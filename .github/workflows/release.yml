@@ -8,6 +8,8 @@ name: Release
 #
 # 3版の配られ方はそれぞれ違う:
 #   ・TypeScript … ここで固めた tarball を Release に貼る（`spec/` 同梱）
+#   ・ブラウザ側（runtime / vue3 / react19）… 同じく tarball を貼る。**組む順番が要る**
+#     （runtime は api の型を、Renderer は runtime の型を見る）
 #   ・Flutter/Dart … tag をそのまま `git:` で指してもらう（作るものは無い）
 #   ・Java … JitPack が tag を見てビルドする（作るものは無い。jitpack.yml が指図する）
 
@@ -25,7 +27,7 @@ permissions:
 
 jobs:
   tarball:
-    name: TypeScript の tarball を作って貼る
+    name: tarball を作って貼る（TypeScript ＋ ブラウザ側）
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,18 +36,19 @@ jobs:
           node-version: "22"
 
       - name: 版が tag と揃っているか
-        working-directory: typescript
         run: |
           set -e
           # tag と package.json がズレたまま配ると、入れた人が「どっちが本当か」を
-          # 判断できなくなる。**貼る前**に落とす。
+          # 判断できなくなる。**貼る前**に落とす。配るもの全部を見る。
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          HAVE="v$(node -p "require('./package.json').version")"
-          if [ "$TAG" != "$HAVE" ]; then
-            echo "tag ($TAG) と package.json ($HAVE) が違います"; exit 1
-          fi
+          for pkg in typescript web/runtime web/vue3 web/react19; do
+            HAVE="v$(node -p "require('./$pkg/package.json').version")"
+            if [ "$TAG" != "$HAVE" ]; then
+              echo "tag ($TAG) と $pkg ($HAVE) が違います"; exit 1
+            fi
+          done
 
-      - name: 固めて、入れて、叩く
+      - name: 固めて、入れて、叩く（TypeScript）
         working-directory: typescript
         run: |
           set -e
@@ -55,17 +58,36 @@ jobs:
           # 見た形と同じものをもう一度作る（check-package は確かめたあと消す）。
           npm pack
 
+      - name: 固める（ブラウザ側）
+        run: |
+          set -e
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          # **組む順番が要る。** runtime は api の型を、Renderer は runtime の型を見る。
+          # 固めるときは prepack が各パッケージを組み直すので、ここで組むのは
+          # 「次のパッケージが型を見られるようにする」ため。
+          npm run build --workspace @hatake-fw/api
+          npm run build --workspace @hatake-fw/runtime
+          for pkg in runtime vue3 react19; do (cd "web/$pkg" && npm pack); done
+          # 組み忘れたまま固めても npm は何も言わないので、中身を見てから貼る。
+          node web/tool/check-tarballs.mjs "${TAG#v}"
+
       - name: Release に貼る
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          files: typescript/*.tgz
+          files: |
+            typescript/*.tgz
+            web/runtime/*.tgz
+            web/vue3/*.tgz
+            web/react19/*.tgz
           fail_on_unmatched_files: true
           generate_release_notes: true
           body: |
             入れ方は [リリースと入れ方](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/release.ja.md) を見てください。
 
-            - **TypeScript** … 下の `.tgz` を `npm i <URL>`
+            - **TypeScript（サーバ側・道具）** … 下の `hatake-fw-api-*.tgz` を `npm i <URL>`
+            - **ブラウザ側** … `runtime` ＋ `vue3` か `react19` を同じ番号で入れる
+              （見た目は `@hatake-fw/runtime/hatake.css` を読み込む）
             - **Flutter / Dart** … この tag を `git:` で指す（`dependency_overrides` が要ります）
             - **Java** … JitPack がこの tag をビルドします
 

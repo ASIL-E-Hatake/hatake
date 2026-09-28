@@ -1,6 +1,6 @@
 {
   "name": "@hatake-fw/react19",
-  "version": "0.9.16",
+  "version": "0.9.17",
   "description": "React 19 renderer for hatake. Draws what @hatake-fw/runtime decides; holds no business logic.",
   "license": "Apache-2.0",
   "type": "module",
@@ -21,15 +21,16 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepack": "tsc"
   },
   "peerDependencies": {
     "react": "^19",
     "react-dom": "^19"
   },
   "dependencies": {
-    "@hatake-fw/api": "0.9.16",
-    "@hatake-fw/runtime": "0.9.16"
+    "@hatake-fw/api": "0.9.17",
+    "@hatake-fw/runtime": "0.9.17"
   },
   "devDependencies": {
     "@testing-library/react": "^16.0.0",
