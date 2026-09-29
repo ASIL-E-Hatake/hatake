@@ -21,6 +21,7 @@ const ROOT = resolve(import.meta.dirname, "..", "..");
 /** そのパッケージに入っていてほしいもの。 */
 const MUST = {
   runtime: ["dist/index.js", "dist/index.d.ts", "hatake.css"],
+  http: ["dist/index.js", "dist/index.d.ts"],
   vue3: ["dist/index.js", "dist/index.d.ts"],
   react19: ["dist/index.js", "dist/index.d.ts"],
 };

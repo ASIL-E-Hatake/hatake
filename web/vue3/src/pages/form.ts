@@ -13,7 +13,7 @@ export const HatakeFormPage = defineComponent({
   name: "HatakeFormPage",
   props: {
     definition: { type: Object as PropType<FormPageDefinition>, required: true },
-    recordKey: { type: null as unknown as PropType<unknown>, default: undefined },
+    recordKey: { type: null as unknown as PropType<unknown>, default: undefined as unknown },
   },
   emits: {
     saved: (_record: DataRecord) => true,
@@ -89,7 +89,7 @@ export const HatakeDetailPage = defineComponent({
   name: "HatakeDetailPage",
   props: {
     definition: { type: Object as PropType<DetailPageDefinition>, required: true },
-    recordKey: { type: null as unknown as PropType<unknown>, default: undefined },
+    recordKey: { type: null as unknown as PropType<unknown>, default: undefined as unknown },
     formatters: { type: Object as PropType<FormatterRegistry>, default: () => new FormatterRegistry() },
   },
   setup(props) {
@@ -137,7 +137,7 @@ export const HatakeWizardPage = defineComponent({
   name: "HatakeWizardPage",
   props: {
     definition: { type: Object as PropType<WizardPageDefinition>, required: true },
-    recordKey: { type: null as unknown as PropType<unknown>, default: undefined },
+    recordKey: { type: null as unknown as PropType<unknown>, default: undefined as unknown },
   },
   emits: {
     saved: (_record: DataRecord) => true,

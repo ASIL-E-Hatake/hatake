@@ -41,7 +41,7 @@ jobs:
           # tag と package.json がズレたまま配ると、入れた人が「どっちが本当か」を
           # 判断できなくなる。**貼る前**に落とす。配るもの全部を見る。
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          for pkg in typescript web/runtime web/vue3 web/react19; do
+          for pkg in typescript web/runtime web/http web/vue3 web/react19; do
             HAVE="v$(node -p "require('./$pkg/package.json').version")"
             if [ "$TAG" != "$HAVE" ]; then
               echo "tag ($TAG) と $pkg ($HAVE) が違います"; exit 1
@@ -73,7 +73,7 @@ jobs:
           # 「次のパッケージが型を見られるようにする」ため。
           npm run build --workspace @hatake-fw/api
           npm run build --workspace @hatake-fw/runtime
-          for pkg in runtime vue3 react19; do (cd "web/$pkg" && npm pack); done
+          for pkg in runtime http vue3 react19; do (cd "web/$pkg" && npm pack); done
           # 組み忘れたまま固めても npm は何も言わないので、中身を見てから貼る。
           node web/tool/check-tarballs.mjs "${TAG#v}"
 
@@ -84,6 +84,7 @@ jobs:
           files: |
             typescript/*.tgz
             web/runtime/*.tgz
+            web/http/*.tgz
             web/vue3/*.tgz
             web/react19/*.tgz
           fail_on_unmatched_files: true

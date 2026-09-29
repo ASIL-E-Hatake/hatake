@@ -15,6 +15,7 @@
 // <HatakeScope registries={registries}><HatakePage definition={definition} /></HatakeScope>
 // ```
 
+export { HatakeApp } from "./app.js";
 export { HatakePage } from "./page.js";
 export { HatakeScope, useController, useRegistries, type HatakeRegistries } from "./scope.js";
 

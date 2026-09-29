@@ -21,7 +21,7 @@ export const HatakePage = defineComponent({
   props: {
     definition: { type: Object as PropType<PageDefinition>, required: true },
     /** 1件を指す鍵（`detail` / `form` / `wizard` を開くとき）。 */
-    recordKey: { type: null as unknown as PropType<unknown>, default: undefined },
+    recordKey: { type: null as unknown as PropType<unknown>, default: undefined as unknown },
     /** いま見ている人の役割（列の出し分けに使う）。 */
     roles: { type: Array as PropType<readonly string[]>, default: () => [] },
     formatters: { type: Object as PropType<FormatterRegistry>, default: () => new FormatterRegistry() },

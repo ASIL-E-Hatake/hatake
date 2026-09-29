@@ -5,6 +5,7 @@
   "workspaces": [
     "typescript",
     "web/runtime",
+    "web/http",
     "web/vue3",
     "web/react19"
   ]
