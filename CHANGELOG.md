@@ -16,6 +16,32 @@
 
 DSL の版（`dsl_version`）はパッケージの版とは別に動く。DSL が上がった版にはその旨を書く。
 
+## 0.9.18 — 2026-09-29
+
+**ブラウザ側の土台が揃った。** 0.9.16 で Renderer を足したが、見本を書こうとしたら
+**在るもので足りない**と分かった（メニューも画面の行き来も REST も、案件が手書きする
+ことになる＝「Renderer を差し替えても案件は変わらない」が嘘になる）。足りない分を入れた。
+
+- 追加: **`@hatake-fw/http`** — 定義が書いている REST をそのまま叩く Repository。
+  `hatake openapi` が出す文書と同じものを喋る。Dart の `hatake_http` と同じ契約で、
+  失敗の分け方（401/403・400・形違い）も同じ。**枠組みは HTTP を知らない**（土台は
+  `Repository` の5つしか見ない）が、いちばん多い形は配る。
+- 追加: **入口 `HatakeApp`**（Vue / React 両方）。案件が書くのはこれ1つで、メニュー・
+  画面の行き来・役割での出し分け・URL の歩調合わせが全部定義から出る。
+- 追加: 土台に **行き来（`HatakeRouter` / `routeToUri`）・申告（`registrySnapshot`）・
+  明細（`SubTableController`）**。タブの決まりごと（同じ画面は前に出す・引数が違えば
+  別のタブ・上限で開かない・最後の1枚は閉じない）も Dart と同じ。
+- **直し（TypeScript）**: `parseAppPagesYaml` が無かった。`parseAppYaml` が返すのは
+  一覧（id・種類・題）だけで、**画面を描くにも検証するにも足りない**。Java には
+  在った口で、Dart は `AppDefinition.pages` が最初から画面の定義なので要らない側。
+- **直し（TypeScript）**: registry 5つ（validator / converter / formatter / computed /
+  aggregate）に `customKeys` が無かった。申告に要る。**組み込みと同じ名前は出さない**
+  という決まりは `spec/conformance/registry_snapshot.json` が固定しているとおり。
+- 追加: 見た目の CSS に、メニュー・入力の枠・詳細・カードぶん。**使っているクラス名
+  46種すべてに当たりが在る**ことを確かめた（クラス名は契約なので、当たりの無い名前を
+  出すと案件の CSS が黙って効かない）。
+- 内部: CI と Release が `web/http` も見る。
+
 ## 0.9.17 — 2026-09-28
 
 **ブラウザ側の3つが Release に貼られていなかったのを直した。** 0.9.16 でパッケージは

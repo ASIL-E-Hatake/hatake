@@ -1,0 +1,28 @@
+{
+  "name": "@hatake-fw/http",
+  "version": "0.9.18",
+  "description": "REST Repository for hatake: speaks exactly the OpenAPI document `hatake openapi` derives from a definition.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "tsc"
+  },
+  "dependencies": {
+    "@hatake-fw/api": "0.9.18",
+    "@hatake-fw/runtime": "0.9.18"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

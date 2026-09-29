@@ -36,6 +36,7 @@ const editions = {
   Java: versionIn(join(ROOT, "java/build.gradle"), /^version = '([^']+)'/m),
   // ブラウザ側も同じ番号で出す（土台と Renderer は3版と一緒に動く）。
   "Web (runtime)": JSON.parse(readFileSync(join(ROOT, "web/runtime/package.json"), "utf8")).version,
+  "Web (http)": JSON.parse(readFileSync(join(ROOT, "web/http/package.json"), "utf8")).version,
   "Web (vue3)": JSON.parse(readFileSync(join(ROOT, "web/vue3/package.json"), "utf8")).version,
   "Web (react19)": JSON.parse(readFileSync(join(ROOT, "web/react19/package.json"), "utf8")).version,
   "Flutter (hatake_core)": versionIn(

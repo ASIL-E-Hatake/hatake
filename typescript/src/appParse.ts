@@ -5,6 +5,7 @@ import {
   Densities,
   type AppDefinition,
   type MenuItem,
+  type PageDefinition,
   type PageRef,
   type ThemeDefinition,
 } from "./definition.js";
@@ -14,6 +15,7 @@ import {
   UnknownKeysError,
   type ParseOptions,
 } from "./parse.js";
+import { parsePageMap } from "./parse.js";
 import { findUnknownKeys } from "./strictKeys.js";
 import { expandVocabularies } from "./vocabularies.js";
 
@@ -212,4 +214,65 @@ function parsePageRef(m: Dict): PageRef {
         ? optString(m, "repository")
         : reqString(m, "repository", "app.pages[].repository"),
   };
+}
+
+/**
+ * app 定義の画面を**中身まで**読む（画面 id → 画面）。
+ *
+ * [[parseAppYaml]] が返すのは [[PageRef]]（id と種別と題だけ）なので、検証を回すにも
+ * 画面を描くにも足りない。**画面と同じ定義でサーバでも検証する**、がこの枠組みの
+ * 主張なので、中身が読めないと主張が通らない。Web の Renderer も1枚ずつの定義が要る。
+ *
+ * Dart 版は `AppDefinition.pages` が最初から画面の定義そのものなので、この口は
+ * TypeScript と Java にだけ在る（3版で同じものが取れる、という所は変わらない）。
+ *
+ * 並びは**定義に書いた順**のまま。
+ */
+export function parseAppPagesYaml(
+  source: string,
+  options?: ParseOptions,
+): Record<string, PageDefinition> {
+  let decoded: unknown;
+  try {
+    decoded = parseYamlText(source);
+  } catch (error) {
+    throw new DefinitionParseError(`YAML として読めません: ${String(error)}`, "app");
+  }
+  return parseAppPagesMap(asDict(decoded, "app"), options);
+}
+
+/** JSON から。中身は [[parseAppPagesYaml]] と同じ。 */
+export function parseAppPagesJson(
+  source: string,
+  options?: ParseOptions,
+): Record<string, PageDefinition> {
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(source);
+  } catch (error) {
+    throw new DefinitionParseError(`JSON として読めません: ${String(error)}`, "app");
+  }
+  return parseAppPagesMap(asDict(decoded, "app"), options);
+}
+
+/** 既に読み込んである地図から。 */
+export function parseAppPagesMap(
+  rawRoot: Dict,
+  options?: ParseOptions,
+): Record<string, PageDefinition> {
+  // **画面を読む前に app として1回通す。** `dsl_version` の門番と strict の門番は
+  // 1か所でよく、「隣の画面が壊れている app」の1枚だけを読むと壊れに気づけない。
+  // **渡すのは生のほう**＝strict は人が書いたものに当てる（展開後を渡すと、
+  // 機械が足した列の `options` を機械が弾く）。
+  fromDecoded(rawRoot, "map", options);
+
+  // 語彙をいちばん先に展開する（`optionsOf` を実体の並びにしてから読む）。
+  const root = expandVocabularies(rawRoot);
+  const app = optDict(root, "app") ?? root;
+  const out: Record<string, PageDefinition> = {};
+  for (const [at, one] of optList(app, "pages").entries()) {
+    const page = asDict(one, `app.pages[${at}]`);
+    out[reqString(page, "id", `app.pages[${at}].id`)] = parsePageMap(page);
+  }
+  return out;
 }

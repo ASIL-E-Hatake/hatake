@@ -40,6 +40,36 @@ export { DetailController } from "./detailController.js";
 export { WizardController } from "./wizardController.js";
 export { DashboardController, type DashboardItemState } from "./dashboardController.js";
 export { ReportController } from "./reportController.js";
+export { SubTableController } from "./subTableController.js";
+
+// ── 画面の行き来 ──────────────────────────────────────────────
+export {
+  appRoute,
+  HatakeRouter,
+  resolveRouteParams,
+  routeFromUri,
+  routeToUri,
+  type AppRoute,
+  type AppTab,
+} from "./router.js";
+export {
+  appHasPage,
+  browserRouteUrl,
+  createAppRouter,
+  homePageId,
+  silentRouteUrl,
+  type RouteUrl,
+} from "./app.js";
+
+// ── 申告（動いているアプリが自分の登録を名乗る） ──────────────
+export {
+  RegistryKinds,
+  registrySnapshot,
+  registrySnapshotJson,
+  registrySnapshotSource,
+  type HatakeRegistries,
+  type RegistryReporter,
+} from "./registry.js";
 
 // ── 変わったと伝える土台（Renderer が購読する） ────────────────
 export { Notifier, type Unsubscribe } from "./notifier.js";

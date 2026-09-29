@@ -231,3 +231,168 @@
     overflow-x: auto;
   }
 }
+
+/* ── アプリの枠（メニューと中身） ─────────────────────────── */
+.hatake-app {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) 1fr;
+  min-height: 100vh;
+  font-family: var(--hatake-font);
+  font-size: var(--hatake-font-size);
+  color: var(--hatake-color-text);
+  background: var(--hatake-color-canvas);
+}
+
+.hatake-menu {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hatake-space) / 2);
+  padding: var(--hatake-space);
+  background: var(--hatake-color-surface);
+  border-right: var(--hatake-border);
+}
+
+.hatake-brand {
+  font-weight: 600;
+  padding: var(--hatake-space);
+  margin-bottom: var(--hatake-space);
+}
+
+.hatake-menu-group {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hatake-space) / 2);
+}
+
+.hatake-menu-heading {
+  color: var(--hatake-color-muted);
+  font-size: 0.85em;
+  padding: calc(var(--hatake-space) / 2) var(--hatake-space);
+}
+
+.hatake-menu-item {
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  padding: var(--hatake-space);
+  border: none;
+  border-radius: var(--hatake-radius);
+  background: transparent;
+  cursor: pointer;
+}
+
+.hatake-menu-current {
+  background: var(--hatake-color-primary);
+  color: var(--hatake-color-on-primary);
+}
+
+.hatake-content {
+  min-width: 0; /* 表が横に溢れても枠を押し広げない */
+}
+
+/* 画面が狭いときはメニューを上に畳む。 */
+@media (max-width: 720px) {
+  .hatake-app {
+    grid-template-columns: 1fr;
+  }
+  .hatake-menu {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: var(--hatake-border);
+  }
+}
+
+/* ── 入力の枠 ───────────────────────────────────────────── */
+.hatake-form {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--hatake-space) * 2);
+  max-width: 720px;
+}
+
+.hatake-form-actions {
+  display: flex;
+  gap: var(--hatake-space);
+}
+
+.hatake-field-required-box {
+  /* 必須の印は**ラベル側**に出す（枠の色だけで言うと、色が見えない人に伝わらない）。 */
+  --hatake-field-mark: 1;
+}
+
+.hatake-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--hatake-space);
+}
+
+.hatake-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--hatake-space) / 2);
+}
+
+.hatake-step-note {
+  color: var(--hatake-color-muted);
+}
+
+/* ── 行のボタン ─────────────────────────────────────────── */
+.hatake-row-actions {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.hatake-row-buttons {
+  display: inline-flex;
+  gap: calc(var(--hatake-space) / 2);
+}
+
+/* ── 詳細（読むだけの画面） ───────────────────────────────── */
+.hatake-detail {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--hatake-space) calc(var(--hatake-space) * 2);
+  background: var(--hatake-color-surface);
+  border: var(--hatake-border);
+  border-radius: var(--hatake-radius);
+  padding: calc(var(--hatake-space) * 2);
+}
+
+.hatake-detail > div {
+  display: contents;
+}
+
+.hatake-detail dd {
+  margin: 0;
+}
+
+/* ── カードの中身 ───────────────────────────────────────── */
+.hatake-card-title {
+  font-size: 1em;
+  color: var(--hatake-color-muted);
+  margin: 0 0 var(--hatake-space);
+}
+
+.hatake-card-rows,
+.hatake-chart {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hatake-chart li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--hatake-space);
+  padding: calc(var(--hatake-space) / 2) 0;
+  border-bottom: var(--hatake-border);
+}
+
+.hatake-chart-label {
+  color: var(--hatake-color-muted);
+}
+
+.hatake-chart-value {
+  font-variant-numeric: tabular-nums;
+}

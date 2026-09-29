@@ -17,6 +17,7 @@
 // **ここに足すときの線引きは `@hatake-fw/api` と同じ3つ。** 増えるようなら、
 // たいてい土台（runtime）に置くべきものが漏れている。
 
+export { HatakeApp } from "./app.js";
 export { HatakePage } from "./page.js";
 export { HatakeScope, useController, useRegistries, type HatakeRegistries } from "./scope.js";
 

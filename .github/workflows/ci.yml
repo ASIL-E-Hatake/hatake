@@ -4987,7 +4987,7 @@ jobs:
       - name: Typecheck & test
         run: |
           set -e
-          for pkg in runtime vue3 react19; do
+          for pkg in runtime http vue3 react19; do
             echo "::group::$pkg"
             (cd "web/$pkg" && npx tsc --noEmit && npx vitest run)
             echo "::endgroup::"

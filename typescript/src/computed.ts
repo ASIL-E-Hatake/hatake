@@ -156,6 +156,21 @@ export class ComputedRegistry {
     this.ops = { ...builtinComputeds(messages), ...custom };
   }
 
+
+  /**
+   * アプリが足した名前だけ（**組み込みと同じ名前は出さない**）。
+   *
+   * 動いているアプリが「自分が何を登録しているか」を申告するのに要る
+   * （`registrySnapshot`）。組み込みを混ぜると一覧が無駄に太り、組み込みが増える
+   * たびに古くなる。**組み込みと同じ名前を出さない**のは
+   * `spec/conformance/registry_snapshot.json` が固定している決まりで、Dart 側の
+   * `customKeys` と同じ。
+   */
+  get customKeys(): string[] {
+    const builtin = new Set(Object.keys(builtinComputeds()));
+    return Object.keys(this.ops).filter((one) => !builtin.has(one)).sort();
+  }
+
   compute(
     computed: Record<string, unknown> | null | undefined,
     record: Record<string, unknown>,
