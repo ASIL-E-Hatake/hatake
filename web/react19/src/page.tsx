@@ -35,16 +35,18 @@ export function HatakePage(props: {
     case "crud":
     case "master":
       return <HatakeCrudPage definition={one} {...shared} />;
+    // **どの画面にも役割を渡す。** 渡さないと、定義に `roles` を書いたボタンが
+    // 誰にも見えない（列だけ出し分けられて、ボタンは全部消える）。
     case "detail":
-      return <HatakeDetailPage definition={one} recordKey={props.recordKey} formatters={props.formatters} />;
+      return <HatakeDetailPage definition={one} recordKey={props.recordKey} {...shared} />;
     case "form":
-      return <HatakeFormPage definition={one} recordKey={props.recordKey} />;
+      return <HatakeFormPage definition={one} recordKey={props.recordKey} {...shared} />;
     case "wizard":
-      return <HatakeWizardPage definition={one} recordKey={props.recordKey} />;
+      return <HatakeWizardPage definition={one} recordKey={props.recordKey} {...shared} />;
     case "dashboard":
-      return <HatakeDashboardPage definition={one} formatters={props.formatters} />;
+      return <HatakeDashboardPage definition={one} {...shared} />;
     case "report":
-      return <HatakeReportPage definition={one} formatters={props.formatters} />;
+      return <HatakeReportPage definition={one} {...shared} />;
     default:
       return (
         <p className="hatake-field-message" role="alert" data-hatake="page:unknown">

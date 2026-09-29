@@ -38,9 +38,22 @@ export const HatakeTable = defineComponent({
       default: undefined,
     },
     emptyText: { type: String, default: "該当するデータがありません" },
+    /**
+     * 行を選べるようにするか。
+     *
+     * **決めるのは定義**（`scope: selection` のボタンが1つでも在るか）で、ここは
+     * 渡されたとおりに出すだけ。選べるのに実行するボタンが無い画面を作らない
+     * ＝チェック欄だけ在って何も起きない、が一番たちが悪い。
+     */
+    selectable: { type: Boolean, default: false },
+    /** いま選ばれている鍵（このページに出ているぶん）。 */
+    selectedKeys: { type: Array as PropType<readonly unknown[]>, default: () => [] },
+    allSelected: { type: Boolean, default: false },
   },
   emits: {
     sort: (_field: string, _ascending: boolean) => true,
+    select: (_key: unknown) => true,
+    selectAll: () => true,
   },
   setup(props, { emit }) {
     return () => {
@@ -67,6 +80,19 @@ export const HatakeTable = defineComponent({
           one.sortable ? `${one.label}${sortMark(one, props.sortField, props.sortAscending)}` : one.label,
         ),
       );
+      if (props.selectable) {
+        head.unshift(
+          h("th", { class: "hatake-select" }, [
+            h("input", {
+              type: "checkbox",
+              "data-hatake": "select:all",
+              "aria-label": "このページを全部選ぶ",
+              checked: props.allSelected,
+              onChange: () => emit("selectAll"),
+            }),
+          ]),
+        );
+      }
       if (props.rowSlot !== undefined) head.push(h("th", { class: "hatake-row-actions" }, ""));
 
       if (props.rows.length === 0) {
@@ -90,12 +116,36 @@ export const HatakeTable = defineComponent({
             cellText(props.formatters, [...props.owners], one, row[one.field]),
           ),
         );
+        if (props.selectable) {
+          const picked = props.selectedKeys.some((one) => String(one) === String(key));
+          cells.unshift(
+            h("td", { class: "hatake-select" }, [
+              h("input", {
+                type: "checkbox",
+                "data-hatake": `select:${String(key)}`,
+                "aria-label": `${String(key)} を選ぶ`,
+                checked: picked,
+                onChange: () => emit("select", key),
+              }),
+            ]),
+          );
+        }
         if (props.rowSlot !== undefined) {
           cells.push(h("td", { class: "hatake-row-actions" }, props.rowSlot(row, key) as never));
         }
         // **行の見分けは定義の鍵**（並び順ではない）。並びで持つと、消したあとに
         // 別の行へ操作が当たる。
-        return h("tr", { key: String(key), "data-hatake": `row:${String(key)}` }, cells);
+        return h(
+          "tr",
+          {
+            key: String(key),
+            class: props.selectable && props.selectedKeys.some((one) => String(one) === String(key))
+              ? "hatake-row-selected"
+              : null,
+            "data-hatake": `row:${String(key)}`,
+          },
+          cells,
+        );
       });
 
       return h("div", { class: "hatake-table-scroll" }, [

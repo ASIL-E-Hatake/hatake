@@ -6,9 +6,14 @@ import type {
   ReportBlock,
   ReportPageDefinition,
 } from "@hatake-fw/api/internal";
-import { DashboardController, ReportController } from "@hatake-fw/runtime";
+import {
+  type ActionSurroundings,
+  DashboardController,
+  ReportController,
+} from "@hatake-fw/runtime";
 import { useEffect, type ReactNode } from "react";
 
+import { useActions } from "../parts/actions.js";
 import { HatakePagination, HatakeSearch } from "../parts/table.js";
 import { HatakeError, useController, useOnce, useRegistries } from "../scope.js";
 
@@ -18,6 +23,7 @@ import { HatakeError, useController, useOnce, useRegistries } from "../scope.js"
  */
 export function HatakeDashboardPage(props: {
   definition: DashboardPageDefinition;
+  roles?: readonly string[];
   formatters?: FormatterRegistry;
 }): ReactNode {
   const registries = useRegistries();
@@ -30,6 +36,7 @@ export function HatakeDashboardPage(props: {
     [props.definition.id],
   );
   useController(controller);
+  const bar = useActions({ roles: props.roles ?? [], formatters: props.formatters });
   useEffect(() => {
     void controller.init();
   }, [controller]);
@@ -38,6 +45,12 @@ export function HatakeDashboardPage(props: {
     <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
       <h1 className="hatake-title">{props.definition.title}</h1>
       <HatakeSearch search={props.definition.search} onSearch={(v) => void controller.search(v)} />
+      {/* ダッシュボードには**行が無い**ので、`type: export` は出せない（押すと
+          「この画面では出力できません」と言う）。遷移と `plugin` は使える。 */}
+      {bar.page(props.definition.actions, () => ({
+        controller,
+        fallbackName: props.definition.title,
+      }))}
       <div className="hatake-dashboard">
         {props.definition.items.map((item) => (
           <section
@@ -51,6 +64,7 @@ export function HatakeDashboardPage(props: {
           </section>
         ))}
       </div>
+      {bar.overlay()}
     </div>
   );
 }
@@ -96,6 +110,7 @@ function cardBody(item: DashboardItemDefinition, controller: DashboardController
  */
 export function HatakeReportPage(props: {
   definition: ReportPageDefinition;
+  roles?: readonly string[];
   formatters?: FormatterRegistry;
 }): ReactNode {
   const registries = useRegistries();
@@ -109,7 +124,21 @@ export function HatakeReportPage(props: {
     [props.definition.id],
   );
   useController(controller);
+  const bar = useActions({ roles: props.roles ?? [], formatters: props.formatters });
   const sheet = controller.sheet;
+
+  /**
+   * 帳票が持っているもの。
+   *
+   * **出すのも刷るのも、組んだ紙と同じ行から出す**（画面に出ている1枚ぶんではない）。
+   */
+  const around = (): ActionSurroundings => ({
+    controller,
+    columns: props.definition.table.columns,
+    fetchRows: () => Promise.resolve(controller.rows),
+    printDocument: () => (controller.hasRun ? controller.document : undefined),
+    fallbackName: props.definition.title,
+  });
 
   return (
     <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
@@ -119,6 +148,7 @@ export function HatakeReportPage(props: {
         submitLabel="出力"
         onSearch={(v) => void controller.run(v)}
       />
+      {bar.page(props.definition.actions, around)}
       <HatakeError error={controller.error} />
       {/* **押す前に空の紙を出さない**（出すと「0件だった」と読めてしまう）。 */}
       {!controller.hasRun ? (
@@ -144,6 +174,7 @@ export function HatakeReportPage(props: {
           onMove={(page) => controller.setSheet(page)}
         />
       ) : null}
+      {bar.overlay()}
     </div>
   );
 }

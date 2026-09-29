@@ -642,7 +642,15 @@ function parseAction(m: Dict): ActionDefinition {
     batchSize: parseBatchSize(m.batchSize),
     enabledWhen: optDict(m, "enabledWhen"),
     open: optString(m, "open") ?? ActionOpens.same,
-    config: optDict(m, "config") ?? {},
+    // 遷移のボタンは `page` / `params` を**上に**書く（`config:` の中ではない）。
+    // 読む側は `config` から引くので、ここで持ち上げる＝`ActionDefinition` の形を
+    // 増やさずに済む。持ち上げ忘れると**押しても「遷移先が解決できません」**と言う
+    // （0.9.19 まで TypeScript 版だけがそうなっていた。Dart 版は最初からこうしている）。
+    config: {
+      ...(optDict(m, "config") ?? {}),
+      ...(m["page"] == null ? {} : { page: m["page"] }),
+      ...(m["params"] == null ? {} : { params: m["params"] }),
+    },
     roles: optList(m, "roles").map(String),
   };
 }

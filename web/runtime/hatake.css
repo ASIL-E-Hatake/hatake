@@ -396,3 +396,95 @@
 .hatake-chart-value {
   font-variant-numeric: tabular-nums;
 }
+
+/* ── ボタン・選ぶ・聞く ─────────────────────────────────────────
+ *
+ * 定義が書いたボタン（`actions`）が出る所。組み込みの「新規登録」「編集」「削除」と
+ * 同じ見た目にしてあるのは、押す人にとっては**どちらも同じボタン**だから。
+ */
+.hatake-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--hatake-space);
+  margin: var(--hatake-space) 0;
+}
+
+/* 選ぶ列。表の左端に固定幅で付く（列の幅がボタンでずれないように）。 */
+.hatake-select {
+  width: 36px;
+  text-align: center;
+}
+
+/* 選んだ行。**色だけで言わない**ので、チェックも入ったままにしてある。 */
+.hatake-row-selected > td {
+  background: color-mix(in srgb, var(--hatake-color-primary) 8%, transparent);
+}
+
+/* 押したあとの1行。押すと消える（読んだら消える、ではない）。 */
+.hatake-message {
+  margin: var(--hatake-space) 0;
+  padding: calc(var(--hatake-space) * 1.5);
+  border: var(--hatake-border);
+  border-radius: var(--hatake-radius);
+  cursor: pointer;
+}
+
+.hatake-message-ok {
+  border-color: var(--hatake-color-primary);
+  background: color-mix(in srgb, var(--hatake-color-primary) 8%, transparent);
+}
+
+.hatake-message-ng {
+  border-color: var(--hatake-color-danger);
+  color: var(--hatake-color-danger);
+  background: color-mix(in srgb, var(--hatake-color-danger) 8%, transparent);
+}
+
+/* 区切って実行している最中の進み具合。 */
+.hatake-progress {
+  margin: var(--hatake-space) 0;
+  color: var(--hatake-color-muted);
+}
+
+/* 聞くダイアログ。**素の CSS だけで出す**（外のダイアログ部品に乗らない）。 */
+.hatake-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--hatake-space) * 2);
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 100;
+}
+
+.hatake-dialog {
+  width: min(480px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  padding: calc(var(--hatake-space) * 2);
+  border-radius: var(--hatake-radius);
+  background: var(--hatake-color-surface);
+}
+
+.hatake-dialog-title {
+  margin: 0 0 var(--hatake-space);
+  font-size: calc(var(--hatake-font-size) * 1.2);
+}
+
+.hatake-dialog-message {
+  margin: 0 0 calc(var(--hatake-space) * 2);
+}
+
+.hatake-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--hatake-space);
+  margin-top: calc(var(--hatake-space) * 2);
+}
+
+/* 明細のように**横いっぱい要るもの**（詳細画面の2段組みをまたぐ）。 */
+.hatake-detail-wide {
+  grid-column: 1 / -1;
+  margin: 0;
+}

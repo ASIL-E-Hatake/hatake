@@ -5,9 +5,17 @@ import type {
   MasterPageDefinition,
   SearchPageDefinition,
 } from "@hatake-fw/api/internal";
-import { CrudController, CrudMode, type DataRecord, ListController } from "@hatake-fw/runtime";
+import {
+  type ActionSurroundings,
+  CrudController,
+  CrudMode,
+  type DataRecord,
+  ListController,
+  withComputed,
+} from "@hatake-fw/runtime";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { useActions } from "../parts/actions.js";
 import { HatakeField } from "../parts/field.js";
 import { HatakePagination, HatakeSearch, HatakeTable, type OptionOwner } from "../parts/table.js";
 import { HatakeError, useController, useOnce, useRegistries } from "../scope.js";
@@ -37,18 +45,37 @@ export function HatakeSearchPage(props: {
       new ListController({
         repository: registries.repositories.resolve(props.definition.repository),
         pageSize: props.definition.table.pagination.pageSize,
+        keyFields: props.definition.keyFields,
       }),
     [props.definition.id],
   );
   useController(controller);
+  const bar = useActions({ roles: props.roles ?? [], formatters: props.formatters });
   useEffect(() => {
     void controller.init();
   }, [controller]);
+
+  /** 押したときに渡す「画面が持っているもの」。**押した時点**の値を渡す。 */
+  const around = (record?: DataRecord): ActionSurroundings => ({
+    controller,
+    record,
+    records: controller.selectedRows,
+    keyFields: props.definition.keyFields,
+    columns: props.definition.table.columns,
+    owners: ownersOf(props.definition),
+    fetchRows: (limit) => controller.fetchForExport(limit),
+    fallbackName: props.definition.title,
+    setSelection: (keys) => controller.setSelection(keys),
+  });
+  const rowActionIds = props.definition.table.rowActions;
 
   return (
     <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
       <h1 className="hatake-title">{props.definition.title}</h1>
       <HatakeSearch search={props.definition.search} onSearch={(v) => void controller.search(v)} />
+      {bar.top(props.definition.actions, rowActionIds, () => around(), {
+        rows: controller.selectedRows,
+      })}
       <HatakeError error={controller.error} />
       <HatakeTable
         table={props.definition.table}
@@ -59,7 +86,13 @@ export function HatakeSearchPage(props: {
         formatters={props.formatters}
         sortField={controller.query.sortField}
         sortAscending={controller.query.sortAscending}
+        selectable={bar.selectable(props.definition.actions)}
+        selectedKeys={controller.selectedKeys}
+        allSelected={controller.allSelected}
+        onSelect={(key) => controller.toggleSelected(key)}
+        onSelectAll={() => controller.toggleAllSelected()}
         onSort={(field, ascending) => void controller.sortBy(field, ascending)}
+        rowSlot={(row) => bar.row(props.definition.actions, rowActionIds, row, () => around(row))}
       />
       <HatakePagination
         page={controller.page}
@@ -67,6 +100,7 @@ export function HatakeSearchPage(props: {
         totalCount={controller.totalCount}
         onMove={(page) => void controller.setPage(page)}
       />
+      {bar.overlay()}
     </div>
   );
 }
@@ -97,10 +131,32 @@ export function HatakeCrudPage(props: {
     [props.definition.id],
   );
   useController(controller);
+  const bar = useActions({ roles: props.roles ?? [], formatters: props.formatters });
   const [draft, setDraft] = useState<DataRecord>({});
   useEffect(() => {
     void controller.init();
   }, [controller]);
+
+  const startCreate = (): void => {
+    controller.startCreate();
+    setDraft({ ...controller.draft });
+  };
+
+  /** 押したときに渡す「画面が持っているもの」。 */
+  const around = (record?: DataRecord): ActionSurroundings => ({
+    controller,
+    // 入力中は**いま入力されている値**で判定する（保存前の値で出し分ける）。
+    record: record ?? (controller.mode === CrudMode.list ? undefined : draft),
+    records: controller.selectedRows,
+    keyFields: props.definition.keyFields,
+    mode: controller.mode === CrudMode.list ? undefined : controller.formMode,
+    columns: props.definition.table.columns,
+    owners: ownersOf(props.definition),
+    fetchRows: (limit) => controller.fetchForExport(limit),
+    fallbackName: props.definition.title,
+    onCreate: () => startCreate(),
+    setSelection: (keys) => controller.setSelection(keys),
+  });
 
   if (controller.mode !== CrudMode.list) {
     return (
@@ -119,7 +175,9 @@ export function HatakeCrudPage(props: {
             <HatakeField
               key={field.field}
               field={field}
-              record={draft}
+              // **計算した項目は写しに埋める。** 下書きそのものに混ぜると、保存の
+              // ときに計算結果まで書き戻すことになる。
+              record={withComputed(formFields(props.definition.form), draft)}
               errors={controller.validation.errors}
               mode={controller.formMode}
               disabled={controller.submitting}
@@ -145,6 +203,7 @@ export function HatakeCrudPage(props: {
             </button>
           </div>
         </form>
+        {bar.overlay()}
       </div>
     );
   }
@@ -159,13 +218,14 @@ export function HatakeCrudPage(props: {
       <button
         className="hatake-button hatake-button-primary"
         data-hatake="list:create"
-        onClick={() => {
-          controller.startCreate();
-          setDraft({ ...controller.draft });
-        }}
+        onClick={startCreate}
       >
         新規登録
       </button>
+      {/* 定義が書いたボタン（出力・一括・遷移…）。**組み込みの新規登録とは別**。 */}
+      {bar.top(props.definition.actions, props.definition.table.rowActions, () => around(), {
+        rows: controller.selectedRows,
+      })}
       <HatakeError error={controller.error} />
       <HatakeTable
         table={props.definition.table}
@@ -176,9 +236,18 @@ export function HatakeCrudPage(props: {
         formatters={props.formatters}
         sortField={controller.query.sortField}
         sortAscending={controller.query.sortAscending}
+        selectable={bar.selectable(props.definition.actions)}
+        selectedKeys={controller.selectedKeys}
+        allSelected={controller.allSelected}
+        onSelect={(key) => controller.toggleSelected(key)}
+        onSelectAll={() => controller.toggleAllSelected()}
         onSort={(field, ascending) => void controller.sortBy(field, ascending)}
         rowSlot={(row, key) => (
           <span className="hatake-row-buttons">
+            {/* 定義が `table.rowActions` に並べたボタン（組み込みの前に出す）。 */}
+            {bar.row(props.definition.actions, props.definition.table.rowActions, row, () =>
+              around(row),
+            )}
             <button
               className="hatake-button"
               data-hatake={`edit:${String(key)}`}
@@ -210,6 +279,7 @@ export function HatakeCrudPage(props: {
         totalCount={controller.totalCount}
         onMove={(page) => void controller.setPage(page)}
       />
+      {bar.overlay()}
     </div>
   );
 }

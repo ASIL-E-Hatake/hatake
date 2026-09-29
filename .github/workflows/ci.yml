@@ -4997,6 +4997,9 @@ jobs:
       - name: The two renderers answer the same
         run: node web/tool/check-same-marks.mjs
 
+      - name: Web の側が Node 専用のものを引いていない
+        run: node web/tool/check-browser-safe.mjs
+
   java:
     name: Java edition
     runs-on: ubuntu-latest

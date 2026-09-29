@@ -1,20 +1,31 @@
 import { FormatterRegistry } from "@hatake-fw/api";
-import { cellText, formFields } from "@hatake-fw/api/internal";
+import { cellText, FieldTypes, formFields } from "@hatake-fw/api/internal";
 import type {
   DetailPageDefinition,
   FormPageDefinition,
   WizardPageDefinition,
 } from "@hatake-fw/api/internal";
-import { type DataRecord, DetailController, FormController, WizardController } from "@hatake-fw/runtime";
+import {
+  type ActionSurroundings,
+  type DataRecord,
+  DetailController,
+  FormController,
+  WizardController,
+  withComputed,
+} from "@hatake-fw/runtime";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { useActions } from "../parts/actions.js";
 import { HatakeField } from "../parts/field.js";
+import { HatakeSubTable } from "../parts/subTable.js";
 import { HatakeError, useController, useOnce, useRegistries } from "../scope.js";
 
 /** 入力だけの画面（`kind: form`）。鍵が在れば直す、無ければ作る。 */
 export function HatakeFormPage(props: {
   definition: FormPageDefinition;
   recordKey?: unknown;
+  roles?: readonly string[];
+  formatters?: FormatterRegistry;
   onSaved?: (record: DataRecord) => void;
 }): ReactNode {
   const registries = useRegistries();
@@ -28,14 +39,27 @@ export function HatakeFormPage(props: {
     [props.definition.id, String(props.recordKey)],
   );
   useController(controller);
+  const bar = useActions({ roles: props.roles ?? [], formatters: props.formatters });
   const [draft, setDraft] = useState<DataRecord>({});
   useEffect(() => {
     void controller.init().then(() => setDraft({ ...controller.draft }));
   }, [controller]);
 
+  // **いま入力されている値**で判定する（保存前の値で出し分ける）。
+  const around = (): ActionSurroundings => ({
+    controller,
+    record: draft,
+    mode: controller.formMode,
+    fallbackName: props.definition.title,
+  });
+
   return (
     <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
       <h1 className="hatake-title">{props.definition.title}</h1>
+      {bar.page(props.definition.actions, around, {
+        record: draft,
+        mode: controller.formMode,
+      })}
       <HatakeError error={controller.error} />
       <form
         className="hatake-form"
@@ -47,17 +71,31 @@ export function HatakeFormPage(props: {
           });
         }}
       >
-        {formFields(props.definition.form).map((field) => (
-          <HatakeField
-            key={field.field}
-            field={field}
-            record={draft}
-            errors={controller.validation.errors}
-            mode={controller.formMode}
-            disabled={controller.submitting}
-            onChange={(name, value) => setDraft((prev) => ({ ...prev, [name]: value }))}
-          />
-        ))}
+        {formFields(props.definition.form).map((field) =>
+          field.type === FieldTypes.subTable ? (
+            <HatakeSubTable
+              key={field.field}
+              field={field}
+              record={draft}
+              roles={props.roles}
+              formatters={props.formatters}
+              editable
+              onChange={(name, rows) => setDraft((prev) => ({ ...prev, [name]: [...rows] }))}
+            />
+          ) : (
+            <HatakeField
+              key={field.field}
+              field={field}
+              // **計算した項目は写しに埋める。** 下書きそのものに混ぜると、保存の
+              // ときに計算結果まで書き戻すことになる。
+              record={withComputed(formFields(props.definition.form), draft)}
+              errors={controller.validation.errors}
+              mode={controller.formMode}
+              disabled={controller.submitting}
+              onChange={(name, value) => setDraft((prev) => ({ ...prev, [name]: value }))}
+            />
+          ),
+        )}
         <button
           className="hatake-button hatake-button-primary"
           type="submit"
@@ -67,6 +105,7 @@ export function HatakeFormPage(props: {
           保存
         </button>
       </form>
+      {bar.overlay()}
     </div>
   );
 }
@@ -80,6 +119,7 @@ export function HatakeFormPage(props: {
 export function HatakeDetailPage(props: {
   definition: DetailPageDefinition;
   recordKey?: unknown;
+  roles?: readonly string[];
   formatters?: FormatterRegistry;
 }): ReactNode {
   const registries = useRegistries();
@@ -93,16 +133,25 @@ export function HatakeDetailPage(props: {
     [props.definition.id, String(props.recordKey)],
   );
   useController(controller);
+  const bar = useActions({ roles: props.roles ?? [], formatters: props.formatters });
   useEffect(() => {
     void controller.init();
   }, [controller]);
 
-  const record = controller.record;
   const fields = formFields(props.definition.form);
+  // **計算した項目をここで埋める。** 埋めないと「合計」「上位3件」が空のまま出て、
+  // 定義に書いてあるのに効いていないように見える。
+  const record = controller.record === null ? null : withComputed(fields, controller.record);
 
   return (
     <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
       <h1 className="hatake-title">{props.definition.title}</h1>
+      {/* 読むだけの画面のボタンは、**いま開いているレコード**で判定する。 */}
+      {bar.page(
+        props.definition.actions,
+        () => ({ controller, record: record ?? undefined, fallbackName: props.definition.title }),
+        { record: record ?? undefined },
+      )}
       <HatakeError error={controller.error} />
       {record === null ? (
         <p className="hatake-table-empty">
@@ -110,16 +159,34 @@ export function HatakeDetailPage(props: {
         </p>
       ) : (
         <dl className="hatake-detail">
-          {fields.map((one) => (
-            <div key={one.field}>
-              <dt className="hatake-field-label">{one.label}</dt>
-              <dd data-hatake={`value:${one.field}`}>
-                {cellText(formatters, fields, one, record[one.field])}
+          {fields.map((one) =>
+            // 明細は**表で出す**（`、` で繋いだ1行にすると、列も整形も消える）。
+            // 見出しは表の側が出すので `dt` は置かない（同じ字が2回並ぶ）。
+            one.type === FieldTypes.subTable ? (
+              <dd
+                key={one.field}
+                className="hatake-detail-wide"
+                data-hatake={`value:${one.field}`}
+              >
+                <HatakeSubTable
+                  field={one}
+                  record={record}
+                  roles={props.roles}
+                  formatters={props.formatters}
+                />
               </dd>
-            </div>
-          ))}
+            ) : (
+              <div key={one.field}>
+                <dt className="hatake-field-label">{one.label}</dt>
+                <dd data-hatake={`value:${one.field}`}>
+                  {cellText(formatters, fields, one, record[one.field])}
+                </dd>
+              </div>
+            ),
+          )}
         </dl>
       )}
+      {bar.overlay()}
     </div>
   );
 }
@@ -133,6 +200,8 @@ export function HatakeDetailPage(props: {
 export function HatakeWizardPage(props: {
   definition: WizardPageDefinition;
   recordKey?: unknown;
+  roles?: readonly string[];
+  formatters?: FormatterRegistry;
   onSaved?: (record: DataRecord) => void;
 }): ReactNode {
   const registries = useRegistries();
@@ -146,10 +215,18 @@ export function HatakeWizardPage(props: {
     [props.definition.id, String(props.recordKey)],
   );
   useController(controller);
+  const bar = useActions({ roles: props.roles ?? [], formatters: props.formatters });
   const [draft, setDraft] = useState<DataRecord>({});
   useEffect(() => {
     void controller.init().then(() => setDraft({ ...controller.draft }));
   }, [controller]);
+
+  const around = (): ActionSurroundings => ({
+    controller,
+    record: draft,
+    mode: controller.formMode,
+    fallbackName: props.definition.title,
+  });
 
   if (!controller.hasStep) {
     return (
@@ -167,6 +244,12 @@ export function HatakeWizardPage(props: {
   return (
     <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
       <h1 className="hatake-title">{props.definition.title}</h1>
+      {/* ウィザードにも画面のボタンが書ける（`wizardPage.actions`）。ステップの
+          「戻る／次へ」とは別もので、**いま入力されている値**で判定する。 */}
+      {bar.page(props.definition.actions, around, {
+        record: draft,
+        mode: controller.formMode,
+      })}
       <ol className="hatake-steps" data-hatake="wizard:steps">
         {controller.steps.map((one, at) => (
           <li key={one.id} className={at === controller.stepIndex ? "hatake-step-current" : undefined}>
@@ -195,7 +278,7 @@ export function HatakeWizardPage(props: {
           <HatakeField
             key={field.field}
             field={field}
-            record={draft}
+            record={withComputed(step.fields, draft)}
             errors={controller.validation.errors}
             mode={controller.formMode}
             disabled={controller.submitting}
@@ -226,6 +309,7 @@ export function HatakeWizardPage(props: {
           </button>
         </div>
       </form>
+      {bar.overlay()}
     </div>
   );
 }

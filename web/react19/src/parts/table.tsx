@@ -27,14 +27,40 @@ export function HatakeTable(props: {
   onSort?: (field: string, ascending: boolean) => void;
   rowSlot?: (row: DataRecord, key: unknown) => ReactNode;
   emptyText?: string;
+  /**
+   * 行を選べるようにするか。
+   *
+   * **決めるのは定義**（`scope: selection` のボタンが1つでも在るか）で、ここは
+   * 渡されたとおりに出すだけ。選べるのに実行するボタンが無い画面を作らない
+   * ＝チェック欄だけ在って何も起きない、が一番たちが悪い。
+   */
+  selectable?: boolean;
+  /** いま選ばれている鍵（このページに出ているぶん）。 */
+  selectedKeys?: readonly unknown[];
+  allSelected?: boolean;
+  onSelect?: (key: unknown) => void;
+  onSelectAll?: () => void;
 }): ReactNode {
   const formatters = props.formatters ?? new FormatterRegistry();
   const ascending = props.sortAscending ?? true;
   // **見えない列は出さない。** 役割で絞るのは定義の仕事（`roles`）。
   const columns = props.table.columns.filter((one) => isAllowed(one.roles, props.roles ?? []));
 
+  const picked = new Set((props.selectedKeys ?? []).map(String));
+
   const head = (
     <tr>
+      {props.selectable !== true ? null : (
+        <th className="hatake-select">
+          <input
+            type="checkbox"
+            data-hatake="select:all"
+            aria-label="このページを全部選ぶ"
+            checked={props.allSelected === true}
+            onChange={() => props.onSelectAll?.()}
+          />
+        </th>
+      )}
       {columns.map((one) => (
         <th
           key={one.field}
@@ -66,7 +92,11 @@ export function HatakeTable(props: {
           {props.rows.length === 0 ? (
             <tr>
               <td
-                colSpan={columns.length + (props.rowSlot === undefined ? 0 : 1)}
+                colSpan={
+                  columns.length +
+                  (props.rowSlot === undefined ? 0 : 1) +
+                  (props.selectable === true ? 1 : 0)
+                }
                 className="hatake-table-empty"
               >
                 {props.emptyText ?? "該当するデータがありません"}
@@ -77,8 +107,24 @@ export function HatakeTable(props: {
               // **行の見分けは定義の鍵**（並び順ではない）。並びで持つと、消したあとに
               // 別の行へ操作が当たる。
               const key = recordKeyOf(props.keyFields ?? [], row);
+              const mine = picked.has(String(key));
               return (
-                <tr key={String(key)} data-hatake={`row:${String(key)}`}>
+                <tr
+                  key={String(key)}
+                  className={props.selectable === true && mine ? "hatake-row-selected" : undefined}
+                  data-hatake={`row:${String(key)}`}
+                >
+                  {props.selectable !== true ? null : (
+                    <td className="hatake-select">
+                      <input
+                        type="checkbox"
+                        data-hatake={`select:${String(key)}`}
+                        aria-label={`${String(key)} を選ぶ`}
+                        checked={mine}
+                        onChange={() => props.onSelect?.(key)}
+                      />
+                    </td>
+                  )}
                   {columns.map((one) => (
                     <td
                       key={one.field}

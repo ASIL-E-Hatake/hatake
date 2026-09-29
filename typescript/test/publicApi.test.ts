@@ -115,19 +115,27 @@ describe("枠組み自身の使い方", () => {
 
 describe("ブラウザに載ること", () => {
   /**
-   * **約束する面は、ブラウザでそのまま動く。**
+   * **ブラウザに載る口は、ブラウザでそのまま動く。**
    *
-   * Web の Renderer（`@hatake-fw/vue3` / `@hatake-fw/react19`）は、定義を読む所に
-   * この口をそのまま使う。だから専用の `core` パッケージを切り出していない
+   * Web の Renderer（`@hatake-fw/vue3` / `@hatake-fw/react19`）と、その下の
+   * `@hatake-fw/runtime` / `@hatake-fw/http` は、定義を読む所にこの枠組みを
+   * そのまま使う。だから専用の `core` パッケージを切り出していない
    * （→ [Web の Renderer](../../docs/proposals/web-renderers.ja.md)）。
    *
-   * これが成り立っているのは偶然ではなく、0.9.14 で**呼ぶ相手が業務のコード**という
-   * 線を引いたから。CLI も MCP も probe も `internal` 側なので `index` から辿れない。
-   * ただし**線を引いた事実は、足すときに思い出されない**。`index` に `node:fs` を
-   * 引くものを1つ足した瞬間に、Renderer の束ね直しが壊れる（しかも壊れるのは
-   * 案件のビルドなので、こちらの CI では出ない）。だからここで見る。
+   * 見る口は**2つ**:
+   *
+   *   ・`index`    … 業務のコードが呼ぶ（約束する）
+   *   ・`internal` … 枠組みの中身。土台と Renderer が通る（約束しない）
+   *
+   * Node 専用のものは [`tools.ts`](../src/tools.ts) に隔離してある。
+   *
+   * **`index` だけを見ていた頃、これは黙って通った。** 土台が通るのは `internal`
+   * のほうで、そこに `specDir` / `mcpTools` / `mcpContract` / `gitRange` が
+   * 混ざっていたので、見本を束ねると `node:path` まで引かれてビルドが落ちた
+   * （落ちるのは案件側なので、こちらの CI には出ない）。片方だけ見ていると、
+   * 見張りが**空振りしていることに気づけない**。
    */
-  it("`index` から `node:` を引くものを辿れない", () => {
+  const reach = (entry: string): { seen: Set<string>; offenders: string[] } => {
     const seen = new Set<string>();
     const offenders: string[] = [];
 
@@ -144,11 +152,20 @@ describe("ブラウザに載ること", () => {
         }
       }
     };
-    walk(join("src", "index.ts"));
+    walk(join("src", `${entry}.ts`));
+    return { seen, offenders };
+  };
 
+  it.each(["index", "internal"])("`%s` から `node:` を引くものを辿れない", (entry) => {
+    const { seen, offenders } = reach(entry);
     // 辿れていること自体も見る（歩き方を間違えたら黙って通る）。
     expect(seen.size).toBeGreaterThan(20);
     expect(offenders).toEqual([]);
+  });
+
+  it("`tools` は Node 専用のままにしてある（隔離が空になっていない）", () => {
+    // 逆側。**ここが綺麗になったら、隔離したものが `internal` に戻っている**。
+    expect(reach("tools").offenders.length).toBeGreaterThan(0);
   });
 });
 

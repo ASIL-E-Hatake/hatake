@@ -30,6 +30,9 @@ export {
   type ParseOptions,
 } from "./parse.js";
 export { parseAppJson, parseAppMap, parseAppYaml } from "./appParse.js";
+// app の画面を**中身まで**読む（`parseAppYaml` が返す `pages` は一覧だけなので、
+// 検証を回すにも画面を描くにも足りない）。
+export { parseAppPagesJson, parseAppPagesMap, parseAppPagesYaml } from "./appParse.js";
 export { parseAppSource } from "./explainSource.js";
 export { checkDslVersion } from "./dslVersion.js";
 

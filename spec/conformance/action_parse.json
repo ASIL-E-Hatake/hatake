@@ -1,0 +1,39 @@
+[
+  {
+    "why": "遷移のボタンは page / params を**上に**書く。読む側は config から引くので、parser が持ち上げる",
+    "yaml": "dsl_version: \"1.0\"\npage:\n  type: search\n  id: list\n  title: 一覧\n  repository: itemRepository\n  key: code\n  table:\n    columns:\n      - { field: code, label: コード }\n  actions:\n    - id: openDetail\n      type: navigate\n      label: 詳細\n      scope: row\n      page: detail\n      params: { code: $row.code }\n      open: tab\n",
+    "expected": {
+      "id": "openDetail",
+      "type": "navigate",
+      "scope": "row",
+      "open": "tab",
+      "configPage": "detail",
+      "configParams": { "code": "$row.code" }
+    }
+  },
+  {
+    "why": "config を自分で書いていても、上の page / params は消さずに足す",
+    "yaml": "dsl_version: \"1.0\"\npage:\n  type: search\n  id: list\n  title: 一覧\n  repository: itemRepository\n  key: code\n  table:\n    columns:\n      - { field: code, label: コード }\n  actions:\n    - id: openDetail\n      type: navigate\n      label: 詳細\n      page: detail\n      params: { code: $row.code }\n      config: { icon: open_in_new }\n",
+    "expected": {
+      "id": "openDetail",
+      "type": "navigate",
+      "scope": "page",
+      "open": "same",
+      "configPage": "detail",
+      "configParams": { "code": "$row.code" },
+      "configIcon": "open_in_new"
+    }
+  },
+  {
+    "why": "書いていなければ config に生えない（空の遷移先を作らない）",
+    "yaml": "dsl_version: \"1.0\"\npage:\n  type: search\n  id: list\n  title: 一覧\n  repository: itemRepository\n  key: code\n  table:\n    columns:\n      - { field: code, label: コード }\n  actions:\n    - id: reprice\n      type: plugin\n      plugin: reprice\n      label: 単価を変える\n      scope: selection\n",
+    "expected": {
+      "id": "reprice",
+      "type": "plugin",
+      "scope": "selection",
+      "open": "same",
+      "configPage": null,
+      "configParams": null
+    }
+  }
+]

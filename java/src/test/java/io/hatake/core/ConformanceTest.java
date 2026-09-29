@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -64,7 +65,28 @@ class ConformanceTest {
                                     (String) f.get("type"), (String) f.get("operator")))
                             .toList();
                     Map<String, Object> params = (Map<String, Object>) c.get("params");
-                    QuerySpec q = QueryBuilder.build(new SearchDefinition(filters), params);
+                    // `table` が書いてあるケースは、**定義に書いた sortable な列でも
+                    // 並べ替えられる**ことを見る（渡さないケースは今までどおり）。
+                    TableDefinition table = null;
+                    if (c.get("table") instanceof Map<?, ?> t
+                            && t.get("columns") instanceof List<?> cols) {
+                        List<ColumnDefinition> columns = new ArrayList<>();
+                        for (Object raw : cols) {
+                            Map<String, Object> col = (Map<String, Object>) raw;
+                            columns.add(new ColumnDefinition(
+                                    (String) col.get("field"),
+                                    (String) col.get("field"),
+                                    "text",
+                                    null,
+                                    Map.of(),
+                                    List.of(),
+                                    List.of(),
+                                    Boolean.TRUE.equals(col.get("sortable"))));
+                        }
+                        table = new TableDefinition(columns);
+                    }
+                    QuerySpec q = QueryBuilder.build(
+                            new SearchDefinition(filters), params, 50, table);
 
                     Map<String, Object> e = (Map<String, Object>) c.get("expected");
                     List<Map<String, Object>> ec = (List<Map<String, Object>>) e.get("conditions");

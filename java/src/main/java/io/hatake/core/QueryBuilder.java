@@ -23,6 +23,28 @@ public final class QueryBuilder {
     }
 
     public static QuerySpec build(SearchDefinition search, Map<String, Object> params, int defaultPageSize) {
+        return build(search, params, defaultPageSize, null);
+    }
+
+    /**
+     * 並べ替えを許す列を渡せる形。
+     *
+     * <p>{@code table} を渡さなければ、並べ替えられるのは<b>絞り込みに宣言した項目だけ</b>
+     * （今までどおり）。渡すと、そこに {@code sortable: true} と書いてある列でも
+     * 並べ替えられる。
+     *
+     * <p>分けてあるのは<b>素性の知れない列名を SQL に入れない</b>ため。利用者が送って
+     * きた文字列は依然として通らず、通るのは<b>定義に書いてある列</b>だけ。
+     *
+     * <p>渡さないと、{@code sortable: true} と書いた列が<b>押せるのに並ばない</b>
+     * （画面は出て、エラーも出ない）。同梱の例も雛形も絞り込みに無い列に
+     * {@code sortable} を書いているので、<b>サーバは渡すのが既定</b>と思ってよい。
+     */
+    public static QuerySpec build(
+            SearchDefinition search,
+            Map<String, Object> params,
+            int defaultPageSize,
+            TableDefinition table) {
         List<FilterDefinition> filters = search == null ? List.of() : search.filters();
         Set<String> allowed = new HashSet<>();
         List<QuerySpec.Condition> conditions = new ArrayList<>();
@@ -36,8 +58,19 @@ public final class QueryBuilder {
             conditions.add(new QuerySpec.Condition(f.field(), f.operator(), coerce(raw, f.type())));
         }
 
+        // 並べ替えに許す名前。**絞り込みに書いた項目**に加えて、渡されていれば
+        // **定義が sortable と言っている列**も許す（どちらも定義に書いてある名前）。
+        Set<String> sortable = new HashSet<>(allowed);
+        if (table != null) {
+            for (ColumnDefinition column : table.columns()) {
+                if (column.sortable()) {
+                    sortable.add(column.field());
+                }
+            }
+        }
+
         String sortField = null;
-        if (params.get("sortField") instanceof String s && allowed.contains(s)) {
+        if (params.get("sortField") instanceof String s && sortable.contains(s)) {
             sortField = s;
         }
         // 昇順か降順か。**文字列の "false" も降順として読む**（REST の契約はクエリ

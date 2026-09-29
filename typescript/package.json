@@ -1,6 +1,6 @@
 {
   "name": "@hatake-fw/api",
-  "version": "0.9.18",
+  "version": "0.9.19",
   "description": "Core definitions + parser + server-side validation for hatake (TypeScript edition). Consumes the language-agnostic hatake DSL.",
   "license": "Apache-2.0",
   "type": "module",
@@ -14,6 +14,10 @@
     "./internal": {
       "types": "./dist/internal.d.ts",
       "default": "./dist/internal.js"
+    },
+    "./tools": {
+      "types": "./dist/tools.d.ts",
+      "default": "./dist/tools.js"
     },
     "./package.json": "./package.json"
   },

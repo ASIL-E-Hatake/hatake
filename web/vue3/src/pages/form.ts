@@ -1,10 +1,19 @@
 import { FormatterRegistry } from "@hatake-fw/api";
-import { cellText, formFields } from "@hatake-fw/api/internal";
+import { cellText, FieldTypes, formFields } from "@hatake-fw/api/internal";
 import type { DetailPageDefinition, FormPageDefinition, WizardPageDefinition } from "@hatake-fw/api/internal";
-import { type DataRecord, DetailController, FormController, WizardController } from "@hatake-fw/runtime";
+import {
+  type ActionSurroundings,
+  type DataRecord,
+  DetailController,
+  FormController,
+  WizardController,
+  withComputed,
+} from "@hatake-fw/runtime";
 import { defineComponent, h, onMounted, shallowRef, type PropType } from "vue";
 
+import { useActions } from "../parts/actions.js";
 import { HatakeField } from "../parts/field.js";
+import { HatakeSubTable } from "../parts/subTable.js";
 import { touch, useController, useRegistries } from "../scope.js";
 import { errorOf } from "./list.js";
 
@@ -14,6 +23,8 @@ export const HatakeFormPage = defineComponent({
   props: {
     definition: { type: Object as PropType<FormPageDefinition>, required: true },
     recordKey: { type: null as unknown as PropType<unknown>, default: undefined as unknown },
+    roles: { type: Array as PropType<readonly string[]>, default: () => [] },
+    formatters: { type: Object as PropType<FormatterRegistry>, default: () => new FormatterRegistry() },
   },
   emits: {
     saved: (_record: DataRecord) => true,
@@ -26,16 +37,29 @@ export const HatakeFormPage = defineComponent({
       recordKey: props.recordKey,
     });
     const { version } = useController(controller);
+    const bar = useActions({ roles: props.roles, formatters: props.formatters });
     const draft = shallowRef<DataRecord>({});
     onMounted(async () => {
       await controller.init();
       draft.value = { ...controller.draft };
     });
 
+    // **いま入力されている値**で判定する（保存前の値で出し分ける）。
+    const around = (): ActionSurroundings => ({
+      controller,
+      record: draft.value,
+      mode: controller.formMode,
+      fallbackName: props.definition.title,
+    });
+
     return () => {
       touch(version);
       return h("div", { class: "hatake-page", "data-hatake": `page:${props.definition.id}` }, [
         h("h1", { class: "hatake-title" }, props.definition.title),
+        bar.page(props.definition.actions, around, {
+          record: draft.value,
+          mode: controller.formMode,
+        }),
         ...errorOf(controller.error),
         h(
           "form",
@@ -49,17 +73,30 @@ export const HatakeFormPage = defineComponent({
             },
           },
           [
+            // **計算した項目は写しに埋める。** 下書きそのものに混ぜると、保存の
+            // ときに計算結果まで書き戻すことになる。
             ...formFields(props.definition.form).map((field) =>
-              h(HatakeField, {
-                field,
-                record: draft.value,
-                errors: controller.validation.errors,
-                mode: controller.formMode,
-                disabled: controller.submitting,
-                onChange: (name: string, value: unknown) => {
-                  draft.value = { ...draft.value, [name]: value };
-                },
-              }),
+              field.type === FieldTypes.subTable
+                ? h(HatakeSubTable, {
+                    field,
+                    record: draft.value,
+                    roles: props.roles,
+                    formatters: props.formatters,
+                    editable: true,
+                    onChange: (name: string, rows: readonly DataRecord[]) => {
+                      draft.value = { ...draft.value, [name]: [...rows] };
+                    },
+                  })
+                : h(HatakeField, {
+                    field,
+                    record: withComputed(formFields(props.definition.form), draft.value),
+                    errors: controller.validation.errors,
+                    mode: controller.formMode,
+                    disabled: controller.submitting,
+                    onChange: (name: string, value: unknown) => {
+                      draft.value = { ...draft.value, [name]: value };
+                    },
+                  }),
             ),
             h(
               "button",
@@ -73,6 +110,7 @@ export const HatakeFormPage = defineComponent({
             ),
           ],
         ),
+        bar.overlay(),
       ]);
     };
   },
@@ -90,6 +128,7 @@ export const HatakeDetailPage = defineComponent({
   props: {
     definition: { type: Object as PropType<DetailPageDefinition>, required: true },
     recordKey: { type: null as unknown as PropType<unknown>, default: undefined as unknown },
+    roles: { type: Array as PropType<readonly string[]>, default: () => [] },
     formatters: { type: Object as PropType<FormatterRegistry>, default: () => new FormatterRegistry() },
   },
   setup(props) {
@@ -99,29 +138,55 @@ export const HatakeDetailPage = defineComponent({
       recordKey: props.recordKey,
     });
     const { version } = useController(controller);
+    const bar = useActions({ roles: props.roles, formatters: props.formatters });
     onMounted(() => void controller.init());
 
     return () => {
       touch(version);
-      const record = controller.record;
       const fields = formFields(props.definition.form);
+      // **計算した項目をここで埋める。** 埋めないと「合計」「上位3件」が空のまま
+      // 出て、定義に書いてあるのに効いていないように見える。
+      const record =
+        controller.record === null ? null : withComputed(fields, controller.record);
       return h("div", { class: "hatake-page", "data-hatake": `page:${props.definition.id}` }, [
         h("h1", { class: "hatake-title" }, props.definition.title),
+        // 読むだけの画面のボタンは、**いま開いているレコード**で判定する。
+        bar.page(
+          props.definition.actions,
+          () => ({ controller, record: record ?? undefined, fallbackName: props.definition.title }),
+          { record: record ?? undefined },
+        ),
         ...errorOf(controller.error),
         record === null
           ? h("p", { class: "hatake-table-empty" }, controller.loading ? "読み込み中…" : "該当するデータがありません")
           : h(
               "dl",
               { class: "hatake-detail" },
-              fields.flatMap((one) => [
-                h("dt", { class: "hatake-field-label" }, one.label),
-                h(
-                  "dd",
-                  { "data-hatake": `value:${one.field}` },
-                  cellText(props.formatters, fields, one, record[one.field]),
-                ),
-              ]),
+              fields.flatMap((one) =>
+                // 明細は**表で出す**（`、` で繋いだ1行にすると、列も整形も消える）。
+                one.type === FieldTypes.subTable
+                  ? [
+                      // **見出しは表の側が出す**（`dt` にも出すと同じ字が2回並ぶ）。
+                      h("dd", { class: "hatake-detail-wide", "data-hatake": `value:${one.field}` }, [
+                        h(HatakeSubTable, {
+                          field: one,
+                          record,
+                          roles: props.roles,
+                          formatters: props.formatters,
+                        }),
+                      ]),
+                    ]
+                  : [
+                      h("dt", { class: "hatake-field-label" }, one.label),
+                      h(
+                        "dd",
+                        { "data-hatake": `value:${one.field}` },
+                        cellText(props.formatters, fields, one, record[one.field]),
+                      ),
+                    ],
+              ),
             ),
+        bar.overlay(),
       ]);
     };
   },
@@ -138,6 +203,8 @@ export const HatakeWizardPage = defineComponent({
   props: {
     definition: { type: Object as PropType<WizardPageDefinition>, required: true },
     recordKey: { type: null as unknown as PropType<unknown>, default: undefined as unknown },
+    roles: { type: Array as PropType<readonly string[]>, default: () => [] },
+    formatters: { type: Object as PropType<FormatterRegistry>, default: () => new FormatterRegistry() },
   },
   emits: {
     saved: (_record: DataRecord) => true,
@@ -150,10 +217,18 @@ export const HatakeWizardPage = defineComponent({
       recordKey: props.recordKey,
     });
     const { version } = useController(controller);
+    const bar = useActions({ roles: props.roles, formatters: props.formatters });
     const draft = shallowRef<DataRecord>({});
     onMounted(async () => {
       await controller.init();
       draft.value = { ...controller.draft };
+    });
+
+    const around = (): ActionSurroundings => ({
+      controller,
+      record: draft.value,
+      mode: controller.formMode,
+      fallbackName: props.definition.title,
     });
 
     return () => {
@@ -173,6 +248,12 @@ export const HatakeWizardPage = defineComponent({
       const step = controller.step;
       return h("div", { class: "hatake-page", "data-hatake": `page:${props.definition.id}` }, [
         h("h1", { class: "hatake-title" }, props.definition.title),
+        // ウィザードにも画面のボタンが書ける（`wizardPage.actions`）。ステップの
+        // 「戻る／次へ」とは別もので、**いま入力されている値**で判定する。
+        bar.page(props.definition.actions, around, {
+          record: draft.value,
+          mode: controller.formMode,
+        }),
         h(
           "ol",
           { class: "hatake-steps", "data-hatake": "wizard:steps" },
@@ -202,7 +283,7 @@ export const HatakeWizardPage = defineComponent({
             ...step.fields.map((field) =>
               h(HatakeField, {
                 field,
-                record: draft.value,
+                record: withComputed(step.fields, draft.value),
                 errors: controller.validation.errors,
                 mode: controller.formMode,
                 disabled: controller.submitting,
@@ -240,6 +321,7 @@ export const HatakeWizardPage = defineComponent({
             ]),
           ],
         ),
+        bar.overlay(),
       ]);
     };
   },

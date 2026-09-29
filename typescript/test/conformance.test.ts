@@ -18,6 +18,7 @@ import {
   isBusinessDay,
   nextBusinessDay,
   optionValueIsStale,
+  parsePageYaml,
   prevBusinessDay,
   tenure,
   visibleOptions,
@@ -76,7 +77,9 @@ describe("conformance: queries", () => {
           config: {},
         })),
       };
-      const q = buildQuery(search, c.params);
+      // `table` が書いてあるケースは、**定義に書いた sortable な列でも並べ替えられる**
+      // ことを見る（渡さないケースは今までどおり＝絞り込みの項目だけ）。
+      const q = buildQuery(search, c.params, c.table === undefined ? {} : { table: c.table });
       const e = c.expected;
       expect(q.conditions.length).toBe(e.conditions.length);
       e.conditions.forEach((ec: any, i: number) => {
@@ -233,6 +236,30 @@ describe("conformance: business day", () => {
       expect(isBusinessDay(c.date, c.holidays)).toBe(c.expected.isBusinessDay);
       expect(nextBusinessDay(c.date, c.holidays)).toBe(c.expected.next);
       expect(prevBusinessDay(c.date, c.holidays)).toBe(c.expected.prev);
+    });
+  }
+});
+
+describe("conformance: action parse", () => {
+  // **遷移のボタンの読み方。** `page` / `params` は `config:` の中ではなく上に書く
+  // ので、parser が `config` へ持ち上げる（読む側は `config` から引く）。
+  //
+  // 0.9.19 まで**この版だけが持ち上げていなかった**。同じ定義なのに Flutter では
+  // 遷移して、ブラウザでは「遷移先が解決できません」と出た（見本を作って初めて
+  // 分かった）。Java 版はアクションを持たないので回らない。
+  for (const c of load("action_parse.json")) {
+    it(c.why, () => {
+      const page = parsePageYaml(c.yaml) as { actions: any[] };
+      const action = page.actions[0];
+      expect(action.id).toBe(c.expected.id);
+      expect(action.type).toBe(c.expected.type);
+      expect(action.scope).toBe(c.expected.scope);
+      expect(action.open).toBe(c.expected.open);
+      expect(action.config.page ?? null).toEqual(c.expected.configPage);
+      expect(action.config.params ?? null).toEqual(c.expected.configParams);
+      if (c.expected.configIcon !== undefined) {
+        expect(action.config.icon).toBe(c.expected.configIcon);
+      }
     });
   }
 });

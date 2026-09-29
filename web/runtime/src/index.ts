@@ -32,6 +32,19 @@ export {
 } from "./action.js";
 export type { ExportRequest, ExportSink, PrintRequest, PrintSink } from "./sinks.js";
 
+// ── ボタンを押したときに起きること（判断はここ。Renderer は描くだけ） ──
+export {
+  ActionRunner,
+  type ActionAsk,
+  type ActionAsker,
+  type ActionEnabled,
+  type ActionMessage,
+  type ActionProgress,
+  type ActionSurroundings,
+} from "./actionRunner.js";
+export { type AppMessage, MessageCenter } from "./messages.js";
+export { withComputed } from "./computedFields.js";
+
 // ── 画面ごとの土台 ────────────────────────────────────────────
 export { ListController } from "./listController.js";
 export { CrudController, CrudMode, type CrudLike } from "./crudController.js";

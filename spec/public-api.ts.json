@@ -1,6 +1,6 @@
 {
   "$comment": "**約束する面**（@hatake-fw/api）。1.0 のあとは、ここから消さない・名前を変えない・形を変えない。内部の道具は @hatake-fw/api/internal から使えるが、そちらは約束しない（断りなく変わる）。線引きは typescript/src/index.ts の頭に書いてある。",
-  "count": 35,
+  "count": 38,
   "exports": [
     "AggregateRegistry",
     "ComputedRegistry",
@@ -25,6 +25,9 @@
     "nextBusinessDay",
     "parseAppJson",
     "parseAppMap",
+    "parseAppPagesJson",
+    "parseAppPagesMap",
+    "parseAppPagesYaml",
     "parseAppSource",
     "parseAppYaml",
     "parsePageJson",
