@@ -22,6 +22,21 @@ export interface QuerySpec {
 
 export interface BuildQueryOptions {
   defaultPageSize?: number;
+  /**
+   * **並べ替えを許す列**（その画面の `table`）。
+   *
+   * 渡さなければ、並べ替えられるのは**絞り込みに宣言した項目だけ**（今までどおり）。
+   * 渡すと、そこに `sortable: true` と書いてある列でも並べ替えられる。
+   *
+   * 分けてあるのは、**素性の知れない列名を SQL に入れない**ため。利用者が送って
+   * きた文字列は依然として通らず、通るのは**定義に書いてある列**だけ。
+   *
+   * 渡さないと、`sortable: true` と書いた列が**押せるのに並ばない**（画面は出て、
+   * エラーも出ない）。同梱の例も `hatake new` の雛形も、絞り込みに無い列に
+   * `sortable: true` を書いているので、**サーバを書く人はこれを渡すのが既定**と
+   * 思ってよい。
+   */
+  table?: { columns: { field: string; sortable?: boolean }[] };
 }
 
 function toInt(v: unknown, fallback: number): number {
@@ -58,6 +73,14 @@ export function buildQuery(
   const filters = search?.filters ?? [];
   const allowed = new Set(filters.map((f) => f.field));
 
+  // 並べ替えに許す名前。**絞り込みに書いた項目**に加えて、渡されていれば
+  // **定義が `sortable: true` と言っている列**も許す（どちらも定義に書いてある名前で、
+  // 利用者が送ってきた文字列ではない）。
+  const sortable = new Set(allowed);
+  for (const column of opts.table?.columns ?? []) {
+    if (column.sortable === true) sortable.add(column.field);
+  }
+
   const conditions: QueryCondition[] = [];
   for (const f of filters) {
     const raw = params[f.field];
@@ -67,7 +90,7 @@ export function buildQuery(
 
   const sf = params["sortField"];
   const sortField =
-    typeof sf === "string" && allowed.has(sf) ? sf : undefined;
+    typeof sf === "string" && sortable.has(sf) ? sf : undefined;
   // 昇順か降順か。**文字列の "false" も降順として読む**のが要点で、REST の契約
   // （spec/conformance/rest_query.json）はクエリ文字列で送ると決めている＝
   // `sortAscending=false` は **文字列** で届く。ここを真偽値だけで見ていると、

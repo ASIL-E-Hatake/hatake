@@ -15,6 +15,11 @@
 // かといって隠してしまうと、枠組みの中身を使いたい人の道が消えます。だから
 // **道は残して、約束だけを分け**ました。
 
+// **Node でしか動かないものはここから出しません**（`specDir` / `mcpTools` /
+// `mcpContract` / `gitRange`）。それらは [`tools.ts`](./tools.ts) に在ります。
+// この口は Web の Renderer も通るので、**ここはブラウザで動く**のが約束です
+// （約束しないのは名前と形のほうで、動く場所は約束します）。
+
 export * from "./definition.js";
 export * from "./vocabularies.js";
 export * from "./cellText.js";
@@ -22,9 +27,6 @@ export * from "./parse.js";
 export * from "./strictKeys.js";
 export * from "./reference.js";
 export * from "./fragmentContext.js";
-export * from "./specDir.js";
-export * from "./mcpTools.js";
-export * from "./mcpContract.js";
 export * from "./scaffold.js";
 export * from "./examples.js";
 export * from "./pitfalls.js";
@@ -88,7 +90,6 @@ export * from "./explainVoice.js";
 export * from "./explainSource.js";
 export * from "./explainDiff.js";
 export * from "./explainMarkdown.js";
-export * from "./gitRange.js";
 export * from "./explainBrief.js";
 export * from "./harvest.js";
 export * from "./shrink.js";

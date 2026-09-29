@@ -50,6 +50,7 @@ export class CrudController extends ListController {
     super({
       repository: options.repository,
       pageSize: options.definition.table.pagination.pageSize,
+      keyFields: options.definition.keyFields,
     });
     this.definition = options.definition;
     this._validator = options.validator ?? new FormValidator();

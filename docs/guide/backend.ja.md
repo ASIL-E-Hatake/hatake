@@ -42,12 +42,35 @@ q.parameters().forEach(query::setParameter);
 ```ts
 const page = parsePageYaml(yamlText);
 const result = new FormValidator().validate(page.form, requestBody);
-const spec = buildQuery(page.search, requestParams);   // → QuerySpec
+// **並べ替えたい列が在るなら `table` を渡す**（下）。
+const spec = buildQuery(page.search, requestParams, { table: page.table });
 const dto = deriveDto(page);                           // → DtoSpec
 const schema = toJsonSchema(dto);                      // → JSON Schema 2020-12
 const api = toOpenApi(dto, { basePath: "/api/customers" });  // → OpenAPI 3.1
 const ts = toTypeScript(dto);                          // → interface のソース
 const java = toJavaRecords(dto, { packageName: "com.example.dto" });  // → ファイル名→ソース
+```
+
+## 並べ替えは「定義に書いてある名前」だけ
+
+`buildQuery` は**素性の知れない列名を SQL に入れません**。通るのは定義に書いてある
+名前だけで、利用者が送ってきた文字列（`?sortField=evil`）は落とします。
+
+**そのとき `table` を渡すかで、許す範囲が変わります。**
+
+```ts
+buildQuery(page.search, params)                       // 絞り込みに宣言した項目だけ
+buildQuery(page.search, params, { table: page.table }) // ＋ sortable: true と書いた列
+```
+
+渡さないと、列に `sortable: true` と書いてあっても**押せるのに並びません**（画面は
+出て、エラーも出ないので押すまで気づけません）。同梱の例も `hatake new` の雛形も、
+絞り込みに無い列に `sortable` を書いているので、**渡すのが既定**と思ってください。
+
+Java も同じです:
+
+```java no-check:サーバ側の呼び方（hatake の定義ではない）
+QueryBuilder.build(page.search(), params, 50, page.table());
 ```
 
 ## DtoSpec（API の形の導出）

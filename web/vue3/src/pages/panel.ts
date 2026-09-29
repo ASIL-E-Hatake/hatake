@@ -6,9 +6,15 @@ import type {
   ReportBlock,
   ReportPageDefinition,
 } from "@hatake-fw/api/internal";
-import { DashboardController, type DataRecord, ReportController } from "@hatake-fw/runtime";
+import {
+  type ActionSurroundings,
+  DashboardController,
+  type DataRecord,
+  ReportController,
+} from "@hatake-fw/runtime";
 import { defineComponent, h, onMounted, type PropType } from "vue";
 
+import { useActions } from "../parts/actions.js";
 import { HatakePagination, HatakeSearch } from "../parts/search.js";
 import { touch, useController, useRegistries } from "../scope.js";
 import { errorOf } from "./list.js";
@@ -21,6 +27,7 @@ export const HatakeDashboardPage = defineComponent({
   name: "HatakeDashboardPage",
   props: {
     definition: { type: Object as PropType<DashboardPageDefinition>, required: true },
+    roles: { type: Array as PropType<readonly string[]>, default: () => [] },
     formatters: { type: Object as PropType<FormatterRegistry>, default: () => new FormatterRegistry() },
   },
   setup(props) {
@@ -30,6 +37,7 @@ export const HatakeDashboardPage = defineComponent({
       repositories: registries.repositories,
     });
     const { version } = useController(controller);
+    const bar = useActions({ roles: props.roles, formatters: props.formatters });
     onMounted(() => void controller.init());
 
     return () => {
@@ -40,11 +48,18 @@ export const HatakeDashboardPage = defineComponent({
           search: props.definition.search,
           onSearch: (values: DataRecord) => void controller.search(values),
         }),
+        // ダッシュボードには**行が無い**ので、`type: export` は出せない（押すと
+        // 「この画面では出力できません」と言う）。遷移と `plugin` は使える。
+        bar.page(props.definition.actions, () => ({
+          controller,
+          fallbackName: props.definition.title,
+        })),
         h(
           "div",
           { class: "hatake-dashboard" },
           props.definition.items.map((item) => card(item, controller, props.formatters)),
         ),
+        bar.overlay(),
       ]);
     };
   },
@@ -107,6 +122,7 @@ export const HatakeReportPage = defineComponent({
   name: "HatakeReportPage",
   props: {
     definition: { type: Object as PropType<ReportPageDefinition>, required: true },
+    roles: { type: Array as PropType<readonly string[]>, default: () => [] },
     formatters: { type: Object as PropType<FormatterRegistry>, default: () => new FormatterRegistry() },
   },
   setup(props) {
@@ -116,6 +132,22 @@ export const HatakeReportPage = defineComponent({
       repository: registries.repositories.resolve(props.definition.repository),
     });
     const { version } = useController(controller);
+    const bar = useActions({ roles: props.roles, formatters: props.formatters });
+
+    /**
+     * 帳票が持っているもの。
+     *
+     * **出すのも刷るのも、組んだ紙と同じ行から出す**（画面に出ている1枚ぶんではない）。
+     * 条件を走らせる前は行が無いので、押しても「出力できません」ではなく空が出る
+     * ——それを避けるため、走らせる前はボタンを押しても紙が無いと言う。
+     */
+    const around = (): ActionSurroundings => ({
+      controller,
+      columns: props.definition.table.columns,
+      fetchRows: () => Promise.resolve(controller.rows),
+      printDocument: () => (controller.hasRun ? controller.document : undefined),
+      fallbackName: props.definition.title,
+    });
 
     return () => {
       touch(version);
@@ -127,6 +159,7 @@ export const HatakeReportPage = defineComponent({
           submitLabel: "出力",
           onSearch: (values: DataRecord) => void controller.run(values),
         }),
+        bar.page(props.definition.actions, around),
         ...errorOf(controller.error),
         // **押す前に空の紙を出さない**（出すと「0件だった」と読めてしまう）。
         !controller.hasRun
@@ -148,6 +181,7 @@ export const HatakeReportPage = defineComponent({
               onMove: (page: number) => controller.setSheet(page),
             })
           : null,
+        bar.overlay(),
       ]);
     };
   },

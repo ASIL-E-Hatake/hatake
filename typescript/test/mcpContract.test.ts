@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { argsRead, checkToolContracts, hatakeTools, INSTRUCTIONS } from "../src/internal.js";
+import { argsRead, checkToolContracts, hatakeTools, INSTRUCTIONS } from "../src/tools.js";
 
 const tools = hatakeTools({
   specDir: "../spec",

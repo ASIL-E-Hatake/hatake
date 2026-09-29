@@ -45,7 +45,8 @@ class CellTextConformanceTest {
                     (String) spec.get("format"),
                     spec.get("config") == null ? Map.of() : (Map<String, Object>) spec.get("config"),
                     List.of(),
-                    optionsOf(spec.get("options")));
+                    optionsOf(spec.get("options")),
+                    false);
 
             List<CellText.Owner> owners = new ArrayList<>();
             for (Map<String, Object> owner : (List<Map<String, Object>>) one.get("owners")) {

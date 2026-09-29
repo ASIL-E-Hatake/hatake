@@ -16,6 +16,71 @@
 
 DSL の版（`dsl_version`）はパッケージの版とは別に動く。DSL が上がった版にはその旨を書く。
 
+## 0.9.19 — 2026-09-29
+
+**「並べ替えできる」と書いた列が、サーバでも並べ替えられるようになった。**
+
+見本を書いていて踏んだ。ダッシュボードの表のカードが頼んだ順で並ばず、原因は
+`buildQuery` が**絞り込みに宣言した項目でしか並べ替えを許していなかった**こと。
+押せるのに並ばない・画面は出る・エラーも出ないので、API を直接叩くまで分からなかった。
+
+最初は「定義の書き方が悪い」として助言の規則を足したが、入れてみたら**同梱の例6枚と
+`hatake new` の雛形3種が全部鳴いた**。道具が自分の例を叱る形になったので、読み方を
+改めた —— 悪いのは定義ではなく、**`buildQuery` が厳しすぎた**。
+
+- 追加: `buildQuery` / `QueryBuilder.build` に**並べ替えを許す列を渡せる口**。
+  ```ts
+  buildQuery(page.search, params)                        // 今までどおり
+  buildQuery(page.search, params, { table: page.table }) // ＋ sortable: true の列
+  ```
+  **既存の振る舞いは1つも変わらない。** 渡さなければ今までと同じで、
+  `?sortField=evil` は今までどおり落ちる（素性の知れない列名を SQL に入れない、
+  という決まりは保たれる。通るのは**定義に書いてある名前**だけ）。
+- 追加: 共有フィクスチャに3件（table を渡したときに通る／渡しても表に無い名前は
+  通らない／`sortable` を書いていない列は通らない）。TypeScript と Java の両方で回す。
+- **直し（Java）**: `ColumnDefinition` に `sortable` が無かった。画面の話に見えるが
+  **サーバも見る**（並べ替えを許すかの判断に要る）。解析して埋めるようにした。
+- 内部: [サーバ側の使い方](docs/guide/backend.ja.md)に「並べ替えは定義に書いてある
+  名前だけ」の節。**`table` を渡すのが既定**と書いた。
+
+**ブラウザ側で、定義に書いたボタンが押せるようになった。**
+
+見本（機能網羅）を Vue で作ろうとして分かった。画面は8種類とも出るのに、
+**`actions:` が1つも描かれていない**——行の「詳細」も、選んで一括も、CSV も印刷も。
+土台に `ActionRegistry` は在るのに、**呼ぶ側がどこにも無い**状態だった。
+
+- 追加: **`ActionRunner`**（`@hatake-fw/runtime`）。押したときに起きることを全部持つ:
+  役割での出し分け・`enabledWhen`・未登録プラグインを**押す前に**言う・`maxRows`・
+  `batchSize` で区切って実行・`prompt` / `confirm`・`onSuccess` / `onError` の差し込み
+  （`{count}` `{failed}` `{skipped}` `{failedKeys}`）・終わらなかった行を選んだまま残す。
+  **判断は土台に1つだけ置く**（Vue と React で2回書くと必ず食い違う）。Flutter 側の
+  `page_actions.dart` と同じ振る舞い。
+- 追加: 一覧に**選択**（`ListController`）。鍵で覚えるので**読み直しても生き残る**
+  ＝区切って実行して途中で止まっても、残りを選んだまま次を押せる。条件を変えたら消す。
+- 追加: **`MessageCenter`**。押したあとの1行を**画面より上**に置く。`onSuccess` は
+  「言う」と「移る」を同時に書けるので、画面が持っていると**移った先で作り直されて
+  文が消える**（実際に消えた）。Flutter が `ScaffoldMessenger` をアプリに置くのと同じ。
+- 追加: **計算項目**（`withComputed`）と**明細**（`HatakeSubTable`）を Vue / React が
+  描く。今までは `computed:` を書いた欄が空、`type: subTable` は何も出なかった。
+- 追加: Renderer 2つに、画面のボタン・行のボタン・一括のボタン・選ぶ列・聞く
+  ダイアログ・進み具合・押したあとの1行。**印13種・クラス名13種**が増え、
+  `check-same-marks.mjs` が Vue と React で**印48種・クラス名60種の一致**を見ている。
+- **直し（TypeScript）**: parser が遷移のボタンの `page` / `params` を捨てていた。
+  `config:` の中ではなく**上に**書くキーで、Dart は `config` へ持ち上げていたが
+  こちらは落としていた＝同じ定義で Flutter は遷移し、ブラウザは**「遷移先が解決
+  できません」**と出た。共有フィクスチャ `action_parse.json` を足して両版で縛った。
+- **直し（配り方）**: `@hatake-fw/api/internal` が **Node でしか動かないもの**を4本
+  抱えていた（`specDir` / `mcpTools` / `mcpContract` / `gitRange`）。土台も Renderer も
+  `internal` を通るので、**案件のビルドが `node:path` を引いて落ちる**——しかも落ちるのは
+  案件側なので、こちらの CI には何も出ない。`@hatake-fw/api/tools` に分けた。
+  口は3つになった: `api`（約束する）／`api/internal`（約束しないが**ブラウザで動く**）
+  ／`api/tools`（約束しない・**Node 専用**）。
+- 追加: 見張りを2つ。`publicApi.test.ts` が `index` **と `internal` の両方**を歩いて
+  `node:` に届かないことを見る（片方だけ見ていた間、これは黙って通っていた）。
+  `web/tool/check-browser-safe.mjs` が**配る web の4パッケージ**を同じ目で見る。
+- 追加: 共有フィクスチャの README に `cell_text.json` と `action_parse.json` の行
+  （前者は 0.9.15 で足したのに書き忘れていた）。
+
 ## 0.9.18 — 2026-09-29
 
 **ブラウザ側の土台が揃った。** 0.9.16 で Renderer を足したが、見本を書こうとしたら

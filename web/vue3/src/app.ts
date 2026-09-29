@@ -1,11 +1,16 @@
 import { FormatterRegistry } from "@hatake-fw/api";
 import type { AppDefinition, PageDefinition } from "@hatake-fw/api";
 import { isAllowed, menuIsGroup, type MenuItem } from "@hatake-fw/api/internal";
-import { createAppRouter, type HatakeRouter, type RouteUrl } from "@hatake-fw/runtime";
+import {
+  createAppRouter,
+  type HatakeRouter,
+  MessageCenter,
+  type RouteUrl,
+} from "@hatake-fw/runtime";
 import { defineComponent, h, onScopeDispose, type PropType, type VNode } from "vue";
 
 import { HatakePage } from "./page.js";
-import { touch, useController } from "./scope.js";
+import { provideMessages, provideRouter, touch, useController } from "./scope.js";
 
 /**
  * アプリ1本ぶんの入口。**案件が書くのはこれ1行。**
@@ -43,10 +48,17 @@ export const HatakeApp = defineComponent({
       url: props.url,
     });
     onScopeDispose(stop);
+    provideRouter(router);
+    // **文はアプリが持つ。** 画面が持つと、`onSuccess` で移った先で作り直されて
+    // 「3件やりました」が出ないまま消える（実際に消えた）。
+    const messages = new MessageCenter();
+    provideMessages(messages);
     const { version } = useController(router);
+    const { version: said } = useController(messages);
 
     return () => {
       touch(version);
+      touch(said);
       const current = router.current;
       const page = props.pages[current.pageId];
 
@@ -56,6 +68,7 @@ export const HatakeApp = defineComponent({
           ...props.app.menu.map((item) => menuNode(item, props.roles, router)),
         ]),
         h("main", { class: "hatake-content" }, [
+          ...messageNode(messages),
           ...(router.canPop
             ? [
                 h(
@@ -85,6 +98,24 @@ export const HatakeApp = defineComponent({
     };
   },
 });
+
+/** 押したあとの1行（押すと消える）。 */
+function messageNode(messages: MessageCenter): VNode[] {
+  const one = messages.message;
+  if (one === null) return [];
+  return [
+    h(
+      "p",
+      {
+        class: ["hatake-message", one.ok ? "hatake-message-ok" : "hatake-message-ng"],
+        "data-hatake": one.ok ? "action:done" : "action:failed",
+        role: one.ok ? "status" : "alert",
+        onClick: () => messages.clear(),
+      },
+      one.text,
+    ),
+  ];
+}
 
 /**
  * 道の引数から、その画面の鍵を組み立てる。

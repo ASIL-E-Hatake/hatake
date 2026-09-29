@@ -1,10 +1,15 @@
 import type { AppDefinition, FormatterRegistry, PageDefinition } from "@hatake-fw/api";
 import { isAllowed, menuIsGroup, type MenuItem } from "@hatake-fw/api/internal";
-import { createAppRouter, type HatakeRouter, type RouteUrl } from "@hatake-fw/runtime";
+import {
+  createAppRouter,
+  type HatakeRouter,
+  MessageCenter,
+  type RouteUrl,
+} from "@hatake-fw/runtime";
 import { useEffect, useMemo, type ReactNode } from "react";
 
 import { HatakePage } from "./page.js";
-import { useController } from "./scope.js";
+import { HatakeAppScope, useController } from "./scope.js";
 
 /**
  * アプリ1本ぶんの入口。**案件が書くのはこれ1行。**
@@ -43,13 +48,20 @@ export function HatakeApp(props: {
       }),
     [props.app.id],
   );
+  // **文はアプリが持つ。** 画面が持つと、`onSuccess` で移った先で作り直されて
+  // 「3件やりました」が出ないまま消える。
+  const messages = useMemo(() => new MessageCenter(), [props.app.id]);
   useController(made.router);
+  useController(messages);
   useEffect(() => made.stop, [made]);
 
   const current = made.router.current;
   const page = props.pages[current.pageId];
 
+  const said = messages.message;
+
   return (
+    <HatakeAppScope router={made.router} messages={messages}>
     <div className="hatake-app" data-hatake={`app:${props.app.id}`}>
       <nav className="hatake-menu" data-hatake="menu">
         <div className="hatake-brand">{props.app.title}</div>
@@ -58,6 +70,16 @@ export function HatakeApp(props: {
         ))}
       </nav>
       <main className="hatake-content">
+        {said === null ? null : (
+          <p
+            className={`hatake-message ${said.ok ? "hatake-message-ok" : "hatake-message-ng"}`}
+            data-hatake={said.ok ? "action:done" : "action:failed"}
+            role={said.ok ? "status" : "alert"}
+            onClick={() => messages.clear()}
+          >
+            {said.text}
+          </p>
+        )}
         {made.router.canPop ? (
           <button className="hatake-button" data-hatake="back" onClick={() => made.router.pop()}>
             戻る
@@ -79,6 +101,7 @@ export function HatakeApp(props: {
         )}
       </main>
     </div>
+    </HatakeAppScope>
   );
 }
 

@@ -37,10 +37,19 @@ export const HatakeField = defineComponent({
       // ここで出すと「見えているのに検証されない」の逆（見えないのに必須）が起きる。
       if (!evaluateCondition(one.visibleWhen, props.record, props.mode)) return null;
 
+      // **条件が書かれているときだけ見る。** `evaluateCondition` は「条件が無ければ
+      // 満たしている」と答える（表示の条件ではそれが正しい）ので、そのまま渡すと
+      // **何も書いていない欄が全部「読むだけ・必須」になる**。実際そうなっていて、
+      // 画面は普通に出るのに**どこにも入力できない**（見た目で気づけない）。
+      // Dart 側（`form_fields.dart`）は最初からこう書いてある。
       const required =
-        one.required || evaluateCondition(one.requiredWhen, props.record, props.mode) === true;
+        one.required ||
+        (one.requiredWhen !== undefined &&
+          evaluateCondition(one.requiredWhen, props.record, props.mode));
       const readOnly =
-        one.readOnly || evaluateCondition(one.readOnlyWhen, props.record, props.mode) === true;
+        one.readOnly ||
+        (one.readOnlyWhen !== undefined &&
+          evaluateCondition(one.readOnlyWhen, props.record, props.mode));
       const enabled =
         one.enabledWhen === undefined ||
         evaluateCondition(one.enabledWhen, props.record, props.mode) === true;

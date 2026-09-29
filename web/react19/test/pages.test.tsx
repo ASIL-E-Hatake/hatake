@@ -46,6 +46,9 @@ page:
       - title: 基本
         fields:
           - { field: code, label: コード, type: text, required: true }
+          # **条件を1つも書いていない欄。** これが「読むだけ・必須」にならない
+          # ことを下の試験が見る（0.9.19 まで、こういう欄が全部そうなっていた）。
+          - { field: note, label: 備考, type: text }
           - { field: name, label: 名前, type: text, required: true }
 `;
 
@@ -159,5 +162,25 @@ describe("定義から画面が出る（React）", () => {
 
   it("繋がっていない Repository は**落とす**（白い画面にしない）", () => {
     expect(() => show(pageOf(searchYaml) as SearchPageDefinition, {})).toThrow(/登録されていません/);
+  });
+  it("条件を書いていない欄は**入力できて、必須でもない**", async () => {
+    // `evaluateCondition` は「条件が無ければ満たしている」と答える（表示の条件では
+    // それが正しい）。そのまま `requiredWhen` / `readOnlyWhen` に渡すと、**何も
+    // 書いていない欄が全部「読むだけ・必須」になる**。
+    //
+    // 0.9.19 の見本で実際にそうなっていて、**画面は普通に出るのにどこにも入力
+    // できなかった**。値を入れる試験は readonly でも通ってしまうので、
+    // **属性そのものを見る**。
+    show(pageOf(yaml) as CrudPageDefinition, { customerRepository: new FakeRepository([], ["code"]) });
+    await waitFor(() => expect(at("list:create")).toBeTruthy());
+    fireEvent.click(at("list:create") as HTMLElement);
+    await waitFor(() => expect(at("field:note")).toBeTruthy());
+
+    const note = at("field:note") as HTMLInputElement;
+    expect(note.hasAttribute("readonly")).toBe(false);
+    expect(note.getAttribute("aria-required")).toBeNull();
+
+    // 書いてあるほうは効いている（見張りが「全部ゆるい」になっていない）。
+    expect(at("field:code")?.getAttribute("aria-required")).toBe("true");
   });
 });

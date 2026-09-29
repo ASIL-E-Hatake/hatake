@@ -445,7 +445,10 @@ public final class DefinitionParser {
                 List.copyOf(roles),
                 // 列に並びを直接は書けない（DSL キーは optionsOf だけ）。ここに入るのは
                 // 読み込み時に app.vocabularies から展開されたもの。
-                parseOptions(m.get("options")));
+                parseOptions(m.get("options")),
+                // 画面の話に見えて、**サーバも見る**（QueryBuilder に table を渡すと
+                // ここが true の列で並べ替えを許す）。
+                Boolean.TRUE.equals(m.get("sortable")));
     }
 
     @SuppressWarnings("unchecked")

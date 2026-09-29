@@ -1,9 +1,18 @@
 import { FormatterRegistry } from "@hatake-fw/api";
-import { formFields } from "@hatake-fw/api/internal";
+import type { ActionDefinition } from "@hatake-fw/api/internal";
+import { ActionScopes, formFields } from "@hatake-fw/api/internal";
 import type { CrudPageDefinition, MasterPageDefinition, SearchPageDefinition } from "@hatake-fw/api/internal";
-import { CrudController, CrudMode, type DataRecord, ListController } from "@hatake-fw/runtime";
-import { computed, defineComponent, h, onMounted, ref, shallowRef, type PropType } from "vue";
+import {
+  CrudController,
+  CrudMode,
+  type ActionSurroundings,
+  type DataRecord,
+  ListController,
+  withComputed,
+} from "@hatake-fw/runtime";
+import { defineComponent, h, onMounted, shallowRef, type PropType } from "vue";
 
+import { useActions, type ActionBar } from "../parts/actions.js";
 import { HatakeField } from "../parts/field.js";
 import { HatakePagination, HatakeSearch } from "../parts/search.js";
 import { HatakeTable } from "../parts/table.js";
@@ -26,17 +35,36 @@ export const HatakeSearchPage = defineComponent({
     const controller = new ListController({
       repository: registries.repositories.resolve(props.definition.repository),
       pageSize: props.definition.table.pagination.pageSize,
+      keyFields: props.definition.keyFields,
     });
     const { version } = useController(controller);
+    const bar = useActions({ roles: props.roles, formatters: props.formatters });
     onMounted(() => void controller.init());
+
+    /** 押したときに渡す「画面が持っているもの」。**押した時点**の値を渡す。 */
+    const around = (record?: DataRecord): ActionSurroundings => ({
+      controller,
+      record,
+      records: controller.selectedRows,
+      keyFields: props.definition.keyFields,
+      columns: props.definition.table.columns,
+      owners: ownersOf(props.definition),
+      fetchRows: (limit: number) => controller.fetchForExport(limit),
+      fallbackName: props.definition.title,
+      setSelection: (keys: readonly unknown[]) => controller.setSelection(keys),
+    });
 
     return () => {
       touch(version);
+      const rowActionIds = props.definition.table.rowActions;
       return h("div", { class: "hatake-page", "data-hatake": `page:${props.definition.id}` }, [
         h("h1", { class: "hatake-title" }, props.definition.title),
         h(HatakeSearch, {
           search: props.definition.search,
           onSearch: (values: DataRecord) => void controller.search(values),
+        }),
+        bar.top(props.definition.actions, rowActionIds, () => around(), {
+          rows: controller.selectedRows,
         }),
         ...errorOf(controller.error),
         h(HatakeTable, {
@@ -48,7 +76,14 @@ export const HatakeSearchPage = defineComponent({
           formatters: props.formatters,
           sortField: controller.query.sortField,
           sortAscending: controller.query.sortAscending,
+          selectable: selectable(props.definition.actions, bar),
+          selectedKeys: controller.selectedKeys,
+          allSelected: controller.allSelected,
           onSort: (field: string, ascending: boolean) => void controller.sortBy(field, ascending),
+          onSelect: (key: unknown) => controller.toggleSelected(key),
+          onSelectAll: () => controller.toggleAllSelected(),
+          rowSlot: (row: DataRecord) =>
+            bar.row(props.definition.actions, rowActionIds, row, () => around(row)),
         }),
         h(HatakePagination, {
           page: controller.page,
@@ -56,6 +91,7 @@ export const HatakeSearchPage = defineComponent({
           totalCount: controller.totalCount,
           onMove: (page: number) => void controller.setPage(page),
         }),
+        bar.overlay(),
       ]);
     };
   },
@@ -81,8 +117,25 @@ export const HatakeCrudPage = defineComponent({
       repository: registries.repositories.resolve(props.definition.repository),
     });
     const { version } = useController(controller);
+    const bar = useActions({ roles: props.roles, formatters: props.formatters });
     const draft = shallowRef<DataRecord>({});
     onMounted(() => void controller.init());
+
+    /** 押したときに渡す「画面が持っているもの」。 */
+    const around = (record?: DataRecord): ActionSurroundings => ({
+      controller,
+      // 入力中は**いま入力されている値**で判定する（保存前の値で出し分ける）。
+      record: record ?? (controller.mode === CrudMode.list ? undefined : draft.value),
+      records: controller.selectedRows,
+      keyFields: props.definition.keyFields,
+      mode: controller.mode === CrudMode.list ? undefined : controller.formMode,
+      columns: props.definition.table.columns,
+      owners: ownersOf(props.definition),
+      fetchRows: (limit: number) => controller.fetchForExport(limit),
+      fallbackName: props.definition.title,
+      onCreate: () => startCreate(),
+      setSelection: (keys: readonly unknown[]) => controller.setSelection(keys),
+    });
 
     const startCreate = (): void => {
       controller.startCreate();
@@ -114,7 +167,7 @@ export const HatakeCrudPage = defineComponent({
               ...formFields(props.definition.form).map((field) =>
                 h(HatakeField, {
                   field,
-                  record: draft.value,
+                  record: withComputed(formFields(props.definition.form), draft.value),
                   errors: controller.validation.errors,
                   mode: controller.formMode,
                   disabled: controller.submitting,
@@ -161,6 +214,11 @@ export const HatakeCrudPage = defineComponent({
           { class: "hatake-button hatake-button-primary", "data-hatake": "list:create", onClick: startCreate },
           "新規登録",
         ),
+        // 定義が書いたボタン（出力・一括・遷移…）。**組み込みの新規登録とは別**で、
+        // こちらは定義に書いたものだけが出る。
+        bar.top(props.definition.actions, props.definition.table.rowActions, () => around(), {
+          rows: controller.selectedRows,
+        }),
         ...errorOf(controller.error),
         h(HatakeTable, {
           table: props.definition.table,
@@ -171,9 +229,18 @@ export const HatakeCrudPage = defineComponent({
           formatters: props.formatters,
           sortField: controller.query.sortField,
           sortAscending: controller.query.sortAscending,
+          selectable: selectable(props.definition.actions, bar),
+          selectedKeys: controller.selectedKeys,
+          allSelected: controller.allSelected,
+          onSelect: (key: unknown) => controller.toggleSelected(key),
+          onSelectAll: () => controller.toggleAllSelected(),
           onSort: (field: string, ascending: boolean) => void controller.sortBy(field, ascending),
           rowSlot: (row: DataRecord, key: unknown) =>
             h("span", { class: "hatake-row-buttons" }, [
+              // 定義が `table.rowActions` に並べたボタン（組み込みの前に出す）。
+              bar.row(props.definition.actions, props.definition.table.rowActions, row, () =>
+                around(row),
+              ),
               h(
                 "button",
                 {
@@ -205,10 +272,22 @@ export const HatakeCrudPage = defineComponent({
           totalCount: controller.totalCount,
           onMove: (page: number) => void controller.setPage(page),
         }),
+        bar.overlay(),
       ]);
     };
   },
 });
+
+/**
+ * 行を選べるようにするか。
+ *
+ * **決めるのは定義**＝`scope: selection` のボタンが、その人に1つでも見えているか。
+ * 見えていないのにチェック欄だけ出すと、選んでも何も起きない列が残る（押した人には
+ * 壊れて見える）。
+ */
+function selectable(actions: readonly ActionDefinition[], bar: ActionBar): boolean {
+  return bar.runner.visible(actions, ActionScopes.selection).length > 0;
+}
 
 /**
  * 失敗をそのまま出す。**黙って空の一覧を出さない**（この枠組みが避けたい形）。

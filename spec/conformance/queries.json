@@ -129,5 +129,92 @@
       "page": 0,
       "pageSize": 50
     }
+  },
+  {
+    "$comment": "**定義に書いた `sortable` な列でも並べ替えられる**（table を渡したとき）。渡さないと、`sortable: true` と書いた列が押せるのに並ばない＝「書いたのに効かない」。同梱の例も雛形も、絞り込みに無い列に sortable を書いているので、サーバは table を渡すのが既定。",
+    "filters": [
+      {
+        "field": "name",
+        "type": "text",
+        "operator": "contains"
+      }
+    ],
+    "table": {
+      "columns": [
+        {
+          "field": "name"
+        },
+        {
+          "field": "price",
+          "sortable": true
+        },
+        {
+          "field": "memo"
+        }
+      ]
+    },
+    "params": {
+      "sortField": "price",
+      "sortAscending": "false"
+    },
+    "expected": {
+      "conditions": [],
+      "sortField": "price",
+      "sortAscending": false,
+      "page": 0,
+      "pageSize": 50
+    }
+  },
+  {
+    "$comment": "**table を渡しても、そこに無い名前は通らない。** 安全側の決まりは変わらない（許すのは定義に書いてある名前だけで、利用者が送ってきた文字列ではない）。",
+    "filters": [
+      {
+        "field": "name",
+        "type": "text",
+        "operator": "contains"
+      }
+    ],
+    "table": {
+      "columns": [
+        {
+          "field": "name"
+        },
+        {
+          "field": "price",
+          "sortable": true
+        }
+      ]
+    },
+    "params": {
+      "sortField": "evil"
+    },
+    "expected": {
+      "conditions": [],
+      "sortField": null,
+      "sortAscending": true,
+      "page": 0,
+      "pageSize": 50
+    }
+  },
+  {
+    "$comment": "**`sortable` を書いていない列は通らない**（列に在るだけでは並べ替えを許さない）。",
+    "filters": [],
+    "table": {
+      "columns": [
+        {
+          "field": "memo"
+        }
+      ]
+    },
+    "params": {
+      "sortField": "memo"
+    },
+    "expected": {
+      "conditions": [],
+      "sortField": null,
+      "sortAscending": true,
+      "page": 0,
+      "pageSize": 50
+    }
   }
 ]

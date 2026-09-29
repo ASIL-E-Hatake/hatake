@@ -1,3 +1,5 @@
+import { recordKeyOf } from "@hatake-fw/api/internal";
+
 import { Notifier } from "./notifier.js";
 import {
   type DataRecord,
@@ -16,17 +18,32 @@ import {
 export class ListController extends Notifier {
   readonly repository: Repository;
   readonly pageSize: number;
+  /** 行を指す項目（`page.key`）。選んだ行を覚えるのに使う。 */
+  readonly keyFields: readonly string[];
 
   private _query: RepositoryQuery;
   private _loading = false;
   private _error: unknown = null;
   private _items: readonly DataRecord[] = [];
   private _totalCount = 0;
+  /**
+   * 選んだ行の鍵。**並び順ではなく鍵で覚える**ので、読み直しても選択が生き残る
+   * （区切って実行して途中で止めたとき、残りを選んだまま次を押せるのが要点）。
+   *
+   * 中身は `String(鍵)`。合成鍵は `recordKeyOf` が1つの値にまとめてくれるが、
+   * それが object のことがあるので、比べられる字にしてから持つ。
+   */
+  private _selected = new Set<string>();
 
-  constructor(options: { repository: Repository; pageSize: number }) {
+  constructor(options: {
+    repository: Repository;
+    pageSize: number;
+    keyFields?: readonly string[];
+  }) {
     super();
     this.repository = options.repository;
     this.pageSize = options.pageSize;
+    this.keyFields = options.keyFields ?? [];
     this._query = repositoryQuery({ pageSize: options.pageSize });
   }
 
@@ -53,6 +70,74 @@ export class ListController extends Notifier {
     if (this.pageSize <= 0) return 1;
     const count = Math.ceil(this._totalCount / this.pageSize);
     return count < 1 ? 1 : count;
+  }
+
+  // ── 選んだ行（`scope: selection` のボタンが実行する相手） ────────
+
+  /**
+   * いま選ばれている行のうち、**このページに出ているもの**。
+   *
+   * 出ていない行を実行の相手にしないのは、押した人が見ていない行を動かさないため
+   * （ページを移ったあとに「前のページで選んだ3件」が一緒に動くのは事故）。
+   */
+  get selectedRows(): readonly DataRecord[] {
+    return this._items.filter((row) => this._selected.has(this._keyOf(row)));
+  }
+
+  /** 選ばれている行の鍵（このページに出ているもの）。 */
+  get selectedKeys(): readonly unknown[] {
+    return this.selectedRows.map((row) => recordKeyOf(this.keyFields, row));
+  }
+
+  get selectedCount(): number {
+    return this.selectedRows.length;
+  }
+
+  /** このページの行が全部選ばれているか（1行も無ければ false）。 */
+  get allSelected(): boolean {
+    return this._items.length > 0 && this.selectedRows.length === this._items.length;
+  }
+
+  isSelected(key: unknown): boolean {
+    return this._selected.has(String(key));
+  }
+
+  /** 1行の選び・選び直し。 */
+  toggleSelected(key: unknown): void {
+    const id = String(key);
+    if (this._selected.has(id)) this._selected.delete(id);
+    else this._selected.add(id);
+    this.notify();
+  }
+
+  /** このページぜんぶを選ぶ／外す。 */
+  toggleAllSelected(): void {
+    if (this.allSelected) {
+      for (const row of this._items) this._selected.delete(this._keyOf(row));
+    } else {
+      for (const row of this._items) this._selected.add(this._keyOf(row));
+    }
+    this.notify();
+  }
+
+  /**
+   * 選び直す（**入れ替え**。足すのではない）。
+   *
+   * 区切って実行したあと「終わっていない行」「失敗した行」だけを残すのに使う。
+   */
+  setSelection(keys: readonly unknown[]): void {
+    this._selected = new Set(keys.map(String));
+    this.notify();
+  }
+
+  clearSelection(): void {
+    if (this._selected.size === 0) return;
+    this._selected.clear();
+    this.notify();
+  }
+
+  private _keyOf(row: DataRecord): string {
+    return String(recordKeyOf(this.keyFields, row));
   }
 
   /** 最初の1ページ。作ったあとに1回呼ぶ。 */
@@ -82,6 +167,9 @@ export class ListController extends Notifier {
   /** 条件を入れ替えて、**1ページ目から**読み直す。 */
   search(filters: Readonly<Record<string, unknown>>): Promise<void> {
     this._query = { ...this._query, filters, page: 0 };
+    // **条件が変われば別の一覧**なので、選択は持ち越さない（見えなくなった行が
+    // 選ばれたまま次の一括に混ざる、を作らない）。
+    this._selected.clear();
     return this.load();
   }
 
