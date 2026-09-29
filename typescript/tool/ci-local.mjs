@@ -139,7 +139,20 @@ const env = {
   PIP_BREAK_SYSTEM_PACKAGES: "1",
 };
 
+/**
+ * その段は**中身が落ちた**のか、**道具がこの環境に無い**のか。
+ *
+ * CI の runner には git も python3 も pip も curl も入っているが、手元で回す
+ * `node:22-slim` には入っていない。分けずに並べると「6段落ちています」と出て、
+ * **コードが壊れているように読める**（実際に読み違えた）。直す相手が違うので分ける。
+ */
+const missingTool = (out) => {
+  const found = /(?:^|\n).*?: (?:line \d+: )?([\w.+-]+): command not found/.exec(out);
+  return found === null ? null : found[1];
+};
+
 const failed = [];
+const noTool = [];
 const started = Date.now();
 
 for (const one of chosen) {
@@ -156,6 +169,12 @@ for (const one of chosen) {
     continue;
   }
   // **落ちても次へ進む**（止めると1回に1件しか分からない）。
+  const tool = missingTool(out);
+  if (tool !== null) {
+    noTool.push({ ...one, tool });
+    console.log(`   – 見送り（この環境に \`${tool}\` がありません）`);
+    continue;
+  }
   failed.push({ ...one, out });
   console.log(`   ✗ 落ちました（exit ${result.status ?? result.signal}）`);
   console.log(
@@ -172,8 +191,20 @@ const minutes = Math.round((Date.now() - started) / 600) / 100;
 console.log(`\n${"─".repeat(60)}`);
 console.log(`走らせた段: ${chosen.length} / ${steps.length}（${minutes} 分）`);
 
+if (noTool.length > 0) {
+  const tools = [...new Set(noTool.map((one) => one.tool))].sort();
+  console.log(
+    `\u001b[33m– ${noTool.length} 段は見送りました（この環境に ${tools.join(" / ")} がありません）\u001b[0m`,
+  );
+  for (const one of noTool) console.log(`  ${String(one.no).padStart(2)} ${one.name}`);
+  console.log(
+    `\n  CI の runner には入っています。手元でも見るなら:\n` +
+      `    apt-get update && apt-get install -y ${tools.join(" ")}\n`,
+  );
+}
+
 if (failed.length === 0) {
-  console.log("\u001b[32m✓ ぜんぶ通りました\u001b[0m");
+  console.log("\u001b[32m✓ 走らせた段はぜんぶ通りました\u001b[0m");
   process.exit(0);
 }
 
