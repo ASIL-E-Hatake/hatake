@@ -2,7 +2,9 @@ import { FormatterRegistry } from "@hatake-fw/api";
 import type { ColumnDefinition, TableDefinition } from "@hatake-fw/api";
 import { cellText, ColumnTypes, isAllowed, recordKeyOf } from "@hatake-fw/api/internal";
 import type { DataRecord } from "@hatake-fw/runtime";
-import { defineComponent, h, type PropType } from "vue";
+import { defineComponent, h, type PropType, type VNode } from "vue";
+
+import { icon } from "./icon.js";
 
 /**
  * 一覧の表。**列も、並べ替えできるかも、誰に見えるかも定義が決める。**
@@ -113,7 +115,7 @@ export const HatakeTable = defineComponent({
               class: one.type === ColumnTypes.number ? "hatake-cell-number" : null,
               "data-hatake": `cell:${one.field}`,
             },
-            cellText(props.formatters, [...props.owners], one, row[one.field]),
+            cell(one, row[one.field], cellText(props.formatters, [...props.owners], one, row[one.field])),
           ),
         );
         if (props.selectable) {
@@ -160,3 +162,20 @@ const sortMark = (
   sortField: string | undefined,
   ascending: boolean,
 ): string => (sortField !== column.field ? "" : ascending ? " ▲" : " ▼");
+
+/**
+ * 列の型で見せ方を変える（字にするのは `cellText` ただ1か所）。Flutter 版と同じ:
+ * `badge` は札、`boolean` は ✓ / ×。
+ */
+function cell(column: ColumnDefinition, value: unknown, text: string): string | VNode {
+  if (column.type === ColumnTypes.badge) {
+    return text === "" ? text : h("span", { class: "hatake-badge" }, text);
+  }
+  if (column.type === ColumnTypes.boolean) {
+    const yes = value === true;
+    return h("span", { class: "hatake-boolean", role: "img", "aria-label": yes ? "はい" : "いいえ" }, [
+      icon(yes ? "check" : "close"),
+    ]);
+  }
+  return text;
+}

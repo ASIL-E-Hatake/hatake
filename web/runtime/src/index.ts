@@ -35,6 +35,7 @@ export type { ExportRequest, ExportSink, PrintRequest, PrintSink } from "./sinks
 // ── ボタンを押したときに起きること（判断はここ。Renderer は描くだけ） ──
 export {
   ActionRunner,
+  confirmAsk,
   type ActionAsk,
   type ActionAsker,
   type ActionEnabled,
@@ -44,6 +45,27 @@ export {
 } from "./actionRunner.js";
 export { type AppMessage, MessageCenter } from "./messages.js";
 export { withComputed } from "./computedFields.js";
+export { visibleSections, type VisibleSection } from "./formSections.js";
+export { onPageTop, rowSlots, type RowSlot } from "./rowSlots.js";
+
+// ── 見せ方の決めごと（数と形は土台、描くのは Renderer） ───────────
+export { CHROME_ICONS, FALLBACK_ICON, iconPath, MENU_ICONS } from "./icons.js";
+export {
+  cardSpan,
+  CHART_COLORS,
+  CHART_HEIGHT,
+  CHART_WIDTH,
+  chartShape,
+  dashboardColumns,
+  dashboardValueText,
+  DASHBOARD_GAP,
+  MIN_CARD_WIDTH,
+  type ChartBar,
+  type ChartPoint,
+  type ChartShape,
+  type ChartSlice,
+} from "./dashboardView.js";
+export { closingAsks, pageTitle, themeStyle, TOO_MANY_TABS, type ThemeStyle } from "./appChrome.js";
 
 // ── 画面ごとの土台 ────────────────────────────────────────────
 export { ListController } from "./listController.js";

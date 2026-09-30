@@ -72,6 +72,12 @@ const _page = DetailPageDefinition(
               ),
             ],
           ),
+          // 読むだけの画面でも `computed:` は効く（0.9.20 で直した所）。
+          FieldDefinition(
+            field: 'lineTotal',
+            label: '行番号の合計',
+            computed: {'op': 'sum', 'field': 'lines', 'of': 'lineNo'},
+          ),
         ],
       ),
     ],
@@ -117,5 +123,15 @@ void main() {
     expect(find.text('箱'), findsOneWidget);
     expect(find.text('個'), findsOneWidget);
     expect(find.text('box'), findsNothing);
+  });
+
+  testWidgets('計算した項目は**読むだけの画面でも埋まる**', (tester) async {
+    // 0.9.19 まで詳細画面は `computed:` を当てていなかったので、「合計」が空のまま
+    // 出ていた。ブラウザ版は埋めていたので、同じ定義で字が食い違った。
+    await tester.pumpWidget(_harness());
+    await tester.pumpAndSettle();
+
+    final value = tester.widget<Text>(find.byKey(const Key('hatake.detail.lineTotal')));
+    expect(value.data, '3');
   });
 }

@@ -1,16 +1,20 @@
 import { FormValidator } from "@hatake-fw/api";
 import type { FormatterRegistry, ValidationError } from "@hatake-fw/api";
 import type { ActionDefinition } from "@hatake-fw/api/internal";
-import { ActionScopes, isAllowed } from "@hatake-fw/api/internal";
+import { ActionScopes, isAllowed, recordKeyOf } from "@hatake-fw/api/internal";
 import {
   ActionRunner,
   type ActionAsk,
   type ActionSurroundings,
+  confirmAsk,
   type DataRecord,
+  onPageTop,
+  rowSlots,
 } from "@hatake-fw/runtime";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { HatakeField } from "./field.js";
+import { Icon } from "./icon.js";
 import { useController, useMessages, useOnce, useRegistries, useRouter } from "../scope.js";
 
 /**
@@ -44,13 +48,22 @@ export interface ActionBar {
     around: (action: ActionDefinition) => ActionSurroundings,
     where?: { rows?: readonly DataRecord[]; record?: DataRecord; mode?: string },
   ): ReactNode;
-  /** 表の行に出すボタン（`table.rowActions` の並び順）。 */
+  /**
+   * 表の行に出すボタン（**`table.rowActions` の並び順**）。組み込みの「編集」「削除」は
+   * 書いたときだけ、**絵のボタン**で出す（Flutter 版と同じ）。
+   */
   row(
     actions: readonly ActionDefinition[],
     rowActionIds: readonly string[],
     record: DataRecord,
     around: (action: ActionDefinition) => ActionSurroundings,
+    builtIn?: { edit?: () => void; delete?: () => void },
   ): ReactNode;
+  /**
+   * 組み込みの「削除」の前に聞く。`confirm` を書いていなくても**必ず聞く**
+   * （取り消せない唯一の操作）。聞く場所はボタンと同じダイアログ。
+   */
+  confirmDelete(declaration: ActionDefinition | undefined): Promise<boolean>;
   /** 一覧を持たない画面（`form` / `detail` / `wizard` / `dashboard` / `report`）のボタン。 */
   page(
     actions: readonly ActionDefinition[],
@@ -66,6 +79,8 @@ export interface ActionBar {
 export function useActions(options: {
   roles: readonly string[];
   formatters?: FormatterRegistry;
+  /** 行を指す項目（組み込みの「編集」「削除」の印に鍵を出す）。 */
+  keyFields?: readonly string[];
 }): ActionBar {
   const registries = useRegistries();
   const router = useRouter();
@@ -114,11 +129,17 @@ export function useActions(options: {
   const button = (
     action: ActionDefinition,
     around: (action: ActionDefinition) => ActionSurroundings,
-    given: { why?: string; label?: string; primary: boolean },
+    given: { why?: string; label?: string; primary: boolean; text?: boolean },
   ): ReactNode => (
     <button
       key={action.id}
-      className={given.primary ? "hatake-button hatake-button-primary" : "hatake-button"}
+      className={
+        given.primary
+          ? "hatake-button hatake-button-primary"
+          : given.text === true
+            ? "hatake-button hatake-button-text"
+            : "hatake-button"
+      }
       type="button"
       data-hatake={`action:${action.id}`}
       disabled={given.why !== undefined || runner.running !== null}
@@ -136,8 +157,7 @@ export function useActions(options: {
     top(actions, rowActionIds, around, where = {}) {
       const rows = where.rows ?? [];
       const mine = actions.filter(
-        (one) =>
-          isAllowed(one.roles, options.roles) && (!rowActionIds.includes(one.id) || !fitsRow(one)),
+        (one) => isAllowed(one.roles, options.roles) && onPageTop(one, rowActionIds),
       );
       if (mine.length === 0) return null;
       return (
@@ -165,7 +185,12 @@ export function useActions(options: {
                     : undefined);
             return button(action, around, {
               why,
-              label: rows.length === 0 ? action.label : `${action.label}（${rows.length} 件）`,
+              // 押せない理由は**札にも出す**（Flutter 版と同じ）。灰色のボタンだけ並んで
+              // いると、壊れているのか選んでいないだけなのか分からない。
+              label:
+                rows.length === 0
+                  ? `${action.label}（行を選んでください）`
+                  : `${action.label}（${rows.length} 件）`,
               primary: true,
             });
           })}
@@ -173,31 +198,57 @@ export function useActions(options: {
       );
     },
 
-    row(actions, rowActionIds, record, around) {
-      const declared = new Map(actions.map((one) => [one.id, one]));
-      const mine: ActionDefinition[] = [];
-      for (const id of rowActionIds) {
-        const found = declared.get(id);
-        // 引けないものは行に出さない: 宣言が無い（`rowaction-not-declared`）・その
-        // 役割には見せない・選んだ行に実行するボタン（`selection-as-rowaction`）。
-        if (found === undefined || !fitsRow(found) || !isAllowed(found.roles, options.roles)) {
-          continue;
-        }
-        mine.push(found);
-      }
-      if (mine.length === 0) return null;
+    row(actions, rowActionIds, record, around, builtIn = {}) {
+      const slots = rowSlots(rowActionIds, actions, options.roles);
+      if (slots.length === 0) return null;
       return (
         <span className="hatake-row-buttons">
-          {mine.map((action) => {
-            // **その行のレコード**で判定する（`enabledWhen`）。
-            const state = runner.enabledFor(action, { record });
-            return button(action, around, {
-              why: runner.unwiredReason(action) ?? whyOf(state),
-              primary: false,
-            });
+          {slots.map((slot) => {
+            if (slot.kind === "action") {
+              // **その行のレコード**で判定する（`enabledWhen`）。
+              const state = runner.enabledFor(slot.action, { record });
+              return button(slot.action, around, {
+                why: runner.unwiredReason(slot.action) ?? whyOf(state),
+                primary: false,
+                text: true,
+              });
+            }
+            // 組み込みの「編集」「削除」。宣言に `enabledWhen` が在ればその行で判定する
+            // （「出荷済は消せない」）。
+            const press = slot.kind === "edit" ? builtIn.edit : builtIn.delete;
+            const why =
+              press === undefined
+                ? "この画面では使えません"
+                : slot.declaration === undefined
+                  ? undefined
+                  : whyOf(runner.enabledFor(slot.declaration, { record }));
+            const label = slot.kind === "edit" ? "編集" : "削除";
+            return (
+              <button
+                key={slot.kind}
+                className="hatake-icon-button"
+                type="button"
+                title={why ?? label}
+                aria-label={label}
+                disabled={why !== undefined}
+                data-hatake={`${slot.kind}:${String(recordKeyOf(options.keyFields ?? [], record))}`}
+                onClick={() => press?.()}
+              >
+                <Icon name={slot.kind} />
+              </button>
+            );
           })}
         </span>
       );
+    },
+
+    confirmDelete(declaration) {
+      const ask = confirmAsk(
+        declaration ?? ({ id: "delete", type: "delete", label: "削除", scope: "page", config: {}, roles: [] } as never),
+        undefined,
+        { destructive: true },
+      );
+      return runner.ask(ask).then((answer) => answer !== null);
     },
 
     page(actions, around, where = {}) {
@@ -325,14 +376,6 @@ export function useActions(options: {
     },
   };
 }
-
-/**
- * そのボタンを**行に出せる**か。
- *
- * 出せないのは `scope: selection` だけ。行に並べると、押した行ではなく**チェックした
- * 行**に実行することになる＝押した人には壊れて見える（`selection-as-rowaction`）。
- */
-const fitsRow = (action: ActionDefinition): boolean => action.scope !== ActionScopes.selection;
 
 interface AskState {
   readonly ask: ActionAsk;

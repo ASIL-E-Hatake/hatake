@@ -46,8 +46,10 @@ export const HatakeField = defineComponent({
         one.required ||
         (one.requiredWhen !== undefined &&
           evaluateCondition(one.requiredWhen, props.record, props.mode));
+      // 計算した項目は**読むだけ**（入れても次の描き直しで計算に上書きされる）。
       const readOnly =
         one.readOnly ||
+        one.computed !== undefined ||
         (one.readOnlyWhen !== undefined &&
           evaluateCondition(one.readOnlyWhen, props.record, props.mode));
       const enabled =

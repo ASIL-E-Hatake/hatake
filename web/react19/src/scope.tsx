@@ -21,6 +21,13 @@ export interface HatakeRegistries {
   readonly actions?: ActionRegistry;
   readonly exportSink?: ExportSink;
   readonly printSink?: PrintSink;
+  /**
+   * 定義の `icon:` に足したい絵（名前 → 24×24 の SVG path）。
+   *
+   * 枠組みが引けるのは Flutter 版と同じ16個だけで、知らない名前は**フォルダ**に
+   * 落ちる。足したい名前があればここで渡す（こちらが先に引かれる）。
+   */
+  readonly icons?: Readonly<Record<string, string>>;
 }
 
 const Registries = createContext<HatakeRegistries | undefined>(undefined);

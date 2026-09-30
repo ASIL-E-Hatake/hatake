@@ -4,6 +4,8 @@ import { cellText, ColumnTypes, FieldTypes, isAllowed, recordKeyOf, visibleOptio
 import type { DataRecord } from "@hatake-fw/runtime";
 import { useState, type ReactNode } from "react";
 
+import { Icon } from "./icon.js";
+
 /** 選択肢を持っているもの（入力項目・絞り込み）。列そのものは持たないことがある。 */
 export type OptionOwner = { field: string; options?: { value: unknown; label: string }[] };
 
@@ -131,7 +133,11 @@ export function HatakeTable(props: {
                       className={one.type === ColumnTypes.number ? "hatake-cell-number" : undefined}
                       data-hatake={`cell:${one.field}`}
                     >
-                      {cellText(formatters, [...(props.owners ?? [])], one, row[one.field])}
+                      <Cell
+                        column={one}
+                        value={row[one.field]}
+                        text={cellText(formatters, [...(props.owners ?? [])], one, row[one.field])}
+                      />
                     </td>
                   ))}
                   {props.rowSlot === undefined ? null : (
@@ -145,6 +151,25 @@ export function HatakeTable(props: {
       </table>
     </div>
   );
+}
+
+/**
+ * 列の型で見せ方を変える（字にするのは `cellText` ただ1か所）。Flutter 版と同じ:
+ * `badge` は札、`boolean` は ✓ / ×。Vue 版と同じ印・クラス名。
+ */
+function Cell(props: { column: ColumnDefinition; value: unknown; text: string }): ReactNode {
+  if (props.column.type === ColumnTypes.badge) {
+    return props.text === "" ? props.text : <span className="hatake-badge">{props.text}</span>;
+  }
+  if (props.column.type === ColumnTypes.boolean) {
+    const yes = props.value === true;
+    return (
+      <span className="hatake-boolean" role="img" aria-label={yes ? "はい" : "いいえ"}>
+        <Icon name={yes ? "check" : "close"} />
+      </span>
+    );
+  }
+  return props.text;
 }
 
 const mark = (column: ColumnDefinition, sortField: string | undefined, ascending: boolean): string =>
@@ -167,6 +192,13 @@ export function HatakeSearch(props: {
     <form
       className="hatake-search"
       data-hatake="search"
+      // 列の数は定義（`search.layout.columns`）。1以下なら1枠 220px で並べる。
+      {...(props.search.columns > 1
+        ? {
+            "data-hatake-columns": String(props.search.columns),
+            style: { "--hatake-search-columns": String(props.search.columns) } as Record<string, string>,
+          }
+        : {})}
       onSubmit={(event) => {
         event.preventDefault();
         props.onSearch({ ...values });
@@ -181,6 +213,7 @@ export function HatakeSearch(props: {
         </div>
       ))}
       <button className="hatake-button hatake-button-primary" type="submit" data-hatake="search:submit">
+        <Icon name="search" />
         {props.submitLabel ?? "検索"}
       </button>
     </form>
@@ -232,33 +265,43 @@ export function HatakePagination(props: {
   totalCount: number;
   onMove: (page: number) => void;
 }): ReactNode {
+  // 置き方は Flutter 版と同じ（右寄せで「全 N 件 ‹ 1 / 3 ›」）。1ページで足りる
+  // ときは送る口を出さない（押しても何も起きないボタンは、壊れていると読まれる）。
+  const total = <span className="hatake-pagination-total">全 {props.totalCount} 件</span>;
   if (props.pageCount <= 1) {
     return (
       <div className="hatake-pagination" data-hatake="pagination">
-        {props.totalCount} 件
+        {total}
       </div>
     );
   }
   return (
     <div className="hatake-pagination" data-hatake="pagination">
+      {total}
       <button
-        className="hatake-button"
+        className="hatake-icon-button"
+        type="button"
+        title="前のページ"
+        aria-label="前のページ"
         data-hatake="pagination:prev"
         disabled={props.page <= 0}
         onClick={() => props.onMove(props.page - 1)}
       >
-        前へ
+        <Icon name="chevronLeft" />
       </button>
       <span>
-        {props.page + 1} / {props.pageCount} ページ（{props.totalCount} 件）
+        {props.page + 1} / {props.pageCount}
       </span>
       <button
-        className="hatake-button"
+        className="hatake-icon-button"
+        type="button"
+        title="次のページ"
+        aria-label="次のページ"
         data-hatake="pagination:next"
         disabled={props.page >= props.pageCount - 1}
         onClick={() => props.onMove(props.page + 1)}
       >
-        次へ
+        <Icon name="chevron" />
       </button>
     </div>
   );

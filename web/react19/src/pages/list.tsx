@@ -1,5 +1,5 @@
 import { FormatterRegistry } from "@hatake-fw/api";
-import { formFields } from "@hatake-fw/api/internal";
+import { ActionTypes, formFields, recordKeyOf } from "@hatake-fw/api/internal";
 import type {
   CrudPageDefinition,
   MasterPageDefinition,
@@ -11,12 +11,15 @@ import {
   CrudMode,
   type DataRecord,
   ListController,
+  rowSlots,
+  visibleSections,
   withComputed,
 } from "@hatake-fw/runtime";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { useActions } from "../parts/actions.js";
 import { HatakeField } from "../parts/field.js";
+import { Sections } from "../parts/sections.js";
 import { HatakePagination, HatakeSearch, HatakeTable, type OptionOwner } from "../parts/table.js";
 import { HatakeError, useController, useOnce, useRegistries } from "../scope.js";
 
@@ -50,7 +53,11 @@ export function HatakeSearchPage(props: {
     [props.definition.id],
   );
   useController(controller);
-  const bar = useActions({ roles: props.roles ?? [], formatters: props.formatters });
+  const bar = useActions({
+    roles: props.roles ?? [],
+    formatters: props.formatters,
+    keyFields: props.definition.keyFields,
+  });
   useEffect(() => {
     void controller.init();
   }, [controller]);
@@ -71,11 +78,14 @@ export function HatakeSearchPage(props: {
 
   return (
     <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
-      <h1 className="hatake-title">{props.definition.title}</h1>
+      {/* 題と画面のボタンを1段に（Flutter 版と同じ置き方）。 */}
+      <div className="hatake-page-header">
+        <h1 className="hatake-title">{props.definition.title}</h1>
+        {bar.top(props.definition.actions, rowActionIds, () => around(), {
+          rows: controller.selectedRows,
+        })}
+      </div>
       <HatakeSearch search={props.definition.search} onSearch={(v) => void controller.search(v)} />
-      {bar.top(props.definition.actions, rowActionIds, () => around(), {
-        rows: controller.selectedRows,
-      })}
       <HatakeError error={controller.error} />
       <HatakeTable
         table={props.definition.table}
@@ -92,7 +102,11 @@ export function HatakeSearchPage(props: {
         onSelect={(key) => controller.toggleSelected(key)}
         onSelectAll={() => controller.toggleAllSelected()}
         onSort={(field, ascending) => void controller.sortBy(field, ascending)}
-        rowSlot={(row) => bar.row(props.definition.actions, rowActionIds, row, () => around(row))}
+        rowSlot={
+          rowSlots(rowActionIds, props.definition.actions, props.roles ?? []).length === 0
+            ? undefined
+            : (row) => bar.row(props.definition.actions, rowActionIds, row, () => around(row))
+        }
       />
       <HatakePagination
         page={controller.page}
@@ -110,6 +124,13 @@ export function HatakeSearchPage(props: {
  *
  * **業務の判断は1つも持たない。** 既定値・必須・2件目を作らない・消せたか、は全部
  * `CrudController` が決めていて、ここは面を出し分けるだけ。
+ *
+ * 置き方は Flutter 版と同じ（Vue 版とも同じ）:
+ *
+ *   ・入力は**一覧の上に重ねるダイアログ**（題は「新規登録」／「編集」）
+ *   ・「新規登録」は**定義に `type: create` を書いたときだけ**。行の「編集」「削除」も
+ *     **`table.rowActions` に書いたときだけ**（0.9.19 までは書いていなくても出していた）
+ *   ・「削除」は `confirm` を書いていなくても**必ず聞く**
  *
  * **書きかけの入れ物は関数形で更新する**（`setDraft((prev) => …)`）。
  * `setDraft({ ...draft, … })` と書くと**描画時の `draft` を掴む**ので、同じ tick で
@@ -131,7 +152,8 @@ export function HatakeCrudPage(props: {
     [props.definition.id],
   );
   useController(controller);
-  const bar = useActions({ roles: props.roles ?? [], formatters: props.formatters });
+  const roles = props.roles ?? [];
+  const bar = useActions({ roles, formatters: props.formatters, keyFields: props.definition.keyFields });
   const [draft, setDraft] = useState<DataRecord>({});
   useEffect(() => {
     void controller.init();
@@ -140,6 +162,15 @@ export function HatakeCrudPage(props: {
   const startCreate = (): void => {
     controller.startCreate();
     setDraft({ ...controller.draft });
+  };
+  const startEdit = (row: DataRecord): void => {
+    controller.startEdit(row);
+    setDraft({ ...controller.draft });
+  };
+  const remove = async (row: DataRecord): Promise<void> => {
+    const declared = props.definition.actions.find((one) => one.type === ActionTypes.delete);
+    if (!(await bar.confirmDelete(declared))) return;
+    await controller.deleteRecord(recordKeyOf(props.definition.keyFields, row));
   };
 
   /** 押したときに渡す「画面が持っているもの」。 */
@@ -158,75 +189,25 @@ export function HatakeCrudPage(props: {
     setSelection: (keys) => controller.setSelection(keys),
   });
 
-  if (controller.mode !== CrudMode.list) {
-    return (
-      <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
-        <h1 className="hatake-title">{props.definition.title}</h1>
-        <HatakeError error={controller.error} />
-        <form
-          className="hatake-form"
-          data-hatake="form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void controller.submitForm(draft);
-          }}
-        >
-          {formFields(props.definition.form).map((field) => (
-            <HatakeField
-              key={field.field}
-              field={field}
-              // **計算した項目は写しに埋める。** 下書きそのものに混ぜると、保存の
-              // ときに計算結果まで書き戻すことになる。
-              record={withComputed(formFields(props.definition.form), draft)}
-              errors={controller.validation.errors}
-              mode={controller.formMode}
-              disabled={controller.submitting}
-              onChange={(name, value) => setDraft((prev) => ({ ...prev, [name]: value }))}
-            />
-          ))}
-          <div className="hatake-form-actions">
-            <button
-              className="hatake-button hatake-button-primary"
-              type="submit"
-              data-hatake="form:submit"
-              disabled={controller.submitting}
-            >
-              保存
-            </button>
-            <button
-              className="hatake-button"
-              type="button"
-              data-hatake="form:cancel"
-              onClick={() => controller.cancelForm()}
-            >
-              やめる
-            </button>
-          </div>
-        </form>
-        {bar.overlay()}
-      </div>
-    );
-  }
+  const rowActionIds = props.definition.table.rowActions;
+  const hasRowButtons = rowSlots(rowActionIds, props.definition.actions, roles).length > 0;
+  const fields = formFields(props.definition.form);
+  const title = controller.mode === CrudMode.create ? "新規登録" : "編集";
 
   return (
     <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
-      <h1 className="hatake-title">{props.definition.title}</h1>
+      <div className="hatake-page-header">
+        <h1 className="hatake-title">{props.definition.title}</h1>
+        {/* 定義が書いたボタン（新規登録・出力・一括・遷移…）。**書いたものだけ**が出る。 */}
+        {bar.top(props.definition.actions, rowActionIds, () => around(), {
+          rows: controller.selectedRows,
+        })}
+      </div>
       <HatakeSearch
         search={"search" in props.definition ? props.definition.search : undefined}
         onSearch={(v) => void controller.search(v)}
       />
-      <button
-        className="hatake-button hatake-button-primary"
-        data-hatake="list:create"
-        onClick={startCreate}
-      >
-        新規登録
-      </button>
-      {/* 定義が書いたボタン（出力・一括・遷移…）。**組み込みの新規登録とは別**。 */}
-      {bar.top(props.definition.actions, props.definition.table.rowActions, () => around(), {
-        rows: controller.selectedRows,
-      })}
-      <HatakeError error={controller.error} />
+      {controller.mode === CrudMode.list ? <HatakeError error={controller.error} /> : null}
       <HatakeTable
         table={props.definition.table}
         rows={controller.items}
@@ -242,36 +223,15 @@ export function HatakeCrudPage(props: {
         onSelect={(key) => controller.toggleSelected(key)}
         onSelectAll={() => controller.toggleAllSelected()}
         onSort={(field, ascending) => void controller.sortBy(field, ascending)}
-        rowSlot={(row, key) => (
-          <span className="hatake-row-buttons">
-            {/* 定義が `table.rowActions` に並べたボタン（組み込みの前に出す）。 */}
-            {bar.row(props.definition.actions, props.definition.table.rowActions, row, () =>
-              around(row),
-            )}
-            <button
-              className="hatake-button"
-              data-hatake={`edit:${String(key)}`}
-              onClick={() => {
-                controller.startEdit(row);
-                setDraft({ ...row });
-              }}
-            >
-              編集
-            </button>
-            <button
-              className="hatake-button hatake-button-danger"
-              data-hatake={`delete:${String(key)}`}
-              // **消す前に聞く。** 定義が `prompt` を持たなくても、消すのは聞く。
-              onClick={() => {
-                if (globalThis.confirm?.("この1件を削除します。よろしいですか？") !== false) {
-                  void controller.deleteRecord(key);
-                }
-              }}
-            >
-              削除
-            </button>
-          </span>
-        )}
+        rowSlot={
+          hasRowButtons
+            ? (row) =>
+                bar.row(props.definition.actions, rowActionIds, row, () => around(row), {
+                  edit: () => startEdit(row),
+                  delete: () => void remove(row),
+                })
+            : undefined
+        }
       />
       <HatakePagination
         page={controller.page}
@@ -279,6 +239,58 @@ export function HatakeCrudPage(props: {
         totalCount={controller.totalCount}
         onMove={(page) => void controller.setPage(page)}
       />
+      {controller.mode === CrudMode.list ? null : (
+        <div className="hatake-dialog-backdrop" data-hatake="form:dialog">
+          <form
+            className="hatake-dialog hatake-form"
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            data-hatake="form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void controller.submitForm(draft);
+            }}
+          >
+            <h2 className="hatake-dialog-title">{title}</h2>
+            <HatakeError error={controller.error} />
+            <Sections
+              sections={visibleSections(props.definition.form, draft, roles, controller.formMode)}
+              render={(field) => (
+                <HatakeField
+                  field={field}
+                  // **計算した項目は写しに埋める。** 下書きそのものに混ぜると、保存の
+                  // ときに計算結果まで書き戻すことになる。
+                  record={withComputed(fields, draft)}
+                  errors={controller.validation.errors}
+                  mode={controller.formMode}
+                  disabled={controller.submitting}
+                  onChange={(name, value) => setDraft((prev) => ({ ...prev, [name]: value }))}
+                />
+              )}
+            />
+            <div className="hatake-dialog-actions">
+              <button
+                className="hatake-button hatake-button-text"
+                type="button"
+                data-hatake="form:cancel"
+                disabled={controller.submitting}
+                onClick={() => controller.cancelForm()}
+              >
+                キャンセル
+              </button>
+              <button
+                className="hatake-button hatake-button-primary"
+                type="submit"
+                data-hatake="form:submit"
+                disabled={controller.submitting}
+              >
+                保存
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
       {bar.overlay()}
     </div>
   );

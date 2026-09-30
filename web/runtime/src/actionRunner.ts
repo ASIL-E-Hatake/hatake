@@ -103,6 +103,14 @@ export class ActionRunner extends Notifier {
     return this._progress;
   }
 
+  /**
+   * 画面が自分で聞くときの口（組み込みの「削除」など、定義のボタンではないもの）。
+   * **聞く場所を1つにする**ため、ボタンと同じダイアログを使う。
+   */
+  ask(ask: ActionAsk): Promise<DataRecord | null> {
+    return this._ask(ask);
+  }
+
   /** いま走っているボタンの id（二度押しを止めるのに使う）。 */
   get running(): string | null {
     return this._running;
@@ -197,28 +205,22 @@ export class ActionRunner extends Notifier {
     // 聞くことが在るなら、その OK が確認そのもの（ダイアログを2枚出さない）。
     let input: DataRecord = {};
     if (action.prompt !== undefined) {
+      // 既定の字は Flutter 版（`action_prompt.dart`）と同じ。聞く相手が「押したボタン」
+      // なので、書いていなければ**ボタンの名前**が題と OK になる。
       const answer = await this._ask({
         action,
         count,
-        title: fillCount(action.prompt.title, count) ?? action.label,
-        okLabel: action.prompt.okLabel ?? "実行",
-        cancelLabel: action.prompt.cancelLabel ?? "やめる",
-        danger: false,
+        title:
+          fillCount(action.prompt.title, count) ?? fillCount(action.confirm?.title, count) ?? action.label,
+        okLabel: action.prompt.okLabel ?? action.confirm?.okLabel ?? action.label,
+        cancelLabel: action.prompt.cancelLabel ?? action.confirm?.cancelLabel ?? "キャンセル",
+        danger: action.confirm?.danger ?? false,
         fields: action.prompt.fields,
       });
       if (answer === null) return false; // やめた＝何も起きない
       input = answer;
     } else if (action.confirm !== undefined) {
-      const answer = await this._ask({
-        action,
-        count,
-        title: action.confirm.title ?? action.label,
-        message: fillCount(action.confirm.message, count),
-        okLabel: action.confirm.okLabel ?? "実行",
-        cancelLabel: action.confirm.cancelLabel ?? "やめる",
-        danger: action.confirm.danger,
-        fields: [],
-      });
+      const answer = await this._ask(confirmAsk(action, count));
       if (answer === null) return false;
     }
 
@@ -454,6 +456,31 @@ export class ActionRunner extends Notifier {
   private _say(text: string, ok: boolean): void {
     this.messages.say(text, ok);
   }
+}
+
+/**
+ * 「押してよいか」だけを聞く形。既定の字は Flutter 版（`_confirmAction`）と同じ:
+ * 取り消せない操作なら「確認」「削除」、そうでなければ「実行の確認」「OK」。
+ *
+ * `delete` は `confirm` を書いていなくても**必ず聞く**（取り消せない唯一の操作）。
+ * それは画面側が `destructive: true` で呼ぶ。
+ */
+export function confirmAsk(
+  action: ActionDefinition,
+  count?: number,
+  options: { destructive?: boolean } = {},
+): ActionAsk {
+  const danger = action.confirm?.danger ?? options.destructive ?? false;
+  return {
+    action,
+    count,
+    title: fillCount(action.confirm?.title, count) ?? (danger ? "確認" : "実行の確認"),
+    message: fillCount(action.confirm?.message, count) ?? "この操作を実行してもよろしいですか？",
+    okLabel: action.confirm?.okLabel ?? (danger ? "削除" : "OK"),
+    cancelLabel: action.confirm?.cancelLabel ?? "キャンセル",
+    danger,
+    fields: [],
+  };
 }
 
 /** 押したときに人へ聞くこと。`fields` が空なら確認だけ。 */
