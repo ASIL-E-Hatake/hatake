@@ -1,6 +1,7 @@
 import { type ColumnDefinition, FormatterRegistry } from "@hatake-fw/api";
-import { cellText, DashboardItemTypes, ReportBlockKinds } from "@hatake-fw/api/internal";
+import { cellText, ColumnTypes, DashboardItemTypes, isAllowed, ReportBlockKinds } from "@hatake-fw/api/internal";
 import type {
+  AggregateBucket,
   DashboardItemDefinition,
   DashboardPageDefinition,
   ReportBlock,
@@ -8,13 +9,20 @@ import type {
 } from "@hatake-fw/api/internal";
 import {
   type ActionSurroundings,
+  cardSpan,
+  CHART_HEIGHT,
+  CHART_WIDTH,
+  chartShape,
+  dashboardColumns,
   DashboardController,
+  dashboardValueText,
   type DataRecord,
   ReportController,
 } from "@hatake-fw/runtime";
 import { defineComponent, h, onMounted, type PropType } from "vue";
 
 import { useActions } from "../parts/actions.js";
+import { icon } from "../parts/icon.js";
 import { HatakePagination, HatakeSearch } from "../parts/search.js";
 import { touch, useController, useRegistries } from "../scope.js";
 import { errorOf } from "./list.js";
@@ -22,6 +30,10 @@ import { errorOf } from "./list.js";
 /**
  * ダッシュボード（`kind: dashboard`）。**カード1枚ずつが自分の状態を持つ**ので、
  * 1つの Repository が落ちても落ちるのはそのカードだけ。
+ *
+ * 並べ方は**定義の `layout.columns` と各カードの `span`**。数の字はカードの
+ * `format`、表のカードはカードの `columns` で出す（Flutter 版と同じ）。0.9.19 までは
+ * どれも読んでいなかった（12列決め打ち・素の数・行を丸ごと繋いで `[object Object]`）。
  */
 export const HatakeDashboardPage = defineComponent({
   name: "HatakeDashboardPage",
@@ -35,6 +47,8 @@ export const HatakeDashboardPage = defineComponent({
     const controller = new DashboardController({
       definition: props.definition,
       repositories: registries.repositories,
+      // **見せないカードは読みにも行かない**（絞るのは土台）。
+      roles: props.roles,
     });
     const { version } = useController(controller);
     const bar = useActions({ roles: props.roles, formatters: props.formatters });
@@ -42,22 +56,40 @@ export const HatakeDashboardPage = defineComponent({
 
     return () => {
       touch(version);
+      const columns = dashboardColumns(props.definition);
       return h("div", { class: "hatake-page", "data-hatake": `page:${props.definition.id}` }, [
-        h("h1", { class: "hatake-title" }, props.definition.title),
+        h("div", { class: "hatake-page-header" }, [
+          h("h1", { class: "hatake-title" }, props.definition.title),
+          // ダッシュボードには**行が無い**ので、`type: export` は出せない（押すと
+          // 「この画面では出力できません」と言う）。遷移と `plugin` は使える。
+          bar.page(props.definition.actions, () => ({
+            controller,
+            fallbackName: props.definition.title,
+          })),
+          h(
+            "button",
+            {
+              class: "hatake-icon-button",
+              type: "button",
+              title: "読み直す",
+              "aria-label": "読み直す",
+              "data-hatake": "dashboard:reload",
+              onClick: () => void controller.load(),
+            },
+            [icon("refresh")],
+          ),
+        ]),
         h(HatakeSearch, {
           search: props.definition.search,
           onSearch: (values: DataRecord) => void controller.search(values),
         }),
-        // ダッシュボードには**行が無い**ので、`type: export` は出せない（押すと
-        // 「この画面では出力できません」と言う）。遷移と `plugin` は使える。
-        bar.page(props.definition.actions, () => ({
-          controller,
-          fallbackName: props.definition.title,
-        })),
         h(
           "div",
-          { class: "hatake-dashboard" },
-          props.definition.items.map((item) => card(item, controller, props.formatters)),
+          {
+            class: "hatake-dashboard",
+            style: { "--hatake-dashboard-columns": String(columns) },
+          },
+          controller.items.map((item) => card(item, columns, controller, props.formatters, props.roles)),
         ),
         bar.overlay(),
       ]);
@@ -67,8 +99,10 @@ export const HatakeDashboardPage = defineComponent({
 
 function card(
   item: DashboardItemDefinition,
+  columns: number,
   controller: DashboardController,
   formatters: FormatterRegistry,
+  roles: readonly string[],
 ): ReturnType<typeof h> {
   const state = controller.stateOf(item);
   const body = (): ReturnType<typeof h> => {
@@ -81,24 +115,18 @@ function card(
         return h(
           "p",
           { class: "hatake-metric", "data-hatake": `metric:${item.id}` },
-          state.value === null ? "—" : String(state.value),
+          dashboardValueText(formatters, item, state.value),
         );
       case DashboardItemTypes.chart:
-        return h(
-          "ul",
-          { class: "hatake-chart", "data-hatake": `chart:${item.id}` },
-          state.buckets.map((bucket) =>
-            h("li", {}, [
-              h("span", { class: "hatake-chart-label" }, bucket.label),
-              h("span", { class: "hatake-chart-value hatake-cell-number" }, String(bucket.value ?? "—")),
-            ]),
-          ),
-        );
+        return chart(item, state.buckets, formatters);
+      case DashboardItemTypes.table:
+        return cardTable(item, state.rows, formatters, roles);
       default:
+        // **知らない種類は黙って空にしない**（プラグインで足したのに描かれていない）。
         return h(
-          "ul",
-          { class: "hatake-card-rows", "data-hatake": `rows:${item.id}` },
-          state.rows.map((row) => h("li", {}, Object.values(row).map(String).join(" / "))),
+          "p",
+          { class: "hatake-field-message", role: "alert", "data-hatake": `card:${item.id}:unsupported` },
+          `描き方を知らないカードです: type = ${item.type}`,
         );
     }
   };
@@ -107,11 +135,129 @@ function card(
     "section",
     {
       class: "hatake-card",
-      style: { gridColumn: `span ${item.span}` },
+      style: { gridColumn: `span ${cardSpan(item, columns)}` },
       "data-hatake": `card:${item.id}`,
     },
     [h("h2", { class: "hatake-card-title" }, item.title), body()],
   );
+}
+
+/**
+ * 表のカード。**列はカードの `columns`**（見えない列は出さない）、字は一覧と同じ
+ * `cellText` を通す。
+ */
+function cardTable(
+  item: DashboardItemDefinition,
+  rows: readonly DataRecord[],
+  formatters: FormatterRegistry,
+  roles: readonly string[],
+): ReturnType<typeof h> {
+  const columns = item.columns.filter((one) => isAllowed(one.roles, roles));
+  if (rows.length === 0 || columns.length === 0) {
+    return h("p", { class: "hatake-table-empty", "data-hatake": `rows:${item.id}` }, "該当するデータがありません");
+  }
+  return h("table", { class: "hatake-table", "data-hatake": `rows:${item.id}` }, [
+    h(
+      "thead",
+      h(
+        "tr",
+        columns.map((one) =>
+          h("th", { class: one.type === ColumnTypes.number ? "hatake-cell-number" : null }, one.label),
+        ),
+      ),
+    ),
+    h(
+      "tbody",
+      rows.map((row, at) =>
+        h(
+          "tr",
+          { key: at },
+          columns.map((one) =>
+            h(
+              "td",
+              { class: one.type === ColumnTypes.number ? "hatake-cell-number" : null },
+              cellText(formatters, columns, one, row[one.field]),
+            ),
+          ),
+        ),
+      ),
+    ),
+  ]);
+}
+
+/**
+ * 図のカード。**形は土台が組む**（`chartShape`）。ここは SVG に置くだけで、色は
+ * CSS（`--hatake-chart-N`）。外の図ライブラリには乗らない。
+ */
+function chart(
+  item: DashboardItemDefinition,
+  buckets: readonly AggregateBucket[],
+  formatters: FormatterRegistry,
+): ReturnType<typeof h> {
+  const shape = chartShape(item.chart?.kind ?? "bar", buckets, (value) =>
+    dashboardValueText(formatters, item, value),
+  );
+  const mark = { "data-hatake": `chart:${item.id}` };
+  if (shape.kind === "empty") return h("p", { class: "hatake-table-empty", ...mark }, "該当するデータがありません");
+  if (shape.kind === "unsupported") {
+    return h("p", { class: "hatake-field-message", role: "alert", ...mark }, `描き方を知らない図です: kind = ${shape.name}`);
+  }
+
+  const svg = (children: ReturnType<typeof h>[], width = CHART_WIDTH) =>
+    h(
+      "svg",
+      {
+        class: "hatake-chart",
+        viewBox: `0 0 ${width} ${CHART_HEIGHT}`,
+        role: "img",
+        "aria-label": item.title,
+        ...mark,
+      },
+      children,
+    );
+
+  if (shape.kind === "pie") {
+    return h("div", {}, [
+      svg(
+        shape.slices.map((one) => h("path", { class: `hatake-chart-c${one.colorIndex}`, d: one.path })),
+        CHART_HEIGHT,
+      ),
+      // 円は**凡例が無いと読めない**ので、軸の字の代わりに凡例を出す。
+      h(
+        "ul",
+        { class: "hatake-chart-legend" },
+        shape.slices.map((one) =>
+          h("li", {}, [
+            h("span", { class: `hatake-chart-swatch hatake-chart-c${one.colorIndex}`, style: { background: `var(--hatake-chart-${one.colorIndex + 1})` } }),
+            `${one.label} ${one.valueText}`,
+          ]),
+        ),
+      ),
+    ]);
+  }
+
+  const axis = h("line", { class: "hatake-chart-axis", x1: 0, x2: CHART_WIDTH, y1: shape.baseline, y2: shape.baseline });
+
+  if (shape.kind === "line") {
+    return svg([
+      axis,
+      h("polyline", { class: "hatake-chart-line", points: shape.points.map((p) => `${p.x},${p.y}`).join(" ") }),
+      ...shape.points.flatMap((p) => [
+        h("circle", { class: "hatake-chart-c0", cx: p.x, cy: p.y, r: 3 }),
+        h("text", { class: "hatake-chart-value", x: p.x, y: p.y - 6, "text-anchor": "middle" }, p.valueText),
+        h("text", { class: "hatake-chart-label", x: p.x, y: shape.labelY, "text-anchor": "middle" }, p.label),
+      ]),
+    ]);
+  }
+
+  return svg([
+    axis,
+    ...shape.bars.flatMap((b) => [
+      h("rect", { class: `hatake-chart-c${b.colorIndex}`, x: b.x, y: b.y, width: b.width, height: b.height }),
+      h("text", { class: "hatake-chart-value", x: b.center, y: b.y - 3, "text-anchor": "middle" }, b.valueText),
+      h("text", { class: "hatake-chart-label", x: b.center, y: shape.labelY, "text-anchor": "middle" }, b.label),
+    ]),
+  ]);
 }
 
 /**
@@ -153,13 +299,15 @@ export const HatakeReportPage = defineComponent({
       touch(version);
       const sheet = controller.sheet;
       return h("div", { class: "hatake-page", "data-hatake": `page:${props.definition.id}` }, [
-        h("h1", { class: "hatake-title" }, props.definition.title),
+        h("div", { class: "hatake-page-header" }, [
+          h("h1", { class: "hatake-title" }, props.definition.title),
+          bar.page(props.definition.actions, around),
+        ]),
         h(HatakeSearch, {
           search: props.definition.search,
           submitLabel: "出力",
           onSearch: (values: DataRecord) => void controller.run(values),
         }),
-        bar.page(props.definition.actions, around),
         ...errorOf(controller.error),
         // **押す前に空の紙を出さない**（出すと「0件だった」と読めてしまう）。
         !controller.hasRun

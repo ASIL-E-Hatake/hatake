@@ -5,50 +5,114 @@
  * （名前にホストの版を入れてまで引っ張られないようにしたのに、見た目で別の版に
  * 縛られては意味が無い）。
  *
- * 上書きの道は2つ:
+ * 寸法は **Flutter 版（Material 3）に寄せてある**。同じ定義を Flutter とブラウザで
+ * 出したときに、ボタンの大きさや余白で「別のもの」に見えないように（0.9.20）。
+ * 画素まで同じにはしない —— 揃えるのは**寸法と役割**（入力の高さ・丸いボタン・
+ * 色の付いたカード面・タブ・アイコン）。
  *
- *   1. **CSS 変数を差し替える**（下の :root か、囲みの要素に当てる）。ここが普通
- *   2. **クラス名を狙う**（`.hatake-table th { … }`）。細かく変えたいとき
+ * 上書きの道は3つ:
+ *
+ *   1. **定義の `app.theme`**（色・角の丸み・字体・詰め具合・明るさ）。ここが既定
+ *   2. **CSS 変数を差し替える**。`.hatake-app { --hatake-color-primary: … }`
+ *      ——定義の `theme` は外側の枠（`.hatake-theme`）に当ててあるので、
+ *      `.hatake-app` 以下に書けば**案件のほうが勝つ**
+ *   3. **クラス名を狙う**（`.hatake-table th { … }`）。細かく変えたいとき
  *
  * **クラス名は契約。** Renderer の都合で変えない（案件の CSS が黙って効かなくなる）。
  * Vue と React は**同じクラス名を出す**ので、案件の見た目を作り直さずに Renderer を
- * 差し替えられる。
+ * 差し替えられる（`web/tool/check-same-marks.mjs` が見ている）。
  */
 
 :root {
-  /* 色 */
+  /* 色（Material 3 の役割に合わせた名前ではなく、業務画面で要る役割の名前） */
   --hatake-color-primary: #3f51b5;
   --hatake-color-on-primary: #ffffff;
-  --hatake-color-danger: #c62828;
-  --hatake-color-text: #1a1a1a;
-  --hatake-color-muted: #666666;
-  --hatake-color-border: #dddddd;
-  --hatake-color-surface: #ffffff;
-  --hatake-color-canvas: #f7f7fa;
-  --hatake-table-stripe: #fafafa;
+  --hatake-color-secondary: #ff9800;
+  --hatake-color-danger: #ba1a1a;
+  --hatake-color-text: #1b1b21;
+  --hatake-color-muted: #5b5d6b;
+  --hatake-color-border: #c6c5d0;
+  --hatake-color-surface: #fbf8ff;
+  --hatake-color-canvas: #fbf8ff;
+  /* カード・タブ列・メニューの面（地より一段だけ色が付く） */
+  --hatake-color-container: #f1eff7;
+  --hatake-color-container-high: #e9e7f0;
+  --hatake-table-stripe: transparent;
+  /* 選ばれているもの（メニュー・タブ・行）の下地。主色から作る */
+  --hatake-color-selected: color-mix(in srgb, var(--hatake-color-primary) 12%, transparent);
+
+  /* 図の色（6色を回す） */
+  --hatake-chart-1: #4e5c92;
+  --hatake-chart-2: #74546e;
+  --hatake-chart-3: #3f6a58;
+  --hatake-chart-4: #8a5a2b;
+  --hatake-chart-5: #5a6470;
+  --hatake-chart-6: #8c4a4a;
 
   /* 間と形 */
   --hatake-space: 8px;
-  --hatake-radius: 6px;
+  --hatake-radius: 12px;
+  --hatake-input-radius: 4px;
+  --hatake-button-radius: 999px;
+  --hatake-control-height: 40px;
   --hatake-border: 1px solid var(--hatake-color-border);
 
   /* 字 */
-  --hatake-font: system-ui, -apple-system, "Segoe UI", "Hiragino Sans",
-    "Noto Sans JP", sans-serif;
+  --hatake-font-fallback: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP",
+    sans-serif;
+  --hatake-font: var(--hatake-font-fallback);
   --hatake-font-size: 14px;
 }
 
-/* 暗いほうは**上書きの例**として置く（自動では切り替えない＝業務系は指定が多い）。
-   使うなら :root[data-hatake-theme="dark"] を当てる。 */
-:root[data-hatake-theme="dark"] {
-  --hatake-color-text: #eeeeee;
-  --hatake-color-muted: #aaaaaa;
-  --hatake-color-border: #444444;
-  --hatake-color-surface: #1e1e22;
-  --hatake-color-canvas: #141417;
-  --hatake-table-stripe: #26262b;
+/* ── 詰め具合（`app.theme.density`） ──────────────────────────
+ * 1つの値で何本もの寸法が変わるので、変数ではなく印で渡している。 */
+[data-hatake-density="compact"] {
+  --hatake-space: 6px;
+  --hatake-control-height: 36px;
 }
 
+[data-hatake-density="comfortable"] {
+  --hatake-space: 10px;
+  --hatake-control-height: 48px;
+}
+
+/* ── 明るさ（`app.theme.brightness`） ─────────────────────────
+ * `system` は端末に合わせる。業務系は固定したいことが多いので、定義が `light` と
+ * 言えば端末が暗くても明るいまま。 */
+[data-hatake-brightness="dark"],
+:root[data-hatake-theme="dark"] {
+  --hatake-color-text: #e4e1ec;
+  --hatake-color-muted: #c6c5d0;
+  --hatake-color-border: #46464f;
+  --hatake-color-surface: #131318;
+  --hatake-color-canvas: #131318;
+  --hatake-color-container: #1f1f25;
+  --hatake-color-container-high: #2a292f;
+  --hatake-color-danger: #ffb4ab;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-hatake-brightness="system"] {
+    --hatake-color-text: #e4e1ec;
+    --hatake-color-muted: #c6c5d0;
+    --hatake-color-border: #46464f;
+    --hatake-color-surface: #131318;
+    --hatake-color-canvas: #131318;
+    --hatake-color-container: #1f1f25;
+    --hatake-color-container-high: #2a292f;
+    --hatake-color-danger: #ffb4ab;
+  }
+}
+
+/* ── 絵（アイコン） ─────────────────────────────────────────── */
+.hatake-icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: currentColor;
+}
+
+/* ── 画面1枚 ────────────────────────────────────────────────── */
 .hatake-page {
   font-family: var(--hatake-font);
   font-size: var(--hatake-font-size);
@@ -57,46 +121,113 @@
   padding: calc(var(--hatake-space) * 2);
 }
 
+/* 題と画面のボタンを1段に（題は左、ボタンは右）。Flutter の画面の頭と同じ置き方。 */
+.hatake-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--hatake-space) calc(var(--hatake-space) * 2);
+  margin-bottom: calc(var(--hatake-space) * 1.5);
+}
+
+.hatake-page-header > .hatake-title {
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.hatake-page-header > .hatake-actions {
+  margin: 0;
+  justify-content: flex-end;
+}
+
 .hatake-title {
-  font-size: 1.4em;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.3;
   margin: 0 0 calc(var(--hatake-space) * 2);
 }
 
-/* ── 検索 ───────────────────────────────────────────────── */
+/* ── 検索 ───────────────────────────────────────────────────── */
+/* 幅の決まりは Flutter 版と同じ: 1枠 220px。定義が `search.layout.columns` を書いて
+   いれば、横幅をその数で割る（Renderer が `--hatake-search-columns` に入れる）。
+   2枠並ばない幅なら1列に畳む。 */
 .hatake-search {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--hatake-space);
+  align-items: flex-end;
+  gap: 12px;
   margin-bottom: calc(var(--hatake-space) * 2);
+  container-type: inline-size;
 }
 
-/* ── 項目 ───────────────────────────────────────────────── */
+.hatake-search .hatake-field {
+  flex: 0 0 220px;
+  min-width: 0;
+}
+
+.hatake-search[data-hatake-columns] .hatake-field {
+  flex-basis: calc((100% - 12px * (var(--hatake-search-columns) - 1)) / var(--hatake-search-columns));
+}
+
+@container (max-width: 451px) {
+  .hatake-search .hatake-field,
+  .hatake-search[data-hatake-columns] .hatake-field {
+    flex-basis: 100%;
+  }
+}
+
+/* ── 項目 ───────────────────────────────────────────────────── */
 .hatake-field {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--hatake-space) / 2);
+  gap: 4px;
 }
 
 .hatake-field-label {
   color: var(--hatake-color-muted);
-  font-size: 0.9em;
+  font-size: 12px;
 }
 
 .hatake-field-required::after {
-  content: "*";
+  content: " *";
   color: var(--hatake-color-danger);
-  margin-left: 2px;
 }
 
-.hatake-field input,
+.hatake-field input:not([type="checkbox"]):not([type="radio"]),
 .hatake-field select,
 .hatake-field textarea {
   font: inherit;
   color: inherit;
-  padding: var(--hatake-space);
+  box-sizing: border-box;
+  min-height: var(--hatake-control-height);
+  padding: 0 12px;
   border: var(--hatake-border);
-  border-radius: var(--hatake-radius);
-  background: var(--hatake-color-surface);
+  border-color: color-mix(in srgb, var(--hatake-color-text) 45%, transparent);
+  border-radius: var(--hatake-input-radius);
+  background: transparent;
+}
+
+.hatake-field textarea {
+  padding: 8px 12px;
+  min-height: calc(var(--hatake-control-height) * 2);
+}
+
+.hatake-field input:focus-visible,
+.hatake-field select:focus-visible,
+.hatake-field textarea:focus-visible {
+  outline: 2px solid var(--hatake-color-primary);
+  outline-offset: -1px;
+}
+
+.hatake-field input[readonly] {
+  border-style: dashed;
+}
+
+.hatake-field input[type="checkbox"],
+.hatake-select input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--hatake-color-primary);
 }
 
 .hatake-field-error input,
@@ -107,30 +238,41 @@
 
 .hatake-field-message {
   color: var(--hatake-color-danger);
-  font-size: 0.9em;
+  font-size: 12px;
 }
 
-/* ── 表 ─────────────────────────────────────────────────── */
+/* ── 表 ─────────────────────────────────────────────────────── */
+/* 幅は**中身に合わせる**（Flutter の DataTable と同じ）。列の `width` が効く。
+   カードの中の表だけは枠いっぱいに使う（下の `.hatake-card .hatake-table`）。 */
 .hatake-table {
-  width: 100%;
+  width: auto;
+  min-width: min(100%, 480px);
   border-collapse: collapse;
-  background: var(--hatake-color-surface);
-  border: var(--hatake-border);
-  border-radius: var(--hatake-radius);
-  overflow: hidden;
+}
+
+.hatake-card .hatake-table {
+  width: 100%;
+  min-width: 0;
 }
 
 .hatake-table th,
 .hatake-table td {
   text-align: left;
-  padding: var(--hatake-space);
+  padding: 0 28px 0 16px;
+  height: var(--hatake-control-height);
   border-bottom: var(--hatake-border);
+  border-color: color-mix(in srgb, var(--hatake-color-border) 70%, transparent);
 }
 
 .hatake-table th {
   color: var(--hatake-color-muted);
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
+  height: calc(var(--hatake-control-height) + 16px);
+}
+
+.hatake-table th[role="button"] {
+  cursor: pointer;
 }
 
 /* 数値の列は右に寄せる（業務の表では読みやすさが違う）。 */
@@ -143,21 +285,65 @@
   background: var(--hatake-table-stripe);
 }
 
+.hatake-table tbody tr:hover {
+  background: color-mix(in srgb, var(--hatake-color-text) 4%, transparent);
+}
+
 .hatake-table-empty {
   color: var(--hatake-color-muted);
   padding: calc(var(--hatake-space) * 3);
   text-align: center;
 }
 
-/* ── ボタン ─────────────────────────────────────────────── */
+/* `type: badge` の列。値を**札**で出す（Flutter の Chip と同じ役割）。 */
+.hatake-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border: var(--hatake-border);
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.hatake-boolean {
+  display: inline-flex;
+  color: var(--hatake-color-muted);
+}
+
+.hatake-boolean .hatake-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* ── ボタン ─────────────────────────────────────────────────── */
 .hatake-button {
   font: inherit;
-  padding: var(--hatake-space) calc(var(--hatake-space) * 2);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  min-height: var(--hatake-control-height);
+  padding: 0 20px;
   border: var(--hatake-border);
-  border-radius: var(--hatake-radius);
-  background: var(--hatake-color-surface);
-  color: inherit;
+  border-radius: var(--hatake-button-radius);
+  background: transparent;
+  color: var(--hatake-color-primary);
   cursor: pointer;
+  white-space: nowrap;
+}
+
+.hatake-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--hatake-color-primary) 8%, transparent);
+}
+
+.hatake-button .hatake-icon {
+  width: 18px;
+  height: 18px;
+  margin-left: -4px;
 }
 
 .hatake-button-primary {
@@ -166,76 +352,181 @@
   border-color: transparent;
 }
 
+.hatake-button-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--hatake-color-primary) 88%, #000);
+}
+
+/* 文字だけのボタン（表の行の「詳細」など）。Flutter の TextButton と同じ役割。 */
+.hatake-button-text {
+  border-color: transparent;
+  padding: 0 12px;
+}
+
 .hatake-button-danger {
   color: var(--hatake-color-danger);
 }
 
 /* **押せない理由は色だけで言わない**（画面の外にも伝わるように title / aria で言う）。 */
 .hatake-button:disabled {
-  opacity: 0.5;
+  opacity: 1;
+  color: color-mix(in srgb, var(--hatake-color-text) 38%, transparent);
+  background: color-mix(in srgb, var(--hatake-color-text) 10%, transparent);
+  border-color: transparent;
   cursor: not-allowed;
 }
 
-/* ── ページ送り ─────────────────────────────────────────── */
+.hatake-button-text:disabled {
+  background: transparent;
+}
+
+/* 絵だけのボタン（読み直し・閉じる）。**押せる大きさは 40px** 保つ。 */
+.hatake-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hatake-control-height);
+  height: var(--hatake-control-height);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--hatake-color-muted);
+  cursor: pointer;
+}
+
+.hatake-icon-button:hover {
+  background: color-mix(in srgb, var(--hatake-color-text) 8%, transparent);
+}
+
+/* ── ページ送り ─────────────────────────────────────────────── */
 .hatake-pagination {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: var(--hatake-space);
   margin-top: calc(var(--hatake-space) * 2);
   color: var(--hatake-color-muted);
 }
 
-/* ── 帳票 ───────────────────────────────────────────────── */
+.hatake-pagination-total {
+  font-size: 12px;
+  margin-right: 8px;
+}
+
+/* ── 帳票 ───────────────────────────────────────────────────── */
 .hatake-sheet {
   background: var(--hatake-color-surface);
   border: var(--hatake-border);
+  border-radius: var(--hatake-radius);
   padding: calc(var(--hatake-space) * 3);
   margin-bottom: calc(var(--hatake-space) * 2);
 }
 
-/* ── ダッシュボード ─────────────────────────────────────── */
+/* ── ダッシュボード ─────────────────────────────────────────────
+ * 列の数は**定義の `layout.columns`**（Renderer が `--hatake-dashboard-columns` に
+ * 入れる）。カードは `span` の分だけ列を使う。狭くて2枚並ばなければ1列に畳む
+ * （Flutter と同じ: カード1枚の最小幅 260px）。 */
 .hatake-dashboard {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: calc(var(--hatake-space) * 2);
+  grid-template-columns: repeat(var(--hatake-dashboard-columns, 4), minmax(0, 1fr));
+  gap: 12px;
+  container-type: inline-size;
+}
+
+@container (max-width: 532px) {
+  .hatake-dashboard > .hatake-card {
+    grid-column: 1 / -1 !important;
+  }
 }
 
 .hatake-card {
-  background: var(--hatake-color-surface);
-  border: var(--hatake-border);
+  background: var(--hatake-color-container);
   border-radius: var(--hatake-radius);
-  padding: calc(var(--hatake-space) * 2);
+  padding: 12px 12px 16px;
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 .hatake-metric {
-  font-size: 2em;
+  font-size: 28px;
+  line-height: 1.3;
+  margin: 8px 0 0;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ── ウィザード ─────────────────────────────────────────── */
+/* ── ウィザード ───────────────────────────────────────────────
+ * 番号を丸で囲み、いまのステップを主色で塗る（Flutter の Stepper と同じ役割）。 */
 .hatake-steps {
   display: flex;
-  gap: var(--hatake-space);
-  margin-bottom: calc(var(--hatake-space) * 2);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 calc(var(--hatake-space) * 2);
+  color: var(--hatake-color-text);
+}
+
+.hatake-steps > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hatake-steps > li + li::before {
+  content: "›";
   color: var(--hatake-color-muted);
+  margin-right: 4px;
+}
+
+.hatake-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--hatake-color-text) 12%, transparent);
+  color: var(--hatake-color-text);
 }
 
 .hatake-step-current {
   color: var(--hatake-color-primary);
-  font-weight: 600;
+}
+
+.hatake-step-current .hatake-step-number {
+  background: var(--hatake-color-primary);
+  color: var(--hatake-color-on-primary);
+}
+
+.hatake-step-note {
+  color: var(--hatake-color-muted);
+  margin: 0;
 }
 
 /* 画面が狭いときは表を横に送る（業務の表は列が多い）。 */
-@media (max-width: 640px) {
-  .hatake-table-scroll {
-    overflow-x: auto;
-  }
+.hatake-table-scroll {
+  overflow-x: auto;
 }
 
-/* ── アプリの枠（メニューと中身） ─────────────────────────── */
+/* ── アプリの枠（上の帯・メニュー・タブ・中身） ─────────────────── */
+
+/* `app.theme` を当てる外側の枠。**変数だけ**を持つ（案件は内側で上書きできる）。 */
+.hatake-theme {
+  display: contents;
+}
+
 .hatake-app {
   display: grid;
-  grid-template-columns: minmax(180px, 220px) 1fr;
+  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "bar bar"
+    "menu main";
   min-height: 100vh;
   font-family: var(--hatake-font);
   font-size: var(--hatake-font-size);
@@ -243,57 +534,181 @@
   background: var(--hatake-color-canvas);
 }
 
-.hatake-menu {
+.hatake-appbar {
+  grid-area: bar;
   display: flex;
-  flex-direction: column;
-  gap: calc(var(--hatake-space) / 2);
-  padding: var(--hatake-space);
-  background: var(--hatake-color-surface);
-  border-right: var(--hatake-border);
+  align-items: center;
+  min-height: 56px;
+  padding: 0 16px;
 }
 
 .hatake-brand {
-  font-weight: 600;
-  padding: var(--hatake-space);
-  margin-bottom: var(--hatake-space);
+  font-size: 22px;
+  font-weight: 400;
+}
+
+.hatake-menu {
+  grid-area: menu;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 0 var(--hatake-space);
+  border-right: var(--hatake-border);
+  border-color: color-mix(in srgb, var(--hatake-color-border) 70%, transparent);
 }
 
 .hatake-menu-group {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--hatake-space) / 2);
+}
+
+.hatake-menu-group > .hatake-menu-item {
+  padding-left: 28px;
 }
 
 .hatake-menu-heading {
   color: var(--hatake-color-muted);
-  font-size: 0.85em;
-  padding: calc(var(--hatake-space) / 2) var(--hatake-space);
+  font-size: 12px;
+  padding: 12px 16px 4px;
 }
 
 .hatake-menu-item {
   font: inherit;
   color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--hatake-control-height);
   text-align: left;
-  padding: var(--hatake-space);
+  padding: 0 16px;
   border: none;
-  border-radius: var(--hatake-radius);
   background: transparent;
   cursor: pointer;
 }
 
+.hatake-menu-item:hover {
+  background: color-mix(in srgb, var(--hatake-color-text) 6%, transparent);
+}
+
+.hatake-menu-item .hatake-icon {
+  color: var(--hatake-color-text);
+}
+
+.hatake-menu-current,
+.hatake-menu-current .hatake-icon {
+  color: var(--hatake-color-primary);
+}
+
 .hatake-menu-current {
-  background: var(--hatake-color-primary);
-  color: var(--hatake-color-on-primary);
+  background: var(--hatake-color-container);
 }
 
 .hatake-content {
+  grid-area: main;
   min-width: 0; /* 表が横に溢れても枠を押し広げない */
+}
+
+/* ── タブ（`app.navigation: tabs`） ──────────────────────────
+ * 札は「いま見ている画面の題」。最後の1枚には閉じる口を出さない。 */
+.hatake-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 6px 8px;
+  background: var(--hatake-color-container);
+}
+
+.hatake-tab {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 32px;
+  border: var(--hatake-border);
+  border-radius: 8px;
+  background: var(--hatake-color-surface);
+  color: var(--hatake-color-text);
+  font-size: 13px;
+  overflow: hidden;
+}
+
+.hatake-tab-label {
+  font: inherit;
+  color: inherit;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px 0 12px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.hatake-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--hatake-color-muted);
+  cursor: pointer;
+}
+
+.hatake-tab-close .hatake-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.hatake-tab-current {
+  background: var(--hatake-color-selected);
+  border-color: transparent;
+  color: var(--hatake-color-primary);
+}
+
+/* 裏のタブ。**消さずに隠す**＝戻ってきたら検索条件も入力もそのまま。 */
+.hatake-tab-panel[hidden] {
+  display: none;
+}
+
+/* ── パン屑（中で遷移したときだけ） ──────────────────────────── */
+.hatake-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px 0;
+  font-size: 12px;
+}
+
+.hatake-crumb {
+  font: inherit;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--hatake-color-primary);
+  cursor: pointer;
+}
+
+.hatake-crumb-current {
+  color: var(--hatake-color-text);
+}
+
+.hatake-crumb-sep {
+  color: var(--hatake-color-muted);
 }
 
 /* 画面が狭いときはメニューを上に畳む。 */
 @media (max-width: 720px) {
   .hatake-app {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "bar"
+      "menu"
+      "main";
   }
   .hatake-menu {
     flex-direction: row;
@@ -303,16 +718,18 @@
   }
 }
 
-/* ── 入力の枠 ───────────────────────────────────────────── */
+/* ── 入力の枠 ───────────────────────────────────────────────── */
 .hatake-form {
   display: flex;
   flex-direction: column;
   gap: calc(var(--hatake-space) * 2);
-  max-width: 720px;
 }
 
+/* 入力の下のボタンは**右寄せ**（Flutter 版と同じ）。横いっぱいに伸ばさない。 */
 .hatake-form-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--hatake-space);
 }
 
@@ -324,7 +741,9 @@
 .hatake-radio-group {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--hatake-space);
+  gap: calc(var(--hatake-space) * 2);
+  min-height: var(--hatake-control-height);
+  align-items: center;
 }
 
 .hatake-radio {
@@ -333,14 +752,13 @@
   gap: calc(var(--hatake-space) / 2);
 }
 
-.hatake-step-note {
-  color: var(--hatake-color-muted);
-}
-
-/* ── 行のボタン ─────────────────────────────────────────── */
+/* ── 行のボタン ─────────────────────────────────────────────── */
+/* 中身の幅だけ使う。**`width: 1%` にしない**——中身に合わせた幅の表では、1% の列が
+   119px になるように表全体を広げにかかる（実際に横いっぱいになった）。 */
 .hatake-row-actions {
   white-space: nowrap;
-  width: 1%;
+  width: 1px;
+  text-align: right;
 }
 
 .hatake-row-buttons {
@@ -348,15 +766,19 @@
   gap: calc(var(--hatake-space) / 2);
 }
 
-/* ── 詳細（読むだけの画面） ───────────────────────────────── */
+.hatake-row-buttons .hatake-button {
+  min-height: 32px;
+}
+
+/* ── 詳細（読むだけの画面） ─────────────────────────────────── */
 .hatake-detail {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: var(--hatake-space) calc(var(--hatake-space) * 2);
-  background: var(--hatake-color-surface);
-  border: var(--hatake-border);
+  background: var(--hatake-color-container);
   border-radius: var(--hatake-radius);
   padding: calc(var(--hatake-space) * 2);
+  margin: 0;
 }
 
 .hatake-detail > div {
@@ -367,11 +789,34 @@
   margin: 0;
 }
 
-/* ── カードの中身 ───────────────────────────────────────── */
+/* 明細のように**横いっぱい要るもの**（詳細画面の2段組みをまたぐ）。 */
+.hatake-detail-wide {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* ── カードの中身 ───────────────────────────────────────────── */
 .hatake-card-title {
-  font-size: 1em;
+  font-size: 13px;
+  font-weight: 400;
   color: var(--hatake-color-muted);
   margin: 0 0 var(--hatake-space);
+}
+
+.hatake-card .hatake-table th,
+.hatake-card .hatake-table td {
+  height: 26px;
+  padding: 0 4px;
+  font-size: 13px;
+}
+
+.hatake-card .hatake-table th {
+  height: 28px;
+  font-size: 12px;
+}
+
+.hatake-card .hatake-table tbody tr:hover {
+  background: transparent;
 }
 
 .hatake-card-rows,
@@ -381,20 +826,60 @@
   padding: 0;
 }
 
-.hatake-chart li {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--hatake-space);
-  padding: calc(var(--hatake-space) / 2) 0;
-  border-bottom: var(--hatake-border);
+/* 図（SVG）。形は土台が組み（`chartShape`）、色だけここで決める。 */
+.hatake-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
 }
 
-.hatake-chart-label {
-  color: var(--hatake-color-muted);
+.hatake-chart-axis {
+  stroke: var(--hatake-color-border);
+  stroke-width: 1;
 }
 
+.hatake-chart-label,
 .hatake-chart-value {
+  font-family: var(--hatake-font);
+  font-size: 11px;
+  fill: var(--hatake-color-text);
   font-variant-numeric: tabular-nums;
+}
+
+.hatake-chart-line {
+  fill: none;
+  stroke: var(--hatake-chart-1);
+  stroke-width: 2;
+}
+
+.hatake-chart-c0 { fill: var(--hatake-chart-1); }
+.hatake-chart-c1 { fill: var(--hatake-chart-2); }
+.hatake-chart-c2 { fill: var(--hatake-chart-3); }
+.hatake-chart-c3 { fill: var(--hatake-chart-4); }
+.hatake-chart-c4 { fill: var(--hatake-chart-5); }
+.hatake-chart-c5 { fill: var(--hatake-chart-6); }
+
+.hatake-chart-legend {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+}
+
+.hatake-chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hatake-chart-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
 }
 
 /* ── ボタン・選ぶ・聞く ─────────────────────────────────────────
@@ -411,33 +896,32 @@
 
 /* 選ぶ列。表の左端に固定幅で付く（列の幅がボタンでずれないように）。 */
 .hatake-select {
-  width: 36px;
+  width: 40px;
   text-align: center;
 }
 
 /* 選んだ行。**色だけで言わない**ので、チェックも入ったままにしてある。 */
 .hatake-row-selected > td {
-  background: color-mix(in srgb, var(--hatake-color-primary) 8%, transparent);
+  background: var(--hatake-color-selected);
 }
 
 /* 押したあとの1行。押すと消える（読んだら消える、ではない）。 */
 .hatake-message {
-  margin: var(--hatake-space) 0;
-  padding: calc(var(--hatake-space) * 1.5);
-  border: var(--hatake-border);
-  border-radius: var(--hatake-radius);
+  margin: var(--hatake-space) calc(var(--hatake-space) * 2) 0;
+  padding: 12px 16px;
+  border-radius: 4px;
   cursor: pointer;
+  background: #313036;
+  color: #f3eff7;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .hatake-message-ok {
-  border-color: var(--hatake-color-primary);
-  background: color-mix(in srgb, var(--hatake-color-primary) 8%, transparent);
+  border-left: 4px solid var(--hatake-color-primary);
 }
 
 .hatake-message-ng {
-  border-color: var(--hatake-color-danger);
-  color: var(--hatake-color-danger);
-  background: color-mix(in srgb, var(--hatake-color-danger) 8%, transparent);
+  border-left: 4px solid var(--hatake-color-danger);
 }
 
 /* 区切って実行している最中の進み具合。 */
@@ -454,7 +938,7 @@
   align-items: center;
   justify-content: center;
   padding: calc(var(--hatake-space) * 2);
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.32);
   z-index: 100;
 }
 
@@ -462,29 +946,77 @@
   width: min(480px, 100%);
   max-height: 90vh;
   overflow: auto;
-  padding: calc(var(--hatake-space) * 2);
-  border-radius: var(--hatake-radius);
-  background: var(--hatake-color-surface);
+  box-sizing: border-box;
+  padding: 24px;
+  border-radius: 28px;
+  background: var(--hatake-color-container-high);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .hatake-dialog-title {
-  margin: 0 0 var(--hatake-space);
-  font-size: calc(var(--hatake-font-size) * 1.2);
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 400;
 }
 
 .hatake-dialog-message {
-  margin: 0 0 calc(var(--hatake-space) * 2);
+  margin: 0 0 8px;
+  color: var(--hatake-color-muted);
 }
 
 .hatake-dialog-actions {
   display: flex;
   justify-content: flex-end;
   gap: var(--hatake-space);
-  margin-top: calc(var(--hatake-space) * 2);
+  margin-top: 12px;
 }
 
-/* 明細のように**横いっぱい要るもの**（詳細画面の2段組みをまたぐ）。 */
-.hatake-detail-wide {
-  grid-column: 1 / -1;
-  margin: 0;
+/* ── 区画（`form.sections`） ─────────────────────────────────
+ * 題を置いて、その下に項目を1段ずつ（Flutter 版と同じ）。 */
+.hatake-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hatake-section-title {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 8px 0 0;
+}
+
+.hatake-detail-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 詳細の見出しの幅（Flutter 版は 160px）。 */
+.hatake-detail {
+  grid-template-columns: 160px 1fr;
+}
+
+.hatake-detail .hatake-field-label {
+  font-size: 14px;
+}
+
+/* チェック欄は**名前が左・箱が右**の1段（Flutter の CheckboxListTile と同じ）。 */
+.hatake-field:has(> input[type="checkbox"]) {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  min-height: calc(var(--hatake-control-height) + 8px);
+  padding: 0 16px;
+}
+
+.hatake-field:has(> input[type="checkbox"]) > .hatake-field-label {
+  font-size: var(--hatake-font-size);
+  color: var(--hatake-color-text);
+}
+
+/* 聞くダイアログ・進み具合・押したあとの1行を入れておく箱（それ自体は場所を取らない）。 */
+.hatake-overlay {
+  display: contents;
 }

@@ -54,6 +54,11 @@ page:
       - { field: name, label: 名前 }
       - { field: status, label: 状態, optionsOf: customerStatus }
     pagination: { pageSize: 2 }
+    # 行の「編集」「削除」は**書いたときだけ**出る（Flutter 版と同じ）。
+    rowActions: [edit, delete]
+  # 「新規登録」も**書いたときだけ**（0.9.19 までブラウザ版は書かなくても出していた）。
+  actions:
+    - { id: create, type: create, label: 新規登録 }
   form:
     sections:
       - title: 基本
@@ -151,7 +156,7 @@ describe("定義から画面が出る", () => {
       customerRepository: new FakeRepository(rows, ["code"]),
     });
     await settle(wrapper);
-    await wrapper.find('[data-hatake="list:create"]').trigger("click");
+    await wrapper.find('[data-hatake="action:create"]').trigger("click");
     await settle(wrapper);
     expect(wrapper.find('[data-hatake="form"]').exists()).toBe(true);
     expect(wrapper.find('[data-hatake="field:code"]').attributes("aria-required")).toBe("true");
@@ -163,7 +168,7 @@ describe("定義から画面が出る", () => {
       customerRepository: repository,
     });
     await settle(wrapper);
-    await wrapper.find('[data-hatake="list:create"]').trigger("click");
+    await wrapper.find('[data-hatake="action:create"]').trigger("click");
     await settle(wrapper);
     await wrapper.find('[data-hatake="form"]').trigger("submit");
     await settle(wrapper);
@@ -178,7 +183,7 @@ describe("定義から画面が出る", () => {
       customerRepository: repository,
     });
     await settle(wrapper);
-    await wrapper.find('[data-hatake="list:create"]').trigger("click");
+    await wrapper.find('[data-hatake="action:create"]').trigger("click");
     await settle(wrapper);
     await wrapper.find('[data-hatake="field:code"]').setValue("C-9");
     await wrapper.find('[data-hatake="field:name"]').setValue("新しい取引先");
@@ -213,7 +218,7 @@ describe("定義から画面が出る", () => {
       customerRepository: new FakeRepository([], ["code"]),
     });
     await settle(wrapper);
-    await wrapper.find('[data-hatake="list:create"]').trigger("click");
+    await wrapper.find('[data-hatake="action:create"]').trigger("click");
     await settle(wrapper);
 
     const note = wrapper.find('[data-hatake="field:note"]');
@@ -222,5 +227,36 @@ describe("定義から画面が出る", () => {
 
     // 書いてあるほうは効いている（見張りが「全部ゆるい」になっていない）。
     expect(wrapper.find('[data-hatake="field:code"]').attributes("aria-required")).toBe("true");
+  });
+  it("**書いていないボタンは出さない**（新規登録・編集・削除）", async () => {
+    // 0.9.19 までブラウザ版は、定義に無くても「新規登録」「編集」「削除」を必ず出して
+    // いた＝`rowActions: []` の画面でも消せた。Flutter 版は書いたものしか出さない。
+    const bare = yaml
+      .replace("    rowActions: [edit, delete]\n", "")
+      .replace("  actions:\n    - { id: create, type: create, label: 新規登録 }\n", "");
+    const wrapper = mountPage(pageOf(bare) as CrudPageDefinition, {
+      customerRepository: new FakeRepository(rows, ["code"]),
+    });
+    await settle(wrapper);
+    expect(wrapper.findAll('[data-hatake^="row:"]').length).toBeGreaterThan(0);
+    expect(wrapper.find('[data-hatake="action:create"]').exists()).toBe(false);
+    expect(wrapper.find('[data-hatake^="edit:"]').exists()).toBe(false);
+    expect(wrapper.find('[data-hatake^="delete:"]').exists()).toBe(false);
+  });
+
+  it("削除は**必ず聞いて**から消す（confirm を書いていなくても）", async () => {
+    const repository = new FakeRepository(rows.slice(0, 1), ["code"]);
+    const wrapper = mountPage(pageOf(yaml) as CrudPageDefinition, { customerRepository: repository });
+    await settle(wrapper);
+    await wrapper.find('[data-hatake="delete:C-1"]').trigger("click");
+    await settle(wrapper);
+    // 聞いている間は消えていない。
+    expect(wrapper.find('[data-hatake="ask"]').exists()).toBe(true);
+    expect(wrapper.find('[data-hatake="ask:ok"]').text()).toBe("削除");
+    expect(repository.rows).toHaveLength(1);
+    await wrapper.find('[data-hatake="ask:ok"]').trigger("click");
+    await settle(wrapper);
+    await settle(wrapper);
+    expect(repository.rows).toHaveLength(0);
   });
 });

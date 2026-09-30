@@ -3,6 +3,8 @@ import { FieldTypes, visibleOptions } from "@hatake-fw/api/internal";
 import type { DataRecord } from "@hatake-fw/runtime";
 import { defineComponent, h, ref, type PropType } from "vue";
 
+import { icon } from "./icon.js";
+
 /**
  * 検索欄。**通す条件は定義に書いてあるものだけ**（`buildQuery` と同じ考え方）。
  *
@@ -33,6 +35,10 @@ export const HatakeSearch = defineComponent({
         {
           class: "hatake-search",
           "data-hatake": "search",
+          // 列の数は定義（`search.layout.columns`）。1以下なら1枠 220px で並べる。
+          ...(search.columns > 1
+            ? { "data-hatake-columns": String(search.columns), style: { "--hatake-search-columns": String(search.columns) } }
+            : {}),
           onSubmit: (event: Event) => {
             event.preventDefault();
             run();
@@ -45,7 +51,7 @@ export const HatakeSearch = defineComponent({
           h(
             "button",
             { class: "hatake-button hatake-button-primary", type: "submit", "data-hatake": "search:submit" },
-            props.submitLabel,
+            [icon("search"), props.submitLabel],
           ),
         ],
       );
@@ -115,30 +121,40 @@ export const HatakePagination = defineComponent({
   },
   setup(props, { emit }) {
     return () => {
+      // 置き方は Flutter 版と同じ（右寄せで「全 N 件 ‹ 1 / 3 ›」）。1ページで足りる
+      // ときは送る口を出さない（押しても何も起きないボタンは、壊れていると読まれる）。
+      const total = h("span", { class: "hatake-pagination-total" }, `全 ${props.totalCount} 件`);
       if (props.pageCount <= 1) {
-        return h("div", { class: "hatake-pagination", "data-hatake": "pagination" }, `${props.totalCount} 件`);
+        return h("div", { class: "hatake-pagination", "data-hatake": "pagination" }, [total]);
       }
       return h("div", { class: "hatake-pagination", "data-hatake": "pagination" }, [
+        total,
         h(
           "button",
           {
-            class: "hatake-button",
+            class: "hatake-icon-button",
+            type: "button",
+            title: "前のページ",
+            "aria-label": "前のページ",
             "data-hatake": "pagination:prev",
             disabled: props.page <= 0,
             onClick: () => emit("move", props.page - 1),
           },
-          "前へ",
+          [icon("chevronLeft")],
         ),
-        h("span", {}, `${props.page + 1} / ${props.pageCount} ページ（${props.totalCount} 件）`),
+        h("span", {}, `${props.page + 1} / ${props.pageCount}`),
         h(
           "button",
           {
-            class: "hatake-button",
+            class: "hatake-icon-button",
+            type: "button",
+            title: "次のページ",
+            "aria-label": "次のページ",
             "data-hatake": "pagination:next",
             disabled: props.page >= props.pageCount - 1,
             onClick: () => emit("move", props.page + 1),
           },
-          "次へ",
+          [icon("chevron")],
         ),
       ]);
     };

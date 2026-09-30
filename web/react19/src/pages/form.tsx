@@ -1,5 +1,5 @@
 import { FormatterRegistry } from "@hatake-fw/api";
-import { cellText, FieldTypes, formFields } from "@hatake-fw/api/internal";
+import { cellText, FieldTypes, formFields, isAllowed } from "@hatake-fw/api/internal";
 import type {
   DetailPageDefinition,
   FormPageDefinition,
@@ -10,6 +10,7 @@ import {
   type DataRecord,
   DetailController,
   FormController,
+  visibleSections,
   WizardController,
   withComputed,
 } from "@hatake-fw/runtime";
@@ -17,6 +18,7 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { useActions } from "../parts/actions.js";
 import { HatakeField } from "../parts/field.js";
+import { Sections } from "../parts/sections.js";
 import { HatakeSubTable } from "../parts/subTable.js";
 import { HatakeError, useController, useOnce, useRegistries } from "../scope.js";
 
@@ -55,11 +57,13 @@ export function HatakeFormPage(props: {
 
   return (
     <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
-      <h1 className="hatake-title">{props.definition.title}</h1>
-      {bar.page(props.definition.actions, around, {
-        record: draft,
-        mode: controller.formMode,
-      })}
+      <div className="hatake-page-header">
+        <h1 className="hatake-title">{props.definition.title}</h1>
+        {bar.page(props.definition.actions, around, {
+          record: draft,
+          mode: controller.formMode,
+        })}
+      </div>
       <HatakeError error={controller.error} />
       <form
         className="hatake-form"
@@ -67,11 +71,16 @@ export function HatakeFormPage(props: {
         onSubmit={(event) => {
           event.preventDefault();
           void controller.submit(draft).then((saved) => {
-            if (saved !== null) props.onSaved?.(saved);
+            if (saved === null) return;
+            // 保存できたと**言う**（黙って終わると、押せたのか分からない）。
+            bar.runner.messages.say("保存しました", true);
+            props.onSaved?.(saved);
           });
         }}
       >
-        {formFields(props.definition.form).map((field) =>
+        <Sections
+          sections={visibleSections(props.definition.form, draft, props.roles ?? [], controller.formMode)}
+          render={(field) =>
           field.type === FieldTypes.subTable ? (
             <HatakeSubTable
               key={field.field}
@@ -94,16 +103,19 @@ export function HatakeFormPage(props: {
               disabled={controller.submitting}
               onChange={(name, value) => setDraft((prev) => ({ ...prev, [name]: value }))}
             />
-          ),
-        )}
-        <button
-          className="hatake-button hatake-button-primary"
-          type="submit"
-          data-hatake="form:submit"
-          disabled={controller.submitting}
-        >
-          保存
-        </button>
+          )
+          }
+        />
+        <div className="hatake-form-actions">
+          <button
+            className="hatake-button hatake-button-primary"
+            type="submit"
+            data-hatake="form:submit"
+            disabled={controller.submitting || controller.loading}
+          >
+            保存
+          </button>
+        </div>
       </form>
       {bar.overlay()}
     </div>
@@ -145,46 +157,52 @@ export function HatakeDetailPage(props: {
 
   return (
     <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
-      <h1 className="hatake-title">{props.definition.title}</h1>
-      {/* 読むだけの画面のボタンは、**いま開いているレコード**で判定する。 */}
-      {bar.page(
-        props.definition.actions,
-        () => ({ controller, record: record ?? undefined, fallbackName: props.definition.title }),
-        { record: record ?? undefined },
-      )}
+      <div className="hatake-page-header">
+        <h1 className="hatake-title">{props.definition.title}</h1>
+        {/* 読むだけの画面のボタンは、**いま開いているレコード**で判定する。 */}
+        {bar.page(
+          props.definition.actions,
+          () => ({ controller, record: record ?? undefined, fallbackName: props.definition.title }),
+          { record: record ?? undefined },
+        )}
+      </div>
       <HatakeError error={controller.error} />
       {record === null ? (
         <p className="hatake-table-empty">
           {controller.loading ? "読み込み中…" : "該当するデータがありません"}
         </p>
       ) : (
-        <dl className="hatake-detail">
-          {fields.map((one) =>
-            // 明細は**表で出す**（`、` で繋いだ1行にすると、列も整形も消える）。
-            // 見出しは表の側が出すので `dt` は置かない（同じ字が2回並ぶ）。
-            one.type === FieldTypes.subTable ? (
-              <dd
-                key={one.field}
-                className="hatake-detail-wide"
-                data-hatake={`value:${one.field}`}
-              >
-                <HatakeSubTable
-                  field={one}
-                  record={record}
-                  roles={props.roles}
-                  formatters={props.formatters}
-                />
-              </dd>
-            ) : (
-              <div key={one.field}>
-                <dt className="hatake-field-label">{one.label}</dt>
-                <dd data-hatake={`value:${one.field}`}>
-                  {cellText(formatters, fields, one, record[one.field])}
-                </dd>
-              </div>
-            ),
-          )}
-        </dl>
+        <div className="hatake-detail-sections">
+          {/* 区画ごとに題を置く（Flutter 版と同じ）。**その人に見せない項目は出さない**。 */}
+          {visibleSections(props.definition.form, record, props.roles ?? []).map((section, at) => (
+            <section key={at} className="hatake-section">
+              {section.title === undefined ? null : <h3 className="hatake-section-title">{section.title}</h3>}
+              <dl className="hatake-detail">
+                {section.fields.map((one) =>
+                  // 明細は**表で出す**（`、` で繋いだ1行にすると、列も整形も消える）。
+                  // 見出しは表の側が出すので `dt` は置かない（同じ字が2回並ぶ）。
+                  one.type === FieldTypes.subTable ? (
+                    <dd key={one.field} className="hatake-detail-wide" data-hatake={`value:${one.field}`}>
+                      <HatakeSubTable
+                        field={one}
+                        record={record}
+                        roles={props.roles}
+                        formatters={props.formatters}
+                      />
+                    </dd>
+                  ) : (
+                    <div key={one.field}>
+                      <dt className="hatake-field-label">{one.label}</dt>
+                      <dd data-hatake={`value:${one.field}`}>
+                        {cellText(formatters, fields, one, record[one.field])}
+                      </dd>
+                    </div>
+                  ),
+                )}
+              </dl>
+            </section>
+          ))}
+        </div>
       )}
       {bar.overlay()}
     </div>
@@ -243,16 +261,23 @@ export function HatakeWizardPage(props: {
 
   return (
     <div className="hatake-page" data-hatake={`page:${props.definition.id}`}>
-      <h1 className="hatake-title">{props.definition.title}</h1>
-      {/* ウィザードにも画面のボタンが書ける（`wizardPage.actions`）。ステップの
-          「戻る／次へ」とは別もので、**いま入力されている値**で判定する。 */}
-      {bar.page(props.definition.actions, around, {
-        record: draft,
-        mode: controller.formMode,
-      })}
+      <div className="hatake-page-header">
+        <h1 className="hatake-title">{props.definition.title}</h1>
+        {/* ウィザードにも画面のボタンが書ける（`wizardPage.actions`）。ステップの
+            「戻る／次へ」とは別もので、**いま入力されている値**で判定する。 */}
+        {bar.page(props.definition.actions, around, {
+          record: draft,
+          mode: controller.formMode,
+        })}
+      </div>
       <ol className="hatake-steps" data-hatake="wizard:steps">
         {controller.steps.map((one, at) => (
-          <li key={one.id} className={at === controller.stepIndex ? "hatake-step-current" : undefined}>
+          <li
+            key={one.id}
+            className={at === controller.stepIndex ? "hatake-step-current" : undefined}
+            aria-current={at === controller.stepIndex ? "step" : undefined}
+          >
+            <span className="hatake-step-number">{at + 1}</span>
             {one.title}
           </li>
         ))}
@@ -265,7 +290,9 @@ export function HatakeWizardPage(props: {
           event.preventDefault();
           if (controller.isLastStep) {
             void controller.submit(draft).then((saved) => {
-              if (saved !== null) props.onSaved?.(saved);
+              if (saved === null) return;
+              bar.runner.messages.say("保存しました", true);
+              props.onSaved?.(saved);
             });
           } else {
             controller.next(draft);
@@ -273,8 +300,10 @@ export function HatakeWizardPage(props: {
           }
         }}
       >
+        {/* ステップの題を見出しにも出す（Flutter 版と同じ）。 */}
+        <h3 className="hatake-section-title">{step.title}</h3>
         {step.description === undefined ? null : <p className="hatake-step-note">{step.description}</p>}
-        {step.fields.map((field) => (
+        {step.fields.filter((field) => isAllowed(field.roles, props.roles ?? [])).map((field) => (
           <HatakeField
             key={field.field}
             field={field}

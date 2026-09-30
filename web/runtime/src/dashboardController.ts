@@ -7,6 +7,7 @@ import {
   type DashboardPageDefinition,
   type DashboardValueDefinition,
   DashboardItemTypes,
+  isAllowed,
 } from "@hatake-fw/api/internal";
 
 import { Notifier } from "./notifier.js";
@@ -46,6 +47,16 @@ export class DashboardController extends Notifier {
   readonly repositories: RepositoryRegistry;
   readonly aggregates: AggregateRegistry;
 
+  /**
+   * いま見ている人に出すカード（`roles` で絞ったもの）。
+   *
+   * **見せないカードは読みにも行かない。** 画面で隠しても問い合わせは飛ぶので、
+   * admin にしか見せない数字を tester の端末に運ぶことになる（0.9.19 まではそう
+   * なっていた＝隠してもいなかった）。本当の遮断はサーバの仕事だが、わざわざ運ぶ
+   * 理由は無い。
+   */
+  readonly items: readonly DashboardItemDefinition[];
+
   private readonly _states = new Map<string, DashboardItemState>();
   private _filters: Readonly<Record<string, unknown>> = {};
 
@@ -53,11 +64,14 @@ export class DashboardController extends Notifier {
     definition: DashboardPageDefinition;
     repositories: RepositoryRegistry;
     aggregates?: AggregateRegistry;
+    /** いま見ている人の役割。渡さなければ `roles` の無いカードだけ出る。 */
+    roles?: readonly string[];
   }) {
     super();
     this.definition = options.definition;
     this.repositories = options.repositories;
     this.aggregates = options.aggregates ?? new AggregateRegistry();
+    this.items = options.definition.items.filter((one) => isAllowed(one.roles, options.roles ?? []));
   }
 
   /** いま全部のカードに当てている条件。 */
@@ -72,7 +86,7 @@ export class DashboardController extends Notifier {
 
   /** どれか1枚でもまだ読んでいるか。 */
   get loading(): boolean {
-    return this.definition.items.some((one) => this.stateOf(one).loading);
+    return this.items.some((one) => this.stateOf(one).loading);
   }
 
   init(): Promise<void> {
@@ -81,11 +95,11 @@ export class DashboardController extends Notifier {
 
   /** いまの条件で全部のカードを読み直す。 */
   async load(): Promise<void> {
-    for (const item of this.definition.items) {
+    for (const item of this.items) {
       this._states.set(item.id, initialItemState);
     }
     this.notify();
-    await Promise.all(this.definition.items.map((one) => this._loadItem(one)));
+    await Promise.all(this.items.map((one) => this._loadItem(one)));
   }
 
   /** 条件を入れ替えて全部のカードを読み直す。 */

@@ -41,6 +41,11 @@ page:
       - { field: name, label: 名前 }
       - { field: status, label: 状態, optionsOf: customerStatus }
     pagination: { pageSize: 2 }
+    # 行の「編集」「削除」は**書いたときだけ**出る（Flutter 版と同じ）。
+    rowActions: [edit, delete]
+  # 「新規登録」も**書いたときだけ**（0.9.19 までブラウザ版は書かなくても出していた）。
+  actions:
+    - { id: create, type: create, label: 新規登録 }
   form:
     sections:
       - title: 基本
@@ -119,8 +124,8 @@ describe("定義から画面が出る（React）", () => {
 
   it("新規登録を押すと入力の面に変わり、必須が印される", async () => {
     show(pageOf(yaml) as CrudPageDefinition, { customerRepository: new FakeRepository(rows, ["code"]) });
-    await waitFor(() => expect(at("list:create")).toBeTruthy());
-    fireEvent.click(at("list:create") as HTMLElement);
+    await waitFor(() => expect(at("action:create")).toBeTruthy());
+    fireEvent.click(at("action:create") as HTMLElement);
     await waitFor(() => expect(at("form")).toBeTruthy());
     expect(at("field:code")?.getAttribute("aria-required")).toBe("true");
   });
@@ -128,8 +133,8 @@ describe("定義から画面が出る（React）", () => {
   it("必須が空のまま保存すると、**弾かれて入力の面に留まる**", async () => {
     const repository = new FakeRepository([], ["code"]);
     show(pageOf(yaml) as CrudPageDefinition, { customerRepository: repository });
-    await waitFor(() => expect(at("list:create")).toBeTruthy());
-    fireEvent.click(at("list:create") as HTMLElement);
+    await waitFor(() => expect(at("action:create")).toBeTruthy());
+    fireEvent.click(at("action:create") as HTMLElement);
     await waitFor(() => expect(at("form")).toBeTruthy());
     fireEvent.submit(at("form") as HTMLElement);
     await waitFor(() => expect(at("error:code")).toBeTruthy());
@@ -140,8 +145,8 @@ describe("定義から画面が出る（React）", () => {
   it("入れて保存すると一覧に戻り、行が増える", async () => {
     const repository = new FakeRepository([], ["code"]);
     show(pageOf(yaml) as CrudPageDefinition, { customerRepository: repository });
-    await waitFor(() => expect(at("list:create")).toBeTruthy());
-    fireEvent.click(at("list:create") as HTMLElement);
+    await waitFor(() => expect(at("action:create")).toBeTruthy());
+    fireEvent.click(at("action:create") as HTMLElement);
     await waitFor(() => expect(at("field:code")).toBeTruthy());
     fireEvent.change(at("field:code") as HTMLElement, { target: { value: "C-9" } });
     await waitFor(() => expect((at("field:code") as HTMLInputElement).value).toBe("C-9"));
@@ -172,8 +177,8 @@ describe("定義から画面が出る（React）", () => {
     // できなかった**。値を入れる試験は readonly でも通ってしまうので、
     // **属性そのものを見る**。
     show(pageOf(yaml) as CrudPageDefinition, { customerRepository: new FakeRepository([], ["code"]) });
-    await waitFor(() => expect(at("list:create")).toBeTruthy());
-    fireEvent.click(at("list:create") as HTMLElement);
+    await waitFor(() => expect(at("action:create")).toBeTruthy());
+    fireEvent.click(at("action:create") as HTMLElement);
     await waitFor(() => expect(at("field:note")).toBeTruthy());
 
     const note = at("field:note") as HTMLInputElement;
@@ -182,5 +187,29 @@ describe("定義から画面が出る（React）", () => {
 
     // 書いてあるほうは効いている（見張りが「全部ゆるい」になっていない）。
     expect(at("field:code")?.getAttribute("aria-required")).toBe("true");
+  });
+  it("**書いていないボタンは出さない**（新規登録・編集・削除）", async () => {
+    // 0.9.19 までブラウザ版は、定義に無くても「新規登録」「編集」「削除」を必ず出して
+    // いた＝`rowActions: []` の画面でも消せた。Flutter 版は書いたものしか出さない。
+    const bare = yaml
+      .replace("    rowActions: [edit, delete]\n", "")
+      .replace("  actions:\n    - { id: create, type: create, label: 新規登録 }\n", "");
+    show(pageOf(bare) as CrudPageDefinition, { customerRepository: new FakeRepository(rows, ["code"]) });
+    await waitFor(() => expect(document.querySelectorAll('[data-hatake^="row:"]').length).toBeGreaterThan(0));
+    expect(at("action:create")).toBeNull();
+    expect(document.querySelector('[data-hatake^="edit:"]')).toBeNull();
+    expect(document.querySelector('[data-hatake^="delete:"]')).toBeNull();
+  });
+
+  it("削除は**必ず聞いて**から消す（confirm を書いていなくても）", async () => {
+    const repository = new FakeRepository(rows.slice(0, 1), ["code"]);
+    show(pageOf(yaml) as CrudPageDefinition, { customerRepository: repository });
+    await waitFor(() => expect(at("delete:C-1")).toBeTruthy());
+    fireEvent.click(at("delete:C-1") as HTMLElement);
+    await waitFor(() => expect(at("ask")).toBeTruthy());
+    expect(at("ask:ok")?.textContent).toBe("削除");
+    expect(repository.rows).toHaveLength(1);
+    fireEvent.click(at("ask:ok") as HTMLElement);
+    await waitFor(() => expect(repository.rows).toHaveLength(0));
   });
 });

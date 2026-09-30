@@ -69,9 +69,20 @@ class _MaterialDetailPage extends StatelessWidget {
         ),
       );
     }
-    final record = controller.record;
-    if (record == null) {
+    final loaded = controller.record;
+    if (loaded == null) {
       return const Center(child: Text('データがありません', key: Key('hatake.empty')));
+    }
+    // **計算した項目をここで埋める。** 読むだけの画面でも `computed:` は効く（入力画面
+    // と同じ関数を通す）。0.9.19 までは当てていなかったので、「合計」「上位3件」が
+    // 空のまま出ていた ——ブラウザ版は埋めていたので、同じ定義で字が食い違った。
+    // 元のレコードは触らない（写しに埋める）。
+    final computeds = HatakeScope.of(context).computeds;
+    final record = <String, Object?>{...loaded};
+    for (final field in definition.form.fields) {
+      if (field.computed == null) continue;
+      final value = computeds.compute(field.computed, record);
+      if (value != null) record[field.field] = value;
     }
     final theme = Theme.of(context);
     return Column(

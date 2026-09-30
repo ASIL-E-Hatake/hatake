@@ -1,11 +1,12 @@
 import { FormatterRegistry } from "@hatake-fw/api";
-import { cellText, FieldTypes, formFields } from "@hatake-fw/api/internal";
+import { cellText, FieldTypes, formFields, isAllowed } from "@hatake-fw/api/internal";
 import type { DetailPageDefinition, FormPageDefinition, WizardPageDefinition } from "@hatake-fw/api/internal";
 import {
   type ActionSurroundings,
   type DataRecord,
   DetailController,
   FormController,
+  visibleSections,
   WizardController,
   withComputed,
 } from "@hatake-fw/runtime";
@@ -13,6 +14,7 @@ import { defineComponent, h, onMounted, shallowRef, type PropType } from "vue";
 
 import { useActions } from "../parts/actions.js";
 import { HatakeField } from "../parts/field.js";
+import { sectionNodes } from "../parts/sections.js";
 import { HatakeSubTable } from "../parts/subTable.js";
 import { touch, useController, useRegistries } from "../scope.js";
 import { errorOf } from "./list.js";
@@ -55,11 +57,13 @@ export const HatakeFormPage = defineComponent({
     return () => {
       touch(version);
       return h("div", { class: "hatake-page", "data-hatake": `page:${props.definition.id}` }, [
-        h("h1", { class: "hatake-title" }, props.definition.title),
-        bar.page(props.definition.actions, around, {
-          record: draft.value,
-          mode: controller.formMode,
-        }),
+        h("div", { class: "hatake-page-header" }, [
+          h("h1", { class: "hatake-title" }, props.definition.title),
+          bar.page(props.definition.actions, around, {
+            record: draft.value,
+            mode: controller.formMode,
+          }),
+        ]),
         ...errorOf(controller.error),
         h(
           "form",
@@ -69,13 +73,18 @@ export const HatakeFormPage = defineComponent({
             onSubmit: async (event: Event) => {
               event.preventDefault();
               const saved = await controller.submit(draft.value);
-              if (saved !== null) emit("saved", saved);
+              if (saved === null) return;
+              // 保存できたと**言う**（黙って終わると、押せたのか分からない）。
+              bar.runner.messages.say("保存しました", true);
+              emit("saved", saved);
             },
           },
           [
             // **計算した項目は写しに埋める。** 下書きそのものに混ぜると、保存の
             // ときに計算結果まで書き戻すことになる。
-            ...formFields(props.definition.form).map((field) =>
+            ...sectionNodes(
+              visibleSections(props.definition.form, draft.value, props.roles, controller.formMode),
+              (field) =>
               field.type === FieldTypes.subTable
                 ? h(HatakeSubTable, {
                     field,
@@ -98,16 +107,18 @@ export const HatakeFormPage = defineComponent({
                     },
                   }),
             ),
-            h(
-              "button",
-              {
-                class: "hatake-button hatake-button-primary",
-                type: "submit",
-                "data-hatake": "form:submit",
-                disabled: controller.submitting,
-              },
-              "保存",
-            ),
+            h("div", { class: "hatake-form-actions" }, [
+              h(
+                "button",
+                {
+                  class: "hatake-button hatake-button-primary",
+                  type: "submit",
+                  "data-hatake": "form:submit",
+                  disabled: controller.submitting || controller.loading,
+                },
+                "保存",
+              ),
+            ]),
           ],
         ),
         bar.overlay(),
@@ -149,41 +160,53 @@ export const HatakeDetailPage = defineComponent({
       const record =
         controller.record === null ? null : withComputed(fields, controller.record);
       return h("div", { class: "hatake-page", "data-hatake": `page:${props.definition.id}` }, [
-        h("h1", { class: "hatake-title" }, props.definition.title),
-        // 読むだけの画面のボタンは、**いま開いているレコード**で判定する。
-        bar.page(
-          props.definition.actions,
-          () => ({ controller, record: record ?? undefined, fallbackName: props.definition.title }),
-          { record: record ?? undefined },
-        ),
+        h("div", { class: "hatake-page-header" }, [
+          h("h1", { class: "hatake-title" }, props.definition.title),
+          // 読むだけの画面のボタンは、**いま開いているレコード**で判定する。
+          bar.page(
+            props.definition.actions,
+            () => ({ controller, record: record ?? undefined, fallbackName: props.definition.title }),
+            { record: record ?? undefined },
+          ),
+        ]),
         ...errorOf(controller.error),
         record === null
           ? h("p", { class: "hatake-table-empty" }, controller.loading ? "読み込み中…" : "該当するデータがありません")
           : h(
-              "dl",
-              { class: "hatake-detail" },
-              fields.flatMap((one) =>
-                // 明細は**表で出す**（`、` で繋いだ1行にすると、列も整形も消える）。
-                one.type === FieldTypes.subTable
-                  ? [
-                      // **見出しは表の側が出す**（`dt` にも出すと同じ字が2回並ぶ）。
-                      h("dd", { class: "hatake-detail-wide", "data-hatake": `value:${one.field}` }, [
-                        h(HatakeSubTable, {
-                          field: one,
-                          record,
-                          roles: props.roles,
-                          formatters: props.formatters,
-                        }),
-                      ]),
-                    ]
-                  : [
-                      h("dt", { class: "hatake-field-label" }, one.label),
-                      h(
-                        "dd",
-                        { "data-hatake": `value:${one.field}` },
-                        cellText(props.formatters, fields, one, record[one.field]),
-                      ),
-                    ],
+              "div",
+              { class: "hatake-detail-sections" },
+              // 区画ごとに題を置く（Flutter 版と同じ）。**その人に見せない項目は出さない**。
+              visibleSections(props.definition.form, record, props.roles).map((section, at) =>
+                h("section", { key: at, class: "hatake-section" }, [
+                  section.title === undefined ? null : h("h3", { class: "hatake-section-title" }, section.title),
+                  h(
+                    "dl",
+                    { class: "hatake-detail" },
+                    section.fields.flatMap((one) =>
+                      // 明細は**表で出す**（`、` で繋いだ1行にすると、列も整形も消える）。
+                      // 見出しは表の側が出すので `dt` は置かない（同じ字が2回並ぶ）。
+                      one.type === FieldTypes.subTable
+                        ? [
+                            h("dd", { class: "hatake-detail-wide", "data-hatake": `value:${one.field}` }, [
+                              h(HatakeSubTable, {
+                                field: one,
+                                record,
+                                roles: props.roles,
+                                formatters: props.formatters,
+                              }),
+                            ]),
+                          ]
+                        : [
+                            h("dt", { class: "hatake-field-label" }, one.label),
+                            h(
+                              "dd",
+                              { "data-hatake": `value:${one.field}` },
+                              cellText(props.formatters, fields, one, record[one.field]),
+                            ),
+                          ],
+                    ),
+                  ),
+                ]),
               ),
             ),
         bar.overlay(),
@@ -247,18 +270,27 @@ export const HatakeWizardPage = defineComponent({
 
       const step = controller.step;
       return h("div", { class: "hatake-page", "data-hatake": `page:${props.definition.id}` }, [
-        h("h1", { class: "hatake-title" }, props.definition.title),
-        // ウィザードにも画面のボタンが書ける（`wizardPage.actions`）。ステップの
-        // 「戻る／次へ」とは別もので、**いま入力されている値**で判定する。
-        bar.page(props.definition.actions, around, {
-          record: draft.value,
-          mode: controller.formMode,
-        }),
+        h("div", { class: "hatake-page-header" }, [
+          h("h1", { class: "hatake-title" }, props.definition.title),
+          // ウィザードにも画面のボタンが書ける（`wizardPage.actions`）。ステップの
+          // 「戻る／次へ」とは別もので、**いま入力されている値**で判定する。
+          bar.page(props.definition.actions, around, {
+            record: draft.value,
+            mode: controller.formMode,
+          }),
+        ]),
         h(
           "ol",
           { class: "hatake-steps", "data-hatake": "wizard:steps" },
           controller.steps.map((one, at) =>
-            h("li", { class: at === controller.stepIndex ? "hatake-step-current" : null }, one.title),
+            h(
+              "li",
+              {
+                class: at === controller.stepIndex ? "hatake-step-current" : null,
+                "aria-current": at === controller.stepIndex ? "step" : undefined,
+              },
+              [h("span", { class: "hatake-step-number" }, String(at + 1)), one.title],
+            ),
           ),
         ),
         ...errorOf(controller.error),
@@ -271,7 +303,9 @@ export const HatakeWizardPage = defineComponent({
               event.preventDefault();
               if (controller.isLastStep) {
                 const saved = await controller.submit(draft.value);
-                if (saved !== null) emit("saved", saved);
+                if (saved === null) return;
+                bar.runner.messages.say("保存しました", true);
+                emit("saved", saved);
               } else {
                 controller.next(draft.value);
                 draft.value = { ...controller.draft };
@@ -279,8 +313,10 @@ export const HatakeWizardPage = defineComponent({
             },
           },
           [
+            // ステップの題を見出しにも出す（Flutter 版と同じ）。
+            h("h3", { class: "hatake-section-title" }, step.title),
             ...(step.description === undefined ? [] : [h("p", { class: "hatake-step-note" }, step.description)]),
-            ...step.fields.map((field) =>
+            ...step.fields.filter((field) => isAllowed(field.roles, props.roles)).map((field) =>
               h(HatakeField, {
                 field,
                 record: withComputed(step.fields, draft.value),
