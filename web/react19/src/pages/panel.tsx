@@ -1,5 +1,5 @@
 import { type ColumnDefinition, FormatterRegistry } from "@hatake-fw/api";
-import { cellText, ColumnTypes, DashboardItemTypes, isAllowed, ReportBlockKinds } from "@hatake-fw/api/internal";
+import { cellText, ColumnTypes, DashboardItemTypes, isAllowed, ReportBlockKinds, reportTotalLines } from "@hatake-fw/api/internal";
 import type {
   AggregateBucket,
   DashboardItemDefinition,
@@ -386,15 +386,18 @@ function ReportRow(props: {
     );
   }
 
-  const totals = props.definition.report.totals;
+  // 小計・総計。字は `reportTotalLines`（Flutter・紙と同じ）＝列の書式を通し、同じ列に
+  // 合計が2つ以上あれば1つ1行で積んで何の数かを添える。見出しの字も Flutter・紙と同じ。
   return (
     <tr {...shared}>
-      <td>{block.kind === ReportBlockKinds.grandTotal ? "総計" : "小計"}</td>
+      <td>{block.kind === ReportBlockKinds.grandTotal ? "合計" : "小計"}</td>
       {columns.slice(1).map((one) => {
-        const at = totals.findIndex((total) => total.field === one.field);
+        const lines = reportTotalLines(props.definition.report, one.field, block, (value) =>
+          cellText(props.formatters, columns, one, value),
+        );
         return (
           <td key={one.field} className="hatake-cell-number">
-            {at < 0 ? "" : String(block.totals[at] ?? "")}
+            {lines.length <= 1 ? (lines[0] ?? "") : lines.map((line, k) => <div key={k}>{line}</div>)}
           </td>
         );
       })}

@@ -9,7 +9,7 @@
 
 import { parse as parseYamlText } from "yaml";
 import { appAccess, type AppAccess } from "./appAccess.js";
-import { parseAppYaml } from "./appParse.js";
+import { parseAppPagesMap, parseAppYaml } from "./appParse.js";
 import { type AppDefinition, type PageDefinition } from "./definition.js";
 import { type ExplainDocument, explainApp, explainPage } from "./explain.js";
 import type { Lang } from "./explainPhrases.js";
@@ -45,7 +45,13 @@ export function rawPagesOf(source: string): Dict[] {
     : [];
 }
 
-/** app の中の1枚を、単票のページ定義として読み直す。 */
+/**
+ * 単票の素のページを、ページ定義として読み直す。
+ *
+ * **app の中の1枚には使わない**（[[ParsedApp.page]] を引く）。app の語彙
+ * （`app.vocabularies`）は1枚だけ読んでも見えないので、`optionsOf` の選択肢が
+ * 空になる（0.9.20 まで `explain` の「選べるのは…」が語彙の項目だけ消えていた）。
+ */
 export const parseOnePage = (raw: Dict): PageDefinition =>
   parsePageJson(JSON.stringify({ page: raw }), { strict: true });
 
@@ -53,6 +59,10 @@ export const parseOnePage = (raw: Dict): PageDefinition =>
 export interface ParsedApp {
   app: AppDefinition;
   pages: PageDefinition[];
+  /**
+   * ページ id → ページ定義（**語彙を展開してから読んだもの**＝画面を描く側と同じ）。
+   */
+  page: Map<string, PageDefinition>;
   /** ページ id → 素のページ（解析後のモデルが落としているものを補う用）。 */
   raw: Map<string, Dict>;
   /**
@@ -67,9 +77,16 @@ export interface ParsedApp {
 export function parseAppSource(source: string): ParsedApp {
   const app = parseAppYaml(source, { strict: true });
   const raws = rawPagesOf(source);
+  // 画面は**語彙を展開してから**読む（描く側の `parseAppPagesMap` と同じ口）。
+  // strict の門番は上の app で1回通しているので、ここでは当てない。
+  const page = new Map(Object.entries(parseAppPagesMap(rawDocument(source))));
   return {
     app,
-    pages: raws.map(parseOnePage),
+    pages: raws.flatMap((one) => {
+      const found = typeof one.id === "string" ? page.get(one.id) : undefined;
+      return found === undefined ? [] : [found];
+    }),
+    page,
     raw: new Map(
       raws
         .filter((page) => typeof page.id === "string")
@@ -104,17 +121,18 @@ export function explainSource(
       lang,
     );
   }
-  const { app, raw, access } = parseAppSource(source);
+  const { app, raw, page, access } = parseAppSource(source);
   if (options.page === undefined) return explainApp(app, access, lang);
   const one = raw.get(options.page);
-  if (one === undefined) {
+  const parsed = page.get(options.page);
+  if (one === undefined || parsed === undefined) {
     throw noSuchPage(
       options.page,
       app.pages.map((page) => page.id),
     );
   }
   return explainPage(
-    parseOnePage(one),
+    parsed,
     one,
     pageAccess(access, options.page),
     lang,

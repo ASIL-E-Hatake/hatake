@@ -792,11 +792,13 @@
         "pageSize": {
           "type": "integer",
           "minimum": 1,
-          "default": 50
+          "default": 50,
+          "description": "Rows per page. With `enabled: false`, the most rows the list fetches and shows at all."
         },
         "enabled": {
           "type": "boolean",
-          "default": true
+          "default": true,
+          "description": "false: no pager. The list shows only the first `pageSize` rows and, when there are more, says so (\"N 件中 M 件を表示しています（絞り込んでください）\") instead of cutting them silently."
         }
       }
     },

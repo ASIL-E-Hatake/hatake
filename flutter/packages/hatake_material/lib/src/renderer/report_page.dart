@@ -293,7 +293,9 @@ class _MaterialReportPage extends StatelessWidget {
       key: Key(isGrand
           ? 'hatake.report.grandTotal'
           : 'hatake.report.subtotal.$index'),
-      height: _rowHeight,
+      // 同じ列に合計が2つ以上あれば升の中で積むので、その数だけ高くする
+      // （帳票の中で一定＝小計ごとに高さが揺れない。紙も同じ数だけ行を取る）。
+      height: _rowHeight * reportTotalDepth(definition.report),
       decoration: BoxDecoration(
         color: isGrand ? theme.colorScheme.surfaceContainerHighest : null,
         border: Border(
@@ -324,35 +326,32 @@ class _MaterialReportPage extends StatelessWidget {
     );
   }
 
+  /// 1列目は見出し、以降は自分の列の小計・総計。同じ列に合計が2つ以上あれば
+  /// 1つ1行で積む（何の数かを添えるのは `reportTotalLines`＝紙・Web と同じ字）。
   Widget _totalCell(
     ColumnDefinition column,
     ReportBlock block,
     int index,
     String label,
   ) {
-    return Text(
-      index == 0 ? label : _totalFor(column, block),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
+    final lines = index == 0
+        ? [label]
+        : reportTotalLines(
+            definition.report,
+            column.field,
+            block,
+            (value) => _cell(column, value),
+          );
+    Text line(String text) =>
+        Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
+    if (lines.length <= 1) return line(lines.isEmpty ? '' : lines.first);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: column.type == ColumnTypes.number
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [for (final one in lines) line(one)],
     );
-  }
-
-  /// The declared totals that belong under [column], formatted like its cells.
-  /// Two totals may share a column (sum + count), so they are joined.
-  String _totalFor(ColumnDefinition column, ReportBlock block) {
-    final parts = <String>[];
-    for (var i = 0; i < definition.report.totals.length; i++) {
-      final total = definition.report.totals[i];
-      if (total.field != column.field) continue;
-      if (i >= block.totals.length) continue;
-      final value = block.totals[i];
-      if (value == null) continue;
-      // count is a plain tally, so it keeps the column's formatter out of it.
-      parts.add(total.aggregate == AggregateOps.count
-          ? '${value.toInt()} 件'
-          : _cell(column, value));
-    }
-    return parts.join(' / ');
   }
 
   /// この画面に書いてある選択肢（明細の列でコードを名前に直すため）。

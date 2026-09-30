@@ -60,6 +60,10 @@ abstract final class HatakeKeys {
   static const search = 'hatake.search';
   static const prev = 'hatake.prev';
   static const next = 'hatake.next';
+
+  /// 一覧の下の件数の字（「全 120 件」／`pagination.enabled: false` で出しきれない
+  /// ときの「120 件中 100 件を表示しています（絞り込んでください）」）。
+  static const pagerText = 'hatake.pager.text';
   static const empty = 'hatake.empty';
   static const error = 'hatake.error';
 
@@ -175,6 +179,7 @@ abstract final class HatakeKeys {
         search,
         prev,
         next,
+        pagerText,
         empty,
         error,
         confirm,

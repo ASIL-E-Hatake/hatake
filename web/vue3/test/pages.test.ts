@@ -85,6 +85,32 @@ page:
     pagination: { pageSize: 10 }
 `;
 
+/** 同じ列に合計を2つ書いた帳票（升の中で積んで、何の数かを添える）。 */
+const reportYaml = `
+dsl_version: "1.0"
+page:
+  id: sales
+  type: report
+  title: 売上明細表
+  repository: orderRepository
+  search:
+    filters:
+      - { field: status, label: 状態, type: text }
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+      - { field: amount, label: 金額, type: number, format: currency, config: { symbol: "¥" } }
+  report:
+    totals:
+      - { field: amount, aggregate: sum }
+      - { field: amount, aggregate: count }
+`;
+
+const orders = [
+  { orderNo: "SO-1", amount: 1200 },
+  { orderNo: "SO-2", amount: 5160 },
+];
+
 const rows = [
   { code: "C-1", name: "あおぞら商事", status: "active" },
   { code: "C-2", name: "北山フーズ", status: "closed" },
@@ -130,6 +156,31 @@ describe("定義から画面が出る", () => {
     await settle(wrapper);
     expect(wrapper.findAll('[data-hatake^="row:"]')).toHaveLength(2);
     expect(wrapper.find('[data-hatake="pagination"]').text()).toContain("3 件");
+  });
+
+  it("帳票: 同じ列の合計は積んで添える・列の書式を通す・見出しは「合計」", async () => {
+    const wrapper = mountPage(pageOf(reportYaml), {
+      orderRepository: new FakeRepository(orders, ["orderNo"]),
+    });
+    await settle(wrapper);
+    await wrapper.find('[data-hatake="search"]').trigger("submit");
+    await settle(wrapper);
+    const grand = wrapper.find('[data-hatake="block:grandTotal"]');
+    expect(grand.findAll("td").map((one) => one.text())).toEqual(["合計", "合計 ¥6,360件数 2"]);
+    expect(grand.findAll("td div").map((one) => one.text())).toEqual(["合計 ¥6,360", "件数 2"]);
+  });
+
+  it("`pagination.enabled: false` は送る口を出さず、出しきれないとそう言う", async () => {
+    const unpaged = yaml.replace("pagination: { pageSize: 2 }", "pagination: { pageSize: 2, enabled: false }");
+    const wrapper = mountPage(pageOf(unpaged) as CrudPageDefinition, {
+      customerRepository: new FakeRepository(rows, ["code"]),
+    });
+    await settle(wrapper);
+    expect(wrapper.findAll('[data-hatake^="row:"]')).toHaveLength(2);
+    expect(wrapper.find('[data-hatake="pagination"]').text()).toBe(
+      "3 件中 2 件を表示しています（絞り込んでください）",
+    );
+    expect(wrapper.find('[data-hatake="pagination:next"]').exists()).toBe(false);
   });
 
   it("**選択肢のラベルで出る**（`closed` ではなく「取引終了」）", async () => {

@@ -366,6 +366,53 @@ void main() {
       });
     }
   });
+
+  group('conformance: pagination', () {
+    final fixture = _loadMap('pagination.json');
+    for (final raw in fixture['cases'] as List<Object?>) {
+      final c = (raw as Map).cast<String, Object?>();
+      test(c['name'] as String, () {
+        final view = pagerView(
+          PaginationDefinition(enabled: c['enabled']! as bool),
+          c['totalCount']! as int,
+          c['shown']! as int,
+        );
+        final expected = (c['expected']! as Map).cast<String, Object?>();
+        expect(view.paged, expected['paged']);
+        expect(view.text, expected['text']);
+      });
+    }
+  });
+
+  group('conformance: report totals', () {
+    final fixture = _loadMap('report_totals.json');
+    // 列の書式の代わり（フィクスチャの約束: `¥` + 数、整数なら小数点なし）。
+    String yen(num value) =>
+        '¥${value == value.truncate() ? value.toInt() : value}';
+    for (final raw in fixture['cases'] as List<Object?>) {
+      final c = (raw as Map).cast<String, Object?>();
+      test(c['name'] as String, () {
+        final report = ReportDefinition(
+          totals: [
+            for (final t in (c['totals']! as List).cast<Map>())
+              ReportTotal(
+                field: t['field'] as String,
+                aggregate: t['aggregate'] as String,
+              ),
+          ],
+        );
+        final block = ReportBlock(
+          kind: ReportBlockKinds.grandTotal,
+          totals: (c['values']! as List).cast<num?>(),
+        );
+        expect(
+          reportTotalLines(report, c['field']! as String, block, yen),
+          (c['expected']! as List).cast<String>(),
+        );
+        expect(reportTotalDepth(report), c['depth']);
+      });
+    }
+  });
 }
 
 /// conformance の `owners` を、選択肢を持つものに変える。

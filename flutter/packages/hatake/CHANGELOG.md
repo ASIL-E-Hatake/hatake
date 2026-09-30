@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.21
+
+- `hatake_core` / `hatake_material` の直しを取り込んだだけ（一覧の `pagination.enabled`・
+  帳票の同じ列の合計）。この包みそのものの振る舞いは変わっていない。
+
 ## 0.9.20
 
 - ブラウザ側の見た目と振る舞いを Flutter 版にそろえた版。Dart 側の振る舞いは

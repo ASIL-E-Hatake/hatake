@@ -112,6 +112,8 @@ export function HatakeSearchPage(props: {
         page={controller.page}
         pageCount={controller.pageCount}
         totalCount={controller.totalCount}
+        enabled={props.definition.table.pagination.enabled}
+        shown={controller.items.length}
         onMove={(page) => void controller.setPage(page)}
       />
       {bar.overlay()}
@@ -237,6 +239,8 @@ export function HatakeCrudPage(props: {
         page={controller.page}
         pageCount={controller.pageCount}
         totalCount={controller.totalCount}
+        enabled={props.definition.table.pagination.enabled}
+        shown={controller.items.length}
         onMove={(page) => void controller.setPage(page)}
       />
       {controller.mode === CrudMode.list ? null : (

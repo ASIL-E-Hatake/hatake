@@ -273,13 +273,21 @@ void main() {
 
       final subtotal = cells.firstWhere((t) => t.text == '小計');
       expect(subtotal.x, 36);
-      // 同じ列に sum と count があれば並べる（件数は書式を通さない）。
-      final sums = cells.where((t) => t.text == '100 / 1 件').toList();
+      // 同じ列に sum と count があれば、升の中で1つ1行に積んで何の数かを添える
+      // （件数は書式を通さない）。1行に詰めると狭い列で切れて片方が読めない。
+      final sums = cells.where((t) => t.text == '合計 100').toList();
       expect(sums, hasLength(1));
       expect(sums.first.x, amountHeading.x);
+      // 2行目はそのすぐ下（その行は合計の数だけ行を取る）。
+      final count = cells.firstWhere(
+        (t) => t.text == '件数 1' && t.y > sums.first.y,
+      );
+      expect(count.x, amountHeading.x);
+      expect(count.y - sums.first.y, lessThan(20));
 
       expect(cells.map((t) => t.text), contains('合計'));
-      expect(cells.map((t) => t.text), contains('350 / 2 件'));
+      expect(cells.map((t) => t.text), contains('合計 350'));
+      expect(cells.map((t) => t.text), contains('件数 2'));
     });
 
     test('総計の上は二重線', () {

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.21
+
+- 追加: `pagerView`（一覧の下の件数の字と、ページ送りを出すか）。`pagination.enabled:
+  false` のとき、出しきれなければ「120 件中 100 件を表示しています（絞り込んでください）」。
+- 追加: `reportTotalLines` / `reportTotalDepth`（帳票の小計・総計の升の字）。同じ列に
+  合計を2つ以上書いたら1つ1行で積み、何の数かを添える（「合計 ¥6,360」「件数 2」）。
+- 追加: `HatakeKeys.pagerText`（一覧の下の件数の字）。
+- どれも TypeScript 版と同じ答えになることを `spec/conformance/pagination.json` /
+  `report_totals.json` が見ている。
+
 ## 0.9.20
 
 - ブラウザ側の見た目と振る舞いを Flutter 版にそろえた版。Dart 側の振る舞いは

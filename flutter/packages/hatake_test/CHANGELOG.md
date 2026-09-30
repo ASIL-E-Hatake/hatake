@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.21
+
+- 追加: `HatakeFind.pagerText`（一覧の下の件数の字）。
+
 ## 0.9.20
 
 - ブラウザ側の見た目と振る舞いを Flutter 版にそろえた版。Dart 側の振る舞いは

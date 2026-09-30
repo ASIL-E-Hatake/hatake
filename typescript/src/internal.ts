@@ -23,6 +23,7 @@
 export * from "./definition.js";
 export * from "./vocabularies.js";
 export * from "./cellText.js";
+export * from "./pagerView.js";
 export * from "./parse.js";
 export * from "./strictKeys.js";
 export * from "./reference.js";
@@ -77,6 +78,7 @@ export * from "./reportLayout.js";
 export * from "./paperText.js";
 export * from "./sampleRows.js";
 export * from "./report.js";
+export * from "./reportTotals.js";
 export * from "./query.js";
 export * from "./recordKey.js";
 export * from "./dslVersion.js";

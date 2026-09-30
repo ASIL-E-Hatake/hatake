@@ -1,0 +1,86 @@
+{
+  "_comment": "帳票の小計・総計の升の字（reportTotalLines / reportTotalDepth。Dart / TS。Java は描かない版なので対象外）。totals は report.totals、values は ReportBlock.totals（totals と同じ順序・null は値なし）、field はその升の列。expected は**1要素が1行**。format は列の書式の代わりで、各版の試験が `¥` + 数（整数なら小数点なし）にする。固定したいのは: (1) 1つだけなら今までどおり値だけ（件数は「N 件」）、(2) 同じ列に2つ以上なら1つ1行で何の数かを添える（件数は「件数 N」で後ろの語を付けない）、(3) 添えるかどうかは**書いた数**で決める（値が null で1行しか出ない升にも添える）、(4) 書いた順に積む、(5) 知らない集め方は名前をそのまま添える。depth は紙がその行に取る行数。",
+  "cases": [
+    {
+      "name": "1つだけ・合計",
+      "totals": [{ "field": "amount", "aggregate": "sum" }],
+      "field": "amount",
+      "values": [6360],
+      "expected": ["¥6360"],
+      "depth": 1
+    },
+    {
+      "name": "1つだけ・件数",
+      "totals": [{ "field": "amount", "aggregate": "count" }],
+      "field": "amount",
+      "values": [2],
+      "expected": ["2 件"],
+      "depth": 1
+    },
+    {
+      "name": "同じ列に合計と件数＝2段に積んで添える",
+      "totals": [
+        { "field": "amount", "aggregate": "sum" },
+        { "field": "amount", "aggregate": "count" }
+      ],
+      "field": "amount",
+      "values": [6360, 2],
+      "expected": ["合計 ¥6360", "件数 2"],
+      "depth": 2
+    },
+    {
+      "name": "書いた順に積む（件数が先）",
+      "totals": [
+        { "field": "amount", "aggregate": "count" },
+        { "field": "amount", "aggregate": "avg" },
+        { "field": "amount", "aggregate": "max" }
+      ],
+      "field": "amount",
+      "values": [3, 120.5, 300],
+      "expected": ["件数 3", "平均 ¥120.5", "最大 ¥300"],
+      "depth": 3
+    },
+    {
+      "name": "別の列の合計は混ぜない",
+      "totals": [
+        { "field": "qty", "aggregate": "sum" },
+        { "field": "amount", "aggregate": "sum" },
+        { "field": "amount", "aggregate": "min" }
+      ],
+      "field": "qty",
+      "values": [12, 6360, 100],
+      "expected": ["¥12"],
+      "depth": 2
+    },
+    {
+      "name": "値が無い合計は出さないが、言葉は書いた数で決める",
+      "totals": [
+        { "field": "amount", "aggregate": "sum" },
+        { "field": "amount", "aggregate": "avg" }
+      ],
+      "field": "amount",
+      "values": [6360, null],
+      "expected": ["合計 ¥6360"],
+      "depth": 2
+    },
+    {
+      "name": "知らない集め方は名前をそのまま添える",
+      "totals": [
+        { "field": "amount", "aggregate": "sum" },
+        { "field": "amount", "aggregate": "median" }
+      ],
+      "field": "amount",
+      "values": [6360, 150],
+      "expected": ["合計 ¥6360", "median ¥150"],
+      "depth": 2
+    },
+    {
+      "name": "合計を書いていない列",
+      "totals": [{ "field": "amount", "aggregate": "sum" }],
+      "field": "name",
+      "values": [6360],
+      "expected": [],
+      "depth": 1
+    }
+  ]
+}

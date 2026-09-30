@@ -2334,6 +2334,7 @@
           "key": "pageSize",
           "type": "integer",
           "required": false,
+          "description": "Rows per page. With `enabled: false`, the most rows the list fetches and shows at all.",
           "default": 50,
           "minimum": 1
         },
@@ -2341,6 +2342,7 @@
           "key": "enabled",
           "type": "boolean",
           "required": false,
+          "description": "false: no pager. The list shows only the first `pageSize` rows and, when there are more, says so (\"N 件中 M 件を表示しています（絞り込んでください）\") instead of cutting them silently.",
           "default": true
         }
       ]
