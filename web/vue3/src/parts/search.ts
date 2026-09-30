@@ -1,5 +1,5 @@
 import type { FilterDefinition, SearchDefinition } from "@hatake-fw/api";
-import { FieldTypes, visibleOptions } from "@hatake-fw/api/internal";
+import { FieldTypes, pagerView, visibleOptions } from "@hatake-fw/api/internal";
 import type { DataRecord } from "@hatake-fw/runtime";
 import { defineComponent, h, ref, type PropType } from "vue";
 
@@ -108,13 +108,20 @@ function filter(
   ]);
 }
 
-/** ページ送り。**総件数から出した枚数の外には出さない。** */
+/**
+ * ページ送り。**総件数から出した枚数の外には出さない。**
+ *
+ * `enabled: false`（`table.pagination.enabled`）なら送る口を出さず、`shown`（届いた
+ * 行数）で出しきれていなければそう言う。字と出す／出さないは `pagerView` が決める。
+ */
 export const HatakePagination = defineComponent({
   name: "HatakePagination",
   props: {
     page: { type: Number, required: true },
     pageCount: { type: Number, required: true },
     totalCount: { type: Number, required: true },
+    enabled: { type: Boolean, default: true },
+    shown: { type: Number, default: undefined },
   },
   emits: {
     move: (_page: number) => true,
@@ -123,8 +130,13 @@ export const HatakePagination = defineComponent({
     return () => {
       // 置き方は Flutter 版と同じ（右寄せで「全 N 件 ‹ 1 / 3 ›」）。1ページで足りる
       // ときは送る口を出さない（押しても何も起きないボタンは、壊れていると読まれる）。
-      const total = h("span", { class: "hatake-pagination-total" }, `全 ${props.totalCount} 件`);
-      if (props.pageCount <= 1) {
+      const view = pagerView(
+        { enabled: props.enabled },
+        props.totalCount,
+        props.shown ?? props.totalCount,
+      );
+      const total = h("span", { class: "hatake-pagination-total" }, view.text);
+      if (!view.paged || props.pageCount <= 1) {
         return h("div", { class: "hatake-pagination", "data-hatake": "pagination" }, [total]);
       }
       return h("div", { class: "hatake-pagination", "data-hatake": "pagination" }, [

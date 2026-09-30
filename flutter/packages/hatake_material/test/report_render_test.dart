@@ -255,4 +255,29 @@ void main() {
 
     expect(find.textContaining('出力先が未登録'), findsOneWidget);
   });
+
+
+  testWidgets('同じ列に合計が2つなら升の中で積み、何の数かを添える', (tester) async {
+    const both = ReportPageDefinition(
+      id: 'sales_report',
+      title: '売上明細表',
+      repository: 'orderRepository',
+      table: _table,
+      report: ReportDefinition(
+        totals: [
+          ReportTotal(field: 'amount', aggregate: AggregateOps.sum),
+          ReportTotal(field: 'amount', aggregate: AggregateOps.count),
+        ],
+      ),
+    );
+    await tester.pumpWidget(_harness(_Orders(_rows), definition: both));
+    await tester.pumpAndSettle();
+
+    final grand = find.byKey(const Key('hatake.report.grandTotal'));
+    // 紙・Web と同じ字（reportTotalLines）。1行に「¥350 / 3 件」と詰めない。
+    expect(find.descendant(of: grand, matching: find.text('合計 ¥350')), findsOneWidget);
+    expect(find.descendant(of: grand, matching: find.text('件数 3')), findsOneWidget);
+    // 積んだぶん高い（明細の2行ぶん）。
+    expect(tester.getSize(grand).height, 88);
+  });
 }

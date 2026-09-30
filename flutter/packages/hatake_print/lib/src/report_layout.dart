@@ -64,11 +64,21 @@ PrintLayout layoutReport(
   final bodyBottom = paper.height - style.margin;
   final footerBaseline = bodyBottom + style.headingSize;
 
+  // 小計・総計は、同じ列に書いた合計の数だけ行を取る（升の中で縦に積む）。
+  final depth = reportTotalDepth(page.report);
+  int slotsOf(ReportBlock block) => _isTotal(block) ? depth : 1;
   // 1枚に載る行数。ReportSheet の方が多いことは無いが、行数の指定が壊れていても
-  // 溢れないよう、実際のブロック数も見る。
+  // 溢れないよう、実際に使う行も見る（積んだ合計のぶん多い紙があれば、
+  // **全部の紙で同じだけ**行を縮める）。
   final rows = math.max(
     page.report.rowsPerPage,
-    document.sheets.fold<int>(0, (most, s) => math.max(most, s.blocks.length)),
+    document.sheets.fold<int>(
+      0,
+      (most, s) => math.max(
+        most,
+        s.blocks.fold<int>(0, (n, b) => n + slotsOf(b)),
+      ),
+    ),
   );
   final rowHeight =
       math.min(style.rowHeight, (bodyBottom - bodyTop) / math.max(rows, 1));
@@ -105,7 +115,11 @@ PrintLayout layoutReport(
               xs: xs,
               left: left,
               usable: usable,
-              top: bodyTop + rowHeight * i,
+              top: bodyTop +
+                  rowHeight *
+                      sheet.blocks
+                          .take(i)
+                          .fold<int>(0, (n, b) => n + slotsOf(b)),
               rowHeight: rowHeight,
               size: bodySize,
             ),
@@ -266,23 +280,28 @@ List<PrintItem> _block({
         // 総計の上は二重線（日本の帳票の作法）。
         if (isGrand)
           PrintRule(x: left, y: top + 1.6, width: usable, thickness: 0.4),
+        // 画面の帳票と同じ規則: 1列目は見出し、以降は自分の列の数字。同じ列に
+        // 合計が2つ以上あれば1つ1行で積む（何の数かは `reportTotalLines` が添える）。
         for (var i = 0; i < columns.length; i++)
-          PrintText(
-            x: xs[i],
-            y: baseline,
-            width: widths[i],
-            // 画面の帳票と同じ規則: 1列目は見出し、以降は自分の列の数字。
-            text: clipToWidth(
-              i == 0
-                  ? label
-                  : _totalFor(registry, page.report, style, columns[i], block),
-              size,
-              widths[i],
+          for (final (k, line) in (i == 0
+                  ? [label]
+                  : reportTotalLines(
+                      page.report,
+                      columns[i].field,
+                      block,
+                      (value) => _cell(registry, const [], columns[i], value),
+                      countSuffix: style.countSuffix,
+                    ))
+              .indexed)
+            PrintText(
+              x: xs[i],
+              y: baseline + rowHeight * k,
+              width: widths[i],
+              text: clipToWidth(line, size, widths[i]),
+              size: size,
+              bold: true,
+              align: i == 0 ? PrintAligns.left : _alignOf(columns[i]),
             ),
-            size: size,
-            bold: true,
-            align: i == 0 ? PrintAligns.left : _alignOf(columns[i]),
-          ),
       ];
     default:
       // 知らない種類（プラグインが増やしたもの）は刷らない。落とさない。
@@ -298,28 +317,9 @@ String _cell(
 ) =>
     cellText(registry, owners, column, value);
 
-/// その列に属する小計・総計。同じ列に2つ（`sum` と `count`）あれば並べる。
-String _totalFor(
-  FormatterRegistry registry,
-  ReportDefinition report,
-  PrintStyle style,
-  ColumnDefinition column,
-  ReportBlock block,
-) {
-  final parts = <String>[];
-  for (var i = 0; i < report.totals.length; i++) {
-    final total = report.totals[i];
-    if (total.field != column.field) continue;
-    if (i >= block.totals.length) continue;
-    final value = block.totals[i];
-    if (value == null) continue;
-    // 件数は数を数えただけなので、列の書式（金額など）を通さない。
-    parts.add(total.aggregate == AggregateOps.count
-        ? '${value.toInt()} ${style.countSuffix}'
-        : _cell(registry, const [], column, value));
-  }
-  return parts.join(' / ');
-}
+bool _isTotal(ReportBlock block) =>
+    block.kind == ReportBlockKinds.subtotal ||
+    block.kind == ReportBlockKinds.grandTotal;
 
 /// 数は右、それ以外は左（紙の上の作法。画面の帳票と同じ）。
 String _alignOf(ColumnDefinition column) => column.type == ColumnTypes.number

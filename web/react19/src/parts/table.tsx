@@ -1,6 +1,6 @@
 import { FormatterRegistry } from "@hatake-fw/api";
 import type { ColumnDefinition, FilterDefinition, SearchDefinition, TableDefinition } from "@hatake-fw/api";
-import { cellText, ColumnTypes, FieldTypes, isAllowed, recordKeyOf, visibleOptions } from "@hatake-fw/api/internal";
+import { cellText, ColumnTypes, FieldTypes, isAllowed, pagerView, recordKeyOf, visibleOptions } from "@hatake-fw/api/internal";
 import type { DataRecord } from "@hatake-fw/runtime";
 import { useState, type ReactNode } from "react";
 
@@ -258,17 +258,29 @@ function filter(one: FilterDefinition, values: DataRecord, send: (next: unknown)
   );
 }
 
-/** ページ送り。**総件数から出した枚数の外には出さない。** */
+/**
+ * ページ送り。**総件数から出した枚数の外には出さない。**
+ *
+ * `enabled: false`（`table.pagination.enabled`）なら送る口を出さず、`shown`（届いた
+ * 行数）で出しきれていなければそう言う。字と出す／出さないは `pagerView` が決める。
+ */
 export function HatakePagination(props: {
   page: number;
   pageCount: number;
   totalCount: number;
+  enabled?: boolean;
+  shown?: number;
   onMove: (page: number) => void;
 }): ReactNode {
   // 置き方は Flutter 版と同じ（右寄せで「全 N 件 ‹ 1 / 3 ›」）。1ページで足りる
   // ときは送る口を出さない（押しても何も起きないボタンは、壊れていると読まれる）。
-  const total = <span className="hatake-pagination-total">全 {props.totalCount} 件</span>;
-  if (props.pageCount <= 1) {
+  const view = pagerView(
+    { enabled: props.enabled ?? true },
+    props.totalCount,
+    props.shown ?? props.totalCount,
+  );
+  const total = <span className="hatake-pagination-total">{view.text}</span>;
+  if (!view.paged || props.pageCount <= 1) {
     return (
       <div className="hatake-pagination" data-hatake="pagination">
         {total}

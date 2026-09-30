@@ -18,7 +18,6 @@ import { pageAccess } from "./explainAccess.js";
 import {
   isAppSource,
   parseAppSource,
-  parseOnePage,
   explainSource,
 } from "./explainSource.js";
 
@@ -325,18 +324,27 @@ export function explainDiffSources(
   for (const page of now.app.pages) {
     const rawBefore = was.raw.get(page.id);
     const rawAfter = now.raw.get(page.id);
-    if (rawBefore === undefined || rawAfter === undefined) continue;
+    const pageBefore = was.page.get(page.id);
+    const pageAfter = now.page.get(page.id);
+    if (
+      rawBefore === undefined ||
+      rawAfter === undefined ||
+      pageBefore === undefined ||
+      pageAfter === undefined
+    ) {
+      continue;
+    }
     // 権限も渡す＝**入口を1つ直すと遠くの画面が開けなくなる**類の変化が、その画面の
     // 節に出る（機械の言葉の差分では、直した入口の行しか動かない）。
     changes.push(
       ...diffExplanations(
         explainPage(
-          parseOnePage(rawBefore),
+          pageBefore,
           rawBefore,
           pageAccess(was.access, page.id),
         ),
         explainPage(
-          parseOnePage(rawAfter),
+          pageAfter,
           rawAfter,
           pageAccess(now.access, page.id),
         ),

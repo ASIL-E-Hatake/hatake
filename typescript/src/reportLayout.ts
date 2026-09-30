@@ -16,7 +16,6 @@
 
 import { isAllowed } from "./access.js";
 import {
-  AggregateOps,
   ColumnTypes,
   type ColumnDefinition,
   type ReportDefinition,
@@ -24,6 +23,7 @@ import {
 } from "./definition.js";
 import { FormatterRegistry } from "./formatter.js";
 import { PAPERS, paperSize } from "./papers.js";
+import { reportTotalDepth, reportTotalLines } from "./reportTotals.js";
 import {
   PrintAligns,
   type PrintItem,
@@ -85,10 +85,17 @@ export function layoutReport(
   const bodyBottom = paper.height - style.margin;
   const footerBaseline = bodyBottom + style.headingSize;
 
-  // 1枚に載る行数。行数の指定が壊れていても溢れないよう、実際のブロック数も見る。
+  // 小計・総計は、同じ列に書いた合計の数だけ行を取る（升の中で縦に積む）。
+  const depth = reportTotalDepth(page.report);
+  const slotsOf = (block: ReportBlock): number => (isTotal(block) ? depth : 1);
+  // 1枚に載る行数。行数の指定が壊れていても溢れないよう、実際に使う行も見る
+  // （積んだ合計のぶん多い紙があれば、**全部の紙で同じだけ**行を縮める）。
   const rows = Math.max(
     page.report.rowsPerPage,
-    document.sheets.reduce((most, s) => Math.max(most, s.blocks.length), 0),
+    document.sheets.reduce(
+      (most, s) => Math.max(most, s.blocks.reduce((n, b) => n + slotsOf(b), 0)),
+      0,
+    ),
   );
   const rowHeight = Math.min(
     style.rowHeight,
@@ -113,7 +120,10 @@ export function layoutReport(
         xs,
       }),
     ];
-    sheet.blocks.forEach((one, i) => {
+    let used = 0;
+    sheet.blocks.forEach((one) => {
+      const top = bodyTop + rowHeight * used;
+      used += slotsOf(one);
       items.push(
         ...blockItems({
           block: one,
@@ -125,7 +135,7 @@ export function layoutReport(
           xs,
           left,
           usable,
-          top: bodyTop + rowHeight * i,
+          top,
           rowHeight,
           size: bodySize,
         }),
@@ -325,22 +335,29 @@ function blockItems(input: {
       });
     }
     columns.forEach((column, i) => {
-      items.push({
-        kind: "text",
-        x: xs[i],
-        y: baseline,
-        width: widths[i],
-        // 画面の帳票と同じ規則: 1列目は見出し、以降は自分の列の数字。
-        text: clipToWidth(
-          i === 0
-            ? label
-            : totalFor(input.formatters, input.report, style, column, block),
+      // 画面の帳票と同じ規則: 1列目は見出し、以降は自分の列の数字。同じ列に
+      // 合計が2つ以上あれば1つ1行で積む（何の数かは `reportTotalLines` が添える）。
+      const lines =
+        i === 0
+          ? [label]
+          : reportTotalLines(
+              input.report,
+              column.field,
+              block,
+              (value) => cell(input.formatters, column, value),
+              style.countSuffix,
+            );
+      lines.forEach((line, k) => {
+        items.push({
+          kind: "text",
+          x: xs[i],
+          y: baseline + rowHeight * k,
+          width: widths[i],
+          text: clipToWidth(line, size, widths[i]),
           size,
-          widths[i],
-        ),
-        size,
-        bold: true,
-        align: i === 0 ? PrintAligns.left : alignOf(column),
+          bold: true,
+          align: i === 0 ? PrintAligns.left : alignOf(column),
+        });
       });
     });
     return items;
@@ -361,29 +378,9 @@ function cell(
   return value === null || value === undefined ? "" : String(value);
 }
 
-/** その列に属する小計・総計。同じ列に2つ（`sum` と `count`）あれば並べる。 */
-function totalFor(
-  formatters: FormatterRegistry,
-  report: ReportDefinition,
-  style: PrintStyle,
-  column: ColumnDefinition,
-  block: ReportBlock,
-): string {
-  const parts: string[] = [];
-  report.totals.forEach((total, i) => {
-    if (total.field !== column.field) return;
-    if (i >= block.totals.length) return;
-    const value = block.totals[i];
-    if (value === null || value === undefined) return;
-    // 件数は数を数えただけなので、列の書式（金額など）を通さない。
-    parts.push(
-      total.aggregate === AggregateOps.count
-        ? `${Math.trunc(value)} ${style.countSuffix}`
-        : cell(formatters, column, value),
-    );
-  });
-  return parts.join(" / ");
-}
+const isTotal = (block: ReportBlock): boolean =>
+  block.kind === ReportBlockKinds.subtotal ||
+  block.kind === ReportBlockKinds.grandTotal;
 
 /** 数は右、それ以外は左（紙の上の作法。画面の帳票と同じ）。 */
 const alignOf = (column: ColumnDefinition): string =>

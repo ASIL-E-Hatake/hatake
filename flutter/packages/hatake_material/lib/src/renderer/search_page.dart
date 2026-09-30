@@ -171,7 +171,7 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
           ],
           Expanded(child: _buildBody(rowActionIds)),
           const SizedBox(height: 8),
-          _buildPagination(theme),
+          _listPager(theme, _controller, _def.table.pagination),
         ],
       ),
     );
@@ -274,29 +274,5 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
       default:
         return Text(text);
     }
-  }
-
-  Widget _buildPagination(ThemeData theme) {
-    final page = _controller.page;
-    final pageCount = _controller.pageCount;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Text('全 ${_controller.totalCount} 件', style: theme.textTheme.bodySmall),
-        const SizedBox(width: 16),
-        IconButton(
-          key: const Key('hatake.prev'),
-          icon: const Icon(Icons.chevron_left),
-          onPressed: page > 0 ? () => _controller.setPage(page - 1) : null,
-        ),
-        Text('${page + 1} / $pageCount'),
-        IconButton(
-          key: const Key('hatake.next'),
-          icon: const Icon(Icons.chevron_right),
-          onPressed:
-              page < pageCount - 1 ? () => _controller.setPage(page + 1) : null,
-        ),
-      ],
-    );
   }
 }

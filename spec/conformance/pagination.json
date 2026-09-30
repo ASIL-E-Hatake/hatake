@@ -1,0 +1,47 @@
+{
+  "_comment": "一覧の下に出す件数の字とページ送り（pagerView。Dart / TS。Java は描かない版なので対象外）。固定したいのは3つ: (1) `enabled: true`（既定）は今までどおり「全 N 件」＋ページ送り、(2) `enabled: false` はページ送りを出さない＝取りに行くのは最初の `pageSize` 件だけ、(3) それで出しきれないときは**出しきれていないと言う**（黙って切ると、見えていない行が在ることに誰も気づけない）。shown は実際に届いた行数（サーバが pageSize より少なく返すこともある）。",
+  "cases": [
+    {
+      "name": "送る（既定）",
+      "enabled": true,
+      "totalCount": 120,
+      "shown": 50,
+      "expected": { "paged": true, "text": "全 120 件" }
+    },
+    {
+      "name": "送る・0件",
+      "enabled": true,
+      "totalCount": 0,
+      "shown": 0,
+      "expected": { "paged": true, "text": "全 0 件" }
+    },
+    {
+      "name": "送らない・全部出た",
+      "enabled": false,
+      "totalCount": 40,
+      "shown": 40,
+      "expected": { "paged": false, "text": "全 40 件" }
+    },
+    {
+      "name": "送らない・ちょうど",
+      "enabled": false,
+      "totalCount": 100,
+      "shown": 100,
+      "expected": { "paged": false, "text": "全 100 件" }
+    },
+    {
+      "name": "送らない・出しきれない",
+      "enabled": false,
+      "totalCount": 120,
+      "shown": 100,
+      "expected": { "paged": false, "text": "120 件中 100 件を表示しています（絞り込んでください）" }
+    },
+    {
+      "name": "送らない・0件",
+      "enabled": false,
+      "totalCount": 0,
+      "shown": 0,
+      "expected": { "paged": false, "text": "全 0 件" }
+    }
+  ]
+}

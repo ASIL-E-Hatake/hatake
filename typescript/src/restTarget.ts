@@ -9,7 +9,7 @@
 import type { DtoShape, DtoSpec } from "./dto.js";
 import { deriveDto } from "./dto.js";
 import type { PageDefinition } from "./definition.js";
-import { isAppSource, parseAppSource, parseOnePage, rawDocument } from "./explainSource.js";
+import { isAppSource, parseAppSource, rawDocument } from "./explainSource.js";
 import { parsePageYaml } from "./parse.js";
 import { type AppAccess, appAccess } from "./appAccess.js";
 import { collectionOf } from "./wire.js";
@@ -195,13 +195,13 @@ export function restTargetsForPage(
 ): RestTargets {
   if (!isAppSource(source)) return restTargets(source, options);
   const parsed = parseAppSource(source);
-  const raw = parsed.raw.get(pageId);
-  if (raw === undefined) {
+  const page = parsed.page.get(pageId);
+  if (page === undefined) {
     throw new Error(
       `ページ "${pageId}" はこの app にありません（${[...parsed.raw.keys()].join(" / ")}）。`,
     );
   }
-  const one = targetOf(parseOnePage(raw), options);
+  const one = targetOf(page, options);
   return {
     targets: isSkipped(one) ? [] : [one],
     skipped: isSkipped(one) ? [one] : [],
