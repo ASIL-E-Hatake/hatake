@@ -332,6 +332,11 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
     happens: "引いてくる方が勝つので、書いた `options` は出ません。",
     fix: "どちらかにしてください（静的な選択肢だけなら `optionsSource` を消す）。",
   },
+  "filter-default-unusable": {
+    what: "形の合わない検索欄の既定値",
+    happens: "既定値が付かず、検索欄は空で始まります（最初の一覧も全件から）。知らない語・範囲の語を範囲でない条件に書いた・範囲に3つ書いた、など。",
+    fix: "範囲（between）は `[from, to]` か `$thisMonth` / `$thisYear`、それ以外は1つの値か `$today` / `$startOfMonth` / `$endOfMonth` / `$startOfYear` / `$endOfYear` で書いてください。",
+  },
   "optionsfrom-unknown-field": {
     what: "その場に無い親項目",
     happens: "親の値が取れないので、`when` 付きの選択肢は出ません。",

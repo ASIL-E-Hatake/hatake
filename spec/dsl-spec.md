@@ -695,6 +695,7 @@ A `scope: selection` action on a page with no table, or on a type other than
 |---|---|---|---|
 | `layout` | [layout](#layout) | `{columns: 1}` | Arrangement of filters. |
 | `filters` | [filter](#filter)[] | `[]` | Search inputs. |
+| `fixed` | [fixedCondition](#always-applied-conditions-fixed)[] | `[]` | Conditions always applied (not shown, cannot be removed). |
 
 ### filter
 
@@ -708,6 +709,7 @@ A `scope: selection` action on a page with no table, or on a type other than
 | `optionsFrom` | string | | — | Parent filter name; its value narrows the options (see [linked options](#linked-options-optionsfrom--when--optionssource)). |
 | `optionsSource` | [optionsSource](#linked-options-optionsfrom--when--optionssource) | | — | Fetch the options from a repository. |
 | `config` | map | | `{}` | Extra settings. |
+| `defaultValue` | any | | — | Initial value of the search input (see [defaults](#search-defaults-defaultvalue)); the first list is loaded with it. |
 
 **How each input appears** (the renderer decides from `type`):
 
@@ -726,6 +728,44 @@ the other is then `null`). This is how you express a date range:
 ```yaml
 - { field: orderDate, label: 受注日, type: date, operator: between }
 ```
+
+### Search defaults (`defaultValue`)
+
+The search area **starts filled in**, and the **first list is loaded with the
+same values** (0.9.23) — never "inputs filled, list unfiltered". The user can
+clear it; it is only an initial value.
+
+```yaml
+filters:
+  - { field: employmentStatus, label: 在籍, type: select, operator: equals, defaultValue: active, optionsOf: employmentStatus }
+  - { field: orderDate, label: 受注日, type: date, operator: between, defaultValue: $thisMonth }
+```
+
+Plain values are used as is. Dates may use relative words resolved on the day the
+screen opens: `$today`, `$startOfMonth`, `$endOfMonth`, `$startOfYear`,
+`$endOfYear`; for `between` only, `$thisMonth` / `$thisYear` (a whole range) or
+`[from, to]` (either side may be `null`). An `in` filter takes a list. A shape
+that does not fit sets **no default** (safer than silently querying something
+odd) and `hatake validate` reports `filter-default-unusable`. `filterDefaults`
+(Dart / TS) resolves them for all three renderers (shared fixture
+`filter_defaults.json`). The server does not apply defaults.
+
+### Always-applied conditions (`fixed`)
+
+Conditions **added to every query** and never shown on screen (0.9.23) — "never
+print cancelled orders", "hide retired staff".
+
+```yaml
+search:
+  fixed:
+    - { field: cancelled, operator: notEquals, value: true }
+```
+
+`fixedCondition` has `field` (required), `operator` (default `equals`, same
+vocabulary as a filter) and `value` (required). The server's `buildQuery` (TS /
+Java) appends them after the screen's conditions, so a request cannot remove or
+change them. Dart has no query builder: **a Flutter app that implements
+Repository directly must apply them itself.**
 
 When several filters are used, `search.layout.columns` sets the column count
 (narrow screens collapse to a single column). **Empty inputs are never sent**,
@@ -751,6 +791,12 @@ so a blank condition never narrows the result set.
 | `format` | string | | — | Display formatter name (see [formatters](#formatters)). Options read from `config`. |
 | `config` | map | | `{}` | Extra settings (also formatter options). |
 | `roles` | string[] | | `[]` | Roles allowed to see it (see [access control](#access-control-roles)). Empty = everyone. |
+| `optionsSource` | [optionsSource](#linked-options-optionsfrom--when--optionssource) | | — | **Look the name up by key** in another repository (department code → department name). |
+
+A column's `optionsSource` (0.9.23) is fetched **once per table** and used as
+the column's options when the cell text is chosen. A key not among the fetched
+rows is shown as is. CSV, reports and the server keep the raw key. `hatake refs`
+counts the repository as one the application must register.
 
 ### pagination
 
@@ -1063,6 +1109,17 @@ Settled behaviour:
   `hatake validate` warns about it.
 - The framework knows no HTTP and no SQL: form 2 uses the same
   `Repository.search` a list screen uses.
+- The browser renderers (Vue / React) fetch by the same rules
+  (`OptionsFetcher` in `@hatake-fw/runtime`; up to 0.9.22 they ignored
+  `optionsSource` and showed an empty choice).
+
+**Copying from the picked row (`copy`)** (0.9.23): picking a product also fills
+its price and tax rate. `optionsSource.copy: { <field in this form>: <field of
+the row> }` copies those values from the row behind the picked choice — into
+read-only fields too, and in sub-table rows. A field the row does not have is not
+touched; nothing is copied when the choice is cleared. `copiedFrom` (Dart / TS,
+shared fixture `options_copy.json`) decides it. The server stays the source of
+truth for such values and may overwrite them.
 
 **Search filters (`search.filters`) take the same keys with the same meaning.**
 The only difference is what "the current values" are: whatever is typed into the

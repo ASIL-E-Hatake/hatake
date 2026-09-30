@@ -41,7 +41,39 @@
 
 引き先は一覧画面と同じ `Repository`。フレームワークは HTTP も SQL も知らないので、`{ prefecture: "osaka" }` という条件で `search` を呼ぶところまでしかしない。どう絞るかは実装した人の領分。
 
-親が未入力のあいだは**引きにも行かない**（全件返ってきても連動の意味がないので）。親を変えれば引き直し、同じ親のままなら1回しか引かない。
+親が未入力のあいだは**引きにも行かない**（全件返ってきても連動の意味がないので）。親を変えれば引き直し、同じ親のままなら1回しか引かない。Flutter でもブラウザ（Vue / React）でも同じ規則で引く。
+
+## 選んだら、ほかの項目も埋める（copy）
+
+商品を選んだら単価と税率も入ってほしい、は定番。`copy` に「このフォームの項目: 引いた行の項目」を書く。
+
+```yaml
+- field: productCode
+  label: 商品
+  type: select
+  optionsSource:
+    repository: productRepository
+    copy: { unitPrice: price, taxRate: taxRate }
+- { field: unitPrice, label: 単価, type: number }
+- { field: taxRate, label: 税率, type: number, readOnly: true }
+```
+
+読むだけの項目（`readOnly`）にも入るし、明細（`subTable`）の行でも同じ。引いた行に無い項目は触らない（入れてあった値を消さない）。
+
+画面が入れるのは**入力を楽にするため**で、値の正はサーバ。サーバは受け取った単価を今までどおりマスタの値で上書きしてよい。
+
+## 一覧で、コードを名前にする（列の optionsSource）
+
+部署コードを部署名で見せたい、のように**キーから別マスタの名前を引く**だけなら、列に `optionsSource` を書く。DB にビューを作らなくてよい。
+
+```yaml
+table:
+  columns:
+    - { field: employeeNo, label: 社員番号 }
+    - { field: departmentCode, label: 部署, optionsSource: { repository: departmentRepository } }
+```
+
+一覧の画面が表で1回だけ引いて、升の字をその名前にする。引いた表に無いキーはそのまま出る。**CSV・帳票・サーバはキーのまま**（引かない）ので、紙に名前を出したいときは今までどおりデータ側で持たせる。
 
 ## どちらで書くか
 

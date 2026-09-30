@@ -16,6 +16,51 @@
 
 DSL の版（`dsl_version`）はパッケージの版とは別に動く。DSL が上がった版にはその旨を書く。
 
+## 0.9.23 — 2026-10-01
+
+**入力と絞り込みの「既定」を定義に書けるようにした。** 見本3本を洗い出したら、書く所が無いので
+サーバや DB のビューに手で書いていた（「既定で在籍者だけ」「今月」「取消は刷らない」「商品を
+選んだら単価と税率」「部署コードを部署名で」）。あわせて `hatake doctor` を足し、名乗り方を
+**業務定義フレームワーク**に直した。
+
+- 追加（DSL）: `filter.defaultValue`。検索欄の初期値で、**最初の一覧もその条件で読む**（入力欄
+  だけ埋まって一覧は全件、にしない）。範囲（`between`）は `[from, to]`。日付は相対の語が書ける
+  （`$today` / `$startOfMonth` / `$endOfMonth` / `$startOfYear` / `$endOfYear`、範囲だけ
+  `$thisMonth` / `$thisYear`）。解くのは `filterDefaults`（Dart / TS）で、共有フィクスチャ
+  `filter_defaults.json`。形の合わない書き方は既定値を付けず、警告 `filter-default-unusable` が言う。
+  サーバでは当てない（利用者が外せる初期値なので）。
+- 追加（DSL）: `search.fixed: [{ field, operator, value }]`。**いつも掛ける条件**で、画面には
+  出さず、サーバの `buildQuery`（TS / Java）が毎回足す＝画面から外せない。共有フィクスチャ
+  `queries.json` に2件。Dart には問い合わせの組み立てが無いので、Repository を直接実装する
+  Flutter アプリは自分で当てる。
+- 追加（DSL）: `optionsSource.copy: { このフォームの項目: 引いた行の項目 }`。選択肢を選ぶと、
+  その行の値を写す（単価・税率など。読むだけの項目にも・明細の行でも）。写し方は `copiedFrom`
+  （Dart / TS）で、共有フィクスチャ `options_copy.json`。単価の正はサーバなので、サーバは
+  今までどおり上書きしてよい。
+- 追加（DSL）: 列に `optionsSource`。**キーから別マスタの名前を引いて**一覧の升に出す（部署
+  コード → 部署名）。表で1回だけ引き、引いた表に無いキーはそのまま出す。CSV・帳票・サーバは
+  キーのまま（引かない）。`hatake refs` も列で引く Repository を登録が要るものに数える。
+- 修正（ブラウザ版）: **`optionsSource` を読んでいなかった**。同梱の例（`dept_master.yaml`）の
+  「選択肢をマスタから引く」欄が空の選択肢で出ていた。取り寄せを `@hatake-fw/runtime` の
+  `OptionsFetcher` に置いた（Flutter と同じ規則）。
+- 修正（ブラウザ版）: 範囲（`between`）の絞り込みが欄1つで値を1つしか送っていなかった
+  （Flutter は「から」「まで」の2つで `[from, to]`）。2つの欄にそろえた（印は
+  `filter:<項目>:from` / `:to`）。見本の `FakeRepository` も範囲で絞るようにした。
+- 追加（CLI）: `hatake doctor [<案件の根>] [--json]`。**案件の道具と版の足並み**を1回で見る
+  （固定した版がそろっているか・入っている版が固定した版と同じか・定義の `dsl_version` と警告の
+  数・MCP の設定）。見本3本で当てたら、手元の `pubspec.lock` / `node_modules` が 0.9.14〜0.9.19
+  のまま残っているのを見つけた。
+- 修正（CLI）: `hatake --version` が一度も版を出していなかった（命令が無いのが先に効いて使い方を
+  出していた。版も `0.0.1` の決め打ちだった）。package.json の版を出す。
+- 追加（読み返し）: `explain` が既定値（「最初は 今月 で絞ってある（外せる）」）・固定条件（「いつも
+  取消 が true でないものだけ」）・写す項目（「選ぶと 単価 も入る」）・名前を引く列を言う。
+- 文書: **名乗り方を「宣言型 UI フレームワーク」から「業務定義フレームワーク」に直した**（README・
+  CLAUDE.md・llms（日英）・サイトの表紙・CLI の見出し・`hatake_core` の説明）。README の古い記述
+  （ブラウザ版の行が無い・Java / TS が scaffold・MCP の道具が5つ）も今の姿にした。
+- 内部: **読み物の更新ルール**（CLAUDE.md）と、差分から読み物の漏れを出す
+  `typescript/tool/readings.mjs` を足した（消えた名前が残っている・足した名前がどこにも
+  書いていない、を出す）。公開面は Dart +3（`FixedCondition` / `copiedFrom` / `filterDefaults`）。
+
 ## 0.9.22 — 2026-10-01
 
 **「誰ができるか」を、画面・ボタン・サーバで同じ1つの定義から決めるようにした。**

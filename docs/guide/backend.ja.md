@@ -51,6 +51,19 @@ const ts = toTypeScript(dto);                          // → interface のソ�
 const java = toJavaRecords(dto, { packageName: "com.example.dto" });  // → ファイル名→ソース
 ```
 
+## いつも掛ける条件（`search.fixed`）はサーバが足す
+
+定義の `search.fixed` に書いた条件（「取消は出さない」など）は、画面からは送られてきません。
+**`buildQuery` が毎回の問い合わせに必ず足す**ので、サーバは何もしなくても効きます（利用者が
+API を直接叩いても外せない）。Java の `QueryBuilder` も同じです。
+
+```ts
+buildQuery(page.search, params) // conditions の最後に fixed の条件が付く
+```
+
+`buildQuery` を通さずに自分で問い合わせを組んでいる所（Repository を直接実装した Flutter
+アプリなど）は、同じ条件を自分で当ててください。
+
 ## 並べ替えは「定義に書いてある名前」だけ
 
 `buildQuery` は**素性の知れない列名を SQL に入れません**。通るのは定義に書いてある
@@ -213,9 +226,9 @@ javac が通らなかった）。
 > **ここまでの範囲**: `DtoSpec` の導出（Phase 1）＋ JSON Schema（Phase 2）＋ OpenAPI 3.1（Phase 3）
 > ＋ ネイティブ型出力（Phase 4）。**DTO 生成は Phase 1〜4 で完了**です。
 > 既知の未対応: `options` → enum（Java の定義モデルに `options` が無いため）、
-> `master` / `detail` ページ（TS 版パーサが未サポート）、`operator: between` の配列の要素数
-> （`DtoSpec` が「between 由来」を保持しないため）、ファイル書き出しの CLI（出力は文字列で返す
-> ところまで。書き出しは利用者側のビルドに任せる）。いずれも提案書に記録済み。
+> `operator: between` の配列の要素数（`DtoSpec` が「between 由来」を保持しないため）。
+> いずれも提案書に記録済み（`master` / `detail` ページは TS 版でも読める。ファイルへの
+> 書き出しは `hatake types --out`）。
 
 ## 宣言どおり返っているか（`probe` / `attack`）
 

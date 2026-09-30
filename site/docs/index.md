@@ -1,11 +1,11 @@
 ---
 layout: home
-title: 業務画面を「定義」で作る
-titleTemplate: hatake — 宣言型の業務アプリフレームワーク
+title: 業務システムを「定義」で作る
+titleTemplate: hatake — 業務定義フレームワーク
 hero:
   name: hatake
-  text: 業務画面を「定義」で作る
-  tagline: 検索・一覧・CRUD・入力フォーム・帳票・ダッシュボード。UI コードではなく YAML を書く。Flutter は描画に使う実装技術であって、書く対象ではない。
+  text: 業務システムを「定義」で作る
+  tagline: 画面・サーバの検証・権限・API の形・設計書・試験まで、同じ1枚の定義から。UI コードではなく定義を書く（AI に書かせるのも定義）。Flutter / Vue / React は描画に使う実装技術であって、書く対象ではない。
   actions:
     - theme: brand
       text: 機能別の書き方
@@ -31,7 +31,9 @@ features:
   - title: バックエンドを選ばない
     details: Spring Boot / ASP.NET / Node / Laravel / Firebase / Supabase。Framework が知っているのは Repository のインタフェースだけ。
   - title: 描画は差し替えられる
-    details: Material3 で描く。Renderer は定義を描画するだけで業務ロジックを持たないので、Fluent や Cupertino に替えられる。
+    details: Flutter（Material3）・Vue 3・React 19 で同じ定義から同じ画面。Renderer は定義を描画するだけで業務ロジックを持たないので、Fluent や Cupertino にも替えられる。
+  - title: サーバも同じ定義で判断する
+    details: 検証・問い合わせ・権限（開ける画面・押せるボタン・見せる項目・受け取る項目）を、画面と同じ定義から Java / TypeScript で。画面とサーバで規則がずれない。
   - title: AI が書きやすい
     details: 仕様は機械可読（JSON Schema・キー索引・間違いカタログ）。MCP サーバ経由で、実装を読ませずに定義を書かせられる。
 ---

@@ -311,6 +311,22 @@ Every one of these is an **open string**: the built-ins below are what ships, an
 <!-- vocab: filter.operator -->
 `equals` `notEquals` `contains` `startsWith` `endsWith` `gt` `gte` `lt` `lte` `between` `in`
 
+### Search defaults and always-applied conditions
+
+```yaml context:search
+filters:
+  - { field: orderDate, label: Ordered, type: date, operator: between, defaultValue: $thisMonth }
+fixed:                                    # not shown, cannot be removed
+  - { field: cancelled, operator: notEquals, value: true }
+```
+
+`defaultValue` fills the search area and **the first list is loaded with it**
+(`$today` `$startOfMonth` `$endOfMonth` `$startOfYear` `$endOfYear`; for
+`between` also `$thisMonth` `$thisYear` or `[from, to]`). A shape that does not
+fit sets no default (`filter-default-unusable`). `fixed` is appended by the
+server's `buildQuery` (TS / Java); a Flutter app implementing Repository directly
+applies it itself.
+
 ### Form mode (`visibleWhen`, `enabledWhen`)
 <!-- vocab: condition.mode -->
 `create` `edit`
@@ -553,10 +569,14 @@ uses leaves it empty, and `validate` says so. Extensible via `ComputedRegistry`.
 * Values compare the loose way conditions do (`'1'` equals `1`).
 * Do not write both `options` and `optionsSource` (the fetched one wins; `validate` warns).
 * **Search filters (`search.filters`) take the same keys** with the same meaning (shared code). A range filter (`between`) holds two values, so it cannot be a parent.
+* **Copy from the picked row**: `optionsSource: { repository: productRepository, copy: { unitPrice: price } }` (`{ <field in this form>: <field of the row> }`; read-only fields and sub-table rows too; the server stays the source of truth).
+* **Look a name up in a column**: `{ field: dept, label: Dept, optionsSource: { repository: deptRepository } }` (list cells only; CSV, reports and the server keep the key).
 
 ## Roles (display gating only)
 
-Put `roles: [...]` on a `field`, `column` or `action` (empty or absent = everyone). In Flutter the current user's roles come from `HatakeScope(roles: {'admin'})`.
+Put `roles: [...]` on a `field`, `column`, `action` or **the page itself** (empty or absent = everyone). In Flutter the current user's roles come from `HatakeScope(roles: {'admin'})`.
+
+A page's `roles` hide the menu entries that lead to it and make the page refuse to render ("この画面を開く権限がありません") for anyone else. Built-in row edit / delete follow the `roles` of their declaration (looked up by `type`). Servers make the same decisions from the same definition: TS `canOpenPageIn` / `canRunActionIn` / `visibleRecordIn` / `acceptRecordIn`, Java `ServerAccess`.
 
 ```yaml context:field
 - { field: salary, label: Salary, roles: [hr, manager] }

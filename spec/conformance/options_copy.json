@@ -1,0 +1,35 @@
+{
+  "_comment": "選んだ選択肢から値を写す（copiedFrom。Dart / TS。サーバは写さないので Java は対象外）。copy は optionsSource.copy（{ このフォームの項目: 引いた行の項目 }）、row は選んだ選択肢の元の行、expected は写す値（項目名 → 値）。固定したいのは: (1) 書いた項目だけを写す（行のほかの項目は触らない）、(2) 行に**無い**項目は写さない（空で上書きしない＝入れてあった値を消さない）、(3) 行にあって値が null なら null を写す（在ることは分かっているので）、(4) 選んだ行が無い（選択を外した）ときは何も写さない。",
+  "cases": [
+    {
+      "name": "書いた項目だけ写す",
+      "copy": { "unitPrice": "price", "taxRate": "taxRate" },
+      "row": { "code": "P-1", "name": "りんご", "price": 120, "taxRate": 0.08, "stock": 30 },
+      "expected": { "unitPrice": 120, "taxRate": 0.08 }
+    },
+    {
+      "name": "行に無い項目は写さない（入れてあった値を消さない）",
+      "copy": { "unitPrice": "price", "note": "memo" },
+      "row": { "code": "P-2", "price": 300 },
+      "expected": { "unitPrice": 300 }
+    },
+    {
+      "name": "行にあって値が null なら null を写す",
+      "copy": { "discount": "discount" },
+      "row": { "code": "P-3", "discount": null },
+      "expected": { "discount": null }
+    },
+    {
+      "name": "選んだ行が無いときは何も写さない",
+      "copy": { "unitPrice": "price" },
+      "row": null,
+      "expected": {}
+    },
+    {
+      "name": "写す指定が無ければ何も写さない",
+      "copy": {},
+      "row": { "code": "P-1", "price": 120 },
+      "expected": {}
+    }
+  ]
+}

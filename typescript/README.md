@@ -11,7 +11,8 @@
 - **定義モデル + パーサ** … `spec/` と同じ DSL を YAML / JSON から読む（`parsePageYaml` / `parsePageJson` / `parseAppYaml`）。YAML と JSON は同じ結果に収束する（テスト済み）。対応ページ種別は `crud` / `master` / `search` / `detail` / `form` / `wizard` / `dashboard` / `report`。
 - **strict パース** … `parsePageYaml(source, { strict: true })` で**知らないキーを全部まとめて**エラーにする（近い既知キーの提案つき: `pagesize` → `pageSize`）。厳しさは JSON Schema と同一。
 - **FormValidator** … フォーム定義からサーバ側バリデーション。組込ルール（required / maxLength / minLength / min / max / pattern / email / postalCode / **compare**）＋ `ValidatorRegistry` で独自ルールも足せる。明細（`subTable`）の子行も検証（`lines[0].qty`）。`compare` は**項目間の検証**（「開始日 ≤ 終了日」「合計＝明細の和」）で、他の項目の値を見る唯一の組込。
-- **buildQuery** … 検索フィルタ定義 + リクエストの params から、フレームワーク非依存の `QuerySpec`（conditions / sort / pagination）を組み立てる。**フィルタに無い項目は無視（許可リスト方式）**なので、任意項目での検索を弾ける。
+- **buildQuery** … 検索フィルタ定義 + リクエストの params から、フレームワーク非依存の `QuerySpec`（conditions / sort / pagination）を組み立てる。**フィルタに無い項目は無視（許可リスト方式）**なので、任意項目での検索を弾ける。**いつも掛ける条件**（`search.fixed`）は毎回足す＝画面から外せない。並べ替えてよい列は `{ table: page.table }` で渡す。
+- **サーバの権限** … 画面と同じ定義で「開けるか・押せるか・見せる項目・受け取る項目」を決める（`canOpenPageIn` / `canRunActionIn` / `visibleRecordIn` / `acceptRecordIn`。素の定義と画面の id を受ける）。Java 版は `ServerAccess`。
 - **API の形の生成** … `deriveDto(page)` → `DtoSpec`、そこから `toJsonSchema`（JSON Schema 2020-12）／`toOpenApi`（OpenAPI 3.1）／`toTypeScript`・`toJavaRecords`（ネイティブ型）。
 - **出力** … `toCsv`（一覧・帳票の CSV）、`buildReport`（帳票をコントロールブレイクで紙に組む）。
 - **FormatterRegistry / ConverterRegistry / 集約 / 日本企業向けユーティリティ** … Flutter版と同名・同挙動。formatter（currency / percent / date / wareki / postal / mask）、converter（toHankaku / toZenkaku / hiraToKata / kataToHira / trim / collapseSpaces / parseNumber）、`AggregateRegistry`（count / sum / avg / min / max）、消費税・年度・和暦・営業日・年齢。
@@ -50,6 +51,7 @@ npx --package @hatake-fw/api hatake validate page.yaml
 ```
 
 ```bash
+npx hatake doctor                            # 案件の道具と版の足並み（固定した版・入っている版・定義・MCP）
 npx hatake check page.yaml                   # 1往復で1本（事実・読み返し・好み・人が決めること）
 npx hatake validate spec/examples/*.yaml     # 解析 + strict（既定）
 npx hatake new report --id sales_report --title 売上明細表 > page.yaml
@@ -906,6 +908,6 @@ CLI を試すときは `npm run build` してから `node dist/cli.js …`。
 
 ## これから
 
-`QuerySpec` を各 ORM に変換するアダプタ（opt-in・別パッケージ）、`detail` ページのレスポンス形の導出（今は読み取り専用なので request を出さない）あたり。UI 由来の項目（layout や描画ヒント）はバックエンドは無視する。コア本体はこの先もフレームワーク非依存を維持する。
+`QuerySpec` を各 ORM に変換するアダプタ（opt-in・別パッケージ）あたり（候補と優先度は[ロードマップ](../docs/roadmap.ja.md)）。UI 由来の項目（layout や描画ヒント）はバックエンドは無視する。コア本体はこの先もフレームワーク非依存を維持する。
 
 ライセンス: Apache-2.0

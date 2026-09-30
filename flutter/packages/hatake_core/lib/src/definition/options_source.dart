@@ -23,14 +23,20 @@ class OptionsSource extends Equatable {
   /// Rows to fetch (a select is not a list screen).
   final int limit;
 
+  /// 選んだときに写す項目（`{ このフォームの項目: 引いた行の項目 }`）。
+  /// 写し方は [copiedFrom]。
+  final Map<String, String> copy;
+
   const OptionsSource({
     required this.repository,
     this.value = 'code',
     this.label = 'name',
     this.parentKey,
     this.limit = 200,
+    this.copy = const {},
   });
 
   @override
-  List<Object?> get props => [repository, value, label, parentKey, limit];
+  List<Object?> get props =>
+      [repository, value, label, parentKey, limit, copy];
 }

@@ -1,6 +1,6 @@
 {
   "$comment": "**約束する面**（Dart）。1.0 のあとは、ここから消さない・名前を変えない・形を変えない。数えているのは配るパッケージの公開エントリ（lib/<名前>.dart）から辿れる名前で、hatake_example は入れていない（デモなので約束しない）。作り直し方は flutter/packages/hatake_core/test/public_api_test.dart の頭。",
-  "count": 306,
+  "count": 309,
   "packages": {
     "hatake": [
       "ActionContext",
@@ -98,6 +98,7 @@
       "FieldTypes",
       "FilterDefinition",
       "FilterOperators",
+      "FixedCondition",
       "FormDefinition",
       "FormNormalizer",
       "FormPageDefinition",
@@ -183,11 +184,13 @@
       "computeInvoice",
       "computeTax",
       "conditionFieldNames",
+      "copiedFrom",
       "defaultValidationMessages",
       "dslVersionMessage",
       "eraOf",
       "eras",
       "evaluateCondition",
+      "filterDefaults",
       "fiscalHalf",
       "fiscalQuarter",
       "fiscalYear",

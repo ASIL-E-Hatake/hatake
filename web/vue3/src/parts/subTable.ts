@@ -1,9 +1,10 @@
 import { FormatterRegistry } from "@hatake-fw/api";
 import { cellText, isAllowed } from "@hatake-fw/api/internal";
 import type { FieldDefinition } from "@hatake-fw/api/internal";
-import type { DataRecord } from "@hatake-fw/runtime";
+import { type DataRecord, OptionsFetcher } from "@hatake-fw/runtime";
 import { defineComponent, h, type PropType } from "vue";
 
+import { useRegistries } from "../scope.js";
 import { HatakeField } from "./field.js";
 
 /**
@@ -31,6 +32,9 @@ export const HatakeSubTable = defineComponent({
     change: (_field: string, _rows: readonly DataRecord[]) => true,
   },
   setup(props, { emit }) {
+    // 明細の欄は行の数だけ並ぶので、選択肢の取り寄せは表で1つを共有する
+    // （行の数だけ同じ一覧を引かない）。
+    const fetcher = new OptionsFetcher(useRegistries().repositories);
     return () => {
       const one = props.field;
       const columns = one.columns.filter((column) => isAllowed(column.roles, props.roles));
@@ -89,9 +93,10 @@ export const HatakeSubTable = defineComponent({
                     h(HatakeField, {
                       field: { ...input, label: "" },
                       record: row,
-                      onChange: (name: string, value: unknown) => {
+                      fetcher,
+                      onChange: (name: string, value: unknown, copied?: Readonly<Record<string, unknown>>) => {
                         const next = [...rows];
-                        next[at] = { ...row, [name]: value };
+                        next[at] = { ...row, ...copied, [name]: value };
                         send(next);
                       },
                     }),

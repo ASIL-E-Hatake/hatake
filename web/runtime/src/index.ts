@@ -108,3 +108,4 @@ export {
 
 // ── 変わったと伝える土台（Renderer が購読する） ────────────────
 export { Notifier, type Unsubscribe } from "./notifier.js";
+export { OptionsFetcher, type OptionsOwnerLike } from "./optionsFetcher.js";

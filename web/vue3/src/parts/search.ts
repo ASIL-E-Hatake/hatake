@@ -1,8 +1,9 @@
 import type { FilterDefinition, SearchDefinition } from "@hatake-fw/api";
-import { FieldTypes, pagerView, visibleOptions } from "@hatake-fw/api/internal";
-import type { DataRecord } from "@hatake-fw/runtime";
+import { FieldTypes, filterDefaults, pagerView } from "@hatake-fw/api/internal";
+import { type DataRecord, OptionsFetcher } from "@hatake-fw/runtime";
 import { defineComponent, h, ref, type PropType } from "vue";
 
+import { touch, useController, useRegistries } from "../scope.js";
 import { icon } from "./icon.js";
 
 /**
@@ -20,9 +21,15 @@ export const HatakeSearch = defineComponent({
     search: (_values: DataRecord) => true,
   },
   setup(props, { emit }) {
-    const values = ref<DataRecord>({});
+    // 既定値（`filter.defaultValue`）で埋めて始める。一覧の最初の読み込みも同じ値
+    // （`filterDefaults`）なので、入力欄と一覧が食い違わない。
+    const values = ref<DataRecord>(filterDefaults(props.search));
+    // 選択肢の取り寄せ（`optionsSource`）。入力フォームと同じ規則（Flutter と同じ）。
+    const fetcher = new OptionsFetcher(useRegistries().repositories);
+    const { version } = useController(fetcher);
 
     return () => {
+      touch(version);
       const search = props.search;
       if (search === undefined || search.filters.length === 0) return null;
 
@@ -45,7 +52,7 @@ export const HatakeSearch = defineComponent({
           },
         },
         [
-          ...search.filters.map((one) => filter(one, values.value, (next) => {
+          ...search.filters.map((one) => filter(one, values.value, fetcher, (next) => {
             values.value = { ...values.value, [one.field]: next };
           })),
           h(
@@ -59,11 +66,54 @@ export const HatakeSearch = defineComponent({
   },
 });
 
+/** 1つの入力欄（範囲の片側にも使う）。 */
+function input(
+  one: FilterDefinition,
+  value: unknown,
+  mark: string,
+  id: string,
+  send: (next: unknown) => void,
+): ReturnType<typeof h> {
+  return h("input", {
+    id,
+    "data-hatake": mark,
+    placeholder: one.label,
+    type: one.type === FieldTypes.number ? "number" : one.type === FieldTypes.date ? "date" : "text",
+    value: value === undefined || value === null ? "" : String(value),
+    onInput: (event: Event) => {
+      const raw = (event.target as HTMLInputElement).value;
+      send(raw === "" ? null : one.type === FieldTypes.number ? Number(raw) : raw);
+    },
+  });
+}
+
+/**
+ * 範囲（`between`）。「から」「まで」の2つの欄で、値は `[from, to]`（Flutter と同じ）。
+ * 両方とも空なら条件にしない。
+ */
+function range(one: FilterDefinition, values: DataRecord, send: (next: unknown) => void): ReturnType<typeof h> {
+  const pair = Array.isArray(values[one.field]) ? (values[one.field] as unknown[]) : [null, null];
+  const put = (at: 0 | 1) => (next: unknown) => {
+    const both = at === 0 ? [next, pair[1] ?? null] : [pair[0] ?? null, next];
+    send(both[0] === null && both[1] === null ? null : both);
+  };
+  return h("div", { class: "hatake-field" }, [
+    h("label", { class: "hatake-field-label", for: `hatake-filter-${one.field}-from` }, one.label),
+    h("div", { class: "hatake-range" }, [
+      input(one, pair[0], `filter:${one.field}:from`, `hatake-filter-${one.field}-from`, put(0)),
+      h("span", { class: "hatake-range-sep" }, "〜"),
+      input(one, pair[1], `filter:${one.field}:to`, `hatake-filter-${one.field}-to`, put(1)),
+    ]),
+  ]);
+}
+
 function filter(
   one: FilterDefinition,
   values: DataRecord,
+  fetcher: OptionsFetcher,
   send: (next: unknown) => void,
 ): ReturnType<typeof h> {
+  if (one.operator === "between") return range(one, values, send);
   const value = values[one.field];
   const text = value === undefined || value === null ? "" : String(value);
   const shared = {
@@ -81,13 +131,13 @@ function filter(
             value: text,
             onChange: (event: Event) => {
               const picked = (event.target as HTMLSelectElement).value;
-              const options = visibleOptions(one, values);
+              const options = fetcher.optionsFor(one, values);
               send(options.find((option) => String(option.value) === picked)?.value ?? null);
             },
           },
           [
             h("option", { value: "" }, "—"),
-            ...visibleOptions(one, values).map((option) =>
+            ...fetcher.optionsFor(one, values).map((option) =>
               h("option", { value: String(option.value) }, option.label),
             ),
           ],

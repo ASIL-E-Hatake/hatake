@@ -12,6 +12,8 @@ description: フレームワーク拡張の役割で作業する（実装・spec
 - 実装 → `spec/` 更新 → 例／pitfall → **`docs/site/topics.json` に1件追記** →
   `site/prose/<section>/<id>.ja.md` に散文、の順で、途中で止めない。
 - 生成物（`site/docs/dsl/` `site/docs/partials/` `site/docs/public/`）は手で編集しない。
+- 読み物（README・手引き・DSL 仕様の日英・llms.txt・CHANGELOG）は CLAUDE.md「読み物の更新」の
+  手順で漏れなく直す（`node typescript/tool/readings.mjs` が 0 件になるまで）。
 - 終わったら `cd site && node tools/check-coverage.mjs` / `node tools/site-todo.mjs` /
   `npm run build` が通ることを確認する（未執筆ゼロで終わる）。
 

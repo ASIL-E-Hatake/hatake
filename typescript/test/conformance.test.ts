@@ -76,6 +76,8 @@ describe("conformance: queries", () => {
           options: [],
           config: {},
         })),
+        // いつも掛ける条件（`search.fixed`）。書いてあるケースだけ。
+        fixed: c.fixed,
       };
       // `table` が書いてあるケースは、**定義に書いた sortable な列でも並べ替えられる**
       // ことを見る（渡さないケースは今までどおり＝絞り込みの項目だけ）。

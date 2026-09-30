@@ -3,9 +3,11 @@ import 'package:equatable/equatable.dart';
 import 'column_types.dart';
 import 'displayed.dart';
 import 'option_item.dart';
+import 'options_owner.dart';
+import 'options_source.dart';
 
 /// A single column in a data table.
-class ColumnDefinition extends Equatable implements Displayed {
+class ColumnDefinition extends Equatable implements Displayed, OptionsOwner {
   /// The backing data key rendered in this column.
   @override
   final String field;
@@ -42,6 +44,15 @@ class ColumnDefinition extends Equatable implements Displayed {
   @override
   final List<OptionItem> options;
 
+  /// キーから**別の Repository の名前**を引いて見せる（部署コード → 部署名）。
+  /// 一覧の画面が1回だけ引いて、引いた選択肢で升の字を決める（[withOptions]）。
+  @override
+  final OptionsSource? optionsSource;
+
+  /// 列は親の値で絞らない（引くのは一覧に出すための名前の表）。
+  @override
+  String? get optionsFrom => null;
+
   const ColumnDefinition({
     required this.field,
     required this.label,
@@ -52,9 +63,34 @@ class ColumnDefinition extends Equatable implements Displayed {
     this.config = const {},
     this.roles = const [],
     this.options = const [],
+    this.optionsSource,
   });
 
+  /// 選択肢だけを差し替えた列（引いた名前の表で升を描くとき）。
+  ColumnDefinition withOptions(List<OptionItem> options) => ColumnDefinition(
+        field: field,
+        label: label,
+        type: type,
+        width: width,
+        sortable: sortable,
+        format: format,
+        config: config,
+        roles: roles,
+        options: options,
+        optionsSource: optionsSource,
+      );
+
   @override
-  List<Object?> get props =>
-      [field, label, type, width, sortable, format, config, roles, options];
+  List<Object?> get props => [
+        field,
+        label,
+        type,
+        width,
+        sortable,
+        format,
+        config,
+        roles,
+        options,
+        optionsSource,
+      ];
 }

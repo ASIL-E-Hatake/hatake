@@ -36,6 +36,15 @@ export class FakeRepository implements Repository {
       Object.entries(query.filters).every(([field, wanted]) => {
         if (wanted === undefined || wanted === null || wanted === "") return true;
         const value = row[field];
+        // 範囲（`between`）は `[from, to]` で届く（片方は null でよい）。両端を含む。
+        if (Array.isArray(wanted) && wanted.length === 2) {
+          const [from, to] = wanted as unknown[];
+          const past = (a: unknown, b: unknown): boolean =>
+            typeof a === "number" && typeof b === "number" ? a > b : String(a) > String(b);
+          if (from !== null && from !== undefined && from !== "" && past(from, value)) return false;
+          if (to !== null && to !== undefined && to !== "" && past(value, to)) return false;
+          return value !== null && value !== undefined;
+        }
         if (typeof wanted === "string" && typeof value === "string") {
           return value.includes(wanted);
         }

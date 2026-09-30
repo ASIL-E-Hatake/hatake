@@ -733,6 +733,15 @@
           "required": false,
           "description": "Roles allowed to see this item/action. Empty or absent = everyone. UI-level display gating only, not access enforcement.",
           "items": "string"
+        },
+        {
+          "key": "optionsSource",
+          "type": "object",
+          "required": false,
+          "description": "Show the name behind a key by looking it up in another repository (e.g. a department code shown as the department name). The list screens fetch up to `limit` rows once and label cells with them; a key not among them is shown as is. CSV, reports and the server keep the raw value.",
+          "nodes": [
+            "optionsSource"
+          ]
         }
       ]
     },
@@ -1895,6 +1904,54 @@
           "nodes": [
             "config"
           ]
+        },
+        {
+          "key": "defaultValue",
+          "type": "any",
+          "required": false,
+          "description": "Initial value of this filter (the first list is loaded with it too; the user can clear it). A `between` filter takes `[from, to]`. Dates may use relative words resolved on the client's today: `$today`, `$startOfMonth`, `$endOfMonth`, `$startOfYear`, `$endOfYear`, and for `between` only `$thisMonth` / `$thisYear` (a whole range). Not applied by the server.",
+          "values": [
+            "active",
+            "$today",
+            "$startOfMonth,$today",
+            "$thisMonth"
+          ],
+          "open": true
+        }
+      ]
+    },
+    "fixedCondition": {
+      "description": "One always-applied condition (`search.fixed`).",
+      "closed": true,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "master",
+        "report",
+        "search"
+      ],
+      "parents": [
+        "search"
+      ],
+      "keys": [
+        {
+          "key": "field",
+          "type": "string",
+          "required": true,
+          "description": "Backing data key."
+        },
+        {
+          "key": "operator",
+          "type": "string",
+          "required": false,
+          "description": "Match operator (same open vocabulary as a filter's operator).",
+          "default": "equals"
+        },
+        {
+          "key": "value",
+          "type": "any",
+          "required": true,
+          "description": "The value to match."
         }
       ]
     },
@@ -2313,6 +2370,7 @@
         "wizard"
       ],
       "parents": [
+        "column",
         "field",
         "filter"
       ],
@@ -2350,8 +2408,35 @@
           "description": "Rows to fetch (a select is not a list screen).",
           "default": 200,
           "minimum": 1
+        },
+        {
+          "key": "copy",
+          "type": "object",
+          "required": false,
+          "description": "When a choice is picked, copy fields of the fetched row into the record: `{ <field in this form>: <field of the row> }` (e.g. `{ unitPrice: price, taxRate: taxRate }`). Works in sub-table rows too. The server stays the source of truth for such values and may overwrite them.",
+          "nodes": [
+            "optionsSource.copy"
+          ]
         }
       ]
+    },
+    "optionsSource.copy": {
+      "description": "When a choice is picked, copy fields of the fetched row into the record: `{ <field in this form>: <field of the row> }` (e.g. `{ unitPrice: price, taxRate: taxRate }`). Works in sub-table rows too. The server stays the source of truth for such values and may overwrite them.",
+      "closed": false,
+      "pageKinds": [
+        "crud",
+        "dashboard",
+        "detail",
+        "form",
+        "master",
+        "report",
+        "search",
+        "wizard"
+      ],
+      "parents": [
+        "optionsSource"
+      ],
+      "keys": []
     },
     "pagination": {
       "closed": true,
@@ -2680,6 +2765,15 @@
           "required": false,
           "nodes": [
             "filter"
+          ]
+        },
+        {
+          "key": "fixed",
+          "type": "array",
+          "required": false,
+          "description": "Conditions always applied to this page's query and not shown on screen. The server's buildQuery (TS / Java) adds them to every query, so the screen cannot remove them. A Flutter app that implements Repository directly (no buildQuery) must apply them itself.",
+          "nodes": [
+            "fixedCondition"
           ]
         }
       ]
@@ -3282,6 +3376,9 @@
     "confirm": [
       "action"
     ],
+    "copy": [
+      "optionsSource"
+    ],
     "danger": [
       "confirm"
     ],
@@ -3290,7 +3387,8 @@
       "maxRows"
     ],
     "defaultValue": [
-      "field"
+      "field",
+      "filter"
     ],
     "density": [
       "theme"
@@ -3317,6 +3415,7 @@
       "field.computed",
       "field.computed.sort",
       "filter",
+      "fixedCondition",
       "report.sort",
       "reportGroup",
       "reportTotal"
@@ -3330,6 +3429,9 @@
     ],
     "filters": [
       "dashboardItem",
+      "search"
+    ],
+    "fixed": [
       "search"
     ],
     "fontFamily": [
@@ -3462,7 +3564,8 @@
     ],
     "operator": [
       "condition",
-      "filter"
+      "filter",
+      "fixedCondition"
     ],
     "options": [
       "field",
@@ -3479,6 +3582,7 @@
       "filter"
     ],
     "optionsSource": [
+      "column",
       "field",
       "filter"
     ],
@@ -3669,6 +3773,7 @@
     "value": [
       "condition",
       "dashboardItem",
+      "fixedCondition",
       "option",
       "optionsSource"
     ],

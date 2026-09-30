@@ -2,6 +2,7 @@ import { FormValidator, type ValidationResult } from "@hatake-fw/api";
 import {
   ConditionModes,
   type CrudPageDefinition,
+  filterDefaults,
   formFields,
   type MasterPageDefinition,
   normalizeRecord,
@@ -46,11 +47,15 @@ export class CrudController extends ListController {
     definition: CrudLike;
     repository: Repository;
     validator?: FormValidator;
+    /** その日（試験で日を決めるため。省略すると今日）。検索欄の既定値を解くのに使う。 */
+    today?: Date;
   }) {
     super({
       repository: options.repository,
       pageSize: options.definition.table.pagination.pageSize,
       keyFields: options.definition.keyFields,
+      // 最初の一覧は検索欄の既定値（`filter.defaultValue`）で読む。
+      filters: filterDefaults(options.definition.search, options.today ?? new Date()),
     });
     this.definition = options.definition;
     this._validator = options.validator ?? new FormValidator();

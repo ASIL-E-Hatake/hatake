@@ -411,6 +411,14 @@ function parseSearch(m: Dict | undefined): SearchDefinition | undefined {
     filters: optList(m, "filters").map((f, i) =>
       parseFilter(asDict(f, `page.search.filters[${i}]`)),
     ),
+    fixed: optList(m, "fixed").map((f, i) => {
+      const one = asDict(f, `page.search.fixed[${i}]`);
+      return {
+        field: reqString(one, "field", `page.search.fixed[${i}].field`),
+        operator: optString(one, "operator") ?? "equals",
+        value: one.value,
+      };
+    }),
   };
 }
 
@@ -424,6 +432,7 @@ function parseFilter(m: Dict): FilterDefinition {
     optionsFrom: optString(m, "optionsFrom"),
     optionsSource: parseOptionsSource(optDict(m, "optionsSource")),
     config: optDict(m, "config") ?? {},
+    ...(m.defaultValue === undefined ? {} : { defaultValue: m.defaultValue }),
   };
 }
 
@@ -458,6 +467,9 @@ function parseColumn(m: Dict): ColumnDefinition {
     // （Flutter は出していたので、版で字が違っていた）。
     options: parseOptions(optList(m, "options")),
     roles: optList(m, "roles").map(String),
+    ...(optDict(m, "optionsSource") === undefined
+      ? {}
+      : { optionsSource: parseOptionsSource(optDict(m, "optionsSource")) }),
   };
 }
 
@@ -566,6 +578,11 @@ function parseOptionsSource(m: Dict | undefined): OptionsSource | undefined {
     label: optString(m, "label") ?? "name",
     parentKey: optString(m, "parentKey"),
     limit: optNumber(m, "limit") ?? 200,
+    copy: Object.fromEntries(
+      Object.entries(optDict(m, "copy") ?? {}).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    ),
   };
 }
 

@@ -15,15 +15,18 @@ class DashboardController extends ChangeNotifier {
   final RepositoryRegistry repositories;
   final AggregateRegistry aggregates;
 
+  /// カードは最初から検索欄の既定値（`filter.defaultValue`）で読む（「今月」など）。
   DashboardController({
     required this.definition,
     required this.repositories,
     AggregateRegistry? aggregates,
-  }) : aggregates = aggregates ?? AggregateRegistry();
+    DateTime? today,
+  })  : aggregates = aggregates ?? AggregateRegistry(),
+        _filters = filterDefaults(definition.search, today ?? DateTime.now());
 
   final Map<String, DashboardItemState> _states = {};
 
-  Map<String, Object?> _filters = const {};
+  Map<String, Object?> _filters;
 
   /// Filter values currently applied to every card.
   Map<String, Object?> get filters => _filters;

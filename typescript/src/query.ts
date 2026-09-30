@@ -87,6 +87,11 @@ export function buildQuery(
     if (isEmpty(raw)) continue;
     conditions.push({ field: f.field, operator: f.operator, value: coerce(raw, f.type) });
   }
+  // **いつも掛ける条件**（`search.fixed`）。画面は送ってこない＝利用者が外せない所。
+  // 並べ替えの名前には入れない（絞る条件であって、並べる列ではない）。
+  for (const f of search?.fixed ?? []) {
+    conditions.push({ field: f.field, operator: f.operator, value: f.value });
+  }
 
   const sf = params["sortField"];
   const sortField =

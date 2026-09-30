@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.23
+
+- 追加: `filter.defaultValue` / `search.fixed` / `optionsSource.copy` / 列の `optionsSource` を読む
+  （strict のキー表にも足した）。
+
 ## 0.9.22
 
 - 追加: 画面の `roles` を読む（strict のキー表にも足した）。

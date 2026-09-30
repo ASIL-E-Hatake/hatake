@@ -289,6 +289,22 @@
   background: color-mix(in srgb, var(--hatake-color-text) 4%, transparent);
 }
 
+/* 範囲（between）の絞り込み。「から」「まで」の2つの欄を1枠に並べる。 */
+.hatake-range {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--hatake-space) * 0.5);
+}
+
+.hatake-range input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.hatake-range-sep {
+  color: var(--hatake-color-muted);
+}
+
 .hatake-table-empty {
   color: var(--hatake-color-muted);
   padding: calc(var(--hatake-space) * 3);

@@ -8,8 +8,10 @@
 // 依存は増やさない: 引数解析も出力も手書き。CLI が npm の流行に引きずられると、
 // 「業務システムを10年動かす」側の都合と合わなくなる。
 
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { parse as parseYamlText } from "yaml";
+import { doctor, doctorLines } from "./doctor.js";
 import { fetchSend, type HttpSend } from "./httpProbe.js";
 import { loginFetch, type LoginSend } from "./loginRun.js";
 import { type Args, collectionOverrides, str } from "./cliArgs.js";
@@ -283,7 +285,7 @@ import { toJavaRecords, toTypeScript } from "./types.js";
 export { type Args, str } from "./cliArgs.js";
 export { type CliIo, nodeIo } from "./cliIo.js";
 
-const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
+const USAGE = `hatake — 業務定義フレームワークの CLI
 
 使い方:
   hatake validate <file...> [--no-strict] [--json] [--no-warn] [--warn-as-error]
@@ -296,6 +298,13 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
       定義の隣の hatake-registry.json があれば拾う。
       一覧に roles（アプリが配りうる役割）が在れば、**定義にしか無い役割**も言う
       ＝その役割で出し分けている列やボタンは誰にも見えない。
+
+  hatake doctor [<案件の根>] [--json]
+      **案件の道具と版の足並み**を1回で見る（定義の中身は check の担当）。固定した版
+      （package.json / pubspec.yaml / build.gradle / hatake.version）がそろっているか・
+      実際に入っている版（node_modules / pubspec.lock）が固定した版と同じか（手元の
+      古い node_modules を焼き直しで持ち込む、を見つける）・定義の dsl_version・警告の
+      数・MCP の設定。Java の依存は解かない（固定した版だけ見る）。食い違いがあれば 1。
 
   hatake check <file> [--page id] [--json] [--registry file] [--project file]
               [--warn-as-error] [--no-explain] [--no-advise] [--no-ask]
@@ -870,7 +879,17 @@ const USAGE = `hatake — 定義ファースト UI フレームワークの CLI
 
 終了コード: 問題があれば 1、無ければ 0。`;
 
-const VERSION = "0.0.1";
+/**
+ * 道具の版＝配っている `@hatake-fw/api` の版（package.json から読む）。0.9.22 まで
+ * `0.0.1` と決め打ちで、`--version` が何も言っていなかった。
+ */
+const VERSION: string = (() => {
+  try {
+    return (createRequire(import.meta.url)("../package.json") as { version: string }).version;
+  } catch {
+    return "unknown";
+  }
+})();
 
 
 /**
@@ -963,6 +982,12 @@ export function parseArgs(argv: string[]): Args {
 export function runCli(argv: string[], io: CliIo = nodeIo): number {
   const { command, positional, flags } = parseArgs(argv);
 
+  // 版を先に見る。0.9.22 までは「命令が無い」が先に効いて、`hatake --version` が
+  // 使い方を出して 1 で終わっていた（版は一度も出ていなかった）。
+  if (flags.version === true && command === undefined) {
+    io.out(VERSION);
+    return 0;
+  }
   if (flags.help === true || flags.h === true || command === undefined) {
     io.out(USAGE);
     return command === undefined && flags.help !== true && flags.h !== true
@@ -980,6 +1005,8 @@ export function runCli(argv: string[], io: CliIo = nodeIo): number {
         return validate(positional, flags, io);
       case "check":
         return check(positional, flags, io);
+      case "doctor":
+        return doctorCommand(positional, flags, io);
       case "run":
         return run(positional, flags, io);
       case "fixtures":
@@ -1158,6 +1185,22 @@ function validate(files: string[], flags: Args["flags"], io: CliIo): number {
  *
  * 終了コードは `validate` と同じ＝**事実の欄だけ**が動かす。
  */
+function doctorCommand(dirs: string[], flags: Args["flags"], io: CliIo): number {
+  const listDir = io.listDir;
+  if (listDir === undefined) {
+    io.err("この入口ではディレクトリを歩けないので、doctor は使えません。");
+    return 1;
+  }
+  const report = doctor(
+    { readFile: (path) => io.readFile(path), listDir: (path) => listDir(path) },
+    dirs[0] ?? ".",
+    { version: VERSION, node: typeof process === "undefined" ? undefined : process.versions.node },
+  );
+  if (flags.json === true) io.out(JSON.stringify(report, null, 2));
+  else for (const line of doctorLines(report)) io.out(line);
+  return report.findings.some((one) => one.level === "fail") ? 1 : 0;
+}
+
 function check(files: string[], flags: Args["flags"], io: CliIo): number {
   if (files.length !== 1) {
     io.err("見る定義ファイルを1つ指定してください。");

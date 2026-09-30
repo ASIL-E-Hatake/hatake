@@ -234,9 +234,10 @@ export function explainPage(
   if ("search" in page && page.search !== undefined) {
     sections.push({
       title: v.filters,
-      lines: page.search.filters.map((filter) =>
-        describeFilter(filter, vocabulary, lang),
-      ),
+      lines: [
+        ...page.search.filters.map((filter) => describeFilter(filter, vocabulary, lang)),
+        ...(page.search.fixed ?? []).map((one) => describeFixed(one, vocabulary, lang)),
+      ],
     });
   }
   if ("table" in page) sections.push(describeTable(page, lang));
@@ -348,7 +349,41 @@ function describeFilter(
     filter.optionsSource !== undefined
       ? v.clause(v.choicesFrom(filter.optionsSource.repository))
       : "";
-  return v.subject(filter.label, `${operator}${options}${linked}${fetched}`);
+  // 既定値（業務側が「最初から全件出るのか」を読めるように）。語は人の言葉にする。
+  const said = (one: unknown): string => {
+    if (one === null || one === undefined) return "";
+    if (typeof one === "string" && one.startsWith("$")) return v.relativeDay(one);
+    const option = filter.options.find((o) => o.value === one);
+    return option?.label ?? String(one);
+  };
+  const initial =
+    filter.defaultValue === undefined || filter.defaultValue === null
+      ? ""
+      : v.clause(
+          v.startsAs(
+            Array.isArray(filter.defaultValue)
+              ? filter.operator === "between"
+                ? `${said(filter.defaultValue[0])} 〜 ${said(filter.defaultValue[1])}`.trim()
+                : filter.defaultValue.map(said).join(" / ")
+              : said(filter.defaultValue),
+          ),
+        );
+  return v.subject(filter.label, `${operator}${options}${linked}${fetched}${initial}`);
+}
+
+/** いつも掛ける条件（`search.fixed`）の1行。 */
+function describeFixed(
+  fixed: { field: string; operator: string; value: unknown },
+  vocabulary: Vocabulary,
+  lang: Lang,
+): string {
+  const v = voice(lang);
+  // 言い回しは条件の表（`visibleWhen` と同じ）から採る。末尾の「とき」は落として「ものだけ」に繋ぐ。
+  const template =
+    wordOf(CONDITION_OPERATORS, fixed.operator, lang) ??
+    (lang === "ja" ? `が {value}（${fixed.operator}）のとき` : `${fixed.operator} {value}`);
+  const condition = template.replace("{value}", String(fixed.value)).replace(/とき$/, "");
+  return v.alwaysOnly(vocabulary.labels.get(fixed.field) ?? fixed.field, condition);
 }
 
 function describeTable(
@@ -373,6 +408,7 @@ function describeTable(
             ),
           ]),
       ...(column.sortable ? [v.sortable] : []),
+      ...(column.optionsSource === undefined ? [] : [v.namesFrom(column.optionsSource.repository)]),
     ];
     return notes.length === 0 ? column.label : v.notesOf(column.label, notes);
   });
@@ -456,6 +492,10 @@ function describeField(
   }
   if (field.optionsSource !== undefined) {
     notes.push(v.choicesFrom(field.optionsSource.repository));
+    const copied = Object.keys(field.optionsSource.copy ?? {});
+    if (copied.length > 0) {
+      notes.push(v.copiesToo(copied.map((name) => vocabulary.labels.get(name) ?? name)));
+    }
   }
   const rules = field.validators
     .map((rule) => describeValidator(rule, vocabulary, lang))

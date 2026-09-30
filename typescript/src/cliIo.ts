@@ -26,6 +26,11 @@ export interface CliIo {
    */
   listFiles(path: string): string[] | null;
   /**
+   * ディレクトリの中を**1段だけ**（`doctor` が node_modules などを避けて歩くため）。
+   * ディレクトリでなければ null。無い入口では `doctor` だけが使えない。
+   */
+  listDir?(path: string): { name: string; dir: boolean }[] | null;
+  /**
    * 環境変数（`--login` の中の `${…}` を埋めるため）。
    *
    * 渡さなければ**空**として扱う（試験から本物の環境が混ざらないように）。秘密を
@@ -58,6 +63,13 @@ export const nodeIo: CliIo = {
       maxBuffer: 32 * 1024 * 1024,
       stdio: ["ignore", "pipe", "pipe"],
     }),
+  listDir: (path) => {
+    if (!existsSync(path) || !statSync(path).isDirectory()) return null;
+    return readdirSync(path, { withFileTypes: true }).map((entry) => ({
+      name: entry.name,
+      dir: entry.isDirectory(),
+    }));
+  },
   listFiles: (path) => {
     if (!existsSync(path) || !statSync(path).isDirectory()) return null;
     const found: string[] = [];

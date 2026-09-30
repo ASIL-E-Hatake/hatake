@@ -31,6 +31,8 @@ class _HatakeSearchViewState extends State<HatakeSearchView> {
     final controller = ListController(
       repository: repository,
       pageSize: widget.definition.table.pagination.pageSize,
+      // 最初の一覧も検索欄の既定値で読む（入力欄だけ埋まって一覧は全件、にしない）。
+      initialFilters: filterDefaults(widget.definition.search, DateTime.now()),
     );
     controller.init();
     return controller;

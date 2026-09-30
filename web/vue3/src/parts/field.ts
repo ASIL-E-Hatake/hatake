@@ -1,11 +1,14 @@
 import type { FieldDefinition, ValidationError } from "@hatake-fw/api";
 import {
+  copiedFrom,
   evaluateCondition,
   FieldTypes,
-  visibleOptions,
+  type OptionItem,
 } from "@hatake-fw/api/internal";
-import type { DataRecord } from "@hatake-fw/runtime";
+import { type DataRecord, OptionsFetcher } from "@hatake-fw/runtime";
 import { defineComponent, h, type PropType, type VNode } from "vue";
+
+import { touch, useController, useRegistries } from "../scope.js";
 
 /**
  * 項目1つ。**何を出すか・いつ読み取り専用か・必須かは、全部定義が決める。**
@@ -25,12 +28,25 @@ export const HatakeField = defineComponent({
     /** `{ mode: create }` の判定に渡す値（controller の `formMode`）。 */
     mode: { type: String, default: undefined },
     disabled: { type: Boolean, default: false },
+    /**
+     * 選択肢の取り寄せ（`optionsSource`）。明細のように同じ欄が何行も並ぶ所は、表で1つを
+     * 渡して共有する（行の数だけ同じ一覧を引かない）。渡さなければ自分で持つ。
+     */
+    fetcher: { type: Object as PropType<OptionsFetcher>, default: undefined },
   },
   emits: {
-    change: (_field: string, _value: unknown) => true,
+    /**
+     * [copied] は選んだ選択肢から写した値（`optionsSource.copy`）。**本体と一緒に1回で**
+     * 渡す＝受け手は両方を一度に当てる（2回に分けると、明細の行では先の値が消える）。
+     */
+    change: (_field: string, _value: unknown, _copied?: Readonly<Record<string, unknown>>) => true,
   },
   setup(props, { emit }) {
+    const registries = useRegistries();
+    const fetcher = props.fetcher ?? new OptionsFetcher(registries.repositories);
+    const { version } = useController(fetcher);
     return () => {
+      touch(version);
       const one = props.field;
 
       // **隠れている項目は描かない。** 検証も「この画面に無いもの」として扱うので、
@@ -70,6 +86,14 @@ export const HatakeField = defineComponent({
       };
 
       const send = (next: unknown): void => emit("change", one.field, next);
+      // 選んだら、書いてあれば元の行から写す（単価・税率など）。写し方は `copiedFrom`。
+      const pick = (next: unknown): void => {
+        const source = one.optionsSource;
+        const copied =
+          source === undefined ? {} : copiedFrom(source, fetcher.rowFor(one, props.record, next));
+        emit("change", one.field, next, copied);
+      };
+      const options = (): OptionItem[] => fetcher.optionsFor(one, props.record);
 
       return h(
         "div",
@@ -89,7 +113,7 @@ export const HatakeField = defineComponent({
             },
             one.label,
           ),
-          input(one, value, shared, send, props.record),
+          input(one, value, shared, send, pick, options),
           ...mine.map((error) =>
             h("span", { class: "hatake-field-message", "data-hatake": `error:${one.field}` }, error.message),
           ),
@@ -105,7 +129,8 @@ function input(
   value: unknown,
   shared: Record<string, unknown>,
   send: (next: unknown) => void,
-  record: DataRecord,
+  pick: (next: unknown) => void,
+  choices: () => OptionItem[],
 ): VNode {
   const text = value === undefined || value === null ? "" : String(value);
 
@@ -140,8 +165,9 @@ function input(
 
     case FieldTypes.select:
     case FieldTypes.radio: {
-      // **選択肢は親の値で絞る**（`optionsFrom` の連動）。絞り方は定義側の1か所。
-      const options = visibleOptions(one, record);
+      // **選択肢は親の値で絞る**（`optionsFrom` の連動）。絞り方は定義側の1か所で、
+      // `optionsSource` なら Repository から引く（Flutter と同じ取り寄せ）。
+      const options = choices();
       if (one.type === FieldTypes.radio) {
         return h(
           "div",
@@ -154,7 +180,7 @@ function input(
                 value: String(option.value),
                 checked: option.value === value,
                 disabled: shared.disabled,
-                onChange: () => send(option.value),
+                onChange: () => pick(option.value),
               }),
               option.label,
             ]),
@@ -168,7 +194,7 @@ function input(
           value: text,
           onChange: (event: Event) => {
             const picked = (event.target as HTMLSelectElement).value;
-            send(options.find((option) => String(option.value) === picked)?.value ?? null);
+            pick(options.find((option) => String(option.value) === picked)?.value ?? null);
           },
         },
         [

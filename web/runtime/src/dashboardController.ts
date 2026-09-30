@@ -7,6 +7,7 @@ import {
   type DashboardPageDefinition,
   type DashboardValueDefinition,
   DashboardItemTypes,
+  filterDefaults,
   isAllowed,
 } from "@hatake-fw/api/internal";
 
@@ -66,8 +67,11 @@ export class DashboardController extends Notifier {
     aggregates?: AggregateRegistry;
     /** いま見ている人の役割。渡さなければ `roles` の無いカードだけ出る。 */
     roles?: readonly string[];
+    /** その日（省略すると今日）。カードは最初から検索欄の既定値で読む（「今月」など）。 */
+    today?: Date;
   }) {
     super();
+    this._filters = filterDefaults(options.definition.search, options.today ?? new Date());
     this.definition = options.definition;
     this.repositories = options.repositories;
     this.aggregates = options.aggregates ?? new AggregateRegistry();

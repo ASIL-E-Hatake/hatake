@@ -4824,6 +4824,35 @@
           }
         ]
       }
+    },
+    {
+      "rule": "filter-default-unusable",
+      "why": "範囲の語（$thisMonth）を範囲でない絞り込みに書いた",
+      "page": {
+        "type": "search",
+        "id": "order_search",
+        "title": "受注照会",
+        "repository": "orderRepository",
+        "search": {
+          "filters": [
+            {
+              "field": "orderDate",
+              "label": "受注日",
+              "type": "date",
+              "operator": "gte",
+              "defaultValue": "$thisMonth"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "orderNo",
+              "label": "受注番号"
+            }
+          ]
+        }
+      }
     }
   ]
 }

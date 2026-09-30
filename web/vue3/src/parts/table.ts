@@ -1,8 +1,10 @@
 import { FormatterRegistry } from "@hatake-fw/api";
 import type { ColumnDefinition, TableDefinition } from "@hatake-fw/api";
 import { cellText, ColumnTypes, isAllowed, recordKeyOf } from "@hatake-fw/api/internal";
-import type { DataRecord } from "@hatake-fw/runtime";
+import { type DataRecord, OptionsFetcher } from "@hatake-fw/runtime";
 import { defineComponent, h, type PropType, type VNode } from "vue";
+
+import { touch, useController, useRegistries } from "../scope.js";
 
 import { icon } from "./icon.js";
 
@@ -58,10 +60,17 @@ export const HatakeTable = defineComponent({
     selectAll: () => true,
   },
   setup(props, { emit }) {
+    // 名前を引く列（`column.optionsSource`）の名前の表。表で1回だけ引いて覚える。
+    const lookups = new OptionsFetcher(useRegistries().repositories);
+    const { version } = useController(lookups);
     return () => {
+      touch(version);
       // **見えない列は出さない。** 役割で絞るのは定義の仕事（`roles`）で、
-      // ここは判定を `isAllowed` に任せるだけ。
-      const columns = props.table.columns.filter((one) => isAllowed(one.roles, props.roles));
+      // ここは判定を `isAllowed` に任せるだけ。名前を引く列は、引いた表を列の選択肢に
+      // する（引く順は `cellText` のまま）。
+      const columns = props.table.columns
+        .filter((one) => isAllowed(one.roles, props.roles))
+        .map((one) => (one.optionsSource === undefined ? one : { ...one, options: lookups.optionsFor(one, {}) }));
 
       const head = columns.map((one) =>
         h(

@@ -14,6 +14,7 @@
 
 import '../definition/option_item.dart';
 import '../definition/options_owner.dart';
+import '../definition/options_source.dart';
 import 'condition_evaluator.dart';
 
 /// [owner] がいま出すべき選択肢。
@@ -49,4 +50,18 @@ bool optionValueIsStale(
   if (current == null || (current is String && current.isEmpty)) return false;
   return !visibleOptions(owner, values)
       .any((option) => looseEquals(option.value, current));
+}
+
+/// 選んだ選択肢の元の行 [row] から、`optionsSource.copy` に書いた項目を写す値
+/// （このフォームの項目名 → 値）。0.9.23。
+///
+/// 写すのは**行に在る**項目だけ（無い項目で入れてあった値を消さない）。行が無い
+/// （選択を外した）ときは何も写さない。TypeScript 版は `@hatake-fw/api` の
+/// `copiedFrom`。同じ答えになることは `spec/conformance/options_copy.json` が見ている。
+Map<String, Object?> copiedFrom(OptionsSource source, Map<String, Object?>? row) {
+  if (row == null) return const {};
+  return {
+    for (final entry in source.copy.entries)
+      if (row.containsKey(entry.value)) entry.key: row[entry.value],
+  };
 }

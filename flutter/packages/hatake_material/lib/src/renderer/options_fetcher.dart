@@ -17,6 +17,9 @@ class _OptionsFetcher {
 
   final Map<String, List<OptionItem>> _fetched = {};
 
+  /// 引いた行そのもの（`optionsSource.copy` で写す元）。キーは [_fetched] と同じ。
+  final Map<String, List<DataRecord>> _rows = {};
+
   /// いま引いている最中のキー（毎フレーム投げないため）。
   final Set<String> _fetching = {};
 
@@ -33,11 +36,31 @@ class _OptionsFetcher {
     if (source == null) return visibleOptions(owner, values);
     final parent = owner.optionsFrom;
     final parentValue = parent == null ? null : values[parent];
-    final key = '${owner.field}#$parentValue';
+    final key = _keyOf(owner, values);
     final fetched = _fetched[key];
     if (fetched != null) return fetched;
     _fetch(owner, source, parentValue, key);
     return const []; // 引けるまでは空（選択肢が出ないだけで、画面は出る）
+  }
+
+  String _keyOf(OptionsOwner owner, Map<String, Object?> values) {
+    final parent = owner.optionsFrom;
+    return '${owner.field}#${parent == null ? null : values[parent]}';
+  }
+
+  /// [value] を選んだときの元の行（`optionsSource.copy` で写す元）。まだ引けて
+  /// いない・その値の行が無いときは null。
+  DataRecord? rowFor(
+    OptionsOwner owner,
+    Map<String, Object?> values,
+    Object? value,
+  ) {
+    final source = owner.optionsSource;
+    if (source == null || value == null) return null;
+    for (final row in _rows[_keyOf(owner, values)] ?? const <DataRecord>[]) {
+      if (row[source.value] == value) return row;
+    }
+    return null;
   }
 
   Future<void> _fetch(
@@ -67,6 +90,7 @@ class _OptionsFetcher {
               pageSize: source.limit,
             ),
           );
+      _rows[key] = result.items;
       _fetched[key] = [
         for (final row in result.items)
           OptionItem(

@@ -102,8 +102,8 @@ export const HatakeFormPage = defineComponent({
                     errors: controller.validation.errors,
                     mode: controller.formMode,
                     disabled: controller.submitting,
-                    onChange: (name: string, value: unknown) => {
-                      draft.value = { ...draft.value, [name]: value };
+                    onChange: (name: string, value: unknown, copied?: Readonly<Record<string, unknown>>) => {
+                      draft.value = { ...draft.value, ...copied, [name]: value };
                     },
                   }),
             ),
@@ -323,8 +323,8 @@ export const HatakeWizardPage = defineComponent({
                 errors: controller.validation.errors,
                 mode: controller.formMode,
                 disabled: controller.submitting,
-                onChange: (name: string, value: unknown) => {
-                  draft.value = { ...draft.value, [name]: value };
+                onChange: (name: string, value: unknown, copied?: Readonly<Record<string, unknown>>) => {
+                  draft.value = { ...draft.value, ...copied, [name]: value };
                 },
               }),
             ),

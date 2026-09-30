@@ -272,7 +272,18 @@ public final class DefinitionParser {
                 result.add(parseFilter((Map<String, Object>) f));
             }
         }
-        return new SearchDefinition(result);
+        // いつも掛ける条件（search.fixed）。QueryBuilder が必ず足す。
+        List<QuerySpec.Condition> fixed = new ArrayList<>();
+        if (((Map<String, Object>) o).get("fixed") instanceof List<?> list) {
+            for (Object f : list) {
+                Map<String, Object> m = (Map<String, Object>) f;
+                fixed.add(new QuerySpec.Condition(
+                        reqStr(m, "field"),
+                        m.get("operator") instanceof String op ? op : "equals",
+                        m.get("value")));
+            }
+        }
+        return new SearchDefinition(result, List.copyOf(fixed));
     }
 
     private static FilterDefinition parseFilter(Map<String, Object> m) {

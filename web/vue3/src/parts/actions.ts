@@ -376,10 +376,10 @@ function askNode(asking: Ref<AskState | null>): VNode | null {
               // **いまの下書きを読み直す**（描いた時点のものを掴まない）。掴むと、
               // 1回の描き直しを挟まずに2つ入れたとき**先に入れたほうが消える**
               // （state.draft が古いままで上書きされる）。
-              onChange: (name: string, value: unknown) => {
+              onChange: (name: string, value: unknown, copied?: Readonly<Record<string, unknown>>) => {
                 const now = asking.value;
                 if (now === null) return;
-                asking.value = { ...now, draft: { ...now.draft, [name]: value } };
+                asking.value = { ...now, draft: { ...now.draft, ...copied, [name]: value } };
               },
             }),
           ),

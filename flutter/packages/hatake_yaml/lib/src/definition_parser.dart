@@ -335,8 +335,18 @@ SearchDefinition? _parseSearch(Map<String, Object?>? m) {
       for (var i = 0; i < filters.length; i++)
         _parseFilter(_asMap(filters[i], 'page.search.filters[$i]')),
     ],
+    fixed: [
+      for (var i = 0; i < m.optList('fixed').length; i++)
+        _parseFixed(_asMap(m.optList('fixed')[i], 'page.search.fixed[$i]'), i),
+    ],
   );
 }
+
+FixedCondition _parseFixed(Map<String, Object?> m, int i) => FixedCondition(
+      field: m.reqString('field', at: 'page.search.fixed[$i].field'),
+      operator: m.optString('operator') ?? 'equals',
+      value: m['value'],
+    );
 
 FilterDefinition _parseFilter(Map<String, Object?> m) {
   return FilterDefinition(
@@ -348,6 +358,7 @@ FilterDefinition _parseFilter(Map<String, Object?> m) {
     optionsFrom: m.optString('optionsFrom'),
     optionsSource: _parseOptionsSource(m.optMap('optionsSource')),
     config: m.optMap('config') ?? const {},
+    defaultValue: m['defaultValue'],
   );
 }
 
@@ -379,6 +390,7 @@ ColumnDefinition _parseColumn(Map<String, Object?> m) {
     // 列に並びを直接は書けない（DSL キーは `optionsOf` だけ）。ここに入るのは
     // 読み込み時に `app.vocabularies` から展開されたもの。
     options: _parseOptions(m.optList('options')),
+    optionsSource: _parseOptionsSource(m.optMap('optionsSource')),
   );
 }
 
@@ -632,6 +644,10 @@ OptionsSource? _parseOptionsSource(Map<String, Object?>? m) {
     label: m.optString('label') ?? 'name',
     parentKey: m.optString('parentKey'),
     limit: m.optInt('limit') ?? 200,
+    copy: {
+      for (final entry in (m.optMap('copy') ?? const {}).entries)
+        if (entry.value is String) entry.key: entry.value as String,
+    },
   );
 }
 

@@ -29,6 +29,11 @@ export interface OptionsSource {
   /** Field of a row holding the parent value. Undefined = fetch every row. */
   parentKey?: string;
   limit: number;
+  /**
+   * 選んだときに写す項目（`{ このフォームの項目: 引いた行の項目 }`）。書かなければ空。
+   * 写し方は [copiedFrom]。
+   */
+  copy?: Record<string, string>;
 }
 
 export interface ValidatorDefinition {
@@ -123,6 +128,18 @@ export interface FilterDefinition {
   /** Where to fetch the options from instead of listing them. */
   optionsSource?: OptionsSource;
   config: Record<string, unknown>;
+  /**
+   * 検索欄の初期値（最初の一覧もこれで読む）。`between` は `[from, to]`。日付は相対の語
+   * （`$today` / `$startOfMonth` …）も書ける。解くのは [filterDefaults]。
+   */
+  defaultValue?: unknown;
+}
+
+/** いつも掛ける条件（`search.fixed`）。画面には出さず、`buildQuery` が必ず足す。 */
+export interface FixedCondition {
+  field: string;
+  operator: string;
+  value: unknown;
 }
 
 export interface ColumnDefinition {
@@ -143,6 +160,11 @@ export interface ColumnDefinition {
   options: OptionItem[];
   /** Roles allowed to see this column (see isAllowed). Empty = everyone. */
   roles: string[];
+  /**
+   * キーから**別の Repository の名前**を引いて見せる（部署コード → 部署名）。一覧の画面が
+   * 1回だけ引いて、引いた選択肢で升の字を決める（`cellText` の列の選択肢として）。
+   */
+  optionsSource?: OptionsSource;
 }
 
 export interface SectionDefinition {
@@ -159,6 +181,8 @@ export interface SectionDefinition {
 export interface SearchDefinition {
   columns: number;
   filters: FilterDefinition[];
+  /** いつも掛ける条件（画面から外せない）。書かなければ空。 */
+  fixed?: FixedCondition[];
 }
 
 export interface PaginationDefinition {

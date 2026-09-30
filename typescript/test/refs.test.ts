@@ -436,3 +436,24 @@ app:
     expect(unused.plugins).toEqual(["old"]);
   });
 });
+
+describe("名前を引く列（column.optionsSource。0.9.23）", () => {
+  it("列で引く Repository も登録が要るものに入る", () => {
+    const found = collectRefs({
+      page: {
+        type: "search",
+        id: "employees",
+        title: "社員",
+        repository: "employeeRepository",
+        table: {
+          columns: [
+            { field: "code", label: "社員番号" },
+            { field: "dept", label: "部署", optionsSource: { repository: "deptRepository" } },
+          ],
+        },
+      },
+    });
+    const dept = found.find((one) => one.kind === "repositories" && one.name === "deptRepository");
+    expect(dept?.path).toBe("page.table.columns[1].optionsSource.repository");
+  });
+});

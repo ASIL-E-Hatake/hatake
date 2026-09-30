@@ -60,7 +60,9 @@
         "filters",
         "operator",
         "options",
-        "layout"
+        "layout",
+        "defaultValue",
+        "fixed"
       ],
       "demo": "order_search"
     },
@@ -170,7 +172,8 @@
         "optionsFrom",
         "when",
         "optionsSource",
-        "options"
+        "options",
+        "copy"
       ],
       "demo": "order_entry"
     },

@@ -39,6 +39,10 @@ class FilterDefinition extends Equatable implements OptionsOwner {
   /// Plugin / renderer specific extra configuration.
   final Map<String, Object?> config;
 
+  /// 検索欄の初期値（最初の一覧もこれで読む）。`between` は `[from, to]`。日付は
+  /// 相対の語（`$today` / `$startOfMonth` …）も書ける。解くのは [filterDefaults]。
+  final Object? defaultValue;
+
   const FilterDefinition({
     required this.field,
     required this.label,
@@ -48,6 +52,7 @@ class FilterDefinition extends Equatable implements OptionsOwner {
     this.optionsFrom,
     this.optionsSource,
     this.config = const {},
+    this.defaultValue,
   });
 
   @override
@@ -60,5 +65,6 @@ class FilterDefinition extends Equatable implements OptionsOwner {
         optionsFrom,
         optionsSource,
         config,
+        defaultValue,
       ];
 }

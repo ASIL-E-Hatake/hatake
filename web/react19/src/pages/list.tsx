@@ -1,5 +1,5 @@
 import { FormatterRegistry } from "@hatake-fw/api";
-import { ActionTypes, formFields, recordKeyOf } from "@hatake-fw/api/internal";
+import { ActionTypes, filterDefaults, formFields, recordKeyOf } from "@hatake-fw/api/internal";
 import type {
   CrudPageDefinition,
   MasterPageDefinition,
@@ -49,6 +49,8 @@ export function HatakeSearchPage(props: {
         repository: registries.repositories.resolve(props.definition.repository),
         pageSize: props.definition.table.pagination.pageSize,
         keyFields: props.definition.keyFields,
+        // 最初の一覧も検索欄の既定値で読む（入力欄と一覧が食い違わない）。
+        filters: filterDefaults(props.definition.search),
       }),
     [props.definition.id],
   );
@@ -269,7 +271,7 @@ export function HatakeCrudPage(props: {
                   errors={controller.validation.errors}
                   mode={controller.formMode}
                   disabled={controller.submitting}
-                  onChange={(name, value) => setDraft((prev) => ({ ...prev, [name]: value }))}
+                  onChange={(name, value, copied) => setDraft((prev) => ({ ...prev, ...copied, [name]: value }))}
                 />
               )}
             />
