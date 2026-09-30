@@ -14,6 +14,7 @@
 // 見るのは素の document（strict と同じ）。解析後のモデルでは、落とされた情報や
 // 既定値で埋まった情報が見えなくなるものがあるので。
 
+import { filterDefaultProblem } from "./filterDefaults.js";
 import {
   deadActions,
   rowActionsOf,
@@ -1665,6 +1666,20 @@ function checkSearch(page: Dict, path: string, found: DefinitionWarning[]): void
   );
   filters.forEach((filter, i) => {
     checkOptions(filter, `${path}.search.filters[${i}]`, found, names, "検索欄");
+    // 既定値の書き方。形が合わないと**既定値が付かない**（黙って変な条件で読むより安全に
+    // 倒してある）ので、書いたのに効かない＝警告。
+    const problem = filterDefaultProblem({
+      operator: str(filter.operator) ?? "contains",
+      defaultValue: filter.defaultValue,
+    });
+    if (problem !== undefined) {
+      warn(
+        found,
+        "filter-default-unusable",
+        `${path}.search.filters[${i}].defaultValue`,
+        `${problem}。このままだと既定値は付きません（検索欄は空で始まります）。`,
+      );
+    }
   });
 }
 

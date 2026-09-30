@@ -21,7 +21,7 @@ flutter pub get && flutter run -d chrome
 
 - **`ref:` に tag を書く**（`main` を指さない）。`main` を指すと、こちらが push した瞬間に
   手元が動く＝ロールバックもできない。tag は3版まとめて打っている
-- **`dependency_overrides` が要る**。パッケージは pub.dev 前提（`hatake_core: ^0.0.1`）で
+- **`dependency_overrides` が要る**。パッケージは pub.dev 前提（`hatake_core: ^0.9.14` のような版の範囲）で
   書いてあり、その中の overrides は**根のパッケージでしか効かない**ので、下に居る
   `hatake_*` は使う側が指し直す。書き忘れると「pub.dev に hatake_core が無い」で落ちる
   （公開後は `hatake_material: ^x.y.z` の1行だけで済む）

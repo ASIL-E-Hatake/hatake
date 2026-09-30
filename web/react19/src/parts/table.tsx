@@ -1,9 +1,10 @@
 import { FormatterRegistry } from "@hatake-fw/api";
 import type { ColumnDefinition, FilterDefinition, SearchDefinition, TableDefinition } from "@hatake-fw/api";
-import { cellText, ColumnTypes, FieldTypes, isAllowed, pagerView, recordKeyOf, visibleOptions } from "@hatake-fw/api/internal";
-import type { DataRecord } from "@hatake-fw/runtime";
+import { cellText, ColumnTypes, FieldTypes, filterDefaults, isAllowed, pagerView, recordKeyOf } from "@hatake-fw/api/internal";
+import { type DataRecord, OptionsFetcher } from "@hatake-fw/runtime";
 import { useState, type ReactNode } from "react";
 
+import { useController, useOnce, useRegistries } from "../scope.js";
 import { Icon } from "./icon.js";
 
 /** 選択肢を持っているもの（入力項目・絞り込み）。列そのものは持たないことがある。 */
@@ -45,8 +46,15 @@ export function HatakeTable(props: {
 }): ReactNode {
   const formatters = props.formatters ?? new FormatterRegistry();
   const ascending = props.sortAscending ?? true;
-  // **見えない列は出さない。** 役割で絞るのは定義の仕事（`roles`）。
-  const columns = props.table.columns.filter((one) => isAllowed(one.roles, props.roles ?? []));
+  // 名前を引く列（`column.optionsSource`）の名前の表。表で1回だけ引いて覚える。
+  const registries = useRegistries();
+  const lookups = useOnce(() => new OptionsFetcher(registries.repositories), [registries]);
+  useController(lookups);
+  // **見えない列は出さない。** 役割で絞るのは定義の仕事（`roles`）。名前を引く列は、
+  // 引いた表を列の選択肢にする（引く順は `cellText` のまま）。
+  const columns = props.table.columns
+    .filter((one) => isAllowed(one.roles, props.roles ?? []))
+    .map((one) => (one.optionsSource === undefined ? one : { ...one, options: lookups.optionsFor(one, {}) }));
 
   const picked = new Set((props.selectedKeys ?? []).map(String));
 
@@ -185,7 +193,13 @@ export function HatakeSearch(props: {
   submitLabel?: string;
   onSearch: (values: DataRecord) => void;
 }): ReactNode {
-  const [values, setValues] = useState<DataRecord>({});
+  // 既定値（`filter.defaultValue`）で埋めて始める。一覧の最初の読み込みも同じ値
+  // （`filterDefaults`）なので、入力欄と一覧が食い違わない。
+  const [values, setValues] = useState<DataRecord>(() => filterDefaults(props.search));
+  // 選択肢の取り寄せ（`optionsSource`）。入力フォームと同じ規則（Flutter と同じ）。
+  const registries = useRegistries();
+  const fetcher = useOnce(() => new OptionsFetcher(registries.repositories), [registries]);
+  useController(fetcher);
   if (props.search === undefined || props.search.filters.length === 0) return null;
 
   return (
@@ -204,14 +218,18 @@ export function HatakeSearch(props: {
         props.onSearch({ ...values });
       }}
     >
-      {props.search.filters.map((one) => (
-        <div key={one.field} className="hatake-field">
-          <label className="hatake-field-label" htmlFor={`hatake-filter-${one.field}`}>
-            {one.label}
-          </label>
-          {filter(one, values, (next) => setValues({ ...values, [one.field]: next }))}
-        </div>
-      ))}
+      {props.search.filters.map((one) =>
+        one.operator === "between" ? (
+          <Range key={one.field} one={one} values={values} send={(next) => setValues({ ...values, [one.field]: next })} />
+        ) : (
+          <div key={one.field} className="hatake-field">
+            <label className="hatake-field-label" htmlFor={`hatake-filter-${one.field}`}>
+              {one.label}
+            </label>
+            {filter(one, values, fetcher, (next) => setValues({ ...values, [one.field]: next }))}
+          </div>
+        ),
+      )}
       <button className="hatake-button hatake-button-primary" type="submit" data-hatake="search:submit">
         <Icon name="search" />
         {props.submitLabel ?? "検索"}
@@ -220,13 +238,67 @@ export function HatakeSearch(props: {
   );
 }
 
-function filter(one: FilterDefinition, values: DataRecord, send: (next: unknown) => void): ReactNode {
+/** 1つの入力欄（範囲の片側にも使う）。 */
+function Input(props: {
+  one: FilterDefinition;
+  value: unknown;
+  mark: string;
+  id: string;
+  send: (next: unknown) => void;
+}): ReactNode {
+  const { one } = props;
+  return (
+    <input
+      id={props.id}
+      data-hatake={props.mark}
+      placeholder={one.label}
+      type={one.type === FieldTypes.number ? "number" : one.type === FieldTypes.date ? "date" : "text"}
+      value={props.value === undefined || props.value === null ? "" : String(props.value)}
+      onChange={(e) =>
+        props.send(e.target.value === "" ? null : one.type === FieldTypes.number ? Number(e.target.value) : e.target.value)
+      }
+    />
+  );
+}
+
+/**
+ * 範囲（`between`）。「から」「まで」の2つの欄で、値は `[from, to]`（Flutter と同じ）。
+ * 両方とも空なら条件にしない。
+ */
+function Range(props: { one: FilterDefinition; values: DataRecord; send: (next: unknown) => void }): ReactNode {
+  const { one } = props;
+  const raw = props.values[one.field];
+  const pair = Array.isArray(raw) ? (raw as unknown[]) : [null, null];
+  const put = (at: 0 | 1) => (next: unknown) => {
+    const both = at === 0 ? [next, pair[1] ?? null] : [pair[0] ?? null, next];
+    props.send(both[0] === null && both[1] === null ? null : both);
+  };
+  return (
+    <div className="hatake-field">
+      <label className="hatake-field-label" htmlFor={`hatake-filter-${one.field}-from`}>
+        {one.label}
+      </label>
+      <div className="hatake-range">
+        <Input one={one} value={pair[0]} mark={`filter:${one.field}:from`} id={`hatake-filter-${one.field}-from`} send={put(0)} />
+        <span className="hatake-range-sep">〜</span>
+        <Input one={one} value={pair[1]} mark={`filter:${one.field}:to`} id={`hatake-filter-${one.field}-to`} send={put(1)} />
+      </div>
+    </div>
+  );
+}
+
+function filter(
+  one: FilterDefinition,
+  values: DataRecord,
+  fetcher: OptionsFetcher,
+  send: (next: unknown) => void,
+): ReactNode {
   const value = values[one.field];
   const text = value === undefined || value === null ? "" : String(value);
   const id = `hatake-filter-${one.field}`;
 
   if (one.type === FieldTypes.select) {
-    const options = visibleOptions(one, values);
+    const options = fetcher.optionsFor(one, values);
     return (
       <select
         id={id}

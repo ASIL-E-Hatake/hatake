@@ -58,12 +58,21 @@ class _SearchAreaState extends State<_SearchArea> {
   @override
   void initState() {
     super.initState();
+    // 既定値（`filter.defaultValue`）で埋めて始める。一覧の最初の読み込みも同じ値
+    // （`filterDefaults`）なので、入力欄と一覧が食い違わない。
+    final defaults = filterDefaults(widget.search, DateTime.now());
     for (final filter in _filters) {
-      for (final slot in _slotsOf(filter)) {
+      final initial = defaults[filter.field];
+      final slots = _slotsOf(filter);
+      for (var i = 0; i < slots.length; i++) {
+        final slot = slots[i];
+        final value = _isRange(filter)
+            ? (initial is List && initial.length == 2 ? initial[i] : null)
+            : initial;
         if (_isTextInput(filter.type)) {
-          _text[slot] = TextEditingController();
+          _text[slot] = TextEditingController(text: value?.toString() ?? '');
         } else {
-          _values[slot] = null;
+          _values[slot] = value;
         }
       }
     }

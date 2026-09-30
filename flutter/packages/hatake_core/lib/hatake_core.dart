@@ -88,6 +88,7 @@ export 'src/i18n/message_resolver.dart';
 export 'src/logic/aggregate.dart';
 export 'src/logic/condition_evaluator.dart';
 export 'src/logic/cell_text.dart';
+export 'src/logic/filter_defaults.dart';
 export 'src/logic/pager_view.dart';
 export 'src/logic/row_slots.dart';
 export 'src/logic/option_labels.dart';

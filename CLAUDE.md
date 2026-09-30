@@ -1,8 +1,8 @@
-# Enterprise UI Framework
+# hatake（業務定義フレームワーク）
 
 ## Project Overview
 
-Enterprise UI Framework は、Flutter を利用した業務システム開発を効率化するための宣言型 UI Framework である。
+hatake は、業務システムを UI コードではなく「業務定義(Definition)」から構築するための業務定義フレームワークである。画面・サーバの検証・API の形・権限・設計書・試験まで、同じ1枚の定義から出す。
 
 本プロジェクトは Widget ライブラリではない。
 
@@ -16,15 +16,43 @@ Framework の中心は DSL と Business Definition である。
 
 # 作業境界（フレームワーク / サイト）
 
-サイト（GitHub Pages）とフレームワークは別のチャットで進める。契約は docs/site/protocol.ja.md（正はこの1枚）。
+契約は docs/site/protocol.ja.md（正はこの1枚）。
 
-・フレームワーク側は site/ を編集しない。サイトへの申し送りは docs/site/topics.json への追記1件だけ。
+・**1つの機能は1つのブランチ・1つの PR**。実装・spec・文書・サイトの散文（site/prose）を分けない。
 
-・サイト側は flutter/ java/ typescript/ spec/ と docs/site/topics.json を編集しない。
-
-・同じ PR で両方を変更すると CI が落ちる。
+・サイトへの台帳は docs/site/topics.json（1機能につき1件）。生成物（site/docs/dsl・partials・public）は手で直さない。
 
 役割を明示して始めるときは /framework または /site を使う。
+
+---
+
+# 読み物の更新（漏れなく）
+
+コードを直したら、**同じ PR で読み物も直す**。「あとで直す」はしない。読み物は動かないので、古いことが書いてあっても試験は落ちない（0.9.22 まで「ページ自身に roles は書けない」が5か所に残り、見本の README は Vue 版が入ったあとも「予定」と言っていた）。
+
+読み物＝人と AI が読む文のぜんぶ。
+
+・CLAUDE.md / README.md（ルートと各パッケージ）/ CHANGELOG（ルートと Dart 9枚）
+
+・docs/**（getting-started・tutorial・api-cheatsheet・compat・guide・cookbook・roadmap）/ llms.txt / llms-en.txt
+
+・spec/dsl-spec.ja.md と spec/dsl-spec.md（**日英は両方**）/ spec/**/README.md
+
+・site/prose/**（サイトの散文）/ .claude/commands/**
+
+・生成物は手で直さず、作り直す（spec/reference.json・site/docs/ など。`node typescript/tool/regen.mjs`）
+
+手順（実装が固まってから、PR を締める前に1回）:
+
+1. **変わったことを書き出す。** 名前・振る舞い・既定値・版、それと「できない」「書けない」「予定」「まだ無い」と書いてあったことが出来るようになったもの
+
+2. **`node typescript/tool/readings.mjs` を回す。** 消えた名前が残っている所と、足した名前（公開 API・規則の id・DSL のキー・CLI の命令）がどこにも書いていないものを出す。0 件になるまで直す
+
+3. **1 の言葉で読み物を検索して、古い記述を直す。** 言い回しの古さは機械には分からない（道具が最後に出す「触っていない読み物」から当たる）
+
+4. **`node typescript/tool/check-docs.mjs` を通す**（手引きの命令・キーが実物と食い違っていないか）
+
+5. **PR 本文に「読み物」の節を書く。** 直したファイルと、見たが直さなかったもの（とその理由）
 
 ---
 

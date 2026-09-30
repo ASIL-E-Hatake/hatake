@@ -1,0 +1,73 @@
+{
+  "_comment": "検索欄の既定値（filterDefaults。Dart / TS。Java はサーバで既定値を当てないので対象外）。today は『今日』（各版の試験がその日付で呼ぶ）、filters は絞り込み（field / operator / defaultValue だけ見る）、expected は解いた値（検索欄の初期値＝最初の一覧を読む条件。between は [from, to]）。固定したいのは: (1) 書いた値はそのまま、(2) 日付の相対の語は『今日』から解く（$today / $startOfMonth / $endOfMonth / $startOfYear / $endOfYear。閏年の2月末も）、(3) 範囲の語（$thisMonth / $thisYear）は between にだけ効いて [はじめ, おわり] になる、(4) between の [from, to] は片方だけでもよく、両方とも空なら出さない、(5) 知らない語・形の合わない書き方は**出さない**（黙って変な条件で読まない。書き方の間違いは validate の filter-default-unusable が言う）、(6) 並びは絞り込みの順。",
+  "cases": [
+    {
+      "name": "書いた値はそのまま（文字・数・真偽）",
+      "today": "2026-02-14",
+      "filters": [
+        { "field": "status", "operator": "equals", "defaultValue": "active" },
+        { "field": "qty", "operator": "gte", "defaultValue": 10 },
+        { "field": "retired", "operator": "equals", "defaultValue": false },
+        { "field": "name", "operator": "contains" }
+      ],
+      "expected": { "status": "active", "qty": 10, "retired": false }
+    },
+    {
+      "name": "日付の相対の語（平年の2月）",
+      "today": "2026-02-14",
+      "filters": [
+        { "field": "a", "operator": "equals", "defaultValue": "$today" },
+        { "field": "b", "operator": "gte", "defaultValue": "$startOfMonth" },
+        { "field": "c", "operator": "lte", "defaultValue": "$endOfMonth" },
+        { "field": "d", "operator": "gte", "defaultValue": "$startOfYear" },
+        { "field": "e", "operator": "lte", "defaultValue": "$endOfYear" }
+      ],
+      "expected": { "a": "2026-02-14", "b": "2026-02-01", "c": "2026-02-28", "d": "2026-01-01", "e": "2026-12-31" }
+    },
+    {
+      "name": "閏年の2月末",
+      "today": "2028-02-03",
+      "filters": [{ "field": "c", "operator": "lte", "defaultValue": "$endOfMonth" }],
+      "expected": { "c": "2028-02-29" }
+    },
+    {
+      "name": "範囲の語は between で [はじめ, おわり]",
+      "today": "2026-12-05",
+      "filters": [
+        { "field": "month", "operator": "between", "defaultValue": "$thisMonth" },
+        { "field": "year", "operator": "between", "defaultValue": "$thisYear" }
+      ],
+      "expected": { "month": ["2026-12-01", "2026-12-31"], "year": ["2026-01-01", "2026-12-31"] }
+    },
+    {
+      "name": "between の [from, to] は語も値も混ぜてよく、片方だけでもよい",
+      "today": "2026-06-20",
+      "filters": [
+        { "field": "orderDate", "operator": "between", "defaultValue": ["$startOfMonth", "$today"] },
+        { "field": "amount", "operator": "between", "defaultValue": [1000, null] },
+        { "field": "none", "operator": "between", "defaultValue": [null, null] }
+      ],
+      "expected": { "orderDate": ["2026-06-01", "2026-06-20"], "amount": [1000, null] }
+    },
+    {
+      "name": "in は並びのまま",
+      "today": "2026-06-20",
+      "filters": [{ "field": "status", "operator": "in", "defaultValue": ["draft", "fixed"] }],
+      "expected": { "status": ["draft", "fixed"] }
+    },
+    {
+      "name": "形の合わない書き方は出さない",
+      "today": "2026-06-20",
+      "filters": [
+        { "field": "unknown", "operator": "equals", "defaultValue": "$yesterday" },
+        { "field": "rangeOnSingle", "operator": "gte", "defaultValue": "$thisMonth" },
+        { "field": "scalarOnRange", "operator": "between", "defaultValue": "2026-06-01" },
+        { "field": "threeOnRange", "operator": "between", "defaultValue": ["a", "b", "c"] },
+        { "field": "listOnSingle", "operator": "equals", "defaultValue": ["a", "b"] },
+        { "field": "rangeInsideRange", "operator": "between", "defaultValue": ["$thisMonth", "$today"] },
+        { "field": "ok", "operator": "equals", "defaultValue": "x" }
+      ],
+      "expected": { "ok": "x" }
+    }
+  ]
+}

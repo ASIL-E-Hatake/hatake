@@ -117,6 +117,26 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
     super.dispose();
   }
 
+  /// 選択肢を選んだときの値の入れ方。`optionsSource.copy` があれば、選んだ行から
+  /// 書いた項目も写す（単価・税率など）。写し方は `hatake_core` の [copiedFrom]。
+  void _pick(FieldDefinition field, Object? value, DataRecord record) {
+    setState(() {
+      _values[field.field] = value;
+      final source = field.optionsSource;
+      if (source == null || source.copy.isEmpty) return;
+      final copied =
+          copiedFrom(source, _options.rowFor(field, record, value));
+      for (final entry in copied.entries) {
+        final text = _text[entry.key];
+        if (text != null) {
+          text.text = entry.value?.toString() ?? '';
+        } else {
+          _values[entry.key] = entry.value;
+        }
+      }
+    });
+  }
+
   /// Gathers the current field values into a record. Computed fields are
   /// derived from the gathered inputs (single pass, applied last).
   DataRecord collect() {
@@ -321,9 +341,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
                 child: Text(option.label),
               ),
           ],
-          onChanged: locked
-              ? null
-              : (value) => setState(() => _values[field.field] = value),
+          onChanged: locked ? null : (value) => _pick(field, value, record),
         );
       case FieldTypes.checkbox:
         input = CheckboxListTile(
@@ -352,7 +370,7 @@ class _HatakeFormFieldsState extends State<_HatakeFormFields> {
             groupValue: _values[field.field],
             onChanged: (value) {
               if (locked) return;
-              setState(() => _values[field.field] = value);
+              _pick(field, value, record);
             },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

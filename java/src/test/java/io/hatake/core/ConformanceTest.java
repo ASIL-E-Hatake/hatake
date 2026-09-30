@@ -85,8 +85,17 @@ class ConformanceTest {
                         }
                         table = new TableDefinition(columns);
                     }
+                    // いつも掛ける条件（search.fixed）。書いてあるケースだけ。
+                    List<QuerySpec.Condition> fixed = new ArrayList<>();
+                    if (c.get("fixed") instanceof List<?> list) {
+                        for (Object raw : list) {
+                            Map<String, Object> one = (Map<String, Object>) raw;
+                            fixed.add(new QuerySpec.Condition((String) one.get("field"),
+                                    (String) one.get("operator"), one.get("value")));
+                        }
+                    }
                     QuerySpec q = QueryBuilder.build(
-                            new SearchDefinition(filters), params, 50, table);
+                            new SearchDefinition(filters, fixed), params, 50, table);
 
                     Map<String, Object> e = (Map<String, Object>) c.get("expected");
                     List<Map<String, Object>> ec = (List<Map<String, Object>>) e.get("conditions");

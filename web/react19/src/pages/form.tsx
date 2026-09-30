@@ -101,7 +101,7 @@ export function HatakeFormPage(props: {
               errors={controller.validation.errors}
               mode={controller.formMode}
               disabled={controller.submitting}
-              onChange={(name, value) => setDraft((prev) => ({ ...prev, [name]: value }))}
+              onChange={(name, value, copied) => setDraft((prev) => ({ ...prev, ...copied, [name]: value }))}
             />
           )
           }
@@ -311,7 +311,7 @@ export function HatakeWizardPage(props: {
             errors={controller.validation.errors}
             mode={controller.formMode}
             disabled={controller.submitting}
-            onChange={(name, value) => setDraft((prev) => ({ ...prev, [name]: value }))}
+            onChange={(name, value, copied) => setDraft((prev) => ({ ...prev, ...copied, [name]: value }))}
           />
         ))}
         <div className="hatake-form-actions">

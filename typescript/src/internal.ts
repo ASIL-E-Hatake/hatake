@@ -23,6 +23,7 @@
 export * from "./definition.js";
 export * from "./vocabularies.js";
 export * from "./cellText.js";
+export * from "./filterDefaults.js";
 export * from "./pagerView.js";
 export * from "./parse.js";
 export * from "./strictKeys.js";

@@ -57,6 +57,11 @@ public final class QueryBuilder {
             }
             conditions.add(new QuerySpec.Condition(f.field(), f.operator(), coerce(raw, f.type())));
         }
+        // いつも掛ける条件（search.fixed）。画面は送ってこない＝利用者が外せない所。
+        // 並べ替えの名前には入れない（絞る条件であって、並べる列ではない）。
+        if (search != null) {
+            conditions.addAll(search.fixed());
+        }
 
         // 並べ替えに許す名前。**絞り込みに書いた項目**に加えて、渡されていれば
         // **定義が sortable と言っている列**も許す（どちらも定義に書いてある名前）。

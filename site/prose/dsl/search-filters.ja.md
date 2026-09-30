@@ -50,7 +50,43 @@ page:
 
 ## select には options が要る
 
-`select` `radio` `multiSelect` は `options` を書かないと選ぶものが無い。値はデータに入る値、ラベルは画面に出る文字。マスタから引いてくる選択肢は、いまは定義に書けないのでプラグインで足す。
+`select` `radio` `multiSelect` は `options` を書かないと選ぶものが無い。値はデータに入る値、ラベルは画面に出る文字。マスタにある選択肢は `optionsSource` で引く（[選択肢の連動](./linked-options)）。
+
+## 最初から絞って始める（defaultValue）
+
+「一覧は既定で在籍者だけ」「今月の受注から」のように、**開いたときから絞ってある**画面は `defaultValue` で書く。検索欄がその値で埋まって始まり、**最初の一覧もその条件で読む**（欄だけ埋まって一覧は全件、にはならない）。利用者は外せる。
+
+```yaml
+search:
+  filters:
+    - { field: employmentStatus, label: 在籍, type: select, operator: equals, defaultValue: active,
+        options: [{ value: active, label: 在籍 }, { value: retired, label: 退職 }] }
+    - { field: orderDate, label: 受注日, type: date, operator: between, defaultValue: $thisMonth }
+```
+
+日付は相対の語で書ける。開いた日で解く。
+
+| 語 | 意味 |
+| --- | --- |
+| `$today` | 今日 |
+| `$startOfMonth` / `$endOfMonth` | 今月の1日 / 末日 |
+| `$startOfYear` / `$endOfYear` | 今年の1月1日 / 12月31日 |
+| `$thisMonth` / `$thisYear` | 範囲（`between`）だけ。今月・今年のはじめからおわりまで |
+
+範囲は `[from, to]` でも書ける（`[$startOfMonth, $today]`、片方は `null` でよい）。形の合わない書き方（範囲の語を範囲でない条件に書いた、など）は**既定値が付かない**ので、`npx hatake validate` が言う。
+
+## 画面から外させない条件（fixed）
+
+「取消は刷らない」「退職者は出さない」のように、**利用者に外させたくない決めごと**は `fixed` に書く。画面には出ない。
+
+```yaml
+search:
+  filters: [ … ]
+  fixed:
+    - { field: cancelled, operator: notEquals, value: true }
+```
+
+足すのは**サーバの `buildQuery`（TS / Java）**で、毎回の問い合わせに必ず付く。画面は送ってこないので、API を直接叩いても外せない。Repository を自分で直接実装した Flutter アプリ（`buildQuery` を通らない）は、同じ条件を自分で当てる。
 
 ## どこに書くか
 

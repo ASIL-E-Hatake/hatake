@@ -60,3 +60,23 @@ export function optionValueIsStale(
     looseEquals(option.value, current),
   );
 }
+
+/**
+ * 選んだ選択肢の元の行 [row] から、`optionsSource.copy` に書いた項目を写す値
+ * （このフォームの項目名 → 値）。0.9.23。
+ *
+ * 写すのは**行に在る**項目だけ（無い項目で入れてあった値を消さない）。行が無い
+ * （選択を外した）ときは何も写さない。Dart 版は `hatake_core` の `copiedFrom`。
+ * 同じ答えになることは `spec/conformance/options_copy.json` が見ている。
+ */
+export function copiedFrom(
+  source: { readonly copy?: Readonly<Record<string, string>> },
+  row: Readonly<Record<string, unknown>> | null | undefined,
+): Record<string, unknown> {
+  if (row === null || row === undefined) return {};
+  const out: Record<string, unknown> = {};
+  for (const [target, from] of Object.entries(source.copy ?? {})) {
+    if (Object.prototype.hasOwnProperty.call(row, from)) out[target] = row[from];
+  }
+  return out;
+}

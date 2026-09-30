@@ -338,10 +338,10 @@ export function useActions(options: {
                     field={field}
                     record={asking.draft}
                     errors={asking.errors}
-                    onChange={(name, value) =>
+                    onChange={(name, value, copied) =>
                       // **いまの下書きに足す**（描いた時点のものを掴まない）。
                       setAsking((now) =>
-                        now === null ? now : { ...now, draft: { ...now.draft, [name]: value } },
+                        now === null ? now : { ...now, draft: { ...now.draft, ...copied, [name]: value } },
                       )
                     }
                   />

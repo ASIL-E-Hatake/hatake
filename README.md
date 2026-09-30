@@ -2,17 +2,20 @@
 
 > 種（業務定義）を、畠（各言語のフレームワーク）に蒔いて、実り（アプリ）を得る。
 
-**hatake（畠）** は、業務システムの画面を「コード」じゃなくて「業務定義（Definition）」から組み立てるための、宣言型 UI フレームワーク一式。言語に依存しない **DSL 仕様** を一個定めて、それを各言語のフレームワークが描画する、って構造になってる。要は「毎回同じような業務画面を手で書くのだるいから、定義書いたら出てくるようにしようぜ」という話。
+**hatake（畠）** は、業務システムを「コード」じゃなくて「業務定義（Definition）」から組み立てるための **業務定義フレームワーク**。画面だけじゃなく、サーバの検証・API の形・権限・設計書・試験まで、**同じ1枚の定義から出す**。AI に書かせるのもコードじゃなくて定義。要は「毎回同じような業務システムを手で書くのだるいから、定義書いたら出てくるようにしようぜ」という話。
 
 ```
 Business Definition (YAML / JSON / 各言語DSL)
         │  Parser
         ▼
    PageDefinition          ← ここが唯一の正（言語非依存）
-        │  Renderer（言語・デザインごとに差し替え可）
-        ▼
-   UI（Flutter / …）
+        │
+        ├─ 画面   … Renderer（Flutter / Vue / React。差し替え可）
+        ├─ サーバ … 検証・問い合わせの組み立て・権限・API の形（Java / TypeScript）
+        └─ 道具   … 設計書・図・試験・説明（CLI / MCP）
 ```
+
+画面を作るのは入口にすぎなくて、効くのは**同じ規則を2か所に書かなくて済む**こと。手書きで作り比べた記録（[見本の工数の比較](https://github.com/ASIL-E-Hatake/hatake-example)）では、書いた行数はほぼ引き分けで、差が出たのは「画面とサーバで規則がずれない」「設計書が生成物で腐らない」「道具が検算する」の3つだった。
 
 ## まず触る（インストール不要）
 
@@ -33,9 +36,10 @@ Business Definition (YAML / JSON / 各言語DSL)
 | ディレクトリ | 中身 | 状態 |
 |---|---|---|
 | [`spec/`](spec/) | **言語非依存の DSL 仕様**（[仕様書](spec/dsl-spec.ja.md) / [JSON Schema](spec/hatake-page.schema.json) / [examples](spec/examples) / 検証ツール）。全言語の共通ソース | ✅ |
-| [`flutter/`](flutter/README.md) | **Flutter / Dart 版**（フロント：画面を描く） | ✅ 動いてる |
-| [`java/`](java/README.md) | **Java 版**（バックエンド：API ロジック） | ✅ scaffold（core + バリデーション + クエリ組み立て） |
-| [`typescript/`](typescript/README.md) | **TypeScript 版**（バックエンド：API ロジック） | ✅ scaffold（core + バリデーション + クエリ組み立て） |
+| [`flutter/`](flutter/README.md) | **Flutter / Dart 版**（フロント：画面を描く。紙に刷る・REST も opt-in で） | ✅ |
+| [`web/`](web/) | **ブラウザ版**（`@hatake-fw/runtime` が判断して、[Vue 3](web/vue3/) / [React 19](web/react19/) が描く。REST は [`@hatake-fw/http`](web/http/)） | ✅ |
+| [`java/`](java/README.md) | **Java 版**（バックエンド：検証・問い合わせ・権限・帳票・API の形） | ✅ |
+| [`typescript/`](typescript/README.md) | **TypeScript 版**（バックエンド＋ CLI / MCP：検証・問い合わせ・権限・API の形・道具一式） | ✅ |
 | [`docs/`](docs/index.ja.md) | **ドキュメント**（[目次](docs/index.ja.md) / [導入](docs/getting-started.ja.md) / [レシピ集](docs/cookbook/) / [AIチートシート](docs/api-cheatsheet.ja.md) / 紹介記事） | ✅ |
 
 全部の版が同じ `spec/` を共通ソースにして、同じ定義から各言語で画面を出す。名前も揃える（Dart `hatake_core` / npm `@hatake-fw/api` / Maven `io.github.asil-e-hatake:hatake-core` …）＝**どこかに必ず `hatake` が出て、役割は名前で分かる**（→ [名前の決めごと](docs/compat.ja.md#名前の決めごと)）。どの言語から来ても「hatake ね」で通じるように。
@@ -90,7 +94,7 @@ hatake は「定義を書く」フレームワークなので、AI に使わせ�
 
 - [AI チートシート](docs/api-cheatsheet.ja.md) — 名前一覧＋オプション＋最小例（これ1枚でだいたい書ける）
 - [`llms.txt`](llms.txt) — LLM 向けの入口（チートシート・仕様・Schema・例へのリンク集）
-- 公開後はデモと同じ GitHub Pages にも置くので、`https://asil-e-hatake.github.io/hatake/llms.txt` のように **URL 1本渡すだけ**でも使える。
+- デモと同じ GitHub Pages にも置いてあるので、`https://asil-e-hatake.github.io/hatake/llms.txt` のように **URL 1本渡すだけ**でも使える。
 
 ## 各版
 
@@ -98,22 +102,26 @@ hatake は「定義を書く」フレームワークなので、AI に使わせ�
 
 | 層 | 版 | PageDefinition の使い道 |
 |---|---|---|
-| フロント | Flutter | Renderer → 画面を描く |
-| バックエンド | Java / TypeScript | サーバ側バリデーション・クエリ組み立て（`QuerySpec`）・（今後）DTO |
+| フロント | Flutter / Vue / React | Renderer → 画面を描く（判断は土台、Renderer は描くだけ） |
+| バックエンド | Java / TypeScript | サーバ側の検証・問い合わせの組み立て（`QuerySpec`）・権限（`ServerAccess` / `canOpenPageIn` ほか）・一括の上限・API の形（DTO / JSON Schema / OpenAPI） |
 
-一番効くのは**サーバ側バリデーション**。Flutter のフォームを描くのと同じ YAML が、そのままサーバのリクエスト検証に使える＝フロントとバックの**バリデーションずれが起きない**。
+一番効くのは**画面とサーバで同じ判断をする**こと。フォームを描くのと同じ YAML が、そのままサーバのリクエスト検証・見せてよい項目・押してよいボタンの判定に使える＝フロントとバックの**ずれが起きない**。3版が同じ答えを出すことは共有フィクスチャ（[`spec/conformance`](spec/conformance/README.md)）が縛っている。
 
-### Flutter / Dart（フロント・動いてる）
-CrudPage / SearchPage に対応。検索・一覧・ページング・CRUD・バリデーション、拡張（Validator / Action / Field型 / Renderer）も入ってる。詳しくは [`flutter/README.md`](flutter/README.md)、拡張は [Plugin ガイド](flutter/docs/plugins.ja.md)。
+### Flutter / Dart（フロント）
+8種類の画面（検索・CRUD・マスタ・詳細・入力・ステップ入力・ダッシュボード・帳票）。拡張（Validator / Action / Field型 / Renderer）も登録式。紙に刷る（`hatake_print`）・REST（`hatake_http`）は opt-in。詳しくは [`flutter/README.md`](flutter/README.md)、拡張は [Plugin ガイド](flutter/docs/plugins.ja.md)。
 
-### Java / TypeScript（バックエンド・scaffold）
-どちらも `core`（定義モデル + YAML/JSON パーサ）、`FormValidator`（サーバ側バリデーション）、`QueryBuilder`（検索フィルタ + params → フレームワーク非依存の `QuerySpec`。フィルタに無い項目は弾く許可リスト方式）、API の形の生成（`DtoSpec` → JSON Schema / OpenAPI 3.1 / ネイティブ型）まで。ORM 依存は持たず、JPA/Prisma 等への変換は opt-in アダプタの領分。YAML↔JSON 収束もテスト済み。詳しくは [`java/README.md`](java/README.md) / [`typescript/README.md`](typescript/README.md)。
+### ブラウザ（Vue 3 / React 19）
+同じ定義から同じ画面。判断（一覧の状態・権限・ボタンの出し分け）は `@hatake-fw/runtime` に置いて、Vue と React は描くだけ。2つが同じ印（`data-hatake`）とクラス名を出すことは CI が突き合わせている。
+
+### Java / TypeScript（バックエンド）
+どちらも `core`（定義モデル + YAML/JSON パーサ）、`FormValidator`（サーバ側の検証）、`QueryBuilder`（検索フィルタ + params → フレームワーク非依存の `QuerySpec`。フィルタに無い項目は弾く許可リスト方式）、権限（画面・ボタン・見せる項目・受け取る項目）、API の形の生成（`DtoSpec` → JSON Schema / OpenAPI 3.1 / ネイティブ型）まで。ORM 依存は持たず、JPA/Prisma 等への変換は opt-in アダプタの領分。詳しくは [`java/README.md`](java/README.md) / [`typescript/README.md`](typescript/README.md)。
 
 ### CLI（`npx hatake`）
 定義を「書いた → すぐ検証」にするやつ。TypeScript 版（`@hatake-fw/api`）に同梱。
 
 ```bash
 npm i -D @hatake-fw/api                    # 入れておけば npx はローカルの bin を使う
+npx hatake doctor                          # 案件の道具と版の足並み（固定した版・入っている版・定義・MCP）
 npx hatake validate spec/examples/*.yaml   # strict（知らないキーを弾く）。問題があれば終了コード 1
 npx hatake new crud --id customer_master --title 顧客マスタ
 npx hatake reference rowsPerPage           # このキーどこに書くの？型は？既定値は？
@@ -125,7 +133,7 @@ npx hatake examples 帳票                    # やりたいことから近い�
 仕様を「読ませる」のではなく「引かせる」ための機械可読な資料も置いてある: [DSL リファレンス](spec/reference.json)（全キーの索引。JSON Schema から生成）、[例のカタログ](spec/examples/README.md)（やりたいこと → 例）、[よくある間違い](spec/pitfalls.json)（間違い → 正しい書き方。ja/en）。英語で渡すなら [llms-en.txt](llms-en.txt) と [AI cheat sheet](docs/api-cheatsheet.md)。
 
 ### MCP サーバ（`hatake-mcp`）
-AI エージェント（Claude Code / Claude Desktop 等）に繋ぐと、**仕様を読ませずに引かせられる**。道具は「キーを引く / 近い例を取る / 検証する / 雛形を出す / API の形を出す」の5つ。依存ゼロで手書き。
+AI エージェント（Claude Code / Claude Desktop 等）に繋ぐと、**仕様を読ませずに引かせられる**。道具は22本（キーを引く・近い例を取る・雛形を出す・**1回で検証／読み返し／助言／人に聞くことを返す `hatake_check`**・直す・動かして確かめる・API の形・配線…）。依存ゼロで手書き。
 
 ```bash
 claude mcp add hatake -- node /path/to/hatake/typescript/dist/mcp.js

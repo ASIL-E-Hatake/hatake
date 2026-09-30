@@ -40,6 +40,7 @@
     "enabledwhen-never-true",
     "enabledwhen-without-record",
     "export-without-rows",
+    "filter-default-unusable",
     "groupby-without-sort",
     "key-duplicate-field",
     "key-empty",

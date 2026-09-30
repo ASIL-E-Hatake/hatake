@@ -403,6 +403,8 @@ function collectColumns(columns: unknown[], path: string, ctx: Ctx): void {
     if (type !== undefined) push(ctx, "columnTypes", type, `${at}.type`);
     const format = str(raw.format);
     if (format !== undefined) push(ctx, "formatters", format, `${at}.format`);
+    // 名前を引く列（`column.optionsSource`。0.9.23）も Repository の登録が要る。
+    collectOptionsSource(raw.optionsSource, at, ctx);
     ctx.spot = outer;
   });
 }

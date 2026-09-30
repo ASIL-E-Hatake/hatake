@@ -216,5 +216,86 @@
       "page": 0,
       "pageSize": 50
     }
+  },
+  {
+    "$comment": "いつも掛ける条件（search.fixed。0.9.23）。画面から来た条件のあとに必ず足す。params に同じ名前が来ても外せない・変えられない（fixed は絞り込みではないので、params の名前としては無視される）",
+    "filters": [
+      {
+        "field": "name",
+        "type": "text",
+        "operator": "contains"
+      }
+    ],
+    "fixed": [
+      {
+        "field": "cancelled",
+        "operator": "notEquals",
+        "value": true
+      },
+      {
+        "field": "status",
+        "operator": "equals",
+        "value": "active"
+      }
+    ],
+    "params": {
+      "name": "山田",
+      "cancelled": "true",
+      "status": "retired"
+    },
+    "expected": {
+      "conditions": [
+        {
+          "field": "name",
+          "operator": "contains",
+          "value": "山田"
+        },
+        {
+          "field": "cancelled",
+          "operator": "notEquals",
+          "value": true
+        },
+        {
+          "field": "status",
+          "operator": "equals",
+          "value": "active"
+        }
+      ],
+      "sortField": null,
+      "sortAscending": true,
+      "page": 0,
+      "pageSize": 50
+    }
+  },
+  {
+    "$comment": "絞り込みの値が1つも無くても、いつも掛ける条件だけは付く",
+    "filters": [
+      {
+        "field": "name",
+        "type": "text",
+        "operator": "contains"
+      }
+    ],
+    "fixed": [
+      {
+        "field": "cancelled",
+        "operator": "notEquals",
+        "value": true
+      }
+    ],
+    "params": {},
+    "expected": {
+      "conditions": [
+        {
+          "field": "cancelled",
+          "operator": "notEquals",
+          "value": true
+        }
+      ],
+      "sortField": null,
+      "sortAscending": true,
+      "page": 0,
+      "pageSize": 50
+    }
   }
 ]

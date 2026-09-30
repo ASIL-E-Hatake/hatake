@@ -1,6 +1,6 @@
 import { FormatterRegistry } from "@hatake-fw/api";
 import type { ActionDefinition } from "@hatake-fw/api/internal";
-import { ActionScopes, ActionTypes, formFields, recordKeyOf } from "@hatake-fw/api/internal";
+import { ActionScopes, ActionTypes, filterDefaults, formFields, recordKeyOf } from "@hatake-fw/api/internal";
 import type { CrudPageDefinition, MasterPageDefinition, SearchPageDefinition } from "@hatake-fw/api/internal";
 import {
   CrudController,
@@ -39,6 +39,8 @@ export const HatakeSearchPage = defineComponent({
       repository: registries.repositories.resolve(props.definition.repository),
       pageSize: props.definition.table.pagination.pageSize,
       keyFields: props.definition.keyFields,
+      // 最初の一覧も検索欄の既定値で読む（入力欄と一覧が食い違わない）。
+      filters: filterDefaults(props.definition.search),
     });
     const { version } = useController(controller);
     const bar = useActions({
@@ -208,8 +210,8 @@ export const HatakeCrudPage = defineComponent({
                 errors: controller.validation.errors,
                 mode: controller.formMode,
                 disabled: controller.submitting,
-                onChange: (name: string, value: unknown) => {
-                  draft.value = { ...draft.value, [name]: value };
+                onChange: (name: string, value: unknown, copied?: Readonly<Record<string, unknown>>) => {
+                  draft.value = { ...draft.value, ...copied, [name]: value };
                 },
               }),
             ),

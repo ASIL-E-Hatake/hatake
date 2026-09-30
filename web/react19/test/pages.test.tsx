@@ -98,6 +98,46 @@ const orders = [
   { orderNo: "SO-2", amount: 5160 },
 ];
 
+const lookupYaml = `
+dsl_version: "1.0"
+page:
+  id: employees
+  type: search
+  title: 社員
+  repository: employeeRepository
+  key: code
+  table:
+    columns:
+      - { field: code, label: 社員番号 }
+      - field: dept
+        label: 部署
+        optionsSource: { repository: deptRepository, value: code, label: name }
+`;
+
+const copyYaml = `
+dsl_version: "1.0"
+page:
+  id: order_entry
+  type: form
+  title: 受注入力
+  repository: orderRepository
+  key: orderNo
+  form:
+    sections:
+      - fields:
+          - field: productCode
+            label: 商品
+            type: select
+            optionsSource: { repository: productRepository, copy: { unitPrice: price, taxRate: taxRate } }
+          - { field: unitPrice, label: 単価, type: number }
+          - { field: taxRate, label: 税率, type: number, readOnly: true }
+`;
+
+const products = [
+  { code: "P-1", name: "りんご", price: 120, taxRate: 0.08 },
+  { code: "P-2", name: "皿", price: 900, taxRate: 0.1 },
+];
+
 const rows = [
   { code: "C-1", name: "あおぞら商事", status: "active" },
   { code: "C-2", name: "北山フーズ", status: "closed" },
@@ -148,6 +188,62 @@ describe("定義から画面が出る（React）", () => {
       "合計 ¥6,360",
       "件数 2",
     ]);
+  });
+
+  it("検索欄の既定値: 最初の一覧もその条件で読み、欄にも同じ値（範囲は2つの欄）", async () => {
+    const yamlWithDefaults = `
+dsl_version: "1.0"
+page:
+  id: orders
+  type: search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  search:
+    filters:
+      - { field: status, label: 状態, type: select, operator: equals, defaultValue: open,
+          options: [{ value: open, label: 未出荷 }, { value: shipped, label: 出荷済 }] }
+      - { field: total, label: 合計, type: number, operator: between, defaultValue: [100, null] }
+  table:
+    columns:
+      - { field: orderNo, label: 受注番号 }
+      - { field: total, label: 合計, type: number }
+`;
+    const orders = [
+      { orderNo: "SO-1", status: "open", total: 50 },
+      { orderNo: "SO-2", status: "open", total: 300 },
+      { orderNo: "SO-3", status: "shipped", total: 500 },
+    ];
+    show(pageOf(yamlWithDefaults) as SearchPageDefinition, { orderRepository: new FakeRepository(orders, ["orderNo"]) });
+    await waitFor(() => expect(document.querySelectorAll('[data-hatake^="row:"]')).toHaveLength(1));
+    expect(at("row:SO-2")).not.toBeNull();
+    expect((at("filter:status") as HTMLSelectElement).value).toBe("open");
+    expect((at("filter:total:from") as HTMLInputElement).value).toBe("100");
+    expect((at("filter:total:to") as HTMLInputElement).value).toBe("");
+  });
+
+  it("選択肢をマスタから引き、選ぶと書いた項目に写す（optionsSource.copy）", async () => {
+    show(pageOf(copyYaml), {
+      orderRepository: new FakeRepository([], ["orderNo"]),
+      productRepository: new FakeRepository(products, ["code"]),
+    });
+    await waitFor(() => expect(at("field:productCode")?.querySelectorAll("option")).toHaveLength(3));
+    fireEvent.change(at("field:productCode") as HTMLSelectElement, { target: { value: "P-2" } });
+    await waitFor(() => expect((at("field:unitPrice") as HTMLInputElement).value).toBe("900"));
+    expect((at("field:taxRate") as HTMLInputElement).value).toBe("0.1");
+  });
+
+  it("列に optionsSource: キーから別マスタの名前を引いて出す", async () => {
+    show(pageOf(lookupYaml) as SearchPageDefinition, {
+      employeeRepository: new FakeRepository([{ code: "E-1", dept: "D01" }, { code: "E-2", dept: "D99" }], ["code"]),
+      deptRepository: new FakeRepository([{ code: "D01", name: "営業部" }], ["code"]),
+    });
+    await waitFor(() =>
+      expect([...document.querySelectorAll('[data-hatake="cell:dept"]')].map((one) => one.textContent)).toEqual([
+        "営業部",
+        "D99",
+      ]),
+    );
   });
 
   it("`pagination.enabled: false` は送る口を出さず、出しきれないとそう言う", async () => {

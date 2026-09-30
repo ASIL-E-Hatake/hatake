@@ -783,6 +783,7 @@ API も1回で済ませられる（件数ぶんの往復にしない）。
 |---|---|---|---|
 | `layout` | [layout](#layout) | `{columns: 1}` | フィルタの配置。 |
 | `filters` | [filter](#filter)[] | `[]` | 検索入力。 |
+| `fixed` | [fixedCondition](#いつも掛ける条件fixed)[] | `[]` | いつも掛ける条件（画面には出さず、外せない）。 |
 
 ### filter
 
@@ -796,6 +797,7 @@ API も1回で済ませられる（件数ぶんの往復にしない）。
 | `optionsFrom` | string | | — | 親の条件名。その値で選択肢を絞る（[選択肢の連動](#選択肢の連動optionsfrom--when--optionssource)参照）。 |
 | `optionsSource` | [optionsSource](#選択肢の連動optionsfrom--when--optionssource) | | — | 選択肢を Repository から引く。 |
 | `config` | map | | `{}` | 追加設定。 |
+| `defaultValue` | any | | — | 検索欄の初期値（[既定値](#検索欄の既定値defaultvalue)参照）。最初の一覧もこの条件で読む。 |
 
 **入力の出方**（Renderer が `type` で決める）:
 
@@ -814,6 +816,48 @@ API も1回で済ませられる（件数ぶんの往復にしない）。
 ```
 
 複数条件を並べるときは `search.layout.columns` で列数を指定できる（狭い画面では自動的に1列へ退避）。**空の入力は送信されない**ので、未入力の条件で絞り込まれることはない。
+
+### 検索欄の既定値（`defaultValue`）
+
+検索欄を**埋めて始める**。入力欄だけ埋まって一覧は全件、にはならない＝**最初の一覧もこの条件で読む**（0.9.23）。利用者は外せる（ただの初期値）。
+
+```yaml
+filters:
+  - { field: employmentStatus, label: 在籍, type: select, operator: equals, defaultValue: active, optionsOf: employmentStatus }
+  - { field: orderDate, label: 受注日, type: date, operator: between, defaultValue: $thisMonth }
+  - { field: shippedAt, label: 出荷日, type: date, operator: between, defaultValue: [$startOfMonth, $today] }
+```
+
+| 書き方 | 意味 |
+|---|---|
+| 値そのもの（`active` / `10` / `false`） | その値 |
+| `$today` / `$startOfMonth` / `$endOfMonth` / `$startOfYear` / `$endOfYear` | その日の日付（`yyyy-MM-dd`。画面を開いた日で解く） |
+| `$thisMonth` / `$thisYear` | 範囲（`between`）だけ。`[はじめ, おわり]` になる |
+| `[from, to]` | 範囲（`between`）。片方は `null` でよい。中に上の1日の語も書ける |
+| `[a, b, …]` | `in` の絞り込み |
+
+形の合わない書き方（知らない語・範囲の語を範囲でない条件に・範囲に3つ）は**既定値が付かない**（変な条件で黙って読むより安全）。`hatake validate` が `filter-default-unusable` で言う。解くのは `filterDefaults`（Dart / TS）で、3つの Renderer は同じ値を使う（共有フィクスチャ `filter_defaults.json`）。**サーバでは当てない**（初期値は画面の話）。
+
+### いつも掛ける条件（`fixed`）
+
+画面には出さず、**毎回の問い合わせに必ず足す**条件（0.9.23）。「取消は刷らない」「退職者は出さない」のように、利用者に外させたくない決めごと。
+
+```yaml
+search:
+  filters: [ … ]
+  fixed:
+    - { field: cancelled, operator: notEquals, value: true }
+```
+
+#### fixedCondition
+
+| キー | 型 | 必須 | 既定 | 説明 |
+|---|---|---|---|---|
+| `field` | string | ✅ | — | 対象のデータキー。 |
+| `operator` | string | | `equals` | 突合演算子（絞り込みと同じ語彙）。 |
+| `value` | any | ✅ | — | 比べる値。 |
+
+当てるのは**サーバの `buildQuery`**（TS / Java）で、画面から来た条件のあとに毎回足す。画面は送ってこないので、同じ名前の値が届いても外せない・変えられない。Dart には問い合わせの組み立てが無いので、**Repository を直接実装する Flutter アプリは自分で当てる**。`explain` は「いつも 取消 が true でないものだけ」と言う。
 
 ## table
 
@@ -835,6 +879,9 @@ API も1回で済ませられる（件数ぶんの往復にしない）。
 | `format` | string | | — | 表示フォーマッタ名（[フォーマッタ](#フォーマッタ)参照）。オプションは `config` から。 |
 | `config` | map | | `{}` | 追加設定（フォーマッタのオプション兼用）。 |
 | `roles` | string[] | | `[]` | 表示を許可するロール（[権限（roles）](#権限roles)参照）。空=全員。 |
+| `optionsSource` | [optionsSource](#選択肢の連動optionsfrom--when--optionssource) | | — | **キーから別の Repository の名前を引いて**升に出す（部署コード → 部署名）。 |
+
+列の `optionsSource`（0.9.23）は、一覧の画面が**表で1回だけ**引いて、引いた選択肢で升の字を決める（`cellText` の列の選択肢として）。引いた表に無いキーはそのまま出す（黙って空にしない）。引くのは `limit` 件まで。**CSV・帳票・サーバはキーのまま**（引かない）。`hatake refs` は列で引く Repository も登録が要るものに数える。
 
 ### pagination
 
@@ -1116,6 +1163,23 @@ sections:
   `optionsFrom` と対で使う（親が決まらないと絞り込めない）
 - `options` と `optionsSource` の両方を書いたら**引いた方が勝つ**（`hatake validate` が警告する）
 - Framework は HTTP も SQL も知らない。②が使うのは一覧画面と同じ `Repository.search`
+- ブラウザ版（Vue / React）も同じ規則で引く（`@hatake-fw/runtime` の `OptionsFetcher`。0.9.22 まではブラウザ版だけ読んでおらず、選択肢が空だった）
+
+**選んだ行から値を写す（`copy`）**（0.9.23）。商品を選んだら単価と税率も入る、のように、選んだ選択肢の元の行の値を**このフォームの項目に写す**:
+
+```yaml
+- field: productCode
+  label: 商品
+  type: select
+  optionsSource:
+    repository: productRepository
+    copy: { unitPrice: price, taxRate: taxRate }   # { このフォームの項目: 引いた行の項目 }
+```
+
+- 読むだけの項目（`readOnly`）にも写す。明細（`subTable`）の行でも同じ
+- 行に**無い**項目は写さない（入れてあった値を消さない）。行にあって `null` なら `null` を写す。選択を外したら何も写さない
+- 写し方は `copiedFrom`（Dart / TS。共有フィクスチャ `options_copy.json`）
+- **単価の正はサーバ**。サーバは今までどおり受け取った値を上書きしてよい（画面は入力を楽にするだけ）
 
 **検索条件（`search.filters`）でも同じキーが同じ意味で使える。** 「いまの値の集まり」が
 レコードではなく検索欄に入っている値になるだけで、絞り込みの判定は共有している

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.23
+
+- 追加: `filter.defaultValue` と `filterDefaults`（検索欄の既定値を、その日の値に解く。
+  `$today` / `$startOfMonth` / `$thisMonth` などの相対の語つき）。
+- 追加: `search.fixed`（いつも掛ける条件。`FixedCondition`）。当てるのはサーバの `buildQuery`
+  （TS / Java）で、Repository を直接実装するアプリは自分で当てる。
+- 追加: `optionsSource.copy` と `copiedFrom`（選んだ選択肢の元の行から、書いた項目に写す）。
+- 追加: 列に `optionsSource`（`ColumnDefinition` が `OptionsOwner` になった。`withOptions`）。
+- 共有フィクスチャ `filter_defaults.json` / `options_copy.json` が TS 版と同じ答えを縛る。
+
 ## 0.9.22
 
 - 追加: 画面に `roles`（`PageDefinition.roles`。書かなければ空＝誰でも）。

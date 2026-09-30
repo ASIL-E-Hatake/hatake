@@ -1,9 +1,10 @@
 import { FormatterRegistry } from "@hatake-fw/api";
 import { cellText, isAllowed } from "@hatake-fw/api/internal";
 import type { ColumnDefinition, FieldDefinition } from "@hatake-fw/api/internal";
-import type { DataRecord } from "@hatake-fw/runtime";
+import { type DataRecord, OptionsFetcher } from "@hatake-fw/runtime";
 import type { ReactNode } from "react";
 
+import { useOnce, useRegistries } from "../scope.js";
 import { HatakeField } from "./field.js";
 
 /**
@@ -26,6 +27,10 @@ export function HatakeSubTable(props: {
   editable?: boolean;
   onChange?: (field: string, rows: readonly DataRecord[]) => void;
 }): ReactNode {
+  // 明細の欄は行の数だけ並ぶので、選択肢の取り寄せは表で1つを共有する
+  // （行の数だけ同じ一覧を引かない）。
+  const registries = useRegistries();
+  const fetcher = useOnce(() => new OptionsFetcher(registries.repositories), [registries]);
   const one = props.field;
   const formatters = props.formatters ?? new FormatterRegistry();
   const editable = props.editable === true;
@@ -87,9 +92,10 @@ export function HatakeSubTable(props: {
                           <HatakeField
                             field={{ ...input, label: "" }}
                             record={row}
-                            onChange={(name, value) => {
+                            fetcher={fetcher}
+                            onChange={(name, value, copied) => {
                               const next = [...rows];
-                              next[at] = { ...row, [name]: value };
+                              next[at] = { ...row, ...copied, [name]: value };
                               send(next);
                             }}
                           />

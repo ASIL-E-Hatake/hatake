@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.23
+
+- 追加: 一覧（検索・CRUD・マスタ）とダッシュボードは、最初の読み込みから検索欄の既定値
+  （`filter.defaultValue`）で読む（`ListController(initialFilters:)`・`CrudController(today:)`・
+  `DashboardController(today:)`）。
+
 ## 0.9.22
 
 - 追加: 画面自身の `roles` を持たない人には、`HatakePageView` が中身を出さない

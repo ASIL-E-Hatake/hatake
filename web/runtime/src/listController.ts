@@ -39,12 +39,17 @@ export class ListController extends Notifier {
     repository: Repository;
     pageSize: number;
     keyFields?: readonly string[];
+    /**
+     * 最初の読み込みの条件（検索欄の既定値。`filterDefaults` が解いたもの）。
+     * 入力欄だけ埋まって一覧は全件、にしないため。
+     */
+    filters?: Readonly<Record<string, unknown>>;
   }) {
     super();
     this.repository = options.repository;
     this.pageSize = options.pageSize;
     this.keyFields = options.keyFields ?? [];
-    this._query = repositoryQuery({ pageSize: options.pageSize });
+    this._query = repositoryQuery({ pageSize: options.pageSize, filters: { ...(options.filters ?? {}) } });
   }
 
   get query(): RepositoryQuery {

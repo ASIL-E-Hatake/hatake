@@ -259,10 +259,22 @@ class _MaterialSearchPageState extends State<_MaterialSearchPage> {
     );
   }
 
+  /// 名前を引く列（`column.optionsSource`）の名前の表。1回だけ引いて覚える。
+  late final _OptionsFetcher _lookups = _OptionsFetcher(
+    repositories: HatakeScope.of(context).repositories,
+    onFetched: () {
+      if (mounted) setState(() {});
+    },
+  );
+
   Widget _buildCell(ColumnDefinition column, Object? value) {
     // 値を文字にするのは `cellText` ただ1か所（`hatake_core`）。ここで書くと、
     // 同じ4行が画面の種類のぶんだけ増えて、直すときに必ず取りこぼす。
-    final text = cellText(_formatters, _optionOwners, column, value);
+    // 名前を引く列は、引いた表を列の選択肢として渡す（引く順は cellText のまま）。
+    final shown = column.optionsSource == null
+        ? column
+        : column.withOptions(_lookups.optionsFor(column, const {}));
+    final text = cellText(_formatters, _optionOwners, shown, value);
     switch (column.type) {
       case ColumnTypes.badge:
         return Chip(

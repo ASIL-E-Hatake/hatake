@@ -23,7 +23,7 @@
 ### Flutter / Dart
 
 `git:` で tag を指す。**`dependency_overrides` が要る**のがこの配り方の肝で、パッケージは
-pub.dev 前提（`hatake_core: ^0.0.1`）で書いてあり、その中の overrides は**根のパッケージ
+pub.dev 前提（`hatake_core: ^0.9.14` のような版の範囲）で書いてあり、その中の overrides は**根のパッケージ
 でしか効かない**ため、下に居る `hatake_*` は使う側が指し直す。
 
 ```yaml no-check:pubspec.yaml（hatake の定義ではない）

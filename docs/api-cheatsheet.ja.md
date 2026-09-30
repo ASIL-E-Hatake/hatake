@@ -4,6 +4,8 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
 
 - 全仕様: [DSL 仕様書](../spec/dsl-spec.ja.md) / 機械検証: [JSON Schema](../spec/hatake-page.schema.json)
 - 拡張: [Plugin ガイド](../flutter/docs/plugins.ja.md)
+- 案件を触り始める前に: `npx hatake doctor`（固定した版がそろっているか・入っている版が固定した版と
+  同じか・定義の `dsl_version`・MCP の設定。`--json` で機械に渡せる）
 - ここに無いキーは**引く**: `npx hatake reference <キー名>`（[DSL リファレンス](../spec/reference.json)）／
   近い例を探す: `npx hatake examples <やりたいこと>`（[例のカタログ](../spec/examples/README.md)）／
   書けたら `npx hatake validate <file>`
@@ -323,6 +325,20 @@ exportSink: (req) async => save(req.filename, encodings.encode(req.charset, req.
 
 `isEmpty` `isNotEmpty` は値を取らないので条件専用。逆に `between` `startsWith` `endsWith` は検索専用。
 
+## 検索欄の既定値・いつも掛ける条件
+
+```yaml context:search
+filters:
+  - { field: status, label: 在籍, type: select, operator: equals, defaultValue: active, optionsOf: employmentStatus }
+  - { field: orderDate, label: 受注日, type: date, operator: between, defaultValue: $thisMonth }
+fixed:                                                # 画面には出さない・外せない
+  - { field: cancelled, operator: notEquals, value: true }
+```
+
+* `defaultValue` は検索欄の初期値で、**最初の一覧もこの条件で読む**（利用者は外せる）。日付の語: `$today` `$startOfMonth` `$endOfMonth` `$startOfYear` `$endOfYear`、範囲（`between`）だけ `$thisMonth` `$thisYear` か `[from, to]`
+* 形の合わない既定値は付かない（`validate` が `filter-default-unusable`）
+* `fixed` は**サーバの `buildQuery`（TS / Java）が毎回足す**。Repository を直接実装する Flutter アプリは自分で当てる
+
 ## フォーマッタ（`format:` で指定。オプションは同じ要素の `config`）
 <!-- vocab: field.format -->
 | name | 例 | 主なオプション |
@@ -448,10 +464,16 @@ sections:
 * 値の比較は条件式と同じ緩い比較（`'1'` と `1` は同じ）
 * `options` と `optionsSource` の両方は書かない（引いた方が勝つ。`validate` が警告する）
 * **検索条件（`search.filters`）でも同じキーが同じ意味で使える**（判定は共有）。範囲（`between`）は値を2つ持つので親にはできない
+* **選んだ行から値を写す**: `optionsSource: { repository: productRepository, copy: { unitPrice: price, taxRate: taxRate } }`（`{ このフォームの項目: 引いた行の項目 }`。読むだけの項目にも・明細の行でも。単価の正はサーバ）
+* **列でキーから名前を引く**: `{ field: dept, label: 部署, optionsSource: { repository: deptRepository } }`（一覧の升だけ。CSV・帳票・サーバはキーのまま）
 
 ## 権限（ロールで表示出し分け）
 
-`field` / `column` / `action` に `roles: [..]`（許可ロール、空=全員）を付ける。現在ユーザのロールは Flutter は `HatakeScope(roles: {'admin'})` で注入。
+`field` / `column` / `action` / **画面そのもの**に `roles: [..]`（許可ロール、空=全員）を付ける。現在ユーザのロールは Flutter は `HatakeScope(roles: {'admin'})` で注入。
+
+* 画面の `roles` を持たない人には、メニューから項目が消え、直に開いても「この画面を開く権限がありません」
+* 組み込みの行の編集・削除は、宣言（`{ id: …, type: edit | delete, roles: [...] }`）の `roles` に従う
+* **サーバでも同じ定義で判断**: TS `canOpenPageIn` / `canRunActionIn` / `visibleRecordIn` / `acceptRecordIn`、Java `ServerAccess`（素の定義と画面の id を受ける）
 
 ```yaml
 - { field: salary, label: 給与, roles: [hr, manager] }   # hr か manager だけ表示
@@ -579,9 +601,21 @@ ageAt('1990-06-15', '2026-06-14');                 // 35（誕生日未達）
 tenure('2020-04-01', '2026-07-15');                // years:6, months:3
 // 営業日（祝日は yyyy-MM-dd の集合を注入）
 nextBusinessDay('2024-01-05', holidays: {'2024-01-08'}); // 2024-01-09
+// 画面の門とメニュー（画面の roles）
+canOpenPage(page, {'hr'});                         // true / false
+menuItemOpens(item, {'hr'}, app.pageById(item.page!));
+// 行の右端に出るもの（組み込みの編集・削除は宣言の roles に従う。宣言は type で引く）
+rowSlots(table.rowActions, page.actions, {'hr'});  // [RowSlot('edit', …), …]
+builtInDeclaration(page.actions, 'delete');        // `type: delete` の宣言（無ければ null）
+// 検索欄の既定値をその日の値に（`$thisMonth` → [月初, 月末]）
+filterDefaults(page.search, DateTime.now());       // {'orderDate': ['2026-10-01', '2026-10-31']}
+// 選んだ選択肢の元の行から写す値（optionsSource.copy）
+copiedFrom(field.optionsSource!, row);             // {'unitPrice': 900, 'taxRate': 0.1}
+// いつも掛ける条件（search.fixed）の1件
+const FixedCondition(field: 'cancelled', operator: 'notEquals', value: true);
 ```
 
 拡張したいときは各レジストリに `register(name, fn)`、または `MaterialRenderer(fieldBuilders: {...})`。詳細は [Plugin ガイド](../flutter/docs/plugins.ja.md)。
 
 ## 他言語（バックエンド）
-TypeScript(`@hatake-fw/api`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `evaluateCondition` / `ComputedRegistry` / `isAllowed` / `parseApp*`（app定義パーサ＝menu/ページ目録） / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` / `ScenarioRunner`（定義を動かして答えを見る。TS は `hatake run`）を提供（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。Java には `RegistrySnapshot`（サーバが足した登録の申告。`hatake registry --compare` に渡す）も在る。定義（YAML/JSON）は全言語共通。
+TypeScript(`@hatake-fw/api`) と Java(`io.github.asil-e-hatake:hatake-core`) も**同じ名前・同じ出力**で `FormatterRegistry` / `ConverterRegistry` / `FormValidator` / `MessageResolver` / `QueryBuilder` / `evaluateCondition` / `ComputedRegistry` / `isAllowed` / `parseApp*`（app定義パーサ＝menu/ページ目録） / `computeTax` / `computeInvoice` / `fiscal*` / `ageAt`・`tenure` / `*BusinessDay` / `eraOf` / `ScenarioRunner`（定義を動かして答えを見る。TS は `hatake run`）を提供。サーバの権限は TS `canOpenPageIn` / `canRunActionIn` / `visibleRecordIn` / `acceptRecordIn`・Java `ServerAccess`、いつも掛ける条件（`search.fixed`）は `buildQuery` / `QueryBuilder` が足す（[コンフォーマンス](../spec/conformance/)で3言語の一致を担保）。Java には `RegistrySnapshot`（サーバが足した登録の申告。`hatake registry --compare` に渡す）も在る。定義（YAML/JSON）は全言語共通。

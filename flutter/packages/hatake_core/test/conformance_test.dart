@@ -445,6 +445,44 @@ void main() {
       expect(shown(const [], c), (c['expected']! as List).cast<String>());
     });
   });
+
+  group('conformance: filter defaults', () {
+    final fixture = _loadMap('filter_defaults.json');
+    for (final raw in fixture['cases'] as List<Object?>) {
+      final c = (raw as Map).cast<String, Object?>();
+      test(c['name'] as String, () {
+        final parts = (c['today']! as String).split('-').map(int.parse).toList();
+        final search = SearchDefinition(filters: [
+          for (final f in (c['filters']! as List).cast<Map>())
+            FilterDefinition(
+              field: f['field'] as String,
+              label: f['field'] as String,
+              operator: f['operator'] as String,
+              defaultValue: f['defaultValue'],
+            ),
+        ]);
+        expect(
+          filterDefaults(search, DateTime(parts[0], parts[1], parts[2], 12)),
+          c['expected'],
+        );
+      });
+    }
+  });
+
+  group('conformance: options copy', () {
+    final fixture = _loadMap('options_copy.json');
+    for (final raw in fixture['cases'] as List<Object?>) {
+      final c = (raw as Map).cast<String, Object?>();
+      test(c['name'] as String, () {
+        final source = OptionsSource(
+          repository: 'r',
+          copy: (c['copy']! as Map).cast<String, String>(),
+        );
+        final row = (c['row'] as Map?)?.cast<String, Object?>();
+        expect(copiedFrom(source, row), c['expected']);
+      });
+    }
+  });
 }
 
 /// conformance の `owners` を、選択肢を持つものに変える。

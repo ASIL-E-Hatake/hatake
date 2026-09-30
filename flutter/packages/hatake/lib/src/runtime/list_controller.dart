@@ -8,8 +8,13 @@ class ListController extends ChangeNotifier {
   final Repository repository;
   final int pageSize;
 
-  ListController({required this.repository, required this.pageSize})
-      : _query = RepositoryQuery(pageSize: pageSize);
+  /// [initialFilters] は最初の読み込みの条件（検索欄の既定値。`filterDefaults` が
+  /// 解いたもの）。入力欄だけ埋まって一覧は全件、にしないため。
+  ListController({
+    required this.repository,
+    required this.pageSize,
+    Map<String, Object?> initialFilters = const {},
+  }) : _query = RepositoryQuery(pageSize: pageSize, filters: initialFilters);
 
   RepositoryQuery _query;
   RepositoryQuery get query => _query;

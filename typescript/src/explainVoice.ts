@@ -102,6 +102,48 @@ const WORDS = {
     (repository: string) => `選択肢は ${repository} から引く`,
     (repository: string) => `choices come from ${repository}`,
   ),
+  copiesToo: pair(
+    (labels: string[]) => `選ぶと ${labels.join("・")} も入る`,
+    (labels: string[]) => `picking one also fills ${labels.join(", ")}`,
+  ),
+  namesFrom: pair(
+    (repository: string) => `名前は ${repository} から引く`,
+    (repository: string) => `names come from ${repository}`,
+  ),
+  startsAs: pair(
+    (value: string) => `最初は ${value} で絞ってある（外せる）`,
+    (value: string) => `starts filtered to ${value} (can be cleared)`,
+  ),
+  /** [condition] は条件の言い回し（`が {value} でない` など。「とき」を除いたもの）。 */
+  alwaysOnly: pair(
+    (label: string, condition: string) =>
+      `いつも ${label} ${condition}ものだけ（画面からは外せない）`,
+    (label: string, condition: string) =>
+      `always only rows where ${label} ${condition} (cannot be removed on screen)`,
+  ),
+  /** 既定値の相対の語を人の言葉に。 */
+  relativeDay: pair(
+    (word: string) =>
+      (({
+        $today: "今日",
+        $startOfMonth: "今月の1日",
+        $endOfMonth: "今月の末日",
+        $startOfYear: "今年の1月1日",
+        $endOfYear: "今年の12月31日",
+        $thisMonth: "今月",
+        $thisYear: "今年",
+      }) as Record<string, string>)[word] ?? word,
+    (word: string) =>
+      (({
+        $today: "today",
+        $startOfMonth: "the first of this month",
+        $endOfMonth: "the end of this month",
+        $startOfYear: "January 1 this year",
+        $endOfYear: "December 31 this year",
+        $thisMonth: "this month",
+        $thisYear: "this year",
+      }) as Record<string, string>)[word] ?? word,
+  ),
   /** 文のうしろに句を足すときの区切り（日本語は句点、英語はセミコロン）。 */
   clause: pair(
     (text: string) => `。${text}`,

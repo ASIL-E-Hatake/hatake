@@ -13,14 +13,21 @@ class CrudController extends ListController {
   final FormValidator _formValidator;
   final FormNormalizer _normalizer;
 
+  /// 最初の一覧は検索欄の既定値（`filter.defaultValue`）で読む。[today] はその日
+  /// （試験で日を決めるため。省略すると今日）。
   CrudController({
     required this.definition,
     required super.repository,
     FormValidator? formValidator,
     FormNormalizer? formNormalizer,
+    DateTime? today,
   })  : _formValidator = formValidator ?? FormValidator(),
         _normalizer = formNormalizer ?? FormNormalizer(),
-        super(pageSize: definition.table.pagination.pageSize);
+        super(
+          pageSize: definition.table.pagination.pageSize,
+          initialFilters:
+              filterDefaults(definition.search, today ?? DateTime.now()),
+        );
 
   // --- Form state ---------------------------------------------------------
 
