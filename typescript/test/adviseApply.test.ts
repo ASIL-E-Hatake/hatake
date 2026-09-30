@@ -380,6 +380,40 @@ describe("助言をそのまま当てる", () => {
     expect(rulesLeft(result.source)).not.toContain("no-required-field");
   });
 
+  it("新規登録を足す（actions の後ろに。文言は渡せる）", () => {
+    const master = `page:
+  type: master
+  id: employee_master
+  title: 社員マスタ
+  repository: employeeRepository
+  key: employeeNo
+  search:
+    filters:
+      - { field: name, label: 氏名 }
+  table:
+    columns:
+      - { field: employeeNo, label: 社員番号, sortable: true }
+    rowActions: [edit]
+  form:
+    sections:
+      - fields:
+          - { field: employeeNo, label: 社員番号, required: true }
+  actions:
+    - { id: edit, type: edit, label: 編集, roles: [hr] }
+`;
+    expect(rulesLeft(master)).toContain("crud-without-create");
+    const result = apply(master, [{ rule: "crud-without-create" }]);
+    expect(result.applied).toHaveLength(1);
+    expect(result.source).toContain("{ id: create, type: create, label: 新規登録 }");
+    expect(result.source).toContain("{ id: edit, type: edit, label: 編集, roles: [hr] }"); // 触っていない
+    expect(rulesLeft(result.source)).not.toContain("crud-without-create");
+
+    const worded = apply(master, [
+      { rule: "crud-without-create", value: { id: "create", type: "create", label: "社員を登録" } },
+    ]);
+    expect(worded.source).toContain("label: 社員を登録");
+  });
+
   it("帳票の合計も、渡された項目で書ける", () => {
     const report = `page:
   type: report

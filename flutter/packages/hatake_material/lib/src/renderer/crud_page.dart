@@ -307,7 +307,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
   /// one action that cannot be undone. Declaring `confirm` on a `delete` action
   /// replaces the wording; `onSuccess` adds a message or a move afterwards.
   Future<void> _delete(Object key, DataRecord record) async {
-    final declared = _declaredAction(_def.actions, ActionTypes.delete);
+    final declared = builtInDeclaration(_def.actions, ActionTypes.delete);
     if (!await _confirmAction(context, declared?.confirm, destructive: true)) {
       return;
     }
@@ -328,23 +328,12 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
 
   /// 行の右端に**何か出る** id（`table.rowActions` の並び順）。
   ///
-  /// 組み込み（`edit` / `delete`）はこの画面の機能なので、宣言が無くても出る。それ以外は
-  /// 同じ id の宣言を引けたものだけ（引けないことは `validate` が言う
-  /// ＝`rowaction-not-declared`）。1つも無ければ列そのものを出さない。
-  List<String> _rowSlots() {
-    final declared = {
-      for (final action
-          in _rowActions(_def.table.rowActions, _def.actions, _roles))
-        action.id,
-    };
-    return [
-      for (final id in _def.table.rowActions)
-        if (id == ActionTypes.edit ||
-            id == ActionTypes.delete ||
-            declared.contains(id))
-          id,
-    ];
-  }
+  /// 決めるのは `hatake_core` の [rowSlots]（Web と同じ規則。`row_slots.json`）。
+  /// 組み込み（`edit` / `delete`）は宣言が無くても出るが、宣言の `roles` から外れる人
+  /// には出さない。それ以外は同じ id の宣言を引けたものだけ（引けないことは `validate`
+  /// が言う＝`rowaction-not-declared`）。1つも無ければ列そのものを出さない。
+  List<RowSlot> _rowSlots() =>
+      rowSlots(_def.table.rowActions, _def.actions, _roles);
 
   /// 行のボタン（組み込みの編集・削除＋定義した行アクション）。
   ///
@@ -360,13 +349,7 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
     final labels = {
       for (final column in _def.table.columns) column.field: column.label,
     };
-    final declared = {
-      for (final action
-          in _rowActions(_def.table.rowActions, _def.actions, _roles))
-        action.id: action,
-    };
-    Widget rowButton(String type, IconButton button) {
-      final declaration = _declaredAction(_def.actions, type);
+    Widget rowButton(ActionDefinition? declaration, IconButton button) {
       if (declaration == null) return button;
       final state = _actionEnabled(declaration, record: record);
       if (state.enabled) return button;
@@ -385,10 +368,10 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        for (final id in _rowSlots())
-          if (id == ActionTypes.edit)
+        for (final slot in _rowSlots())
+          if (slot.kind == ActionTypes.edit)
             rowButton(
-              ActionTypes.edit,
+              slot.action,
               IconButton(
                 key: Key('hatake.edit.$key'),
                 icon: const Icon(Icons.edit_outlined),
@@ -399,9 +382,9 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
                 },
               ),
             )
-          else if (id == ActionTypes.delete)
+          else if (slot.kind == ActionTypes.delete)
             rowButton(
-              ActionTypes.delete,
+              slot.action,
               IconButton(
                 key: Key('hatake.delete.$key'),
                 icon: const Icon(Icons.delete_outline),
@@ -411,12 +394,12 @@ class _MaterialCrudPageState extends State<_MaterialCrudPage> {
             )
           else
             _rowActionButton(
-              action: declared[id]!,
+              action: slot.action!,
               record: record,
               rowKey: key,
               labels: labels,
-              unwired: unwiredReason(context, declared[id]!),
-              onPressed: () => _onAction(declared[id]!, record: record),
+              unwired: unwiredReason(context, slot.action!),
+              onPressed: () => _onAction(slot.action!, record: record),
             ),
       ],
     );

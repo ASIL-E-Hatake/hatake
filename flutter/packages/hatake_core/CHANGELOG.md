@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.22
+
+- 追加: 画面に `roles`（`PageDefinition.roles`。書かなければ空＝誰でも）。
+- 追加: `canOpenPage` / `menuItemOpens`（画面の門と、メニューの項目を出すか）。
+- 追加: `rowSlots` / `builtInDeclaration` / `RowSlot`（行の右端に出るもの。Web と同じ規則で、
+  `spec/conformance/row_slots.json` が見ている）。
+- 追加: `HatakeKeys.pageForbidden`。
+
 ## 0.9.21
 
 - 追加: `pagerView`（一覧の下の件数の字と、ページ送りを出すか）。`pagination.enabled:

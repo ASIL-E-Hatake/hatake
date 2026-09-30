@@ -466,6 +466,63 @@
           "suggestion": "roles"
         }
       ]
+    },
+    {
+      "name": "画面自身の roles は書けて、綴り違いは近い名前を言う（0.9.22）",
+      "document": {
+        "dsl_version": "1.0",
+        "app": {
+          "id": "a",
+          "title": "A",
+          "pages": [
+            {
+              "type": "search",
+              "id": "prices",
+              "title": "単価マスタ",
+              "repository": "priceRepository",
+              "roles": [
+                "admin"
+              ],
+              "table": {
+                "columns": [
+                  {
+                    "field": "code",
+                    "label": "コード"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "form",
+              "id": "entry",
+              "title": "入力",
+              "repository": "orderRepository",
+              "role": [
+                "clerk"
+              ],
+              "form": {
+                "sections": [
+                  {
+                    "fields": [
+                      {
+                        "field": "code",
+                        "label": "コード"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "expected": [
+        {
+          "path": "app.pages[1]",
+          "key": "role",
+          "suggestion": "roles"
+        }
+      ]
     }
   ]
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.22
+
+- 追加: `HatakeFind.pageForbidden`。
+
 ## 0.9.21
 
 - 追加: `HatakeFind.pagerText`（一覧の下の件数の字）。

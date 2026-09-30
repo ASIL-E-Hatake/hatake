@@ -350,6 +350,8 @@ export interface CrudPageDefinition {
   id: string;
   title: string;
   dslVersion: string;
+  /** 開いてよい役割（空＝誰でも）。メニュー・画面・サーバ（`canOpenPageIn`）が同じものを読む。 */
+  roles?: string[];
   repository: string;
   /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
   keyFields: string[];
@@ -369,6 +371,8 @@ export interface MasterPageDefinition {
   id: string;
   title: string;
   dslVersion: string;
+  /** 開いてよい役割（空＝誰でも）。メニュー・画面・サーバ（`canOpenPageIn`）が同じものを読む。 */
+  roles?: string[];
   repository: string;
   /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
   keyFields: string[];
@@ -387,6 +391,8 @@ export interface DetailPageDefinition {
   id: string;
   title: string;
   dslVersion: string;
+  /** 開いてよい役割（空＝誰でも）。メニュー・画面・サーバ（`canOpenPageIn`）が同じものを読む。 */
+  roles?: string[];
   repository: string;
   /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
   keyFields: string[];
@@ -399,6 +405,8 @@ export interface SearchPageDefinition {
   id: string;
   title: string;
   dslVersion: string;
+  /** 開いてよい役割（空＝誰でも）。メニュー・画面・サーバ（`canOpenPageIn`）が同じものを読む。 */
+  roles?: string[];
   repository: string;
   /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
   keyFields: string[];
@@ -412,6 +420,8 @@ export interface FormPageDefinition {
   id: string;
   title: string;
   dslVersion: string;
+  /** 開いてよい役割（空＝誰でも）。メニュー・画面・サーバ（`canOpenPageIn`）が同じものを読む。 */
+  roles?: string[];
   repository: string;
   /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
   keyFields: string[];
@@ -446,6 +456,8 @@ export interface WizardPageDefinition {
   id: string;
   title: string;
   dslVersion: string;
+  /** 開いてよい役割（空＝誰でも）。メニュー・画面・サーバ（`canOpenPageIn`）が同じものを読む。 */
+  roles?: string[];
   repository: string;
   /** **1件を指す項目**（定義に書いた順）。2つ以上なら複合キー。 */
   keyFields: string[];
@@ -549,6 +561,8 @@ export interface DashboardPageDefinition {
   id: string;
   title: string;
   dslVersion: string;
+  /** 開いてよい役割（空＝誰でも）。メニュー・画面・サーバ（`canOpenPageIn`）が同じものを読む。 */
+  roles?: string[];
   repository?: string;
   items: DashboardItemDefinition[];
   /** Card grid width (DSL: `layout.columns`). */
@@ -608,6 +622,8 @@ export interface ReportPageDefinition {
   id: string;
   title: string;
   dslVersion: string;
+  /** 開いてよい役割（空＝誰でも）。メニュー・画面・サーバ（`canOpenPageIn`）が同じものを読む。 */
+  roles?: string[];
   repository: string;
   /** Output conditions, passed to the repository as filters. */
   search?: SearchDefinition;

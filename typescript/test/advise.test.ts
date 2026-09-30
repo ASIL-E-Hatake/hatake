@@ -65,6 +65,20 @@ describe("書き足したほうがいい所", () => {
     expect(rules(crud({ search: "" }))).toContain("no-search-filter");
   });
 
+  it("入力欄はあるのに新規登録が無い一覧・マスタ（書かないと画面から足せない）", () => {
+    // 見本のマスタが 0.9.21 までこれで、社員を1人も足せなかった（check は黙っていた）。
+    const noCreate = crud({ actions: "    - { id: delete, type: delete, label: 削除, roles: [admin] }" });
+    expect(rules(noCreate)).toContain("crud-without-create");
+    expect(rules(noCreate.replace("type: crud", "type: master"))).toContain("crud-without-create");
+    const one = advise(noCreate).find((a) => a.rule === "crud-without-create");
+    expect(one?.where).toBe("page.actions");
+    expect(withDrafts(parseRaw(noCreate), advise(noCreate)).find((a) => a.rule === "crud-without-create")?.draft)
+      .toEqual({ id: "create", type: "create", label: "新規登録" });
+    // 書いてあれば言わない。照会（search）・入力だけの画面（form）では言わない。
+    expect(rules(crud({}))).not.toContain("crud-without-create");
+    expect(rules(noCreate.replace("type: crud", "type: search"))).not.toContain("crud-without-create");
+  });
+
   it("1件を指すキーが一覧に出ていない（行を見てもどのレコードか分からない）", () => {
     expect(rules(crud({ key: "id" }))).toContain("key-not-in-table");
   });

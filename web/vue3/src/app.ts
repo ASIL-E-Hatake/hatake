@@ -1,6 +1,6 @@
 import { FormatterRegistry } from "@hatake-fw/api";
 import type { AppDefinition, PageDefinition } from "@hatake-fw/api";
-import { isAllowed, menuIsGroup, type MenuItem } from "@hatake-fw/api/internal";
+import { menuIsGroup, type MenuItem, visibleMenu } from "@hatake-fw/api/internal";
 import {
   type AppRoute,
   closingAsks,
@@ -143,7 +143,10 @@ export const HatakeApp = defineComponent({
           h("div", { class: "hatake-app", "data-hatake": `app:${props.app.id}` }, [
             h("header", { class: "hatake-appbar" }, [h("div", { class: "hatake-brand" }, props.app.title)]),
             h("nav", { class: "hatake-menu", "data-hatake": "menu" }, [
-              ...props.app.menu.map((item) => menuNode(item, props.roles, router, custom, open)),
+              // 見えない項目は落としてから描く（項目の roles と、行き先の画面の roles）。
+              ...visibleMenu(props.app.menu, props.roles, (id) => props.pages[id]).map((item) =>
+                menuNode(item, router, custom, open),
+              ),
             ]),
             h("main", { class: "hatake-content" }, [
               ...(router.tabsOpen ? [tabBar(props.app, router, close)] : []),
@@ -322,20 +325,19 @@ function recordKeyFor(page: PageDefinition, params: Readonly<Record<string, unkn
   return parts;
 }
 
-/** メニューの1項目（束ねているなら見出しと中身）。 */
+/**
+ * メニューの1項目（束ねているなら見出しと中身）。**見えない項目は `visibleMenu` が
+ * 先に落としてある**（項目の roles と、行き先の画面の roles）。
+ */
 function menuNode(
   item: MenuItem,
-  roles: readonly string[],
   router: HatakeRouter,
   custom: Readonly<Record<string, string>>,
   open: (pageId: string) => void,
 ): VNode | null {
-  // **見えない項目は出さない。** 役割で絞るのは定義の仕事。
-  if (!isAllowed(item.roles, roles)) return null;
-
   if (menuIsGroup(item)) {
     const children = item.children
-      .map((one) => menuNode(one, roles, router, custom, open))
+      .map((one) => menuNode(one, router, custom, open))
       .filter((one) => one !== null);
     if (children.length === 0) return null;
     return h("div", { class: "hatake-menu-group" }, [

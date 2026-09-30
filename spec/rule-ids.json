@@ -113,6 +113,7 @@
     "bulk-without-batchsize",
     "bulk-without-confirm",
     "bulk-without-error-message",
+    "crud-without-create",
     "dates-without-compare",
     "destructive-without-confirm",
     "detail-page-in-menu",

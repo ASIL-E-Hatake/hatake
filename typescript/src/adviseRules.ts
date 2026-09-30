@@ -29,6 +29,8 @@ export const BUILTIN_RULES: Record<string, Record<string, "number" | "strings">>
   "detail-page-in-menu": {},
   // 入力できるのに必須が1つも無い。
   "no-required-field": {},
+  // 入力欄はあるのに新規登録（type: create）が無い（crud / master）。
+  "crud-without-create": {},
   // 消せる・持ち出せるのに roles が無い。types = 危ないと見なすアクション種別。
   // 「選んだ行にまとめて実行する」ボタン（scope: selection）は型に関わらず危ない側。
   "open-dangerous-action": { types: "strings" },

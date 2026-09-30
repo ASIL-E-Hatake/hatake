@@ -1,0 +1,152 @@
+{
+  "_comment": "サーバが画面と同じ判断をする口（TS: canOpenPageIn / canRunActionIn / visibleRecordIn / acceptRecordIn、Java: ServerAccess の同名）。どれも**素の document と画面の id** を受ける（BulkLimits と同じ。Java の PageDefinition はボタンも画面の roles も持たないので）。固定したいのは: (1) 画面の roles は最後の門＝開けない画面では何も押せない・何も見えない・何も受け取らない、(2) 宣言したボタンはその roles、(3) 組み込みの create は `type: create` を宣言したときだけ（画面に出ていないボタンは押せない）、edit / delete は `table.rowActions` に並べたときだけで、宣言が在ればその roles、(4) form / wizard は画面そのものが入力なので create / edit は開ければ可、(5) 見せない項目は列か入力欄の**どこか一つでも** roles から外れていれば落とす（守る側なので一番厳しく）、(6) 受け取るのは入力欄にあって・見えて・readOnly でも computed でもない項目だけで、落とした名前を body の順で返す、(7) 知らない画面は閉じた扱い。",
+  "document": {
+    "dsl_version": "1.0",
+    "app": {
+      "id": "hr",
+      "title": "人事",
+      "pages": [
+        {
+          "type": "master",
+          "id": "employee_master",
+          "title": "社員マスタ",
+          "repository": "employeeRepository",
+          "key": "employeeNo",
+          "roles": ["admin", "hr", "viewer"],
+          "table": {
+            "columns": [
+              { "field": "employeeNo", "label": "社員番号" },
+              { "field": "name", "label": "氏名" },
+              { "field": "salary", "label": "給与", "roles": ["hr"] }
+            ],
+            "rowActions": ["edit", "delete"]
+          },
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  { "field": "employeeNo", "label": "社員番号", "required": true },
+                  { "field": "name", "label": "氏名" },
+                  { "field": "salary", "label": "給与", "type": "number", "roles": ["hr"] },
+                  { "field": "updatedAt", "label": "更新日時", "readOnly": true },
+                  { "field": "fullLabel", "label": "表示名", "computed": { "op": "join", "fields": ["employeeNo", "name"] } }
+                ]
+              }
+            ]
+          },
+          "actions": [
+            { "id": "create", "type": "create", "label": "新規登録", "roles": ["hr"] },
+            { "id": "remove", "type": "delete", "label": "削除", "roles": ["admin"] },
+            { "id": "retire", "type": "plugin", "plugin": "retire", "label": "退職にする", "scope": "selection", "roles": ["hr"] }
+          ]
+        },
+        {
+          "type": "master",
+          "id": "supplier_master",
+          "title": "取引先マスタ",
+          "repository": "supplierRepository",
+          "key": "code",
+          "roles": ["admin"],
+          "table": {
+            "columns": [{ "field": "code", "label": "コード" }],
+            "rowActions": ["edit"]
+          },
+          "form": { "sections": [{ "fields": [{ "field": "code", "label": "コード" }] }] }
+        },
+        {
+          "type": "form",
+          "id": "order_entry",
+          "title": "受注入力",
+          "repository": "orderRepository",
+          "key": "orderNo",
+          "roles": ["clerk"],
+          "form": {
+            "sections": [
+              {
+                "fields": [
+                  { "field": "orderNo", "label": "受注番号" },
+                  { "field": "customer", "label": "得意先" }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "canOpen": [
+    { "name": "閲覧者も社員マスタは開ける", "pageId": "employee_master", "roles": ["viewer"], "expected": true },
+    { "name": "役割の無い人は開けない", "pageId": "employee_master", "roles": [], "expected": false },
+    { "name": "取引先マスタは admin だけ", "pageId": "supplier_master", "roles": ["hr"], "expected": false },
+    { "name": "知らない画面は閉じている", "pageId": "nope", "roles": ["admin"], "expected": false }
+  ],
+  "canRun": [
+    { "name": "新規登録は宣言の roles（hr）", "pageId": "employee_master", "actionId": "create", "roles": ["hr"], "expected": true },
+    { "name": "閲覧者は新規登録できない", "pageId": "employee_master", "actionId": "create", "roles": ["viewer"], "expected": false },
+    { "name": "削除は type で引いた宣言の roles（admin）", "pageId": "employee_master", "actionId": "delete", "roles": ["admin"], "expected": true },
+    { "name": "hr は削除できない", "pageId": "employee_master", "actionId": "delete", "roles": ["hr"], "expected": false },
+    { "name": "宣言の無い編集は、行に並んでいれば画面を開ける人なら誰でも", "pageId": "employee_master", "actionId": "edit", "roles": ["viewer"], "expected": true },
+    { "name": "宣言したボタンは id で引く", "pageId": "employee_master", "actionId": "retire", "roles": ["hr"], "expected": true },
+    { "name": "宣言したボタンの roles から外れる", "pageId": "employee_master", "actionId": "retire", "roles": ["viewer"], "expected": false },
+    { "name": "画面に無いボタンは押せない", "pageId": "employee_master", "actionId": "approve", "roles": ["admin"], "expected": false },
+    { "name": "create を宣言していない画面では新規登録できない", "pageId": "supplier_master", "actionId": "create", "roles": ["admin"], "expected": false },
+    { "name": "行に並べていない delete は押せない", "pageId": "supplier_master", "actionId": "delete", "roles": ["admin"], "expected": false },
+    { "name": "画面が閉じていれば、行の編集も押せない", "pageId": "supplier_master", "actionId": "edit", "roles": ["hr"], "expected": false },
+    { "name": "入力画面は、開ければ登録できる", "pageId": "order_entry", "actionId": "create", "roles": ["clerk"], "expected": true },
+    { "name": "入力画面は、開ければ直せる", "pageId": "order_entry", "actionId": "edit", "roles": ["clerk"], "expected": true },
+    { "name": "入力画面に削除は無い", "pageId": "order_entry", "actionId": "delete", "roles": ["clerk"], "expected": false },
+    { "name": "入力画面を開けない人は登録できない", "pageId": "order_entry", "actionId": "create", "roles": ["admin"], "expected": false }
+  ],
+  "visible": [
+    {
+      "name": "閲覧者には給与を見せない",
+      "pageId": "employee_master",
+      "roles": ["viewer"],
+      "record": { "employeeNo": "100001", "name": "佐藤", "salary": 300000, "note": "定義に無い項目は触らない" },
+      "expected": { "employeeNo": "100001", "name": "佐藤", "note": "定義に無い項目は触らない" }
+    },
+    {
+      "name": "hr には全部",
+      "pageId": "employee_master",
+      "roles": ["hr"],
+      "record": { "employeeNo": "100001", "name": "佐藤", "salary": 300000 },
+      "expected": { "employeeNo": "100001", "name": "佐藤", "salary": 300000 }
+    },
+    {
+      "name": "開けない画面では何も見せない",
+      "pageId": "supplier_master",
+      "roles": ["hr"],
+      "record": { "code": "S-1" },
+      "expected": {}
+    }
+  ],
+  "accept": [
+    {
+      "name": "hr は給与まで。読むだけ・計算・定義に無い項目は落とす",
+      "pageId": "employee_master",
+      "roles": ["hr"],
+      "body": { "employeeNo": "100001", "name": "佐藤", "salary": 300000, "updatedAt": "2026-10-01T00:00:00Z", "fullLabel": "x", "isAdmin": true },
+      "expected": {
+        "accepted": { "employeeNo": "100001", "name": "佐藤", "salary": 300000 },
+        "dropped": ["updatedAt", "fullLabel", "isAdmin"]
+      }
+    },
+    {
+      "name": "見えない項目は受け取らない（画面に出ていない欄から値は来ない）",
+      "pageId": "employee_master",
+      "roles": ["viewer"],
+      "body": { "employeeNo": "100001", "name": "佐藤", "salary": 999999 },
+      "expected": {
+        "accepted": { "employeeNo": "100001", "name": "佐藤" },
+        "dropped": ["salary"]
+      }
+    },
+    {
+      "name": "開けない画面からは何も受け取らない",
+      "pageId": "order_entry",
+      "roles": ["admin"],
+      "body": { "orderNo": "SO-1" },
+      "expected": { "accepted": {}, "dropped": ["orderNo"] }
+    }
+  ]
+}

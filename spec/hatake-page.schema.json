@@ -290,6 +290,10 @@
           "items": {
             "$ref": "#/$defs/action"
           }
+        },
+        "roles": {
+          "$ref": "#/$defs/roles",
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage)."
         }
       }
     },
@@ -347,6 +351,10 @@
           "items": {
             "$ref": "#/$defs/action"
           }
+        },
+        "roles": {
+          "$ref": "#/$defs/roles",
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage)."
         }
       }
     },
@@ -406,6 +414,10 @@
           "items": {
             "$ref": "#/$defs/action"
           }
+        },
+        "roles": {
+          "$ref": "#/$defs/roles",
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage)."
         }
       }
     },
@@ -459,6 +471,10 @@
           "items": {
             "$ref": "#/$defs/action"
           }
+        },
+        "roles": {
+          "$ref": "#/$defs/roles",
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage)."
         }
       }
     },
@@ -512,6 +528,10 @@
           "items": {
             "$ref": "#/$defs/action"
           }
+        },
+        "roles": {
+          "$ref": "#/$defs/roles",
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage)."
         }
       }
     },
@@ -571,6 +591,10 @@
           "items": {
             "$ref": "#/$defs/action"
           }
+        },
+        "roles": {
+          "$ref": "#/$defs/roles",
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage)."
         }
       }
     },
@@ -1574,6 +1598,10 @@
           "items": {
             "$ref": "#/$defs/action"
           }
+        },
+        "roles": {
+          "$ref": "#/$defs/roles",
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage)."
         }
       }
     },
@@ -1786,6 +1814,10 @@
           "items": {
             "$ref": "#/$defs/action"
           }
+        },
+        "roles": {
+          "$ref": "#/$defs/roles",
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage)."
         }
       }
     },

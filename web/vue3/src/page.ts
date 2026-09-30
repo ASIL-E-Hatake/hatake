@@ -1,5 +1,6 @@
 import { FormatterRegistry } from "@hatake-fw/api";
 import type { PageDefinition } from "@hatake-fw/api";
+import { canOpenPage } from "@hatake-fw/api/internal";
 import { defineComponent, h, type PropType } from "vue";
 
 import { HatakeDetailPage, HatakeFormPage, HatakeWizardPage } from "./pages/form.js";
@@ -30,6 +31,16 @@ export const HatakePage = defineComponent({
     return () => {
       const one = props.definition;
       const shared = { roles: props.roles, formatters: props.formatters, ...attrs };
+
+      // 画面自身の `roles`（0.9.22）。持たない人には**中身を出さない**（メニューで隠しても
+      // URL で直に来られる）。中の画面を作らない＝読み込みも始めない。Flutter と同じ字。
+      if (!canOpenPage(one, props.roles)) {
+        return h(
+          "p",
+          { class: "hatake-table-empty", role: "alert", "data-hatake": "page:forbidden" },
+          "この画面を開く権限がありません",
+        );
+      }
 
       switch (one.kind) {
         case "search":

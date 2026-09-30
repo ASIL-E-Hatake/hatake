@@ -97,6 +97,21 @@ describe("アプリ1本が定義から出る（Vue）", () => {
     expect(wrapper.find('[data-hatake="menu:orders"]').exists()).toBe(false);
   });
 
+  it("**画面自身の roles**: メニューから消え、直に開いても中身を出さない", async () => {
+    // 家（customers）を admin だけにする。メニューの項目には roles が無い。
+    const gated = { ...pages, customers: { ...pages.customers, roles: ["admin"] } };
+    const wrapper = show(["clerk"], gated);
+    await settle(wrapper);
+    expect(wrapper.find('[data-hatake="menu:customers"]').exists()).toBe(false);
+    expect(wrapper.find('[data-hatake="page:forbidden"]').text()).toBe("この画面を開く権限がありません");
+    expect(wrapper.find('[data-hatake="page:customers"]').exists()).toBe(false);
+
+    const admin = show(["admin"], gated);
+    await settle(admin);
+    expect(admin.find('[data-hatake="menu:customers"]').exists()).toBe(true);
+    expect(admin.find('[data-hatake="page:customers"]').exists()).toBe(true);
+  });
+
   it("定義を渡し忘れた画面は**黙って白くしない**", async () => {
     const wrapper = show(["admin"], {});
     await settle(wrapper);

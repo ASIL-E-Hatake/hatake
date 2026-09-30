@@ -32,10 +32,16 @@ sealed class PageDefinition extends Equatable {
   /// DSL version this definition conforms to.
   final String dslVersion;
 
+  /// 開いてよい役割（空＝誰でも）。メニューはここへ行く項目を隠し、画面はこの役割を
+  /// 持たない人には中身を出さない。サーバも同じものを読む（TS の `canOpenPageIn` /
+  /// Java の `ServerAccess.canOpenPage`）。
+  final List<String> roles;
+
   const PageDefinition({
     required this.id,
     required this.title,
     this.dslVersion = kDslVersion,
+    this.roles = const [],
   });
 }
 
@@ -83,6 +89,7 @@ class CrudPageDefinition extends PageDefinition implements CrudLike {
     required super.id,
     required super.title,
     super.dslVersion,
+    super.roles,
     required this.repository,
     this.keyFields = const ['id'],
     this.search,
@@ -96,6 +103,7 @@ class CrudPageDefinition extends PageDefinition implements CrudLike {
         id,
         title,
         dslVersion,
+        roles,
         repository,
         keyFields,
         search,
@@ -130,6 +138,7 @@ class SearchPageDefinition extends PageDefinition {
     required super.id,
     required super.title,
     super.dslVersion,
+    super.roles,
     required this.repository,
     this.keyFields = const ['id'],
     this.search,
@@ -142,6 +151,7 @@ class SearchPageDefinition extends PageDefinition {
         id,
         title,
         dslVersion,
+        roles,
         repository,
         keyFields,
         search,
@@ -172,6 +182,7 @@ class MasterPageDefinition extends PageDefinition implements CrudLike {
     required super.id,
     required super.title,
     super.dslVersion,
+    super.roles,
     required this.repository,
     this.keyFields = const ['id'],
     this.search,
@@ -182,7 +193,18 @@ class MasterPageDefinition extends PageDefinition implements CrudLike {
 
   @override
   List<Object?> get props =>
-      [id, title, dslVersion, repository, keyFields, search, table, form, actions];
+      [
+        id,
+        title,
+        dslVersion,
+        roles,
+        repository,
+        keyFields,
+        search,
+        table,
+        form,
+        actions,
+      ];
 }
 
 /// A standalone form page (single-record create or edit) — the form portion of
@@ -199,6 +221,7 @@ class FormPageDefinition extends PageDefinition {
     required super.id,
     required super.title,
     super.dslVersion,
+    super.roles,
     required this.repository,
     this.keyFields = const ['id'],
     this.form = const FormDefinition(),
@@ -207,7 +230,7 @@ class FormPageDefinition extends PageDefinition {
 
   @override
   List<Object?> get props =>
-      [id, title, dslVersion, repository, keyFields, form, actions];
+      [id, title, dslVersion, roles, repository, keyFields, form, actions];
 }
 
 /// A stepped-input page (ウィザード): the form split into [steps], each validated
@@ -230,6 +253,7 @@ class WizardPageDefinition extends PageDefinition {
     required super.id,
     required super.title,
     super.dslVersion,
+    super.roles,
     required this.repository,
     this.keyFields = const ['id'],
     this.steps = const [],
@@ -276,7 +300,7 @@ class WizardPageDefinition extends PageDefinition {
 
   @override
   List<Object?> get props =>
-      [id, title, dslVersion, repository, keyFields, steps, actions];
+      [id, title, dslVersion, roles, repository, keyFields, steps, actions];
 }
 
 /// A report page (帳票): read-only rows laid out on sheets, grouped with
@@ -303,6 +327,7 @@ class ReportPageDefinition extends PageDefinition {
     required super.id,
     required super.title,
     super.dslVersion,
+    super.roles,
     required this.repository,
     this.search,
     this.table = const TableDefinition(),
@@ -312,7 +337,7 @@ class ReportPageDefinition extends PageDefinition {
 
   @override
   List<Object?> get props =>
-      [id, title, dslVersion, repository, search, table, report, actions];
+      [id, title, dslVersion, roles, repository, search, table, report, actions];
 }
 
 /// A dashboard page: a grid of read-only cards ([items]), each one a small query
@@ -341,6 +366,7 @@ class DashboardPageDefinition extends PageDefinition {
     required super.id,
     required super.title,
     super.dslVersion,
+    super.roles,
     this.repository,
     this.items = const [],
     this.layout = const LayoutDefinition(columns: 2),
@@ -355,7 +381,7 @@ class DashboardPageDefinition extends PageDefinition {
 
   @override
   List<Object?> get props =>
-      [id, title, dslVersion, repository, items, layout, search, actions];
+      [id, title, dslVersion, roles, repository, items, layout, search, actions];
 }
 
 /// A read-only detail page: displays a single record's fields (grouped by the
@@ -375,6 +401,7 @@ class DetailPageDefinition extends PageDefinition {
     required super.id,
     required super.title,
     super.dslVersion,
+    super.roles,
     required this.repository,
     this.keyFields = const ['id'],
     this.form = const FormDefinition(),
@@ -383,5 +410,5 @@ class DetailPageDefinition extends PageDefinition {
 
   @override
   List<Object?> get props =>
-      [id, title, dslVersion, repository, keyFields, form, actions];
+      [id, title, dslVersion, roles, repository, keyFields, form, actions];
 }

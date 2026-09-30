@@ -35,23 +35,23 @@ const Map<String, Set<String>> strictKeyTable = {
   'menuItem': {'id', 'label', 'group', 'icon', 'page', 'items', 'roles'},
   'crudPage': {
     'type', 'id', 'title', 'repository', 'key', 'search', 'table', 'form',
-    'actions',
+    'actions', 'roles',
   },
   'masterPage': {
     'type', 'id', 'title', 'repository', 'key', 'search', 'table', 'form',
-    'actions',
+    'actions', 'roles',
   },
   'searchPage': {
-    'type', 'id', 'title', 'repository', 'key', 'search', 'table', 'actions',
+    'type', 'id', 'title', 'repository', 'key', 'search', 'table', 'actions', 'roles',
   },
-  'detailPage': {'type', 'id', 'title', 'repository', 'key', 'form', 'actions'},
-  'formPage': {'type', 'id', 'title', 'repository', 'key', 'form', 'actions'},
+  'detailPage': {'type', 'id', 'title', 'repository', 'key', 'form', 'actions', 'roles',},
+  'formPage': {'type', 'id', 'title', 'repository', 'key', 'form', 'actions', 'roles',},
   'wizardPage': {
-    'type', 'id', 'title', 'repository', 'key', 'steps', 'actions',
+    'type', 'id', 'title', 'repository', 'key', 'steps', 'actions', 'roles',
   },
   'wizardStep': {'id', 'title', 'description', 'layout', 'fields', 'visibleWhen'},
   'dashboardPage': {
-    'type', 'id', 'title', 'repository', 'layout', 'search', 'items', 'actions',
+    'type', 'id', 'title', 'repository', 'layout', 'search', 'items', 'actions', 'roles',
   },
   'dashboardItem': {
     'id', 'title', 'type', 'repository', 'span', 'filters', 'limit', 'sort',
@@ -61,7 +61,7 @@ const Map<String, Set<String>> strictKeyTable = {
   'dashboardValue': {'aggregate', 'field'},
   'chart': {'kind', 'labelField', 'valueField', 'aggregate'},
   'reportPage': {
-    'type', 'id', 'title', 'repository', 'search', 'table', 'report', 'actions',
+    'type', 'id', 'title', 'repository', 'search', 'table', 'report', 'actions', 'roles',
   },
   'report': {'paper', 'rowsPerPage', 'limit', 'sort', 'groupBy', 'totals'},
   'report.sort': {'field', 'ascending'},

@@ -39,6 +39,7 @@ abstract final class HatakeFind {
   static Finder get prev => byKey(HatakeKeys.prev);
   static Finder get next => byKey(HatakeKeys.next);
   static Finder get pagerText => byKey(HatakeKeys.pagerText);
+  static Finder get pageForbidden => byKey(HatakeKeys.pageForbidden);
   static Finder get empty => byKey(HatakeKeys.empty);
   static Finder get error => byKey(HatakeKeys.error);
 

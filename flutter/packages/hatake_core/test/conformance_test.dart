@@ -413,6 +413,38 @@ void main() {
       });
     }
   });
+
+  group('conformance: row slots', () {
+    final fixture = _loadMap('row_slots.json');
+    final actions = [
+      for (final a in (fixture['actions']! as List).cast<Map>())
+        ActionDefinition(
+          id: a['id'] as String,
+          type: a['type'] as String,
+          label: a['id'] as String,
+          scope: (a['scope'] as String?) ?? ActionScopes.page,
+          roles: ((a['roles'] as List?) ?? const []).cast<String>(),
+        ),
+    ];
+    List<String> shown(List<ActionDefinition> declared, Map c) => [
+          for (final slot in rowSlots(
+            (c['rowActionIds']! as List).cast<String>(),
+            declared,
+            (c['roles']! as List).cast<String>().toSet(),
+          ))
+            '${slot.kind}:${slot.action?.id ?? '-'}',
+        ];
+    for (final raw in fixture['cases'] as List<Object?>) {
+      final c = (raw as Map).cast<String, Object?>();
+      test(c['name'] as String, () {
+        expect(shown(actions, c), (c['expected']! as List).cast<String>());
+      });
+    }
+    test('宣言の無い画面', () {
+      final c = fixture['undeclared'] as Map;
+      expect(shown(const [], c), (c['expected']! as List).cast<String>());
+    });
+  });
 }
 
 /// conformance の `owners` を、選択肢を持つものに変える。

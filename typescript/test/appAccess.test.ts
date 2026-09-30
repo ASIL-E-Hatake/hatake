@@ -51,7 +51,7 @@ describe("誰がその画面を開けるか", () => {
     expect(who(APP, "order_search")).toEqual({ everyone: true, roles: [] });
   });
 
-  // ページに roles は書けないので、入口から辿るしかない。
+  // 入口から辿る（画面自身の roles は最後の門）。
   it("グループの roles は中の画面にも掛かる", () => {
     expect(who(APP, "customer_master")).toEqual({
       everyone: false,
@@ -71,6 +71,26 @@ describe("誰がその画面を開けるか", () => {
     // admin だけの顧客マスタから、manager だけのボタンで繋いである。
     expect(who(APP, "price_master")).toEqual({ everyone: false, roles: [] });
     expect(describeAudience(who(APP, "price_master"))).toBe("誰も開けない");
+  });
+
+  it("画面自身の roles は最後の門（入口を通ってきた人のうち、持っている人だけ）", () => {
+    const source = app(
+      `    - { id: a, label: A, page: list_a }
+    - { id: b, label: B, page: list_b, roles: [admin, staff] }`,
+      `${page("list_a", "      roles: [manager]")}${page("list_b", "      roles: [admin]")}`,
+    );
+    // メニューは誰でも → 画面が manager だけ
+    expect(who(source, "list_a")).toEqual({ everyone: false, roles: ["manager"] });
+    // メニューは admin と staff → 画面が admin だけ
+    expect(who(source, "list_b")).toEqual({ everyone: false, roles: ["admin"] });
+  });
+
+  it("入口と画面の roles が噛み合わなければ、誰も開けない", () => {
+    const source = app(
+      `    - { id: a, label: A, page: list_a, roles: [staff] }`,
+      page("list_a", "      roles: [admin]"),
+    );
+    expect(describeAudience(who(source, "list_a"))).toBe("誰も開けない");
   });
 
   it("入口が2つあれば、どちらから来てもよい", () => {

@@ -287,6 +287,27 @@ function checkBuiltins(
     }
   }
 
+  // 入力欄はあるのに、新しく足す口が無い（一覧・マスタ）。
+  // 新規登録は `type: create` を**書いたときだけ**出る（書いていないボタンは出さない）ので、
+  // 書き忘れると画面から1件も足せない。検証は「書いたのに効かない」しか見ないので、
+  // ここで言わないと誰も言わない（0.9.21 まで見本のマスタがこれで、社員を足せなかった）。
+  // 照会専用のマスタのように**足さないのが正しい**画面もあるので、助言（好み）に置く。
+  if (
+    enabled(rules, "crud-without-create") &&
+    (kind === "crud" || kind === "master") &&
+    fields.length > 0 &&
+    !actions.some((action) => str(action.type) === "create")
+  ) {
+    found.push({
+      rule: "crud-without-create",
+      where: `${path}.actions`,
+      says: "入力欄はあるのに新規登録のボタンが無いので、この画面から1件も足せません。",
+      add: "`actions` に `{ id: create, type: create, label: 新規登録 }`（足さない画面なら、この助言を止める）。",
+      key: "actions",
+      node: kind === "master" ? "masterPage" : "crudPage",
+    });
+  }
+
   // 消せる・持ち出せるのに、誰に見えるかを決めていない。
   const dangerous: string[] = knob(rules, "open-dangerous-action", "types", [
     "delete",

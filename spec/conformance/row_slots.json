@@ -1,0 +1,54 @@
+{
+  "_comment": "表の行の右端に出るもの（rowSlots。Dart の hatake_core / Web の @hatake-fw/runtime）。actions は宣言（id / type / roles / scope だけ見る）、rowActionIds は table.rowActions、roles はその人の役割。expected は出るものを並び順に `kind:id`（組み込みは宣言の id、宣言が無ければ `edit:-`）。固定したいのは: (1) 組み込みの edit / delete は宣言が無くても出る、(2) 宣言は **type で引く**（id は業務の言葉で付けてよい）、(3) 宣言の roles から外れる人には出さない（0.9.21 まで Flutter は見ていなかった）、(4) 定義したボタンは宣言が在って・見せてよくて・scope: selection でないものだけ、(5) 並びは rowActions のまま。",
+  "actions": [
+    { "id": "edit", "type": "edit", "roles": ["admin", "hr"] },
+    { "id": "remove", "type": "delete", "roles": ["admin"] },
+    { "id": "openDetail", "type": "navigate" },
+    { "id": "approve", "type": "plugin", "roles": ["manager"] },
+    { "id": "retireAll", "type": "plugin", "scope": "selection" }
+  ],
+  "cases": [
+    {
+      "name": "admin には全部出る（定義の並びのまま）",
+      "rowActionIds": ["openDetail", "edit", "delete"],
+      "roles": ["admin"],
+      "expected": ["action:openDetail", "edit:edit", "delete:remove"]
+    },
+    {
+      "name": "hr は編集できるが削除は出ない",
+      "rowActionIds": ["openDetail", "edit", "delete"],
+      "roles": ["hr"],
+      "expected": ["action:openDetail", "edit:edit"]
+    },
+    {
+      "name": "閲覧者には組み込みの操作が出ない",
+      "rowActionIds": ["openDetail", "edit", "delete"],
+      "roles": ["viewer"],
+      "expected": ["action:openDetail"]
+    },
+    {
+      "name": "役割の無い人（roles を配っていないアプリ）にも、宣言の roles は効く",
+      "rowActionIds": ["edit"],
+      "roles": [],
+      "expected": []
+    },
+    {
+      "name": "定義したボタンの roles",
+      "rowActionIds": ["approve", "openDetail"],
+      "roles": ["manager"],
+      "expected": ["action:approve", "action:openDetail"]
+    },
+    {
+      "name": "宣言の無い id と scope: selection は行に出さない",
+      "rowActionIds": ["nope", "retireAll", "openDetail"],
+      "roles": ["admin"],
+      "expected": ["action:openDetail"]
+    }
+  ],
+  "undeclared": {
+    "_comment": "宣言が1つも無い画面。組み込みは誰にでも出る（画面の機能）。",
+    "rowActionIds": ["edit", "delete"],
+    "roles": ["viewer"],
+    "expected": ["edit:-", "delete:-"]
+  }
+}

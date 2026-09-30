@@ -165,8 +165,8 @@ export function renderMatrix(table: MatrixTable, title: string): string {
   out.push("");
   if (table.opens.length > 0) {
     out.push(
-      "※ 「画面」の行は**入口を辿った結果**です（ページ自身に `roles` は書けないので、" +
-        "メニューやボタンの権限から決まります）。",
+      "※ 「画面」の行は**入口を辿った結果**です（メニューやボタンの権限を辿り、" +
+        "画面自身の `roles` を最後の門として掛けています）。",
     );
   }
   out.push(

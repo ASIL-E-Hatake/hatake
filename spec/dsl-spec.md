@@ -901,7 +901,30 @@ one of the listed roles (`isAllowed`).
 authorization — those are outside the framework's scope. The current user's role
 set is supplied at runtime (`HatakeScope(roles: {...})` in Flutter). Real access
 control — protecting and validating the data itself — must always be enforced on
-the backend.
+the backend (see "Making the same decision on the server" below).
+
+A **page itself** can carry `roles` too (0.9.22, every page type). The menu shows
+an entry only when both the item's `roles` and the **target page's `roles`**
+allow the user; the page refuses to render for anyone else ("この画面を開く権限が
+ありません", also when reached by URL, without loading anything); "who can open
+this page" (explain, diagrams, role matrix) applies the page's `roles` as the
+last gate after following the entries.
+
+Built-in row actions (`edit` / `delete`) follow the `roles` of their declaration
+(the `type: edit` / `type: delete` action, **looked up by `type`**). Flutter
+ignored them up to 0.9.21.
+
+#### Making the same decision on the server
+
+Hiding something on screen does not stop a direct API call. Servers use helpers
+that give **the same answer from the same definition** (TS `@hatake-fw/api`,
+Java `ServerAccess`), all taking the raw document and a page id:
+`canOpenPageIn` / `canOpenPage`, `canRunActionIn` / `canRunAction` (a button not
+on the page cannot be pressed), `visibleRecordIn` / `visibleRecord` (drop fields
+any column or form field hides from the user) and `acceptRecordIn` /
+`acceptRecord` (keep only visible, writable form fields; report what was
+dropped). Row-level scoping ("only my branch") is authorization and stays
+outside the framework. The shared fixture `server_access.json` pins the answers.
 
 ### condition
 

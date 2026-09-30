@@ -135,6 +135,12 @@ function draftOf(one: Advice, document: Dict, roles: string[]): AdviceDraft | un
           };
     }
 
+    case "crud-without-create":
+      return {
+        value: { id: "create", type: "create", label: "新規登録" },
+        from: "組み込みの新規登録（文言は業務の言葉に直してよい）",
+      };
+
     case "no-required-field": {
       const names = fieldsOf(rawFormFields(page));
       const key = str(page.key);

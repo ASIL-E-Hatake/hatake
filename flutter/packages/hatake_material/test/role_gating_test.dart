@@ -115,4 +115,64 @@ void main() {
       returnsNormally,
     );
   });
+
+
+  group('組み込みの編集・削除も、宣言の roles に従う', () {
+    // 0.9.21 まで Flutter は宣言の roles を見ておらず、`roles: [admin]` と書いても
+    // 誰にでも出ていた（Web は見ていた）。宣言は id ではなく type で引く。
+    const gated = CrudPageDefinition(
+      id: 'p',
+      title: 'T',
+      repository: 'repo',
+      keyFields: ['id'],
+      table: TableDefinition(
+        columns: [ColumnDefinition(field: 'code', label: 'コード')],
+        rowActions: ['edit', 'delete'],
+      ),
+      form: FormDefinition(
+        sections: [
+          SectionDefinition(
+              fields: [FieldDefinition(field: 'code', label: 'コード')]),
+        ],
+      ),
+      actions: [
+        ActionDefinition(
+            id: 'edit', type: 'edit', label: '編集', roles: ['admin', 'hr']),
+        ActionDefinition(
+            id: 'remove', type: 'delete', label: '削除', roles: ['admin']),
+      ],
+    );
+
+    Future<void> show(WidgetTester tester, Set<String> roles) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: HatakeScope(
+            repositories: RepositoryRegistry({'repo': _Repo()}),
+            renderer: const MaterialRenderer(),
+            roles: roles,
+            child: const HatakeCrudView(definition: gated),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('閲覧者には出ない', (tester) async {
+      await show(tester, const {'viewer'});
+      expect(find.byKey(const Key('hatake.edit.1')), findsNothing);
+      expect(find.byKey(const Key('hatake.delete.1')), findsNothing);
+    });
+
+    testWidgets('hr は編集だけ', (tester) async {
+      await show(tester, const {'hr'});
+      expect(find.byKey(const Key('hatake.edit.1')), findsOneWidget);
+      expect(find.byKey(const Key('hatake.delete.1')), findsNothing);
+    });
+
+    testWidgets('admin は両方（id が delete でなくても type で引く）', (tester) async {
+      await show(tester, const {'admin'});
+      expect(find.byKey(const Key('hatake.edit.1')), findsOneWidget);
+      expect(find.byKey(const Key('hatake.delete.1')), findsOneWidget);
+    });
+  });
 }

@@ -83,15 +83,6 @@ void _afterActionSuccess(
   router.push(page, params: resolveRouteParams(onSuccess.params, record));
 }
 
-/// The declared action for a built-in row action id (`edit` / `delete`), if the
-/// page bothered to declare one. Used to pick up its hooks.
-ActionDefinition? _declaredAction(List<ActionDefinition> actions, String id) {
-  for (final action in actions) {
-    if (action.id == id) return action;
-  }
-  return null;
-}
-
 /// Tells the user the action failed, in the definition's words when it has any.
 ///
 /// The raw reason (`RepositoryHttpException: … 500 …`) is true but useless to the

@@ -87,6 +87,16 @@ describe("アプリ1本が定義から出る（React）", () => {
     expect(at("menu:orders")).toBeNull();
   });
 
+  it("**画面自身の roles**: メニューから消え、直に開いても中身を出さない", async () => {
+    // 家（customers）を admin だけにする。メニューの項目には roles が無い。
+    const gated = { ...pages, customers: { ...pages.customers, roles: ["admin"] } };
+    show(["clerk"], gated);
+    await waitFor(() => expect(at("page:forbidden")).toBeTruthy());
+    expect(at("page:forbidden")?.textContent).toBe("この画面を開く権限がありません");
+    expect(at("menu:customers")).toBeNull();
+    expect(at("page:customers")).toBeNull();
+  });
+
   it("定義を渡し忘れた画面は**黙って白くしない**", async () => {
     show(["admin"], {});
     await waitFor(() => expect(at("page:missing")).toBeTruthy());
