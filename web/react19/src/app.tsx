@@ -1,5 +1,5 @@
 import type { AppDefinition, FormatterRegistry, PageDefinition } from "@hatake-fw/api";
-import { isAllowed, menuIsGroup, type MenuItem } from "@hatake-fw/api/internal";
+import { menuIsGroup, type MenuItem, visibleMenu } from "@hatake-fw/api/internal";
 import {
   type AppRoute,
   closingAsks,
@@ -127,11 +127,11 @@ export function HatakeApp(props: {
             <div className="hatake-brand">{props.app.title}</div>
           </header>
           <nav className="hatake-menu" data-hatake="menu">
-            {props.app.menu.map((item) => (
+            {/* 見えない項目は落としてから描く（項目の roles と、行き先の画面の roles）。 */}
+            {visibleMenu(props.app.menu, roles, (id) => props.pages[id]).map((item) => (
               <MenuNode
                 key={item.id ?? item.page ?? item.label}
                 item={item}
-                roles={roles}
                 router={router}
                 custom={registries.icons ?? {}}
                 open={open}
@@ -317,26 +317,24 @@ function recordKeyFor(page: PageDefinition, params: Readonly<Record<string, unkn
   return parts;
 }
 
-/** メニューの1項目（束ねているなら見出しと中身）。 */
+/**
+ * メニューの1項目（束ねているなら見出しと中身）。**見えない項目は `visibleMenu` が
+ * 先に落としてある**（項目の roles と、行き先の画面の roles）。
+ */
 function MenuNode(props: {
   item: MenuItem;
-  roles: readonly string[];
   router: HatakeRouter;
   custom: Readonly<Record<string, string>>;
   open: (pageId: string) => void;
 }): ReactNode {
-  const { item, roles, router } = props;
-  // **見えない項目は出さない。** 役割で絞るのは定義の仕事。
-  if (!isAllowed(item.roles, roles)) return null;
+  const { item, router } = props;
 
   if (menuIsGroup(item)) {
     const children = item.children
-      .filter((one) => isAllowed(one.roles, roles))
       .map((one) => (
         <MenuNode
           key={one.id ?? one.page ?? one.label}
           item={one}
-          roles={roles}
           router={router}
           custom={props.custom}
           open={props.open}

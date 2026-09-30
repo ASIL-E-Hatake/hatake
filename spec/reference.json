@@ -981,6 +981,13 @@
           "nodes": [
             "action"
           ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage).",
+          "items": "string"
         }
       ]
     },
@@ -1251,6 +1258,13 @@
           "nodes": [
             "action"
           ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage).",
+          "items": "string"
         }
       ]
     },
@@ -1349,6 +1363,13 @@
           "nodes": [
             "action"
           ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage).",
+          "items": "string"
         }
       ]
     },
@@ -1965,6 +1986,13 @@
           "nodes": [
             "action"
           ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage).",
+          "items": "string"
         }
       ]
     },
@@ -2087,6 +2115,13 @@
           "nodes": [
             "action"
           ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage).",
+          "items": "string"
         }
       ]
     },
@@ -2571,6 +2606,13 @@
           "nodes": [
             "action"
           ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage).",
+          "items": "string"
         }
       ]
     },
@@ -2714,6 +2756,13 @@
           "nodes": [
             "action"
           ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage).",
+          "items": "string"
         }
       ]
     },
@@ -3087,6 +3136,13 @@
           "nodes": [
             "action"
           ]
+        },
+        {
+          "key": "roles",
+          "type": "array",
+          "required": false,
+          "description": "Who may open this page (empty or absent = everyone). The menu hides entries that lead here for anyone else, the page itself refuses to render for them, and servers read the same list (TS canOpenPageIn / Java ServerAccess.canOpenPage).",
+          "items": "string"
         }
       ]
     },
@@ -3506,9 +3562,17 @@
       "action",
       "app",
       "column",
+      "crudPage",
       "dashboardItem",
+      "dashboardPage",
+      "detailPage",
       "field",
-      "menuItem"
+      "formPage",
+      "masterPage",
+      "menuItem",
+      "reportPage",
+      "searchPage",
+      "wizardPage"
     ],
     "rowActions": [
       "table"

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.22
+
+- 追加: 画面自身の `roles` を持たない人には、`HatakePageView` が中身を出さない
+  （「この画面を開く権限がありません」。読み込みも始めない。キーは `hatake.page.forbidden`）。
+
 ## 0.9.21
 
 - `hatake_core` / `hatake_material` の直しを取り込んだだけ（一覧の `pagination.enabled`・

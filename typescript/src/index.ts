@@ -77,6 +77,15 @@ export { toCsv, type CsvOptions } from "./csv.js";
 // ── 一括の上限（1回で動かせる行数） ────────────────────────────
 export { checkBulkLimit } from "./bulkLimit.js";
 
+// ── サーバでも画面と同じ判断（画面・ボタン・見せる項目・受け取る項目） ──
+export {
+  type AcceptedRecord,
+  acceptRecordIn,
+  canOpenPageIn,
+  canRunActionIn,
+  visibleRecordIn,
+} from "./serverAccess.js";
+
 // ── 日本企業 util（3版で同じ答えになることを conformance が縛る） ──
 export { ageAt, tenure } from "./age.js";
 export { eraOf } from "./era.js";

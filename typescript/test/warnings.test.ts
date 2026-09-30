@@ -917,7 +917,7 @@ describe("開ける人が居ない画面", () => {
         columns: [{ field: code, label: コード }]
 `;
 
-  // ページに roles は書けないので、1枚ずつ読んでも絶対に出てこない。
+  // 入口を辿った結果なので、1枚ずつ読んでも絶対に出てこない。
   it("入口の権限が食い違っていると言う（どこを直すかまで）", () => {
     const found = warningsOf(app(", roles: [manager]")).filter(
       (one) => one.rule === "page-nobody-can-open",

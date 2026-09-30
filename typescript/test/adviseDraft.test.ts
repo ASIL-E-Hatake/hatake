@@ -82,6 +82,7 @@ describe("助言に値の下書きを添える", () => {
         "bulk-without-batchsize",
         "bulk-without-confirm",
         "bulk-without-error-message",
+        "crud-without-create",
         "no-required-field",
         "no-search-filter",
         "no-sortable-column",

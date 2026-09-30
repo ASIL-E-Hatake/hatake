@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.22
+
+- 直し: 組み込みの行の「編集」「削除」が、宣言（`type: edit` / `type: delete`）の `roles` を
+  見ていなかった（`roles: [admin]` と書いても誰にでも出ていた）。宣言も id ではなく `type` で
+  引くようにした（Web と同じ）。
+- 追加: メニューは、行き先の画面の `roles` も見て項目を隠す。
+
 ## 0.9.21
 
 - 直し: 一覧（検索・CRUD・マスタ）が `table.pagination.enabled: false` を読んでいなかった

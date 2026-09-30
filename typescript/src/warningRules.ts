@@ -774,6 +774,11 @@ export const ADVICE_RULES: Record<string, RuleDoc> = {
       "行を見てもどのレコードか分からないので、電話で「どれですか」が始まります。",
     fix: "一覧に `{ field: <key>, label: … }` を足してください。",
   },
+  "crud-without-create": {
+    what: "入力欄はあるのに新規登録が無い一覧・マスタ",
+    happens: "新規登録は `type: create` を書いたときだけ出るので、画面から1件も足せません（サーバに口があっても押す所が無い）。",
+    fix: "`actions` に `{ id: create, type: create, label: 新規登録 }` を書いてください。足さないのが正しい画面（照会専用）なら、この助言を止めてください。",
+  },
   "no-required-field": {
     what: "保存する画面に必須が1つも無い",
     happens: "空のレコードが保存できます（あとから誰も直せない行が増えます）。",

@@ -1,9 +1,12 @@
 // 「この画面は誰が開けるか」を、アプリ全体から数える。
 //
-// **ページに `roles` は無い。** 権限が書けるのはメニュー項目とボタン（と列・項目・カード）で、
-// 画面そのものには書けない。つまり「この画面は誰に見えるか」は**入口から辿って**しか出せない:
-// メニューの項目が admin だけなら、その先の画面も admin だけ。その画面のボタンが誰でも押せる
-// 形で書いてあっても、**そこへ来られるのが admin だけ**なら、開けるのは admin だけ。
+// 「この画面は誰に見えるか」は**入口から辿って**出す: メニューの項目が admin だけなら、
+// その先の画面も admin だけ。その画面のボタンが誰でも押せる形で書いてあっても、**そこへ
+// 来られるのが admin だけ**なら、開けるのは admin だけ。
+//
+// 画面そのものの `roles`（0.9.22）は**最後の門**として掛ける＝入口を通ってきた人のうち、
+// 画面の `roles` を持つ人だけが開ける。0.9.21 までは画面に書けなかったので、入口を
+// 辿った結果がそのまま答えだった（サーバは同じことを手で書くしかなかった）。
 //
 // 1枚ずつ読んでも出ない値がここに2つある:
 //   ・**誰も開けない画面** … 入口の権限が食い違っている（staff の画面に admin 限定のボタンで
@@ -206,6 +209,9 @@ export function appAccess(raw: Dict): AppAccess {
     (one) => pages.has(one.page) && (one.entry.from === "menu" || pages.has(one.entry.from)),
   );
 
+  // 画面そのものの門（空＝誰でも通れる）。
+  const gateOf = (id: string): string[] => strings(pages.get(id)?.roles);
+
   const entries = new Map<string, AccessEntry[]>();
   for (const one of ways) {
     entries.set(one.page, [...(entries.get(one.page) ?? []), one.entry]);
@@ -221,7 +227,7 @@ export function appAccess(raw: Dict): AppAccess {
     const home = str(app.home);
     const first =
       home !== undefined && pages.has(home) ? home : [...pages.keys()][0];
-    if (first !== undefined) audience.set(first, EVERYONE);
+    if (first !== undefined) audience.set(first, through(gateOf(first), EVERYONE));
   }
   // 最大でもページ数だけ回せば行き渡る（1回で少なくとも1枚は確定する）。
   for (let round = 0; round <= pages.size; round++) {
@@ -230,7 +236,10 @@ export function appAccess(raw: Dict): AppAccess {
       const before = audience.get(page) ?? NOBODY;
       const source =
         entry.from === "menu" ? EVERYONE : (audience.get(entry.from) ?? NOBODY);
-      const after = either(before, through(entry.roles, source));
+      const after = either(
+        before,
+        through(gateOf(page), through(entry.roles, source)),
+      );
       if (!same(before, after)) {
         audience.set(page, after);
         moved = true;

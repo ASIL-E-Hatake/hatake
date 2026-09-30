@@ -224,6 +224,14 @@ function planFor(one: Advice, raw: Dict, given: unknown): Plan[] | string {
         "どの項目を必須にするか",
       );
 
+    case "crud-without-create": {
+      // 道は `…actions`。文言は業務の言葉なので渡せるが、既定は枠組みの見本と同じ。
+      const value = given ?? { id: "create", type: "create", label: "新規登録" };
+      return Array.isArray(valueAt(raw, at))
+        ? [{ path: at, kind: "append", value }]
+        : key(at, [value]);
+    }
+
     case "no-search-filter":
       return given === undefined
         ? need("絞り込みに何を出すか", "[{ field: orderNo, label: 受注番号 }]")

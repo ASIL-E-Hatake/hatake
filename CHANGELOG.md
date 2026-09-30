@@ -16,6 +16,49 @@
 
 DSL の版（`dsl_version`）はパッケージの版とは別に動く。DSL が上がった版にはその旨を書く。
 
+## 0.9.22 — 2026-10-01
+
+**「誰ができるか」を、画面・ボタン・サーバで同じ1つの定義から決めるようにした。**
+見本3本を洗い出したら、3本とも権限の一部をサーバに手で書いていて（列の roles だけ見て
+項目の roles を忘れる・画面の権限を役割名で決め打ち）、定義と食い違っていた。
+
+- 修正（Flutter）: 組み込みの行の「編集」「削除」が、宣言（`type: edit` / `type: delete` の
+  action）の `roles` を見ていなかった。`roles: [admin]` と書いても誰にでも出ていた（Web は
+  見ていた）。宣言も **id ではなく `type` で引く**ようにした（`{ id: remove, type: delete }` の
+  `confirm` が効かなかった）。判定は `rowSlots`（Dart `hatake_core` / Web `@hatake-fw/runtime`）
+  の1つにまとめ、共有フィクスチャ `row_slots.json` で縛った。
+- 追加（助言）: `crud-without-create`。入力欄はあるのに新規登録（`type: create`）が無い
+  一覧・マスタに言う。新規登録は書いたときだけ出るので、書き忘れると画面から1件も足せない
+  のに、`check` は何も言っていなかった（見本のマスタがこれで社員を足せなかった）。下書きと
+  `apply-advice` つき。照会専用のマスタのように足さないのが正しい画面もあるので、警告では
+  なく助言。
+- 追加（DSL）: **画面に `roles`**（全種別）。書かなければ今までどおり誰でも。
+  - メニューは、項目の `roles` と**行き先の画面の `roles`** の両方を満たすときだけ出す
+    （中身が全部隠れた見出しも出さない）
+  - 画面は、持たない人には中身を出さずに「この画面を開く権限がありません」と出す（URL で
+    直に来ても）。読み込みも始めない。Flutter・Vue・React で同じ字
+  - 「誰が開けるか」（説明・図・権限マトリクス・`explain --roles`・「誰も開けない画面」の
+    警告）は、入口を辿ったあと画面の `roles` を**最後の門**として掛ける
+  - Java の `PageDefinition` は変えていない（record の構築子が変わると壊れるので）。サーバは
+    下の口で素の定義から読む
+- 追加（サーバ・TS / Java）: **サーバでも画面と同じ判断をする口**。どれも素の定義と画面の id を
+  受ける（`checkBulkLimit` と同じ）。TS は `@hatake-fw/api`、Java は `ServerAccess`。
+  - `canOpenPageIn` / `ServerAccess.canOpenPage` … その画面を開けるか
+  - `canRunActionIn` / `canRunAction` … ボタンを押せるか（宣言の `roles`・組み込みの create は
+    宣言したときだけ・edit / delete は行に並べたときだけ・**画面に無いボタンは押せない**）
+  - `visibleRecordIn` / `visibleRecord` … その人に見せない項目を落とす（列か入力欄の**どこか
+    一つでも** `roles` から外れていれば落とす＝守る側なので一番厳しく）
+  - `acceptRecordIn` / `acceptRecord` … 受け取ってよいのは、入力欄にあって・見えて・
+    `readOnly` でも `computed` でもない項目だけ。落とした名前も返す
+  - 同じ答えになることは共有フィクスチャ `server_access.json` が見ている（TS / Java）
+- 内部: 公開面が増えた（TS +4・Java +2・Dart +5）。`spec/conformance/strict_keys.json` に
+  画面の `roles` の1件、`rule-cases.json` に `crud-without-create` の1件。
+
+> **移行の注意（Flutter）** 組み込みの編集・削除の宣言に `roles` を書いていた画面では、
+> 役割の外の人にボタンが出なくなる（書いたとおりになる）。宣言の id が `edit` / `delete`
+> でない画面（`{ id: remove, type: delete }`）では、その宣言の `confirm` / `onSuccess` が
+> 効くようになる。
+
 ## 0.9.21 — 2026-09-30
 
 **定義に書いてあるのに、描く側が読んでいなかった所を3つ直した。** どれも 0.9.20 で

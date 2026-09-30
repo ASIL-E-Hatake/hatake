@@ -18,10 +18,13 @@ String _shape(String key) => key
 Set<String> _keysInRenderer() {
   final pattern = RegExp(r"Key\('(hatake\.[^']*)'\)");
   final found = <String>{};
-  for (final entry in Directory('lib').listSync(recursive: true)) {
-    if (entry is! File || !entry.path.endsWith('.dart')) continue;
-    for (final match in pattern.allMatches(entry.readAsStringSync())) {
-      found.add(_shape(match.group(1)!));
+  // Renderer に依らない側（`hatake` の画面の入口。権限の無い画面など）のキーも契約。
+  for (final dir in ['lib', '../hatake/lib']) {
+    for (final entry in Directory(dir).listSync(recursive: true)) {
+      if (entry is! File || !entry.path.endsWith('.dart')) continue;
+      for (final match in pattern.allMatches(entry.readAsStringSync())) {
+        found.add(_shape(match.group(1)!));
+      }
     }
   }
   return found;

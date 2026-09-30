@@ -64,6 +64,9 @@ abstract final class HatakeKeys {
   /// 一覧の下の件数の字（「全 120 件」／`pagination.enabled: false` で出しきれない
   /// ときの「120 件中 100 件を表示しています（絞り込んでください）」）。
   static const pagerText = 'hatake.pager.text';
+
+  /// 開く権限の無い画面（画面自身の `roles` を持たない人。0.9.22）。
+  static const pageForbidden = 'hatake.page.forbidden';
   static const empty = 'hatake.empty';
   static const error = 'hatake.error';
 
@@ -180,6 +183,7 @@ abstract final class HatakeKeys {
         prev,
         next,
         pagerText,
+        pageForbidden,
         empty,
         error,
         confirm,

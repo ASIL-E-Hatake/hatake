@@ -238,6 +238,7 @@ export function parsePageMap(root: Dict): PageDefinition {
         table: parseTable(optDict(page, "table")),
         report: parseReport(optDict(page, "report")),
         actions: parseActions(page),
+        roles: optList(page, "roles").map(String),
       };
     default:
       throw new DefinitionParseError(
@@ -333,6 +334,7 @@ function parseDashboardPage(
       parseDashboardItem(asDict(raw, `page.items[${i}]`), i),
     ),
     actions: parseActions(page),
+    roles: optList(page, "roles").map(String),
   };
 }
 
@@ -391,6 +393,8 @@ function common(page: Dict, dslVersion: string) {
     dslVersion,
     repository: reqString(page, "repository", "page.repository"),
     keyFields: keyFieldsOf(page),
+    // 開いてよい役割（空＝誰でも）。メニュー・画面・サーバが同じものを読む。
+    roles: optList(page, "roles").map(String),
   };
 }
 

@@ -40,7 +40,7 @@ class _MaterialAppShell extends StatelessWidget {
         final route = router.current;
         final page = app.pageById(route.pageId);
         // A menu is only worth showing when there is somewhere else to go.
-        final hasMenu = _visibleLeaves(app.menu, roles).length >= 2;
+        final hasMenu = _visibleLeaves(app.menu, roles, app.pageById).length >= 2;
         final wide = MediaQuery.sizeOf(context).width >= _wideBreakpoint;
 
         // 並べて開くなら、**開いているタブを全部作って前面だけ見せる**（作り直さない
@@ -193,6 +193,7 @@ class _MaterialAppShell extends StatelessWidget {
     return _AppMenu(
       menu: app.menu,
       roles: roles,
+      pageOf: app.pageById,
       currentPageId: currentPageId,
       onSelect: (pageId) {
         onSelected?.call();

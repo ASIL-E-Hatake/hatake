@@ -6,12 +6,16 @@ part of '../material_renderer.dart';
 class _AppMenu extends StatelessWidget {
   final List<MenuItem> menu;
   final Set<String> roles;
+
+  /// 項目の行き先の画面（その画面の `roles` も見るため）。
+  final PageDefinition? Function(String pageId) pageOf;
   final String? currentPageId;
   final ValueChanged<String> onSelect;
 
   const _AppMenu({
     required this.menu,
     required this.roles,
+    required this.pageOf,
     required this.currentPageId,
     required this.onSelect,
   });
@@ -25,7 +29,10 @@ class _AppMenu extends StatelessWidget {
   }
 
   List<Widget> _buildNode(BuildContext context, MenuItem item, int depth) {
-    if (!isAllowed(item.roles, roles)) return const [];
+    final page = item.page;
+    if (!menuItemOpens(item, roles, page == null ? null : pageOf(page))) {
+      return const [];
+    }
 
     if (item.isGroup) {
       final children = [
@@ -48,7 +55,6 @@ class _AppMenu extends StatelessWidget {
       ];
     }
 
-    final page = item.page;
     if (page == null) return const [];
     return [
       ListTile(
@@ -64,13 +70,21 @@ class _AppMenu extends StatelessWidget {
   }
 }
 
-/// Flattens the menu tree to the leaves the current roles may see.
-List<MenuItem> _visibleLeaves(List<MenuItem> menu, Set<String> roles) {
+/// Flattens the menu tree to the leaves the current roles may see (the item's
+/// own `roles` and the target page's `roles` — see [menuItemOpens]).
+List<MenuItem> _visibleLeaves(
+  List<MenuItem> menu,
+  Set<String> roles,
+  PageDefinition? Function(String pageId) pageOf,
+) {
   final out = <MenuItem>[];
   for (final item in menu) {
-    if (!isAllowed(item.roles, roles)) continue;
+    final page = item.page;
+    if (!menuItemOpens(item, roles, page == null ? null : pageOf(page))) {
+      continue;
+    }
     if (item.isGroup) {
-      out.addAll(_visibleLeaves(item.children, roles));
+      out.addAll(_visibleLeaves(item.children, roles, pageOf));
     } else if (item.page != null) {
       out.add(item);
     }

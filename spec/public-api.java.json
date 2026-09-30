@@ -1,6 +1,6 @@
 {
   "$comment": "**約束する面**（Java）。1.0 のあとは、ここから消さない・名前を変えない・形を変えない。数えているのは組んだ結果の中の public な型で、作り直し方は java/src/test/java/io/hatake/core/PublicApiTest.java の頭。",
-  "count": 99,
+  "count": 101,
   "types": [
     "io.hatake.core.Access",
     "io.hatake.core.Age",
@@ -80,6 +80,8 @@
     "io.hatake.core.ScreenIndex$Unreadable",
     "io.hatake.core.SearchDefinition",
     "io.hatake.core.SectionDefinition",
+    "io.hatake.core.ServerAccess",
+    "io.hatake.core.ServerAccess$Accepted",
     "io.hatake.core.StrictKeys",
     "io.hatake.core.StrictKeys$UnknownKey",
     "io.hatake.core.SubTableSource",

@@ -3029,6 +3029,73 @@
       }
     },
     {
+      "rule": "crud-without-create",
+      "why": "入力欄はあるのに、新規登録のボタンが無い（編集・削除だけ出している）",
+      "page": {
+        "type": "master",
+        "id": "employee_master",
+        "title": "社員マスタ",
+        "repository": "employeeRepository",
+        "key": "employeeNo",
+        "search": {
+          "filters": [
+            {
+              "field": "name",
+              "label": "氏名"
+            }
+          ]
+        },
+        "table": {
+          "columns": [
+            {
+              "field": "employeeNo",
+              "label": "社員番号",
+              "sortable": true
+            },
+            {
+              "field": "name",
+              "label": "氏名"
+            }
+          ],
+          "rowActions": [
+            "edit",
+            "delete"
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "employeeNo",
+                  "label": "社員番号",
+                  "required": true
+                },
+                {
+                  "field": "name",
+                  "label": "氏名",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "delete",
+            "type": "delete",
+            "label": "削除",
+            "roles": [
+              "admin"
+            ],
+            "confirm": {
+              "message": "削除します。よろしいですか？"
+            }
+          }
+        ]
+      }
+    },
+    {
       "rule": "no-required-field",
       "why": "入力できるのに、必須が1つも無い",
       "page": {

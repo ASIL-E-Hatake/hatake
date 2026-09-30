@@ -1,6 +1,6 @@
 {
   "$comment": "**約束する面**（@hatake-fw/api）。1.0 のあとは、ここから消さない・名前を変えない・形を変えない。内部の道具は @hatake-fw/api/internal から使えるが、そちらは約束しない（断りなく変わる）。線引きは typescript/src/index.ts の頭に書いてある。",
-  "count": 38,
+  "count": 42,
   "exports": [
     "AggregateRegistry",
     "ComputedRegistry",
@@ -10,8 +10,11 @@
     "FormatterRegistry",
     "UnknownKeysError",
     "ValidatorRegistry",
+    "acceptRecordIn",
     "ageAt",
     "buildQuery",
+    "canOpenPageIn",
+    "canRunActionIn",
     "checkBulkLimit",
     "checkDslVersion",
     "computeInvoice",
@@ -39,6 +42,7 @@
     "toJavaRecords",
     "toJsonSchema",
     "toOpenApi",
-    "toTypeScript"
+    "toTypeScript",
+    "visibleRecordIn"
   ]
 }
