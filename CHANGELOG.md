@@ -16,6 +16,34 @@
 
 DSL の版（`dsl_version`）はパッケージの版とは別に動く。DSL が上がった版にはその旨を書く。
 
+## 0.9.25 — 2026-10-01
+
+**ブラウザ版（Vue / React）で、刷ると PDF が落ち、CSV が保存でき、一括の進み具合と中断が出る
+ようにした。** 1.0 の条件（Web の Renderer）に残っていた最後の P1。見本の Vue / React は刷っても
+PDF ができず（`window` に紙を置くだけ）、一括は「N / M 件おわりました」の字だけだった。
+
+- 追加（ブラウザ版）: **出来合いの出力先** `downloadCsv` / `downloadPdf`（`@hatake-fw/runtime`）。
+  `exportSink: downloadCsv, printSink: downloadPdf` と**アプリが登録したときだけ**効く（枠組みが
+  勝手に書かない線は守る＝`hatake registry` の申告にも静的な走査にもそのまま出る）。
+  `downloadCsv` は **UTF-8 しか書かない**ので、`charset: cp932` などは黙って UTF-8 で落とさずに
+  断る（押した人に理由が出る）。`printPdf(request)` はバイト列だけ作る（保存先を自分で持つアプリ用）。
+- 追加（TS）: **PDF を書く** `writePdf` / `reportPdf` / `documentPdf`（`@hatake-fw/api/internal`）と
+  `runsOf` / `isCjk`。`hatake_print` の転記で、**`hatake_print` の見本（`sales_report.pdf`）と
+  同じ材料で作って1バイト違わない**ことを試験が見ている（直すときは両方）。0.9.24 までは
+  「PDF は Dart 版だけ」としていたが、ブラウザに Dart は持ち込めない。
+- 修正（ブラウザ版）: **刷る口を待つ**ようにした。投げっぱなしで、刷る口が失敗しても「刷った」
+  ことになっていた（出す口と Flutter は待っていた）。
+- 追加（ブラウザ版）: 刷る頼み（`PrintRequest`）に**帳票の定義・刷る人の役割・見せ方・`config`**を
+  足した（足しただけ＝互換）。組んだ紙（`document`）だけでは PDF に組めなかった。
+- 追加（ブラウザ版）: **一括の進み具合**に棒・「あと N 分くらい」・中断（「中断（ここまでは実行
+  されます）」）。中断は「まだ送っていない区切りを送らない」だけで、送り残しは選び直されて
+  `{skipped}` に数える（Flutter と同じ）。`ActionRunner.cancel()`、`ActionProgress` に
+  `remaining` / `cancelling`。印 `action:cancel`。
+- 追加（Dart）: 残り時間の言い方 `bulkRemainingText` を `hatake_material` から `hatake_core` に
+  上げた。TS にも同じもの（`bulkRemainingText`）を置き、共有フィクスチャ `bulk_progress.json` で
+  縛る（Flutter とブラウザで同じ一括に違う数字を出さない）。公開面は Dart +1。
+- 文書: `docs/compat.ja.md` の公開面の数が古かった（TS 35 → 42・Dart 296 → 310・Java 99 → 101）。
+
 ## 0.9.24 — 2026-10-01
 
 **道具が「通った」と言うのは、本当に何かを確かめたときだけにした。** 見本を 0.9.23 に上げたら、

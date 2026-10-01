@@ -128,6 +128,8 @@ HatakeScope(
 )
 ```
 
+ブラウザ版（Vue / React）は、出来合いの `downloadCsv` / `downloadPdf`（`@hatake-fw/runtime`）を登録すれば保存まで済みます（`exportSink: downloadCsv, printSink: downloadPdf`）。CSV は UTF-8 だけ書くので、cp932 などは黙って UTF-8 にせず断ります。PDF は TypeScript 版の `writePdf` で作り、`hatake_print` と1バイト違わないことを試験が見ています。
+
 登録していなければ「出力先が未登録です」と画面に出ます（黙って何も起きないのを避けるため）。Shift_JIS への変換も同じ理由で出力先の責務です。
 
 → 例は [`spec/examples/sales_report.yaml`](../../spec/examples/sales_report.yaml)

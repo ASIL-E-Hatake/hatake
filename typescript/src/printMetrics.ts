@@ -1,8 +1,9 @@
 // 文字の幅を数える（紙の上の寄せと、列からの溢れに要る）。
 //
-// **刷るのは Dart 版**（`hatake_print`）。こちらは同じ紙を**読ませるため**に組む
-// （`hatake paper` / MCP の `hatake_print_preview`）。数え方が違えば「AI が見た紙」と
-// 「刷った紙」が別物になるので、規則は Dart 版の転記＝共有フィクスチャで縛る。
+// 刷るのは Dart 版（`hatake_print`）と、ブラウザ版の [writePdf]（0.9.25）。こちらは同じ紙を
+// **読ませる**（`hatake paper` / MCP の `hatake_print_preview`）のにも使う。数え方が違えば
+// 「AI が見た紙」と「刷った紙」が別物になるので、規則は Dart 版の転記＝共有フィクスチャと
+// PDF の見本（1バイト一致）で縛る。
 //
 //   ・半角（0.5em） … ASCII の印字できる文字と、半角形（半角カナなど）
 //   ・全角（1.0em） … それ以外の全部
@@ -56,4 +57,62 @@ export function clipToWidth(
     em = next;
   }
   return `${kept}${ellipsis}`;
+}
+
+/** 漢字・かな・ハングル・全角の約物（[runsOf] が塊にしてよい文字）。Dart 版の転記。 */
+export function isCjk(code: number): boolean {
+  return (
+    (code >= 0x1100 && code <= 0x115f) || // ハングル字母
+    (code >= 0x2e80 && code <= 0x303e) || // CJK 部首・全角の約物
+    (code >= 0x3041 && code <= 0x33ff) || // かな・注音・囲み文字
+    (code >= 0x3400 && code <= 0x4dbf) || // CJK 拡張A
+    (code >= 0x4e00 && code <= 0x9fff) || // CJK 統合漢字
+    (code >= 0xa000 && code <= 0xa4cf) || // イ文字
+    (code >= 0xac00 && code <= 0xd7a3) || // ハングル音節
+    (code >= 0xf900 && code <= 0xfaff) || // CJK 互換漢字
+    (code >= 0xfe30 && code <= 0xfe6f) || // CJK 互換形
+    (code >= 0xff01 && code <= 0xff60) || // 全角英数・記号
+    (code >= 0x20000 && code <= 0x3fffd) // CJK 拡張B以降
+  );
+}
+
+/** 置く位置（em）つきの文字の塊。 */
+export interface PrintRun {
+  em: number;
+  text: string;
+}
+
+/**
+ * 文字列を、PDF に**1度に書いてよい塊**に分ける（Dart 版の転記）。
+ *
+ * 字送りがこちらの見積もりと同じだと言える文字（半角・CJK）は続けて書き、それ以外
+ * （円記号など）は1文字ずつ置き直す。`¥1,250,000` を1塊で書くと、ビューアによっては
+ * `¥` の次の桁が円記号に重なる。
+ */
+export function runsOf(text: string): PrintRun[] {
+  const runs: PrintRun[] = [];
+  let buffer = "";
+  let em = 0;
+  let start = 0;
+  const flush = (): void => {
+    if (buffer === "") return;
+    runs.push({ em: start, text: buffer });
+    buffer = "";
+  };
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0;
+    const half = isHalfWidth(code);
+    if (half || isCjk(code)) {
+      if (buffer === "") start = em;
+      buffer += char;
+      em += half ? 0.5 : 1;
+      continue;
+    }
+    flush();
+    runs.push({ em, text: char });
+    em += 1;
+    start = em;
+  }
+  flush();
+  return runs;
 }

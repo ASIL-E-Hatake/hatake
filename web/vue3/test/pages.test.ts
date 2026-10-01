@@ -1,7 +1,7 @@
 import { parsePageJson } from "@hatake-fw/api";
 import type { CrudPageDefinition, SearchPageDefinition } from "@hatake-fw/api/internal";
 import { expandVocabularies, findUnknownKeys } from "@hatake-fw/api/internal";
-import { FakeRepository, RepositoryRegistry } from "@hatake-fw/runtime";
+import { FakeRepository, type PrintRequest, RepositoryRegistry } from "@hatake-fw/runtime";
 import { mount } from "@vue/test-utils";
 import { parse as parseYaml } from "yaml";
 import { h } from "vue";
@@ -111,6 +111,11 @@ const orders = [
   { orderNo: "SO-2", amount: 5160 },
 ];
 
+/** 刷るボタンつきの帳票（刷る口に何が届くか）。 */
+const printYaml = `${reportYaml}  actions:
+    - { id: printPdf, type: print, label: 印刷, config: { filename: 売上 } }
+`;
+
 const lookupYaml = `
 dsl_version: "1.0"
 page:
@@ -208,6 +213,32 @@ describe("定義から画面が出る", () => {
     const grand = wrapper.find('[data-hatake="block:grandTotal"]');
     expect(grand.findAll("td").map((one) => one.text())).toEqual(["合計", "合計 ¥6,360件数 2"]);
     expect(grand.findAll("td div").map((one) => one.text())).toEqual(["合計 ¥6,360", "件数 2"]);
+  });
+
+  it("刷るボタン: 帳票の定義・役割・config が刷る口に届く（0.9.25）", async () => {
+    const got: PrintRequest[] = [];
+    const wrapper = mount(HatakeScope, {
+      props: {
+        registries: {
+          repositories: new RepositoryRegistry({
+            orderRepository: new FakeRepository(orders, ["orderNo"]),
+          }),
+          printSink: (request: PrintRequest) => {
+            got.push(request);
+          },
+        },
+      },
+      slots: { default: () => h(HatakePage, { definition: pageOf(printYaml) as never }) },
+    });
+    await settle(wrapper);
+    await wrapper.find('[data-hatake="search"]').trigger("submit");
+    await settle(wrapper);
+    await wrapper.find('[data-hatake="action:printPdf"]').trigger("click");
+    await settle(wrapper);
+    expect(got).toHaveLength(1);
+    expect(got[0].page?.id).toBe("sales");
+    expect(got[0].filename).toBe("売上.pdf");
+    expect(got[0].config.filename).toBe("売上");
   });
 
   it("検索欄の既定値: 最初の一覧もその条件で読み、欄にも同じ値（範囲は2つの欄）", async () => {

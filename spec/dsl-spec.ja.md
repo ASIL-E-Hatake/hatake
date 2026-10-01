@@ -607,6 +607,9 @@ page:
 
 **ファイルを書くのは Framework の外**。Framework は文字列（BOM 込み）までを作り、
 ダウンロード・保存ダイアログ・共有・アップロードは利用者が登録した出力先が行う。
+ブラウザでそのまま保存するだけなら、出来合いの `downloadCsv`（`@hatake-fw/runtime`）を
+登録すれば足りる。**UTF-8 しか書かない**ので、`charset` が `cp932` などのときは黙って
+UTF-8 で出さずに**断る**（押した人に理由が出る）。変換が要るなら、変換する口を登録する。
 
 ### 文字コード（`charset`）
 
@@ -675,6 +678,20 @@ HatakeScope(
   ...
 )
 ```
+
+**ブラウザ版（Vue / React）では**、出来合いの口を登録すれば帳票がそのまま PDF で落ちる
+（0.9.25）。PDF にするのは `@hatake-fw/runtime` の `downloadPdf`（中で TypeScript 版の
+`writePdf` を呼ぶ）で、**`hatake_print` と1バイト違わない**ことを試験が見ている（同じ見本で
+比べる）。刷る頼み（`PrintRequest`）には帳票の定義・役割・見せ方・`config` も来るので、
+社内へ送りたいアプリは `printPdf(request)` でバイト列だけ作って自分の口で送ればよい。
+
+```ts
+import { downloadCsv, downloadPdf } from "@hatake-fw/runtime";
+
+<HatakeScope registries={{ repositories, exportSink: downloadCsv, printSink: downloadPdf }}>
+```
+
+登録しない限り、枠組みは今までどおり何も書かない（既定にはしない＝保存先は案件ごとに違う）。
 
 `printSink` が未登録なら、押したときに**そう言う**（黙って何も起きないことにはしない）。
 `report` の無い画面に置くと `validate` が警告する（`print-without-report`）＝押すまで

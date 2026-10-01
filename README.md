@@ -111,7 +111,7 @@ hatake は「定義を書く」フレームワークなので、AI に使わせ�
 8種類の画面（検索・CRUD・マスタ・詳細・入力・ステップ入力・ダッシュボード・帳票）。拡張（Validator / Action / Field型 / Renderer）も登録式。紙に刷る（`hatake_print`）・REST（`hatake_http`）は opt-in。詳しくは [`flutter/README.md`](flutter/README.md)、拡張は [Plugin ガイド](flutter/docs/plugins.ja.md)。
 
 ### ブラウザ（Vue 3 / React 19）
-同じ定義から同じ画面。判断（一覧の状態・権限・ボタンの出し分け）は `@hatake-fw/runtime` に置いて、Vue と React は描くだけ。2つが同じ印（`data-hatake`）とクラス名を出すことは CI が突き合わせている。
+同じ定義から同じ画面。判断（一覧の状態・権限・ボタンの出し分け）は `@hatake-fw/runtime` に置いて、Vue と React は描くだけ。2つが同じ印（`data-hatake`）とクラス名を出すことは CI が突き合わせている。CSV と PDF は出来合いの `downloadCsv` / `downloadPdf` を登録すれば保存まで済む（PDF は `hatake_print` と1バイト同じ）。
 
 ### Java / TypeScript（バックエンド）
 どちらも `core`（定義モデル + YAML/JSON パーサ）、`FormValidator`（サーバ側の検証）、`QueryBuilder`（検索フィルタ + params → フレームワーク非依存の `QuerySpec`。フィルタに無い項目は弾く許可リスト方式）、権限（画面・ボタン・見せる項目・受け取る項目）、API の形の生成（`DtoSpec` → JSON Schema / OpenAPI 3.1 / ネイティブ型）まで。ORM 依存は持たず、JPA/Prisma 等への変換は opt-in アダプタの領分。詳しくは [`java/README.md`](java/README.md) / [`typescript/README.md`](typescript/README.md)。

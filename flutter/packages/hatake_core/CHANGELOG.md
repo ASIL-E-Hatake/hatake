@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.25
+
+- 追加: `bulkRemainingText`（区切って実行する一括の「あと N 分くらい」）。`hatake_material` から上げた。ブラウザ版と共有フィクスチャ `bulk_progress.json` で同じ言い方に縛る。
+
 ## 0.9.24
 
 - 変更なし（版の足並みをそろえただけ）。

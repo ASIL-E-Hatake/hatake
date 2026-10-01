@@ -106,6 +106,20 @@ HatakeScope(
 )
 ```
 
+**ブラウザ版（Vue / React）では**、出来合いの口を登録すれば帳票がそのまま PDF で落ちる
+（0.9.25）。PDF にするのは `@hatake-fw/runtime` の `downloadPdf`（中で TypeScript 版の
+`writePdf` を呼ぶ）で、**`hatake_print` と1バイト違わない**ことを試験が見ている（同じ見本で
+比べる）。刷る頼み（`PrintRequest`）には帳票の定義・役割・見せ方・`config` も来るので、
+社内へ送りたいアプリは `printPdf(request)` でバイト列だけ作って自分の口で送ればよい。
+
+```ts
+import { downloadCsv, downloadPdf } from "@hatake-fw/runtime";
+
+<HatakeScope registries={{ repositories, exportSink: downloadCsv, printSink: downloadPdf }}>
+```
+
+登録しない限り、枠組みは今までどおり何も書かない（既定にはしない＝保存先は案件ごとに違う）。
+
 出力先（`printSink`）を登録していなければ、押したときに**そう言う**。黙って何も起きないのが一番困るので。定義を1文字も変えずにバッチから刷りたいなら、`reportPdf(page, rows)` を直接呼んでもよい（UI を通らない＝夜間バッチでも同じ1行）。
 
 書式（`format`）・列幅（`column.width`）・見えない列（`roles`）・枚数は**画面の帳票と同じ**規則で組まれる。画面で 3 枚に見えた帳票は 3 枚で刷られる。

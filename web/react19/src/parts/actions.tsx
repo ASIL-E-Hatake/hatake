@@ -297,10 +297,26 @@ export function useActions(options: {
 
       return (
         <div className="hatake-overlay">
+          {/* 進み具合（件数・棒・残り時間・中断）。字と印は Vue 版と同じ。閉じるボタンは出さない。 */}
           {progress === null ? null : (
-            <p className="hatake-progress" data-hatake="action:progress" role="status">
-              {progress.done} / {progress.total} 件おわりました
-            </p>
+            <div className="hatake-progress" data-hatake="action:progress" role="status">
+              <span className="hatake-progress-count">
+                {progress.done} / {progress.total} 件おわりました
+              </span>
+              <progress className="hatake-progress-bar" max={progress.total} value={progress.done} />
+              {progress.remaining === null ? null : (
+                <span className="hatake-progress-left">{progress.remaining}</span>
+              )}
+              <button
+                type="button"
+                className="hatake-button hatake-button-text"
+                data-hatake="action:cancel"
+                disabled={progress.cancelling}
+                onClick={() => runner.cancel()}
+              >
+                {progress.cancelling ? "中断しています…" : "中断（ここまでは実行されます）"}
+              </button>
+            </div>
           )}
           {/* 上に置き場が在るなら、そちらが出す（同じ文を2か所に出さない）。 */}
           {messages !== undefined || message === null ? null : (

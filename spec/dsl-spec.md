@@ -545,7 +545,10 @@ writes exactly those.
 
 **Writing the file is outside the framework.** It produces the text (BOM
 included) and stops; downloading, showing a save dialog, sharing or uploading is
-done by the sink the application registers.
+done by the sink the application registers. To simply save it in a browser,
+register the ready-made `downloadCsv` (`@hatake-fw/runtime`). It writes **UTF-8
+only**: with `charset: cp932` (or anything else) it refuses with a reason instead of
+quietly saving UTF-8. If you need the conversion, register a sink that converts.
 
 ### Charset
 
@@ -597,7 +600,11 @@ typefaces and duplex are a print shop's vocabulary, so the adapter reads them
 instead of the DSL growing keys for them (write `config: { font: mincho }` and the
 sink can pick it up).
 
-**The bytes are made outside the framework.** A CSV is a string the framework can
+**The bytes are made outside the framework.** (In the browser renderers, the
+ready-made `downloadPdf` from `@hatake-fw/runtime` turns a report into a PDF and
+saves it — since 0.9.25. It calls the TypeScript `writePdf`, which a test keeps
+byte-identical to `hatake_print`. Nothing is written unless the app registers it.)
+A CSV is a string the framework can
 build; a PDF is fonts, encodings and page trees — a subsystem an app that never
 prints should not carry. So `print` hands over the *contents* (the report, the
 rows, the roles, the formatters); the opt-in

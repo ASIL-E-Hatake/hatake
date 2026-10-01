@@ -367,6 +367,23 @@ void main() {
     }
   });
 
+  group('conformance: bulk progress', () {
+    final fixture = _loadMap('bulk_progress.json');
+    for (final raw in fixture['cases'] as List<Object?>) {
+      final c = (raw as Map).cast<String, Object?>();
+      test(c['name'] as String, () {
+        expect(
+          bulkRemainingText(
+            done: c['done']! as int,
+            total: c['total']! as int,
+            seconds: c['seconds']! as int,
+          ),
+          c['expected'],
+        );
+      });
+    }
+  });
+
   group('conformance: pagination', () {
     final fixture = _loadMap('pagination.json');
     for (final raw in fixture['cases'] as List<Object?>) {

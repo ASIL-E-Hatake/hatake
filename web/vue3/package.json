@@ -1,6 +1,6 @@
 {
   "name": "@hatake-fw/vue3",
-  "version": "0.9.24",
+  "version": "0.9.25",
   "description": "Vue 3 renderer for hatake. Draws what @hatake-fw/runtime decides; holds no business logic.",
   "license": "Apache-2.0",
   "type": "module",
@@ -28,8 +28,8 @@
     "vue": "^3.4"
   },
   "dependencies": {
-    "@hatake-fw/api": "0.9.24",
-    "@hatake-fw/runtime": "0.9.24"
+    "@hatake-fw/api": "0.9.25",
+    "@hatake-fw/runtime": "0.9.25"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
