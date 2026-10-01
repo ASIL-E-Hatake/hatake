@@ -1,11 +1,16 @@
 import { FormatterRegistry, toCsv } from "@hatake-fw/api";
 import type { ColumnDefinition } from "@hatake-fw/api";
-import type { ActionDefinition, FieldDefinition } from "@hatake-fw/api/internal";
+import type {
+  ActionDefinition,
+  FieldDefinition,
+  ReportPageDefinition,
+} from "@hatake-fw/api/internal";
 import {
   ActionOpens,
   ActionScopes,
   ActionTypes,
   batchSizeFor,
+  bulkRemainingText,
   csvOptionsFromConfig,
   evaluateCondition,
   isAllowed,
@@ -58,6 +63,10 @@ export class ActionRunner extends Notifier {
   private _roles: readonly string[];
   private _progress: ActionProgress | null = null;
   private _running: string | null = null;
+  /** 中断を頼まれたか（まだ送っていない区切りを送らない）。 */
+  private _cancel = false;
+  /** 時計（ミリ秒）。残り時間の見当にだけ使う＝試験で差し替えられるように受け取る。 */
+  private readonly _now: () => number;
 
   constructor(options: {
     roles?: readonly string[];
@@ -70,6 +79,8 @@ export class ActionRunner extends Notifier {
     messages?: MessageCenter;
     /** 聞く所（確認・`prompt`）。渡さないと**聞くボタンは動かない**。 */
     ask?: ActionAsker;
+    /** 時計（ミリ秒。既定は `Date.now`）。残り時間の見当にだけ使う。 */
+    now?: () => number;
   }) {
     super();
     this._roles = options.roles ?? [];
@@ -80,6 +91,7 @@ export class ActionRunner extends Notifier {
     this._formatters = options.formatters ?? new FormatterRegistry();
     this._ask = options.ask ?? (() => Promise.resolve(null));
     this.messages = options.messages ?? new MessageCenter();
+    this._now = options.now ?? (() => Date.now());
   }
 
   get roles(): readonly string[] {
@@ -101,6 +113,19 @@ export class ActionRunner extends Notifier {
   /** 区切って実行している最中だけ在る。 */
   get progress(): ActionProgress | null {
     return this._progress;
+  }
+
+  /**
+   * 区切って実行している一括を**中断する**（Flutter の「中断（ここまでは実行されます）」と同じ）。
+   *
+   * 止めるのは「まだ送っていない区切りを送らない」だけ。送った区切りは動いている
+   * （取り消しではない）。送り残した行は選び直されて、`{skipped}` に数えられる。
+   */
+  cancel(): void {
+    if (this._progress === null || this._cancel) return;
+    this._cancel = true;
+    this._progress = { ...this._progress, cancelling: true };
+    this.notify();
   }
 
   /**
@@ -292,7 +317,7 @@ export class ActionRunner extends Notifier {
     }
 
     if (action.type === ActionTypes.print) {
-      return this._print(action, around) ? new ActionOutcome() : null;
+      return (await this._print(action, around)) ? new ActionOutcome() : null;
     }
 
     if (action.type !== ActionTypes.plugin) {
@@ -335,10 +360,21 @@ export class ActionRunner extends Notifier {
 
     let outcome = new ActionOutcome();
     let done = 0;
+    const started = this._now();
+    this._cancel = false;
     try {
       for (let at = 0; at < rows.length; at += batchSize) {
+        // 中断を頼まれたら、**次の区切りを送らない**（送り残しは下で `{skipped}` になる）。
+        if (this._cancel) break;
         const part = rows.slice(at, at + batchSize);
-        this._progress = { done, total: rows.length };
+        // 残り時間は区切りの境目でだけ見積もる（毎秒動かしても、待つ人には揺れるだけ）。
+        const seconds = Math.floor((this._now() - started) / 1000);
+        this._progress = {
+          done,
+          total: rows.length,
+          remaining: bulkRemainingText(done, rows.length, seconds),
+          cancelling: false,
+        };
         this.notify();
         outcome = outcome.merge(await call(part));
         // 区切りが失敗したら**そこで止める**。残りは「送っていない」（`{skipped}`）。
@@ -347,6 +383,7 @@ export class ActionRunner extends Notifier {
       }
     } finally {
       this._progress = null;
+      this._cancel = false;
       this.notify();
     }
     // 終わっていない行（送っていない行）は「失敗」ではなく「送り残し」。
@@ -431,7 +468,7 @@ export class ActionRunner extends Notifier {
     return true;
   }
 
-  private _print(action: ActionDefinition, around: ActionSurroundings): boolean {
+  private async _print(action: ActionDefinition, around: ActionSurroundings): Promise<boolean> {
     if (this._printSink === undefined) {
       this._say(`アクション "${action.id}" の刷る先が未登録です（printSink）`, false);
       return false;
@@ -445,10 +482,16 @@ export class ActionRunner extends Notifier {
       );
       return false;
     }
-    void this._printSink({
+    // **待つ。** 0.9.24 までは投げっぱなしで、刷る口が失敗しても「刷った」ことになって
+    // いた（失敗は console にだけ出る）。出す口（export）と Flutter は待っていた。
+    await this._printSink({
       filename: printFilename(action, around.fallbackName ?? "帳票"),
       document,
       actionId: action.id,
+      ...(around.reportPage === undefined ? {} : { page: around.reportPage }),
+      roles: this._roles,
+      formatters: this._formatters,
+      config: action.config,
     });
     return true;
   }
@@ -511,6 +554,13 @@ export type ActionMessage = AppMessage;
 export interface ActionProgress {
   readonly done: number;
   readonly total: number;
+  /**
+   * 「あと N 分くらい」。見当が付かないうちは null（言わない）。言い方は Flutter と同じ
+   * （`bulkRemainingText`＝共有フィクスチャ `bulk_progress.json`）。
+   */
+  readonly remaining: string | null;
+  /** 中断を頼まれて、いまの区切りが終わるのを待っている。 */
+  readonly cancelling: boolean;
 }
 
 /** そのボタンが押せるか（押せないなら、何で決まっているか）。 */
@@ -542,6 +592,8 @@ export interface ActionSurroundings {
   readonly fetchRows?: (limit: number) => Promise<readonly DataRecord[]>;
   /** 刷る紙（帳票の画面だけが持つ）。 */
   readonly printDocument?: () => unknown;
+  /** 帳票の定義（刷る口が紙に組むのに要る）。 */
+  readonly reportPage?: ReportPageDefinition;
   /** 既定のファイル名（画面の題）。 */
   readonly fallbackName?: string;
   /** `type: create` を受ける口（一覧が入力を開く）。 */

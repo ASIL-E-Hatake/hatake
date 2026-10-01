@@ -47,6 +47,8 @@ HatakeScope(
 final font = request.config['font'] == 'mincho' ? PdfFont.mincho : PdfFont.gothic;
 ```
 
+ブラウザ版（Vue / React）のために、同じ書き出しを TypeScript にも置いた（`writePdf`、0.9.25）。この README の見本（`test/golden/sales_report.pdf`）と**1バイト違わない**ことを TS 側の試験が見ているので、こちらを直したら TS も直す（片方だけだと落ちる）。
+
 Framework 側は**このパッケージを知らない**（`printSink` は関数1つ）。刷らないアプリに PDF を書くコードは1行も入らない。
 
 ## プリンタに送る

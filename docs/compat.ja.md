@@ -93,9 +93,9 @@ id と終了コードは相手の CI に埋まる＝同じように直せなく�
 
 | 版 | 何を数えているか | 台帳 | いま |
 |---|---|---|---|
-| TypeScript | `@hatake-fw/api` が出す名前（`internal` は数えない） | [`spec/public-api.ts.json`](../spec/public-api.ts.json) | 35 |
-| Dart | 配るパッケージの公開エントリから辿れる名前（`part` の先も） | [`spec/public-api.dart.json`](../spec/public-api.dart.json) | 296 |
-| Java | 組んだ結果の中の public な型（入れ子も） | [`spec/public-api.java.json`](../spec/public-api.java.json) | 99 |
+| TypeScript | `@hatake-fw/api` が出す名前（`internal` は数えない） | [`spec/public-api.ts.json`](../spec/public-api.ts.json) | 42 |
+| Dart | 配るパッケージの公開エントリから辿れる名前（`part` の先も） | [`spec/public-api.dart.json`](../spec/public-api.dart.json) | 310 |
+| Java | 組んだ結果の中の public な型（入れ子も） | [`spec/public-api.java.json`](../spec/public-api.java.json) | 101 |
 
 見ているのは**名前**で、形（引数・戻り値）ではない。形は conformance が縛る。
 

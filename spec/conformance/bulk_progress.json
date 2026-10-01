@@ -1,0 +1,14 @@
+{
+  "_comment": "区切って実行している一括の残り時間の言い方（bulkRemainingText。Dart / TS。Java は描かない版なので対象外）。固定したいのは3つ: (1) 見当が付かないうち（1区切りも終わっていない・1秒も経っていない・もう終わった）は**何も言わない**（null）、(2) 出すときは多めに（切り上げ・60秒未満は10秒単位）、(3) 必ず「くらい」を付ける。0.9.24 まではブラウザ版に残り時間が無く、Flutter だけが言っていた。",
+  "cases": [
+    { "name": "まだ1区切りも終わっていない", "done": 0, "total": 100, "seconds": 5, "expected": null },
+    { "name": "1秒も経っていない（測れていない）", "done": 10, "total": 100, "seconds": 0, "expected": null },
+    { "name": "もう終わった", "done": 100, "total": 100, "seconds": 30, "expected": null },
+    { "name": "10秒単位に切り上げる", "done": 50, "total": 100, "seconds": 11, "expected": "あと 20 秒くらい" },
+    { "name": "ちょうど10秒", "done": 50, "total": 100, "seconds": 10, "expected": "あと 10 秒くらい" },
+    { "name": "51〜59秒は 1 分と言う", "done": 50, "total": 100, "seconds": 55, "expected": "あと 1 分くらい" },
+    { "name": "分は切り上げる", "done": 10, "total": 100, "seconds": 10, "expected": "あと 2 分くらい" },
+    { "name": "時間も切り上げる", "done": 1, "total": 100, "seconds": 40, "expected": "あと 2 時間くらい" },
+    { "name": "最初の区切りが速くても、端数は多めに", "done": 3, "total": 10, "seconds": 1, "expected": "あと 10 秒くらい" }
+  ]
+}

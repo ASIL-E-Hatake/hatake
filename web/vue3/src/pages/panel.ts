@@ -293,6 +293,7 @@ export const HatakeReportPage = defineComponent({
       fetchRows: () => Promise.resolve(controller.rows),
       printDocument: () => (controller.hasRun ? controller.document : undefined),
       fallbackName: props.definition.title,
+      reportPage: props.definition,
     });
 
     return () => {

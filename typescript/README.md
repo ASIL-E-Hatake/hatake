@@ -354,7 +354,7 @@ $ npx hatake paper spec/examples/sales_report.yaml --columns 100
   `--json` で紙の上の座標そのもの
 * **右寄せは右端が揃うように置く**（文字の実寸と1桁の幅は比例しないので、実寸から数えると
   揃っているかどうかが読めなくなる）。総計の上の二重線は罫線の行が2つ続いて見える
-* 刷る（PDF / プリンタ）のは opt-in の [`hatake_print`](../flutter/packages/hatake_print/)。
+* 刷る（PDF / プリンタ）のは opt-in の [`hatake_print`](../flutter/packages/hatake_print/)。ブラウザ版のために TS にも `writePdf` / `reportPdf` / `documentPdf`（`@hatake-fw/api/internal`）が在る（0.9.25）。**`hatake_print` の見本と1バイト違わない**ことを `test/pdfWriter.test.ts` が見ている＝直すときは両方。
   **座標は同じ計算**で、[共有フィクスチャ](../spec/conformance/report_layout.json)が
   「Dart と TS で1つも違わない」ことを縛っている＝**ここで見た紙と刷った紙は同じ**
 * 紙に入らない定義（列幅の合計が紙幅を超える等）は `validate` の警告で言う

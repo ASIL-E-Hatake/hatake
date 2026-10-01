@@ -300,7 +300,7 @@ printSink: (req) async => save(req.filename,          // 既定 <画面名>.pdf
 **CSV 出力（`type: export`）**: その画面の列と行から組む（一覧・帳票で同じ。ロールで見えない列は出ない）。
 `config` は `filename` / `header` / `delimiter` / `newline`(crlf|lf) / `bom` / `raw`(format を通さない) / `limit` / `charset`。
 一覧の export は表示中のページではなく**検索結果全体**（`limit` まで）。
-**ファイルを書くのは利用者側**＝`HatakeScope(exportSink: (req) async {...})` に登録した出力先が受け取る。
+**ファイルを書くのは利用者側**＝`HatakeScope(exportSink: (req) async {...})` に登録した出力先が受け取る。ブラウザ版は出来合いの `downloadCsv` / `downloadPdf`（`@hatake-fw/runtime`）を登録すれば保存まで済む（CSV は UTF-8 だけ＝cp932 は断る。PDF は `hatake_print` と1バイト同じ）。
 
 **文字コード（`charset`、既定 `utf-8`）**: 受け側が Shift_JIS 固定のとき。**変換するのは出力先**で、定義は名前を宣言するだけ（`req.charset` に入る）。`cp932`＝Windows / Excel の Shift_JIS（「Shift_JIS で」はほぼこれ。`①` `㈱` `髙` `～` が通る）／`shift_jis`＝JIS X 0208 厳密（拡張文字を弾きたいとき）／`euc_jp`。**`bom` は UTF-8 のときだけ効く**（Shift_JIS に BOM を付けると先頭のセルにゴミが入る）。変換の実装は opt-in の `hatake_encoding`:
 

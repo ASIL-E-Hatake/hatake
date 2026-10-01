@@ -289,13 +289,37 @@ function whyOf(state: { enabled: boolean; fields: readonly string[] }): string |
   return `いまは押せません（${state.fields.join(" / ")} によります）`;
 }
 
+/**
+ * 区切って実行している最中の進み具合（件数・棒・「あと N 分くらい」・中断）。
+ *
+ * 字と印は React 版と同じ（`check-same-marks`）。残り時間の言い方は Flutter と同じ
+ * （`bulkRemainingText`）。**閉じるボタンは出さない**（裏で走り続けるのが見えなくなる）。
+ */
 function progressNode(runner: ActionRunner): VNode | null {
   const progress = runner.progress;
   if (progress === null) return null;
   return h(
-    "p",
+    "div",
     { class: "hatake-progress", "data-hatake": "action:progress", role: "status" },
-    `${progress.done} / ${progress.total} 件おわりました`,
+    [
+      h("span", { class: "hatake-progress-count" }, `${progress.done} / ${progress.total} 件おわりました`),
+      h("progress", { class: "hatake-progress-bar", max: progress.total, value: progress.done }),
+      progress.remaining === null
+        ? null
+        : h("span", { class: "hatake-progress-left" }, progress.remaining),
+      h(
+        "button",
+        {
+          type: "button",
+          class: "hatake-button hatake-button-text",
+          "data-hatake": "action:cancel",
+          disabled: progress.cancelling,
+          onClick: () => runner.cancel(),
+        },
+        // 送った分は動いている＝取り消しではない、と分かる言い方（Flutter と同じ）。
+        progress.cancelling ? "中断しています…" : "中断（ここまでは実行されます）",
+      ),
+    ],
   );
 }
 

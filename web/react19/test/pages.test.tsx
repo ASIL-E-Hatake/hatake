@@ -1,7 +1,7 @@
 import { parsePageJson } from "@hatake-fw/api";
 import type { CrudPageDefinition, SearchPageDefinition } from "@hatake-fw/api/internal";
 import { expandVocabularies, findUnknownKeys } from "@hatake-fw/api/internal";
-import { FakeRepository, RepositoryRegistry } from "@hatake-fw/runtime";
+import { FakeRepository, type PrintRequest, RepositoryRegistry } from "@hatake-fw/runtime";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { parse as parseYaml } from "yaml";
 import { afterEach, describe, expect, it } from "vitest";
@@ -98,6 +98,11 @@ const orders = [
   { orderNo: "SO-2", amount: 5160 },
 ];
 
+/** 刷るボタンつきの帳票（刷る口に何が届くか）。 */
+const printYaml = `${reportYaml}  actions:
+    - { id: printPdf, type: print, label: 印刷, config: { filename: 売上 } }
+`;
+
 const lookupYaml = `
 dsl_version: "1.0"
 page:
@@ -188,6 +193,31 @@ describe("定義から画面が出る（React）", () => {
       "合計 ¥6,360",
       "件数 2",
     ]);
+  });
+
+  it("刷るボタン: 帳票の定義・役割・config が刷る口に届く（0.9.25）", async () => {
+    const got: PrintRequest[] = [];
+    render(
+      <HatakeScope
+        registries={{
+          repositories: new RepositoryRegistry({
+            orderRepository: new FakeRepository(orders, ["orderNo"]),
+          }),
+          printSink: (request) => {
+            got.push(request);
+          },
+        }}
+      >
+        <HatakePage definition={pageOf(printYaml) as never} />
+      </HatakeScope>,
+    );
+    fireEvent.submit(at("search") as HTMLElement);
+    await waitFor(() => expect(at("block:grandTotal")).not.toBeNull());
+    fireEvent.click(at("action:printPdf") as HTMLElement);
+    await waitFor(() => expect(got).toHaveLength(1));
+    expect(got[0].page?.id).toBe("sales");
+    expect(got[0].filename).toBe("売上.pdf");
+    expect(got[0].config.filename).toBe("売上");
   });
 
   it("検索欄の既定値: 最初の一覧もその条件で読み、欄にも同じ値（範囲は2つの欄）", async () => {

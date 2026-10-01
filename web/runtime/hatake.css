@@ -940,10 +940,20 @@
   border-left: 4px solid var(--hatake-color-danger);
 }
 
-/* 区切って実行している最中の進み具合。 */
+/* 区切って実行している最中の進み具合（件数・棒・残り時間・中断）。 */
 .hatake-progress {
   margin: var(--hatake-space) 0;
   color: var(--hatake-color-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--hatake-space);
+}
+.hatake-progress-bar {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+  height: 0.5rem;
+  accent-color: var(--hatake-color-primary);
 }
 
 /* 聞くダイアログ。**素の CSS だけで出す**（外のダイアログ部品に乗らない）。 */

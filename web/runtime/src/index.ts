@@ -31,6 +31,7 @@ export {
   type FailedRow,
 } from "./action.js";
 export type { ExportRequest, ExportSink, PrintRequest, PrintSink } from "./sinks.js";
+export { downloadCsv, downloadPdf, printPdf } from "./downloads.js";
 
 // ── ボタンを押したときに起きること（判断はここ。Renderer は描くだけ） ──
 export {
