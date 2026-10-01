@@ -115,8 +115,12 @@ import {
   PITFALLS_FILE,
   QUESTION_KINDS_FILE,
   RESPONSIBILITY_FILE,
+  RULE_CASES_FILE,
   SCHEMA_FILE,
 } from "./specDir.js";
+import { type RuleCaseCatalog, ruleCaseFor } from "./ruleCases.js";
+import { doctor } from "./doctor.js";
+import { TOOL_VERSION } from "./toolVersion.js";
 import { toJavaRecords, toTypeScript } from "./types.js";
 
 /** 道具1つ。`run` は文字列を返し、入力がおかしければ例外を投げる。 */
@@ -143,6 +147,11 @@ export interface McpToolOptions {
   specDir: string;
   /** ファイル読み。テストから差し替えられるように受け取る。 */
   readFile(path: string): string;
+  /**
+   * ディレクトリの中を1段だけ（`hatake_doctor` が案件を歩く口）。渡さない入口では
+   * doctor は「歩けない」と言うだけ（推測で答えない）。
+   */
+  listDir?(path: string): { name: string; dir: boolean }[] | null;
 }
 
 /**
@@ -264,6 +273,9 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 このサーバを使えば、リポジトリの仕様書を読まなくても正しい定義が書ける。
 
 推奨の順番:
+-1. **既存の案件を触り始めるなら、最初に hatake_doctor を1回**。固定した版と実際に
+   入っている版がずれていると、画面は普通に出るのに道具の答えが古い版のものになる
+   （新しいキーが全部「知らないキー」になる）。fail が在れば先に直す
 0. **案件の前書き（hatake.project.yaml）が在れば、まず hatake_project**。
    この案件は何のシステムか・誰が使うか・**何ができないか**・業務の言葉と項目名の
    対応・名前の決めごとが1枚に入っている。読んでから書けば、用語の揺れと命名の
@@ -392,7 +404,7 @@ function readLang(given: string | undefined): Lang {
 }
 
 export function hatakeTools(options: McpToolOptions): McpTool[] {
-  const { specDir, readFile } = options;
+  const { specDir, readFile, listDir } = options;
   const readJson = (...names: string[]): unknown =>
     JSON.parse(readFile(join(specDir, ...names)));
 
@@ -404,6 +416,41 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
   const responsibility = () => parseResponsibility(readJson(RESPONSIBILITY_FILE));
 
   return [
+    {
+      name: "hatake_doctor",
+      title: "案件の環境を診る（版のずれ・定義・MCP）",
+      description:
+        "**案件を触り始める最初の1往復。** 案件が固定した hatake の版（package.json・" +
+        "pubspec.yaml・build.gradle）と、**実際に入っている版**（node_modules・" +
+        "pubspec.lock）を並べて、ずれていれば言う。定義が読めるか・警告の数・" +
+        "MCP の設定も見る。版がずれていても**画面は普通に出る**ので、気づかないまま古い版の" +
+        "答えで書き進めることになる（見本を上げたとき、手元の node_modules が古いままで、" +
+        "新しいキーが全部「知らないキー」になった）。`hatake doctor --json` と同じ形を返す。" +
+        "fail が在れば先に直す（hatake_validate の答えも古い版のものになる）。" +
+        "定義の中身の良し悪しは見ない＝それは hatake_check。",
+      inputSchema: {
+        type: "object",
+        properties: {
+          root: {
+            type: "string",
+            description: "案件の根（既定は MCP を起動した場所＝ふつうは案件の根）。",
+          },
+        },
+      },
+      example: { root: "." },
+      run(args) {
+        const root = str(args, "root") ?? ".";
+        if (listDir === undefined) {
+          throw new Error("この入口ではディレクトリを歩けないので、doctor は使えません。");
+        }
+        return pretty(
+          doctor({ readFile, listDir }, root, {
+            version: TOOL_VERSION,
+            node: typeof process === "undefined" ? undefined : process.versions.node,
+          }),
+        );
+      },
+    },
     {
       name: "hatake_project",
       title: "案件の前書きを読む（何のシステムか・用語・名前の決めごと）",
@@ -1291,6 +1338,8 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "助言は「書いていないから不便かも」＝好みで、終了コードを変えない。" +
         "ここに出るのは規則そのものの話で、1件ごとの「どこで・何が」は " +
         "hatake_validate / hatake_advise が定義を見て言う。" +
+        "**規則を1つ指定すると、その規則を実際に出す定義（case）も添える**" +
+        "（説明と転ぶ実例を1往復で。`hatake rules <規則> --json` と同じもの）。" +
         "**人が決めること**（排他・採番・端数…）はどちらにも出てこない＝hatake_ask の担当。",
       inputSchema: {
         type: "object",
@@ -1309,10 +1358,22 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
       example: { rule: "groupby-without-sort" },
       run(args) {
         const kind = str(args, "kind");
-        const catalog = rulesCatalog(str(args, "rule"));
+        const rule = str(args, "rule");
+        const catalog = rulesCatalog(rule);
+        // 1件だけ引いたときは転ぶ定義も添える（CLI と同じ1か所から＝[ruleCaseFor]）。
+        // 全部引くときは付けない（百件ぶんの定義は読み物にならない）。
+        const one =
+          rule === undefined
+            ? undefined
+            : ruleCaseFor(rule, {
+                rules: rulesCatalog(),
+                cases: readJson(RULE_CASES_FILE) as RuleCaseCatalog,
+                failures: readJson(FAILURES_FILE) as FailureCatalog,
+              });
         return pretty({
           warnings: kind === "advice" ? [] : catalog.warnings,
           advice: kind === "warning" ? [] : catalog.advice,
+          ...(one === undefined ? {} : { case: one }),
           note: RULES_NOTE,
         });
       },

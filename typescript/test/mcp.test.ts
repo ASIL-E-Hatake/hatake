@@ -7,6 +7,7 @@ import {
   PROTOCOL_VERSIONS,
   type JsonRpcMessage,
 } from "../src/mcp.js";
+import { runCli } from "../src/cli.js";
 import { parsePageYaml } from "../src/internal.js";
 import { hatakeTools } from "../src/tools.js";
 
@@ -45,6 +46,10 @@ describe("MCP プロトコル", () => {
     });
     const result = response?.result as any;
     expect(result.protocolVersion).toBe("2024-11-05");
+    // 名乗る版は配っている版（0.9.23 まで 0.0.1 と名乗っていた）。
+    expect(result.serverInfo.version).toBe(
+      JSON.parse(readFileSync("package.json", "utf8")).version,
+    );
     expect(result.capabilities.tools).toBeDefined();
     expect(result.serverInfo.name).toBe("hatake");
     // instructions は「どの順で使うか」を伝える唯一の場所なので、必ず入れる。
@@ -84,6 +89,7 @@ describe("MCP プロトコル", () => {
   it("tools/list は道具を、説明と入力スキーマ付きで出す", () => {
     const list = (send("tools/list")?.result as any).tools;
     expect(list.map((t: any) => t.name)).toEqual([
+      "hatake_doctor",
       "hatake_project",
       "hatake_where",
       "hatake_ask",
@@ -1066,5 +1072,36 @@ describe("役割の一覧と値の下書き（MCP）", () => {
     expect(applied.applied).toHaveLength(1);
     // 当てた所は画面の言葉でも返る（人に見せる形）。
     expect(applied.changed).toContain("押すと確認を出す");
+  });
+});
+
+/**
+ * 規則の「転ぶ定義」を MCP からも引く。CLI では引けたのに、AI が実際に使う口
+ * （MCP）からは引けなかった＝同じ知識が片方にしか無かった。
+ */
+describe("hatake_rules の転ぶ定義", () => {
+  it("規則を1つ指定すると、その規則を出す定義（case）が付く", () => {
+    const found = json(call("hatake_rules", { rule: "groupby-without-sort" }).text);
+    expect(found.case.rule).toBe("groupby-without-sort");
+    expect(found.case.document).toBeTypeOf("object");
+  });
+
+  it("CLI（rules <規則> --json）と同じものが返る（出どころは1か所）", () => {
+    const stdout: string[] = [];
+    const io = {
+      out: (text: string) => stdout.push(text),
+      err: () => {},
+      readFile: (path: string) => readFileSync(path, "utf8"),
+      writeFile: () => {},
+      listFiles: () => null,
+    };
+    expect(runCli(["rules", "groupby-without-sort", "--json"], io)).toBe(0);
+    const fromCli = JSON.parse(stdout.join("\n"));
+    const fromMcp = json(call("hatake_rules", { rule: "groupby-without-sort" }).text);
+    expect(fromMcp.case).toEqual(fromCli.case);
+  });
+
+  it("全部引くときは付けない（百件ぶんの定義は読み物にならない）", () => {
+    expect(json(call("hatake_rules").text).case).toBeUndefined();
   });
 });

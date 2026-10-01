@@ -18,8 +18,8 @@ import {
   restTargets,
   restTargetsForPage,
 } from "./restTarget.js";
-import { hasProbeError, probe, probeRequests, renderProbe } from "./probe.js";
-import { attack, attackRequests, hasHole, renderAttack } from "./attack.js";
+import { hasProbeError, probe, probeHitNothing, probeRequests, renderProbe } from "./probe.js";
+import { attack, attackHitNothing, attackRequests, hasHole, renderAttack } from "./attack.js";
 import {
   ANONYMOUS,
   ANONYMOUS_LABEL,
@@ -28,6 +28,7 @@ import {
   renderAttackSweep,
   rolesToSweep,
   sweepHasHole,
+  sweepHitNothing,
 } from "./attackSweep.js";
 import { diffRuns, hasNewTrouble, renderRunDiff } from "./runDiff.js";
 import { readRun } from "./runSnapshot.js";
@@ -335,7 +336,14 @@ export async function probeCommand(
     ...headers,
     ...(await loginHeaders(plan, "", loginSend)),
   });
-  return finishRun(report, hasProbeError(report), renderProbe, flags, io);
+  // 1件も叩けなかったら落とす（食い違い 0 件と同じ緑にしない）。
+  return finishRun(
+    report,
+    hasProbeError(report) || probeHitNothing(report),
+    renderProbe,
+    flags,
+    io,
+  );
 }
 
 /** 見えないはずの口を、その役割で叩いて見る。 */
@@ -376,7 +384,7 @@ export async function attackCommand(
     ...headers,
     ...(await loginHeaders(plan, role, loginSend)),
   });
-  return finishRun(report, hasHole(report), renderAttack, flags, io);
+  return finishRun(report, hasHole(report) || attackHitNothing(report), renderAttack, flags, io);
 }
 
 /**
@@ -468,5 +476,11 @@ async function sweepCommand(
       ? { accounts: declared, troubles: {} }
       : await loginAccounts(plan, Object.keys(plan.roles), loginSend);
   const sweep = await attackAll(targets, got.accounts, send, got.troubles);
-  return finishRun(sweep, sweepHasHole(sweep), renderAttackSweep, flags, io);
+  return finishRun(
+    sweep,
+    sweepHasHole(sweep) || sweepHitNothing(sweep),
+    renderAttackSweep,
+    flags,
+    io,
+  );
 }

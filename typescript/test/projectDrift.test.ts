@@ -178,6 +178,12 @@ describe("言い方", () => {
     const text = driftLines([], 12).join("\n");
     expect(text).toContain("見つかりませんでした（項目とラベルの対を 12 件");
   });
+
+  it("1件も読めていなければ「揺れは無い」と言わない（見ていないので）", () => {
+    const text = driftLines([], 0).join("\n");
+    expect(text).toContain("1件も読めませんでした");
+    expect(text).not.toContain("見つかりませんでした");
+  });
 });
 
 describe("hatake project --drift", () => {
@@ -188,6 +194,15 @@ describe("hatake project --drift", () => {
     });
     expect(runCli(["project", "pre.yaml", "--drift", "def.yaml"], io)).toBe(0);
     expect(io.stdout.join(String.fromCharCode(10))).toContain("揺れている所が");
+  });
+
+  it("渡したディレクトリに定義が1枚も無ければ落とす（見ていない）", () => {
+    const io = {
+      ...fakeIo({ "pre.yaml": `project_version: "1.0"\nsystem:\n  what: 試験用。\n` }),
+      listFiles: (path: string) => (path === "defs" ? ["defs/README.md"] : null),
+    };
+    expect(runCli(["project", "pre.yaml", "--drift", "defs"], io)).toBe(1);
+    expect(io.stderr.join("\n")).toContain("走査できる定義がありません");
   });
 
   it("定義を渡さなければ、そう言う", () => {

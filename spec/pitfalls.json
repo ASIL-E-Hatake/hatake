@@ -573,6 +573,81 @@
       ]
     },
     {
+      "id": "operator-as-key",
+      "keys": [
+        "visibleWhen",
+        "enabledWhen",
+        "readOnlyWhen",
+        "requiredWhen"
+      ],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "条件で演算子を鍵にする（`{ field: status, equals: shipped }`）",
+        "en": "Using an operator as a key in a condition (`{ field: status, equals: shipped }`)"
+      },
+      "why": {
+        "ja": "条件に書ける鍵は `field` / `operator` / `value` / `mode` と結合（`all` / `any` / `not`）だけ。`equals:` は**黙って捨てられ**、残るのは**値の無い equals**＝その項目が空のときだけ成り立つ条件（項目がレコードに無ければいつも成り立つ）。検証は通り、画面も出る。",
+        "en": "A condition holds only `field` / `operator` / `value` / `mode` and the combinators (`all` / `any` / `not`). `equals:` is dropped silently, leaving an equals with NO value — true only while the field is empty (always true when the record has no such field). It validates and renders."
+      },
+      "fix": {
+        "ja": "演算子は `operator`、比べる値は `value` に書く。",
+        "en": "Put the operator in `operator` and the value in `value`."
+      },
+      "good": [
+        "page:",
+        "  type: form",
+        "  id: order_form",
+        "  title: 受注",
+        "  repository: orderRepository",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - { field: status, label: 状態 }",
+        "          - field: quantity",
+        "            label: 数量",
+        "            type: number",
+        "            readOnlyWhen: { field: status, operator: equals, value: shipped }"
+      ]
+    },
+    {
+      "id": "mode-as-field",
+      "keys": [
+        "visibleWhen",
+        "enabledWhen",
+        "readOnlyWhen",
+        "requiredWhen"
+      ],
+      "pageKinds": [],
+      "wrong": {
+        "ja": "新規か編集かを項目として書く（`{ field: $mode, operator: equals, value: edit }`）",
+        "en": "Writing create/edit as a field (`{ field: $mode, operator: equals, value: edit }`)"
+      },
+      "why": {
+        "ja": "新規か編集かはレコードの値ではなく、フォームの状態。`$mode` という項目はレコードに無いので、比べる値が来ない。",
+        "en": "Create vs edit is the form's state, not a value in the record. There is no `$mode` field, so nothing arrives to compare."
+      },
+      "fix": {
+        "ja": "専用の葉 `{ mode: edit }` / `{ mode: create }` で書く。",
+        "en": "Use the dedicated leaf `{ mode: edit }` / `{ mode: create }`."
+      },
+      "good": [
+        "page:",
+        "  type: crud",
+        "  id: item_master",
+        "  title: 品目マスタ",
+        "  repository: itemRepository",
+        "  key: itemCode",
+        "  table:",
+        "    columns: [{ field: itemCode, label: コード }]",
+        "  form:",
+        "    sections:",
+        "      - fields:",
+        "          - { field: itemCode, label: コード, required: true, readOnlyWhen: { mode: edit } }",
+        "  actions:",
+        "    - { id: create, type: create, label: 新規登録 }"
+      ]
+    },
+    {
       "id": "rowactions-as-objects",
       "keys": [
         "rowActions"

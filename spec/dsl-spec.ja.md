@@ -1798,6 +1798,9 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 | `unknown-action` | ダッシュボードのカードが指す `action` が無い → 押しても何も起きない |
 | `duplicate-page-id` / `duplicate-action-id` / `duplicate-field` | id や項目名の重複 → 後ろが前を隠す |
 | `condition-operator-unsupported` | 条件が理解しない演算子（`between` など）→ 常に false になり、その項目が出てこない |
+| `condition-unknown-key` | 条件に書けない鍵（`{ field: status, equals: shipped }` のように演算子を鍵にした）→ 鍵は捨てられ、**値の無い equals**＝項目が空のときだけ成り立つ（項目がレコードに無ければいつも成り立つ） |
+| `condition-without-value` | 比べる値（`value`）が無い条件 → 空と比べる。equals なら項目が空のときだけ、in ならいつも成り立たない |
+| `condition-mode-as-field` | 新規か編集かを `field: $mode` と書いた → `$mode` という項目はレコードに無い。`{ mode: edit }` と書く |
 | `aggregate-without-field` | `count` 以外で `field` が無い → 集計結果が null |
 | `groupby-without-sort` | 並び順の指定が無い → グループが分裂して小計が何度も出る |
 | `total-without-column` | 合計の対象が `table.columns` に無い → 合計がどこにも表示されない |

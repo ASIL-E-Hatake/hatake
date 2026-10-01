@@ -223,6 +223,10 @@ export async function attackAll(
  * 誰でもない人は**穴だけ**を見る（「開けるのに拒否された」はログインが要るという話で、
  * 定義には書けないので食い違いではない）。
  */
+/** どの役割でも1件も叩いていない（表が空のまま「穴なし」に見えるのを落とす）。 */
+export const sweepHitNothing = (sweep: AttackSweep): boolean =>
+  sweep.runs.every((run) => run.report.results.length === 0);
+
 export const sweepHasHole = (sweep: AttackSweep): boolean =>
   sweep.runs.some((run) =>
     run.anonymous
@@ -268,6 +272,10 @@ export function renderAttackSweep(sweep: AttackSweep): string {
       `（役割ごとの資格で叩いています）`,
   );
   out.push("");
+  if (sweepHitNothing(sweep)) {
+    out.push(`  1件も叩いていません（叩ける画面がありませんでした）。何も確かめていないので、通ったことにはしません（終了コード 1）。`);
+    out.push("");
+  }
 
   const width = Math.max(6, ...sweep.pages.map((one) => one.length));
   out.push(`  ${pad("画面", width)}  ${roles.join(" / ")}`);

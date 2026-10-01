@@ -110,6 +110,19 @@ export function caseDocument(one: RuleCase): Dict {
  * 同じ規則に2つ在っても**先に書いてあるほうだけ**を使う＝走らせる定義と、`rules` が
  * 見せる定義がズレない。
  */
+/**
+ * 規則1つぶんの転ぶ定義を引く（無ければ undefined）。
+ *
+ * **CLI（`hatake rules <規則>`）と MCP（`hatake_rules`）の両方がこれを呼ぶ**＝出どころは
+ * 1か所。片方だけで組み立てると、優先順位（最小の定義より実例）が口によって変わる。
+ */
+export function ruleCaseFor(
+  rule: string,
+  input: { rules: RulesCatalog; cases?: RuleCaseCatalog; failures?: FailureCatalog },
+): RuleCaseEntry | undefined {
+  return ruleCaseEntries(input).entries.find((entry) => entry.rule === rule);
+}
+
 export function ruleCaseEntries(input: {
   rules: RulesCatalog;
   cases?: RuleCaseCatalog;

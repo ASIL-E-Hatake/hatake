@@ -66,6 +66,36 @@ const actionName = (action: Dict): string =>
   str(action.label) ?? str(action.id) ?? str(action.type) ?? "（名前なし）";
 
 /** その画面の中で、そのキーを書いている所を数える。 */
+/**
+ * 条件が**レコードの値**を見ているか（`{ field: … }` が1つでも在るか）。
+ *
+ * `{ mode: edit }` だけの条件は「新規か編集か」で、業務の状態ではない＝状態を誰が
+ * 動かすかを聞いても答えようがない（見本のマスタメンテで、キーを編集のときだけ
+ * 読み取り専用にしただけで `state-owner` が出ていた）。
+ */
+function looksAtRecord(condition: unknown): boolean {
+  if (!isDict(condition)) return false;
+  if (typeof condition.field === "string") return true;
+  for (const key of ["all", "any"]) {
+    if (list(condition[key]).some(looksAtRecord)) return true;
+  }
+  return looksAtRecord(condition.not);
+}
+
+/** その鍵の条件のうち、レコードの値を見ているものを数える（[looksAtRecord]）。 */
+function countStateConditions(node: unknown, key: string): number {
+  if (Array.isArray(node)) {
+    return node.reduce<number>((sum, one) => sum + countStateConditions(one, key), 0);
+  }
+  if (!isDict(node)) return 0;
+  let found = looksAtRecord(node[key]) ? 1 : 0;
+  for (const [name, value] of Object.entries(node)) {
+    if (name === key) continue;
+    found += countStateConditions(value, key);
+  }
+  return found;
+}
+
 function countKey(node: unknown, key: string): number {
   if (Array.isArray(node)) {
     return node.reduce<number>((sum, one) => sum + countKey(one, key), 0);
@@ -159,7 +189,7 @@ const DETECT: Record<QuestionTrigger, (page: Dict) => string | null> = {
 
   conditions: (page) => {
     for (const key of CONDITION_KEYS) {
-      const count = countKey(page, key);
+      const count = countStateConditions(page, key);
       if (count > 0) {
         return count === 1
           ? `状態で出し分けている（${key}）`

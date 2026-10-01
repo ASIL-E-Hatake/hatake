@@ -14,6 +14,8 @@ import { hatakeTools } from "../src/tools.js";
 const tools = hatakeTools({
   specDir: "../spec",
   readFile: (path) => readFileSync(path, "utf8"),
+  // hatake_doctor の例は案件を歩く。例の試験では空の案件を渡す（自己完結させる）。
+  listDir: () => [],
 });
 
 describe("道具の例は、そのまま呼べる", () => {

@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { runCli } from "../src/cli.js";
 import type { CliIo } from "../src/cliIo.js";
 import { doctor, type DoctorIo } from "../src/doctor.js";
+import { hatakeTools } from "../src/tools.js";
+import { TOOL_VERSION } from "../src/toolVersion.js";
 
 /**
  * `hatake doctor`（0.9.23）。見本で実際に起きた「上げたつもりがコンテナの中は古い版」を、
@@ -140,5 +142,38 @@ describe("CLI", () => {
     const one = io();
     expect(runCli(["doctor"], one)).toBe(1);
     expect(one.lines.join("")).toContain("doctor は使えません");
+  });
+});
+
+/** MCP からも引く（AI が実際に使う口。版のずれは画面が普通に出るので、AI は気づけない）。 */
+describe("MCP（hatake_doctor）", () => {
+  const toolOf = (project?: DoctorIo) =>
+    hatakeTools({
+      specDir: "../spec",
+      readFile: (path) =>
+        project !== undefined && path.startsWith("root") ? project.readFile(path) : readFileSync(path, "utf8"),
+      ...(project === undefined ? {} : { listDir: project.listDir }),
+    }).find((one) => one.name === "hatake_doctor")!;
+
+  it("hatake doctor --json と同じものを返す", () => {
+    const project = tree(healthy);
+    const got = JSON.parse(toolOf(project).run({ root: "root" }));
+    const expected = doctor(project, "root", { version: TOOL_VERSION, node: process.versions.node });
+    expect(got).toEqual(JSON.parse(JSON.stringify(expected)));
+  });
+
+  it("版がずれていれば fail を返す（CLI と同じ判定）", () => {
+    const stale = {
+      ...healthy,
+      "node-src/node_modules/@hatake-fw/api/package.json": JSON.stringify({ version: "0.9.20" }),
+    };
+    const got = JSON.parse(toolOf(tree(stale)).run({ root: "root" })) as {
+      findings: { level: string }[];
+    };
+    expect(got.findings.some((one) => one.level === "fail")).toBe(true);
+  });
+
+  it("歩けない入口では、そう言う（推測で答えない）", () => {
+    expect(() => toolOf().run({})).toThrow("doctor は使えません");
   });
 });

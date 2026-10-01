@@ -133,7 +133,7 @@ npx hatake examples 帳票                    # やりたいことから近い�
 仕様を「読ませる」のではなく「引かせる」ための機械可読な資料も置いてある: [DSL リファレンス](spec/reference.json)（全キーの索引。JSON Schema から生成）、[例のカタログ](spec/examples/README.md)（やりたいこと → 例）、[よくある間違い](spec/pitfalls.json)（間違い → 正しい書き方。ja/en）。英語で渡すなら [llms-en.txt](llms-en.txt) と [AI cheat sheet](docs/api-cheatsheet.md)。
 
 ### MCP サーバ（`hatake-mcp`）
-AI エージェント（Claude Code / Claude Desktop 等）に繋ぐと、**仕様を読ませずに引かせられる**。道具は22本（キーを引く・近い例を取る・雛形を出す・**1回で検証／読み返し／助言／人に聞くことを返す `hatake_check`**・直す・動かして確かめる・API の形・配線…）。依存ゼロで手書き。
+AI エージェント（Claude Code / Claude Desktop 等）に繋ぐと、**仕様を読ませずに引かせられる**。道具は23本（案件の版のずれを診る `hatake_doctor`・キーを引く・近い例を取る・雛形を出す・**1回で検証／読み返し／助言／人に聞くことを返す `hatake_check`**・直す・動かして確かめる・API の形・配線…）。依存ゼロで手書き。
 
 ```bash
 claude mcp add hatake -- node /path/to/hatake/typescript/dist/mcp.js
