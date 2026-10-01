@@ -190,6 +190,15 @@ const byOther = (one: Drift): [string, NamedSpot[]][] => {
 
 /** 人が読む形。 */
 export function driftLines(found: Drift[], read: number): string[] {
+  // 読んだ対が0なら「揺れは無い」とは言えない（見ていない）。
+  if (read === 0) {
+    return [
+      "項目とラベルの対を1件も読めませんでした（定義が空か、渡したファイルに画面がありません）。" +
+        "見ていないので、揺れが無いとは言えません。",
+      "",
+      DRIFT_NOTE,
+    ];
+  }
   if (found.length === 0) {
     return [
       `用語の揺れは見つかりませんでした（項目とラベルの対を ${read} 件読みました）。`,

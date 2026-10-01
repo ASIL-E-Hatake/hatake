@@ -1685,6 +1685,9 @@ npx hatake validate page.yaml --no-warn --json
 | `unknown-action` | a dashboard card pointing at an action that does not exist |
 | `duplicate-page-id` / `duplicate-action-id` / `duplicate-field` | duplicated ids or field names — the later one hides the earlier |
 | `condition-operator-unsupported` | an operator a condition does not understand (e.g. `between`) — evaluates to false forever, so the field never shows |
+| `condition-unknown-key` | a key a condition cannot hold (an operator used as a key: `{ field: status, equals: shipped }`) — the key is dropped, leaving an equals with NO value: true only while the field is empty (always true when the record has no such field) |
+| `condition-without-value` | a condition with no `value` to compare against — it compares with empty: equals holds only while the field is empty, in never holds |
+| `condition-mode-as-field` | create/edit written as `field: $mode` — the record has no `$mode` field; write `{ mode: edit }` |
 | `aggregate-without-field` | anything but `count` without a `field` — the result is null |
 | `groupby-without-sort` | no print order declared — the group splits and its subtotal repeats |
 | `total-without-column` | a total on a field with no column — it is printed nowhere |

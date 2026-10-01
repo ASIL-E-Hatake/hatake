@@ -69,7 +69,7 @@ npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「�
 npx hatake registry --compare app.json server.json  # 足した登録が画面とサーバで同じか
 npx hatake registry --from-app snapshot.json --out hatake-registry.json  # 動いているアプリの申告を読む
 npx hatake run page.yaml --draft --out s.json   # 定義から下書きのシナリオを起こす
-npx hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所
+npx hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所（cases が空なら「何も試していない」で 1）
 npx hatake run page.yaml --scenario s.json --cover --draft --out more.json  # 残った分岐から次の1件を起こす
 npx hatake same old.yaml new.yaml            # 書き方が違うだけか（意味は同じか）
 npx hatake run page.yaml --widget-draft --out page_test.dart  # 画面の試験（Dart）の下書き
@@ -893,7 +893,7 @@ npm run build
 claude mcp add hatake -- node "$PWD/dist/mcp.js"      # Claude Code の場合
 ```
 
-道具は `hatake_reference` / `hatake_examples` / `hatake_validate` / `hatake_new_page` / `hatake_pitfalls` / `hatake_diff` / `hatake_explain` / `hatake_fix` / `hatake_minimize` / `hatake_refs` / `hatake_api_shape` / `hatake_print_preview` / `hatake_wire` の13個で、CLI と同じ関数を呼んでいる（＝同じ答えになる）。**`probe` / `attack` は道具にしていない**（叩く相手・資格・タイミングを決めるのは人の仕事で、エージェントが自分の判断で他人のサーバに要求を飛ばせる口は作らない）。`hatake_explain` は `before` を渡せば変更の言い直し、`brief: true` なら1行（道具を増やすより、同じ道具の引数で足りる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
+道具は23個（一覧といつ使うかは [MCP ガイド](../docs/guide/mcp.ja.md)。案件の版のずれを診る `hatake_doctor`・1回で4欄を返す `hatake_check`・規則と転ぶ定義を引く `hatake_rules` など）で、CLI と同じ関数を呼んでいる（＝同じ答えになる）。名乗る版（`serverInfo.version`）は配っている `@hatake-fw/api` の版。**`probe` / `attack` は道具にしていない**（叩く相手・資格・タイミングを決めるのは人の仕事で、エージェントが自分の判断で他人のサーバに要求を飛ばせる口は作らない）。`hatake_explain` は `before` を渡せば変更の言い直し、`brief: true` なら1行（道具を増やすより、同じ道具の引数で足りる）。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
 
 ## 開発（Docker）
 

@@ -762,6 +762,10 @@ function checkActions(
   const seen = new Set<string>();
   actions.forEach((action, i) => {
     const at = `${path}[${i}]`;
+    // ボタンの条件も同じ規則で見る（0.9.23 までは項目の条件だけ見ていた）。
+    for (const key of ["enabledWhen", "visibleWhen"]) {
+      if (isDict(action[key])) checkCondition(action[key] as Dict, `${at}.${key}`, found);
+    }
     const id = str(action.id);
     if (id !== undefined) {
       if (seen.has(id)) {
@@ -1706,6 +1710,9 @@ function checkForm(page: Dict, path: string, found: DefinitionWarning[]): void {
   }
   list(page.steps).forEach((step, i) => {
     if (isDict(step)) {
+      if (isDict(step.visibleWhen)) {
+        checkCondition(step.visibleWhen, `${path}.steps[${i}].visibleWhen`, found);
+      }
       groups.push({ fields: list(step.fields), path: `${path}.steps[${i}].fields` });
     }
   });
@@ -2495,7 +2502,25 @@ function checkOptions(
   }
 }
 
-/** 条件は結合（all / any / not）で入れ子になる。葉の演算子だけを見る。 */
+/** 条件の節点に書ける鍵（葉と結合）。ここに無い鍵は**黙って捨てられる**。 */
+const CONDITION_NODE_KEYS = ["field", "operator", "value", "mode", "all", "any", "not", "$comment"];
+
+/** `value` が要らない演算子（項目の値だけで決まる）。 */
+const VALUELESS_OPERATORS = new Set(["isEmpty", "isNotEmpty"]);
+
+/**
+ * 条件は結合（all / any / not）で入れ子になる。葉を見る:
+ *
+ *   ・知らない鍵（`condition-unknown-key`）… `{ field: status, equals: shipped }` と書くと
+ *     `equals` は捨てられ、**値の無い equals**＝「空のときだけ成り立つ」条件になる。
+ *     見ている項目がレコードに無ければ**いつも成り立つ**（見本で、キーが新規でも
+ *     読み取り専用になっていた）
+ *   ・`value` が無い（`condition-without-value`）… 上と同じ結果。鍵の書き違いが無いのに
+ *     値だけ書き忘れたとき
+ *   ・`field: $mode`（`condition-mode-as-field`）… 新規か編集かは `{ mode: edit }`。
+ *     `$mode` という項目はレコードに無い
+ *   ・知らない演算子（`condition-operator-unsupported`）
+ */
 function checkCondition(
   condition: Dict,
   path: string,
@@ -2507,6 +2532,60 @@ function checkCondition(
     });
   }
   if (isDict(condition.not)) checkCondition(condition.not, `${path}.not`, found);
+
+  const unknown = Object.keys(condition).filter((key) => !CONDITION_NODE_KEYS.includes(key));
+  for (const key of unknown) {
+    const asOperator = (ConditionOperators as readonly string[]).includes(key);
+    const near = asOperator ? null : closestKey(key, [...CONDITION_NODE_KEYS, ...ConditionOperators]);
+    const nearOperator = near !== null && (ConditionOperators as readonly string[]).includes(near);
+    warn(
+      found,
+      "condition-unknown-key",
+      `${path}.${key}`,
+      `条件に \`${key}\` という鍵は書けません。黙って捨てられ、` +
+        (str(condition.field) !== undefined && str(condition.operator) === undefined
+          ? "**値の無い equals**＝その項目が空のときだけ成り立つ条件になります" +
+            "（項目がレコードに無ければ、いつも成り立ちます）。"
+          : "書いた指定は効きません。"),
+      asOperator || nearOperator
+        ? `演算子は \`operator: ${asOperator ? key : near}\`、比べる値は \`value: …\` に書きます` +
+            `（\`{ field: …, operator: ${asOperator ? key : near}, value: … }\`）。`
+        : near !== null
+          ? `${near} の書き違いではないですか？（書けるのは ${CONDITION_NODE_KEYS.filter((one) => one !== "$comment").join(" / ")}）。`
+          : `書けるのは ${CONDITION_NODE_KEYS.filter((one) => one !== "$comment").join(" / ")} です。`,
+    );
+  }
+
+  const field = str(condition.field);
+  if (field === "$mode") {
+    warn(
+      found,
+      "condition-mode-as-field",
+      `${path}.field`,
+      "新規か編集かは項目ではありません（`$mode` という項目はレコードに無い）。" +
+        "このままでは比べる値が来ないので、条件は思ったとおりに成り立ちません。",
+      "`{ mode: edit }` / `{ mode: create }` と書いてください。",
+    );
+  } else if (
+    field !== undefined &&
+    unknown.length === 0 &&
+    !("value" in condition) &&
+    !VALUELESS_OPERATORS.has(str(condition.operator) ?? "equals")
+  ) {
+    const operator = str(condition.operator) ?? "equals";
+    warn(
+      found,
+      "condition-without-value",
+      `${path}.value`,
+      `"${field}" を ${operator} で比べる値（\`value\`）がありません。` +
+        (operator === "equals"
+          ? "空と比べることになり、その項目が空のときだけ成り立ちます。"
+          : operator === "in"
+            ? "並びが無いので、いつも成り立ちません。"
+            : "空と比べることになり、思ったとおりには成り立ちません。"),
+      "`value: …` を書いてください（空かどうかを見たいなら `operator: isEmpty`）。",
+    );
+  }
 
   const operator = str(condition.operator);
   if (operator === undefined) return;

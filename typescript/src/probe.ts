@@ -45,6 +45,13 @@ export interface ProbeReport {
 export const hasProbeError = (report: ProbeReport): boolean =>
   report.findings.some((one) => one.level === "error");
 
+/**
+ * 1件も叩いていない（叩ける口が無かった）。**食い違い 0 件と同じ字面で終わらせない**
+ * ＝終了コードを見る側（AI・CI）には「通った」と区別が付かないので、落とす側に数える。
+ */
+export const probeHitNothing = (report: ProbeReport): boolean =>
+  report.requests.length === 0;
+
 const asDict = (value: unknown): Record<string, unknown> | undefined =>
   typeof value === "object" && value !== null && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -374,7 +381,9 @@ export function renderProbe(report: ProbeReport): string {
   const errors = report.findings.filter((one) => one.level === "error").length;
   const cautions = report.findings.length - errors;
   lines.push(
-    `叩いた要求 ${report.requests.length} 件・食い違い ${errors} 件・要確認 ${cautions} 件`,
+    probeHitNothing(report)
+      ? `1件も叩いていません（叩ける口がありませんでした）。何も確かめていないので、通ったことにはしません（終了コード 1）。`
+      : `叩いた要求 ${report.requests.length} 件・食い違い ${errors} 件・要確認 ${cautions} 件`,
   );
   if (report.skipped.length > 0) {
     lines.push("");

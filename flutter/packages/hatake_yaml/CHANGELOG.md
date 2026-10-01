@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.24
+
+- 変更なし（版の足並みをそろえただけ）。
+
 ## 0.9.23
 
 - 追加: `filter.defaultValue` / `search.fixed` / `optionsSource.copy` / 列の `optionsSource` を読む

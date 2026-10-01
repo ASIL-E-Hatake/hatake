@@ -67,6 +67,10 @@ export const hasHole = (report: AttackReport): boolean =>
     (one) => one.verdict === "hole" || one.verdict === "locked",
   );
 
+/** 1件も叩いていない（穴 0 件と同じ字面で終わらせない＝落とす側に数える）。 */
+export const attackHitNothing = (report: AttackReport): boolean =>
+  report.results.length === 0;
+
 const refused = (status: number): boolean => status === 401 || status === 403;
 
 /** その役割で押せるか（空の `roles` は誰でも）。 */
@@ -199,7 +203,9 @@ export function renderAttack(report: AttackReport): string {
   const locked = report.results.filter((one) => one.verdict === "locked");
   lines.push("");
   lines.push(
-    `叩いた ${report.results.length} 件・穴 ${holes.length} 件・逆（見えるのに拒否）${locked.length} 件`,
+    attackHitNothing(report)
+      ? `1件も叩いていません（叩ける画面がありませんでした）。何も確かめていないので、通ったことにはしません（終了コード 1）。`
+      : `叩いた ${report.results.length} 件・穴 ${holes.length} 件・逆（見えるのに拒否）${locked.length} 件`,
   );
   if (report.unknownRole) {
     lines.push("");

@@ -253,12 +253,57 @@ ${condition}
   });
 
   it("使える演算子は全部黙る", () => {
+    // 比べる値が要る演算子には値も書く（無いと `condition-without-value` が言う）。
+    const valueOf = (operator: string): string =>
+      operator === "isEmpty" || operator === "isNotEmpty"
+        ? ""
+        : operator === "in"
+          ? ", value: [1, 2]"
+          : ", value: 1";
     for (const operator of ConditionOperators) {
       expect(
-        rulesOf(withCondition(`              { field: age, operator: ${operator} }`)),
+        rulesOf(withCondition(`              { field: age, operator: ${operator}${valueOf(operator)} }`)),
         operator,
       ).toEqual([]);
     }
+  });
+
+  it("演算子を鍵に書いたら言う（捨てられて、値の無い equals になる）", () => {
+    const found = rulesOf(withCondition(`              { field: age, equals: 20 }`));
+    expect(found).toEqual(["condition-unknown-key"]);
+  });
+
+  it("比べる値が無ければ言う（空と比べることになる）", () => {
+    expect(rulesOf(withCondition(`              { field: age, operator: gte }`))).toEqual([
+      "condition-without-value",
+    ]);
+  });
+
+  it("新規か編集かを項目として書いたら、{ mode: … } を案内する", () => {
+    expect(
+      rulesOf(withCondition(`              { field: $mode, operator: equals, value: edit }`)),
+    ).toEqual(["condition-mode-as-field"]);
+    expect(rulesOf(withCondition(`              { mode: edit }`))).toEqual([]);
+  });
+
+  it("ボタンの条件も同じ規則で見る（0.9.23 までは項目の条件だけ）", () => {
+    const found = warningsOf(`
+page:
+  type: search
+  id: order_search
+  title: 受注照会
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }, { field: status, label: 状態 }]
+  actions:
+    - { id: cancel, type: navigate, label: 取消, scope: row, page: order_search,
+        enabledWhen: { field: status, notEquals: cancelled } }
+`);
+    expect(found.map((w) => w.rule)).toContain("condition-unknown-key");
+    expect(found.find((w) => w.rule === "condition-unknown-key")?.path).toContain(
+      "actions[0].enabledWhen",
+    );
   });
 });
 

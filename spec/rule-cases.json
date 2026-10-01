@@ -465,6 +465,145 @@
       }
     },
     {
+      "rule": "condition-unknown-key",
+      "why": "演算子を鍵にした（equals: edit）。鍵は捨てられ、値の無い equals＝いつも成り立つ条件になる",
+      "page": {
+        "type": "crud",
+        "id": "item_master",
+        "title": "品目マスタ",
+        "repository": "itemRepository",
+        "key": "itemCode",
+        "table": {
+          "columns": [
+            {
+              "field": "itemCode",
+              "label": "コード"
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "itemCode",
+                  "label": "コード",
+                  "readOnlyWhen": {
+                    "field": "status",
+                    "equals": "fixed"
+                  }
+                },
+                {
+                  "field": "status",
+                  "label": "状態"
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規登録"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "condition-without-value",
+      "why": "比べる値を書き忘れた（空と比べる＝空のときだけ成り立つ）",
+      "page": {
+        "type": "crud",
+        "id": "item_master",
+        "title": "品目マスタ",
+        "repository": "itemRepository",
+        "key": "itemCode",
+        "table": {
+          "columns": [
+            {
+              "field": "itemCode",
+              "label": "コード"
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "itemCode",
+                  "label": "コード"
+                },
+                {
+                  "field": "status",
+                  "label": "状態"
+                },
+                {
+                  "field": "memo",
+                  "label": "メモ",
+                  "visibleWhen": {
+                    "field": "status",
+                    "operator": "equals"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規登録"
+          }
+        ]
+      }
+    },
+    {
+      "rule": "condition-mode-as-field",
+      "why": "新規か編集かを項目として書いた（$mode という項目はレコードに無い）",
+      "page": {
+        "type": "crud",
+        "id": "item_master",
+        "title": "品目マスタ",
+        "repository": "itemRepository",
+        "key": "itemCode",
+        "table": {
+          "columns": [
+            {
+              "field": "itemCode",
+              "label": "コード"
+            }
+          ]
+        },
+        "form": {
+          "sections": [
+            {
+              "fields": [
+                {
+                  "field": "itemCode",
+                  "label": "コード",
+                  "readOnlyWhen": {
+                    "field": "$mode",
+                    "operator": "equals",
+                    "value": "edit"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "actions": [
+          {
+            "id": "create",
+            "type": "create",
+            "label": "新規登録"
+          }
+        ]
+      }
+    },
+    {
       "rule": "compare-without-field",
       "why": "突き合わせる相手を書いていない",
       "page": {

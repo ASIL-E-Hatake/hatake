@@ -211,6 +211,25 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
     happens: "条件が当たらないので、1件も数えない値になります。",
     fix: "行の項目名を書いてください（行に持っているだけで画面に出していない値なら、そのままで合っています）。",
   },
+  "condition-mode-as-field": {
+    what: "新規か編集かを項目として書いた条件（`field: $mode`）",
+    happens: "`$mode` という項目はレコードに無いので、比べる値が来ません。条件は思ったとおりに成り立ちません。",
+    fix: "`{ mode: edit }` / `{ mode: create }` と書いてください。",
+    pitfall: "mode-as-field",
+  },
+  "condition-unknown-key": {
+    what: "条件に書けない鍵（`equals: shipped` のような書き方）",
+    happens:
+      "その鍵は黙って捨てられます。`{ field: status, equals: shipped }` は**値の無い equals**＝" +
+      "項目が空のときだけ成り立つ条件になり、項目がレコードに無ければいつも成り立ちます。",
+    fix: "演算子は `operator`、比べる値は `value` に書きます（`{ field: status, operator: equals, value: shipped }`）。",
+    pitfall: "operator-as-key",
+  },
+  "condition-without-value": {
+    what: "比べる値（`value`）が無い条件",
+    happens: "空と比べることになります。equals なら項目が空のときだけ成り立ち、in ならいつも成り立ちません。",
+    fix: "`value: …` を書いてください（空かどうかを見たいなら `operator: isEmpty`）。",
+  },
   "condition-operator-unsupported": {
     what: "条件が理解しない演算子",
     happens: "常に false になり、その項目は出てきません。",

@@ -7,9 +7,10 @@
 // 考えると、この程度で依存を1つ増やしたくない（CLI と同じ判断）。
 // 道具の中身は mcpTools.ts、プロトコルはここ。
 
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { hatakeTools, INSTRUCTIONS, type McpTool } from "./mcpTools.js";
 import { findSpecDir, SCHEMA_FILE } from "./specDir.js";
+import { TOOL_VERSION } from "./toolVersion.js";
 
 /** 名乗るバージョン。新しい順。クライアントの希望がこの中にあればそれに合わせる。 */
 export const PROTOCOL_VERSIONS = [
@@ -18,7 +19,8 @@ export const PROTOCOL_VERSIONS = [
   "2024-11-05",
 ] as const;
 
-export const SERVER_INFO = { name: "hatake", version: "0.0.1" } as const;
+// 版は配っている `@hatake-fw/api` の版（0.9.23 まで `0.0.1` と名乗っていた）。
+export const SERVER_INFO = { name: "hatake", version: TOOL_VERSION } as const;
 
 export interface JsonRpcMessage {
   jsonrpc: "2.0";
@@ -191,6 +193,14 @@ export function runMcpServer(io: McpIo = nodeIo, specPath?: string): number {
   const tools = hatakeTools({
     specDir,
     readFile: (path) => readFileSync(path, "utf8"),
+    // `hatake_doctor` が案件を歩く口（MCP は案件の根で起動される）。
+    listDir: (path) => {
+      if (!existsSync(path) || !statSync(path).isDirectory()) return null;
+      return readdirSync(path, { withFileTypes: true }).map((entry) => ({
+        name: entry.name,
+        dir: entry.isDirectory(),
+      }));
+    },
   });
   io.log(`hatake MCP サーバ: spec=${specDir} 道具=${tools.length}`);
 

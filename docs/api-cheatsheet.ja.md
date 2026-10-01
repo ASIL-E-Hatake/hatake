@@ -5,7 +5,7 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
 - 全仕様: [DSL 仕様書](../spec/dsl-spec.ja.md) / 機械検証: [JSON Schema](../spec/hatake-page.schema.json)
 - 拡張: [Plugin ガイド](../flutter/docs/plugins.ja.md)
 - 案件を触り始める前に: `npx hatake doctor`（固定した版がそろっているか・入っている版が固定した版と
-  同じか・定義の `dsl_version`・MCP の設定。`--json` で機械に渡せる）
+  同じか・定義の `dsl_version`・MCP の設定。`--json` で機械に渡せる。MCP は `hatake_doctor`）
 - ここに無いキーは**引く**: `npx hatake reference <キー名>`（[DSL リファレンス](../spec/reference.json)）／
   近い例を探す: `npx hatake examples <やりたいこと>`（[例のカタログ](../spec/examples/README.md)）／
   書けたら `npx hatake validate <file>`
@@ -78,7 +78,7 @@ npx hatake new crud --id customer_master --title 顧客マスタ   # 雛形（8�
 npx hatake types page.yaml --lang java --out gen/            # ネイティブ型
 ```
 
-**書いた定義は動かして確かめられる**: `npx hatake run <定義> --scenario s.json`。1件は「この値を入れたら、こうなる」で、返るのは**検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン**（答えの作り方は画面と同じ順＝`normalize` → `computed` → 状態 → 検証）。期待は**書いた欄だけ**見る（全部書かなくてよい）。`--draft` で下書きを起こし、`--cover` で「まだ試していない分岐」を出す。プラグインの計算・検証は CLI には無いので、値を作らずにそう言う（アプリ側は `ScenarioRunner` に登録を渡して同じシナリオを回す。**サーバ側（Java）にも同じ `ScenarioRunner` が在る**＝画面・道具・サーバの3つが同じ答えを出すことを案件のシナリオで確かめられる。ただし押せるボタンはサーバ側では答えない＝サーバの定義は `actions` を読まない）。
+**書いた定義は動かして確かめられる**: `npx hatake run <定義> --scenario s.json`。1件は「この値を入れたら、こうなる」で、返るのは**検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン**（答えの作り方は画面と同じ順＝`normalize` → `computed` → 状態 → 検証）。期待は**書いた欄だけ**見る（全部書かなくてよい）。`--draft` で下書きを起こし、`--cover` で「まだ試していない分岐」を出す。**`cases` が空なら落とす**（「0 件すべて期待どおり」で通ったことにしない。`probe` / `attack` も1件も叩けなければ 1）。プラグインの計算・検証は CLI には無いので、値を作らずにそう言う（アプリ側は `ScenarioRunner` に登録を渡して同じシナリオを回す。**サーバ側（Java）にも同じ `ScenarioRunner` が在る**＝画面・道具・サーバの3つが同じ答えを出すことを案件のシナリオで確かめられる。ただし押せるボタンはサーバ側では答えない＝サーバの定義は `actions` を読まない）。
 
 **サーバ側の試験データ**: `npx hatake fixtures <定義>`＝通るはずの形と弾かれるはずの形を、定義の制約から作る（値の作り方は `run --draft` と同じ所＝画面とサーバが同じ境界で試される）。**言い切る前に自分で動かして確かめる**ので、「弾かれるはず」が実際には通る件は出さずに理由を残す。
 

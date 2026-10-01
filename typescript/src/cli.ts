@@ -8,10 +8,10 @@
 // 依存は増やさない: 引数解析も出力も手書き。CLI が npm の流行に引きずられると、
 // 「業務システムを10年動かす」側の都合と合わなくなる。
 
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { parse as parseYamlText } from "yaml";
 import { doctor, doctorLines } from "./doctor.js";
+import { TOOL_VERSION } from "./toolVersion.js";
 import { fetchSend, type HttpSend } from "./httpProbe.js";
 import { loginFetch, type LoginSend } from "./loginRun.js";
 import { type Args, collectionOverrides, str } from "./cliArgs.js";
@@ -124,7 +124,7 @@ import {
   type RuleCaseCatalog,
   type RuleCaseEntry,
   renderRuleCase,
-  ruleCaseEntries,
+  ruleCaseFor,
 } from "./ruleCases.js";
 import {
   filledReport,
@@ -879,17 +879,8 @@ const USAGE = `hatake — 業務定義フレームワークの CLI
 
 終了コード: 問題があれば 1、無ければ 0。`;
 
-/**
- * 道具の版＝配っている `@hatake-fw/api` の版（package.json から読む）。0.9.22 まで
- * `0.0.1` と決め打ちで、`--version` が何も言っていなかった。
- */
-const VERSION: string = (() => {
-  try {
-    return (createRequire(import.meta.url)("../package.json") as { version: string }).version;
-  } catch {
-    return "unknown";
-  }
-})();
+/** 道具の版（[TOOL_VERSION]。MCP と同じ1か所から）。 */
+const VERSION = TOOL_VERSION;
 
 
 /**
@@ -1478,6 +1469,17 @@ function run(files: string[], flags: Args["flags"], io: CliIo): number {
     io.err(
       "そのままだと**書いた値が使われないまま**動いて緑になります" +
         "（値は `record`、確かめたいことは `expect` に書きます）。",
+    );
+    return 1;
+  }
+  // **1件も無ければ、何も試していない。** 前は「0 件すべて期待どおり。」と言って 0 で
+  // 終わっていた＝通った run と字面がほとんど同じで、集計は「通った件数: 0」と出すだけ
+  // （人は数字で気づくが、AI は終了コードを見る）。下書きを起こすとき（`--cover
+  // --draft`）は空から起こすのが正しい使い方なので止めない。
+  if (file.cases.length === 0 && flags.draft !== true) {
+    io.err(
+      "シナリオに1件もありません（cases が空）。何も試していないので、通ったことにはしません。" +
+        "\n  下書きから始めるなら --draft（まだ試していない分岐からなら --cover --draft）。",
     );
     return 1;
   }
@@ -2456,12 +2458,11 @@ function ruleCase(
     const cases = JSON.parse(
       io.readFile(join(dir, RULE_CASES_FILE)),
     ) as RuleCaseCatalog;
-    const { entries } = ruleCaseEntries({
+    return ruleCaseFor(rule, {
       rules: rulesCatalog(),
       cases,
       failures: loadFailures(flags, io),
     });
-    return entries.find((entry) => entry.rule === rule);
   } catch {
     return undefined;
   }
@@ -3273,6 +3274,11 @@ function drift(
       return 1;
     }
     documents.push(parsed as Record<string, unknown>);
+  }
+  // ディレクトリに定義が1枚も無ければ、見ていない（「揺れは無い」と言わない）。
+  if (documents.length === 0) {
+    io.err("走査できる定義がありません（対象の拡張子: .yaml .yml .json）。");
+    return 1;
   }
   const found = findDrift(project, documents);
   // **貼れる形**で出す（書き込みはしない＝貼るのは人）。

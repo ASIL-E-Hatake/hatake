@@ -36,7 +36,9 @@ the screen would do — validation errors, computed values, hidden fields, curre
 fields, which buttons are pressable — in the same order the screen uses (`normalize` →
 `computed` → state → validate). Expectations are matched **only for the keys you wrote**.
 `--draft` seeds a scenario from the definition's own constraints, `--cover` lists the
-branches no case has reached yet. Plugin computeds/validators are not in the CLI, so it
+branches no case has reached yet. **An empty `cases` fails** (exit 1) instead of reporting
+"0 cases, all as expected" — nothing was tried, so nothing passed; `probe` / `attack` exit 1
+the same way when no request got through. Plugin computeds/validators are not in the CLI, so it
 says so instead of inventing a value (the app replays the same file through
 `ScenarioRunner` with its real registries — and so does the server: the Java edition has
 the same `ScenarioRunner`, except that it does not answer which buttons are pressable,

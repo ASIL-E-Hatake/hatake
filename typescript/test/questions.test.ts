@@ -224,6 +224,49 @@ describe("問いは定義の事実から出る", () => {
     expect([...fired].sort()).toEqual([...QUESTION_TRIGGERS].sort());
   });
 
+  it("新規か編集か（`{ mode: … }`）だけの条件では、状態を誰が動かすかを聞かない", () => {
+    // 見本のマスタメンテで、キーを編集のときだけ読み取り専用にしただけで聞かれていた。
+    // 新規か編集かは業務の状態ではないので、聞かれても答えようがない。
+    const modeOnly = `
+page:
+  type: crud
+  id: employee_master
+  title: 社員マスタ
+  repository: employeeRepository
+  key: employeeNo
+  table:
+    columns: [{ field: employeeNo, label: 社員番号 }]
+  form:
+    sections:
+      - fields:
+          - { field: employeeNo, label: 社員番号, readOnlyWhen: { mode: edit } }
+          - { field: note, label: 備考, visibleWhen: { not: { mode: create } } }
+`;
+    const triggers = factsOf(doc(modeOnly)).map((fact) => fact.trigger);
+    expect(triggers).not.toContain("conditions");
+  });
+
+  it("レコードの値を見ている条件なら、入れ子の中でも聞く", () => {
+    const withState = `
+page:
+  type: crud
+  id: order_master
+  title: 受注
+  repository: orderRepository
+  key: orderNo
+  table:
+    columns: [{ field: orderNo, label: 受注番号 }]
+  form:
+    sections:
+      - fields:
+          - field: memo
+            label: メモ
+            readOnlyWhen: { all: [{ mode: edit }, { field: status, operator: equals, value: shipped }] }
+`;
+    const found = factsOf(doc(withState)).find((fact) => fact.trigger === "conditions");
+    expect(found?.saw).toContain("readOnlyWhen");
+  });
+
   it("読むだけの画面では1つも聞かない（聞くことが無いなら黙る）", () => {
     expect(ids(READ_ONLY)).toEqual([]);
     expect(questionLines(ask(READ_ONLY).questions, { total: 12 })[0]).toContain(
