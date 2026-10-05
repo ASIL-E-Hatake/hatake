@@ -3,7 +3,7 @@
 // 0.9.25 までは `process.argv[1]?.endsWith("cli.js")` で見ていた。ところが npm は bin を
 // **`hatake` という名前のリンク**（`node_modules/.bin/hatake` → `dist/cli.js`）から
 // 起動するので、`argv[1]` は `…/.bin/hatake` で `cli.js` で終わらない。結果、
-// `npx hatake validate page.yaml` も、`npm i -g` した `hatake` も、**何も出さずに
+// `npx -p @hatake-fw/api hatake validate page.yaml` も、`npm i -g` した `hatake` も、**何も出さずに
 // 終了コード 0** で終わっていた（`node dist/cli.js …` と直に叩けば動くので、見本も CI も
 // そちらで叩いていて気づかなかった）。
 //

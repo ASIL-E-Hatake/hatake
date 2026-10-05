@@ -9,7 +9,7 @@
 //   1. 固めた中に `spec/` と `dist/` と LICENSE が入っている
 //   2. **spec を読む道具**が、その中の spec を見つけて答える（引けなければ落とす）
 //   3. 定義を1枚通す（配った形で普通に使える）
-//   4. **bin を名前で叩いて**答えが返る（`npx hatake` と同じ道。0.9.25 まで、bin から
+//   4. **bin を名前で叩いて**答えが返る（`npx -p @hatake-fw/api hatake` と同じ道。0.9.25 まで、bin から
 //      起動すると何も出さずに 0 で終わっていた。ここは `node dist/cli.js` で叩いていたので
 //      bin が張られていることしか見ておらず、気づけなかった）
 
@@ -66,7 +66,7 @@ try {
   if (!existsSync(join(root, "spec", "hatake-page.schema.json"))) {
     fail("入れた中に spec がありません", readdirSync(root).join(" "));
   }
-  // bin が張られているか（`npx hatake …` が効く形かどうか）。
+  // bin が張られているか（`npx -p @hatake-fw/api hatake …` が効く形かどうか）。
   for (const name of ["hatake", "hatake-mcp"]) {
     if (!existsSync(join(work, "node_modules", ".bin", name))) {
       fail(`bin が張られていません: ${name}`, readdirSync(join(work, "node_modules", ".bin")).join(" "));

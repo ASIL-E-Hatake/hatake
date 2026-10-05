@@ -10,8 +10,8 @@
 # 直さないでください（絵と警告の両方の見本になっている）。
 #
 # 絵は生成物。作り直しは:
-#   npx hatake diagram docs/diagrams/roles-app.yaml --out docs/diagrams/roles-app-flow.svg
-#   npx hatake diagram docs/diagrams/roles-app.yaml --role admin --out docs/diagrams/roles-app-admin.svg
+#   npx -p @hatake-fw/api hatake diagram docs/diagrams/roles-app.yaml --out docs/diagrams/roles-app-flow.svg
+#   npx -p @hatake-fw/api hatake diagram docs/diagrams/roles-app.yaml --role admin --out docs/diagrams/roles-app-admin.svg
 dsl_version: "1.0"
 app:
   id: sales_roles

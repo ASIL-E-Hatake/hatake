@@ -263,7 +263,7 @@ export function impactLines(document: Dict, field: string): string[] {
       `"${field}" は定義のどこにも出てきません。`,
       "",
       "**影響が無い、ではありません**（名前が違うのかもしれません）。" +
-        "`npx hatake explain <定義>` で項目名を確かめてください。",
+        "`npx -p @hatake-fw/api hatake explain <定義>` で項目名を確かめてください。",
     ];
   }
 

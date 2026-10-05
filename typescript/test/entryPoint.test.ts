@@ -9,7 +9,7 @@ import { isEntryPoint } from "../src/entryPoint.js";
  * bin の入口の判定（0.9.26）。
  *
  * npm は bin を `hatake` という名前の**リンク**から起動する。0.9.25 までは起動したファイルの
- * 名前が `cli.js` で終わるかで見ていたので、`npx hatake …` は何も出さずに 0 で終わっていた。
+ * 名前が `cli.js` で終わるかで見ていたので、`npx -p @hatake-fw/api hatake …` は何も出さずに 0 で終わっていた。
  */
 const work = mkdtempSync(join(tmpdir(), "hatake-entry-"));
 const real = join(work, "cli.js");

@@ -45,7 +45,7 @@ app:
 HatakeApp(app: definition, navigation: AppNavigation.single)  // この端末では遷移で使う
 ```
 
-同じ定義を PC ではタブ、タブレットでは遷移で出せる。だから読み返し（`npx hatake explain`）にも「※ アプリ側で上書きできます」と毎回書いてある（定義だけを読んで決めつけないため）。
+同じ定義を PC ではタブ、タブレットでは遷移で出せる。だから読み返し（`npx -p @hatake-fw/api hatake explain`）にも「※ アプリ側で上書きできます」と毎回書いてある（定義だけを読んで決めつけないため）。
 
 ### 並べて開くときの決めごと
 

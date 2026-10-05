@@ -1,6 +1,6 @@
 {
   "name": "@hatake-fw/http",
-  "version": "0.9.26",
+  "version": "0.9.27",
   "description": "REST Repository for hatake: speaks exactly the OpenAPI document `hatake openapi` derives from a definition.",
   "license": "Apache-2.0",
   "type": "module",
@@ -18,8 +18,8 @@
     "prepack": "tsc"
   },
   "dependencies": {
-    "@hatake-fw/api": "0.9.26",
-    "@hatake-fw/runtime": "0.9.26"
+    "@hatake-fw/api": "0.9.27",
+    "@hatake-fw/runtime": "0.9.27"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

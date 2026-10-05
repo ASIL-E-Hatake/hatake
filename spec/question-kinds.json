@@ -1,5 +1,5 @@
 {
-  "$comment": "人が決めないと決まらないことを、画面から問い返す表（npx hatake ask）。**定義に書けることは1つも載せない**（書いたのに効かないのは validate の担当、書いていないと不便かもしれないのは advise の担当＝どちらも定義に書けることだけを見る）。ここに載るのは『定義に書けないのに、画面が在るなら決まっていないと画面が嘘になること』だけ。各件の area は担当の表（responsibility.json）の項目 id で、**server か outside のものしか書けない**（definition / plugin の担当なら、それは問いではなく助言）。trigger は定義から拾う事実の名前で、閉じた集合（typescript/src/questionTriggers.ts の QUESTION_TRIGGERS が正）。表に無い引き金・使われていない引き金は試験が落とす。答えは案件の前書き（hatake.project.yaml）の logic に書き、その1件に answers: [<この id>] を付けると問いが消える。いまは日本語だけ（英語は束『英語』の担当）。",
+  "$comment": "人が決めないと決まらないことを、画面から問い返す表（npx -p @hatake-fw/api hatake ask）。**定義に書けることは1つも載せない**（書いたのに効かないのは validate の担当、書いていないと不便かもしれないのは advise の担当＝どちらも定義に書けることだけを見る）。ここに載るのは『定義に書けないのに、画面が在るなら決まっていないと画面が嘘になること』だけ。各件の area は担当の表（responsibility.json）の項目 id で、**server か outside のものしか書けない**（definition / plugin の担当なら、それは問いではなく助言）。trigger は定義から拾う事実の名前で、閉じた集合（typescript/src/questionTriggers.ts の QUESTION_TRIGGERS が正）。表に無い引き金・使われていない引き金は試験が落とす。答えは案件の前書き（hatake.project.yaml）の logic に書き、その1件に answers: [<この id>] を付けると問いが消える。いまは日本語だけ（英語は束『英語』の担当）。",
 
   "kinds": [
     {

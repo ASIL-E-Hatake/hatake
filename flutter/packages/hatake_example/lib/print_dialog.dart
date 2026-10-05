@@ -120,7 +120,7 @@ class PrintDialog extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              '刷る前に紙を読むなら `npx hatake paper <定義>`（同じ座標を文字で出します）。',
+              '刷る前に紙を読むなら `npx -p @hatake-fw/api hatake paper <定義>`（同じ座標を文字で出します）。',
               style: label,
             ),
           ],

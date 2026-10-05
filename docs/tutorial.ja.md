@@ -32,7 +32,7 @@
 ## 2. 雛形を出す
 
 ```bash
-npx hatake new form --id order_entry --title 受注入力 > order_entry.yaml
+npx -p @hatake-fw/api hatake new form --id order_entry --title 受注入力 > order_entry.yaml
 ```
 
 ```yaml
@@ -56,7 +56,7 @@ page:
 迷ったら [ページ種別の選び方](guide/page-types.ja.md)。
 
 > **キーの名前や既定値で迷ったら仕様書を読まない。** 引く。
-> `npx hatake reference requiredWhen` / `npx hatake examples 明細`
+> `npx -p @hatake-fw/api hatake reference requiredWhen` / `npx -p @hatake-fw/api hatake examples 明細`
 
 ## 3. 業務を書く
 
@@ -146,7 +146,7 @@ page:
 ## 4. 書いたのに効かない所を潰す
 
 ```bash uses:order_entry.yaml
-npx hatake validate order_entry.yaml
+npx -p @hatake-fw/api hatake validate order_entry.yaml
 ```
 
 わざと `width` を `witdh` と書いてみると、こう出る。
@@ -160,7 +160,7 @@ FAIL order_entry.yaml
 綴り違いのように**直し方が1つに決まる**ものは、手で直さない。
 
 ```bash
-npx hatake fix order_entry.yaml --write
+npx -p @hatake-fw/api hatake fix order_entry.yaml --write
 ```
 
 ```
@@ -189,7 +189,7 @@ CI に置くなら `--warn-as-error`（警告でも終了コード 1）。
 **ここが一番大事**。綴りと構造は機械が見たが、「頼まれたことと合っているか」は機械には分からない。
 
 ```bash uses:order_entry.yaml
-npx hatake explain order_entry.yaml
+npx -p @hatake-fw/api hatake explain order_entry.yaml
 ```
 
 ```
@@ -232,7 +232,7 @@ npx hatake explain order_entry.yaml
 ## 6. 書き足したほうがいい所を聞く
 
 ```bash
-npx hatake advise order_entry.yaml
+npx -p @hatake-fw/api hatake advise order_entry.yaml
 ```
 
 助言は**好みの話**なので終了コードは変えない（「書いたのに効かない」は 4 段目の担当）。
@@ -252,7 +252,7 @@ cat > picks.json <<'JSON'
   { "rule": "money-without-format" }
 ]
 JSON
-npx hatake advise order_entry.yaml --apply picks.json --write
+npx -p @hatake-fw/api hatake advise order_entry.yaml --apply picks.json --write
 ```
 
 `value` を省けるのは定義から決まるものだけ（金額の見せ方など）。確認の文・1回に何件まで・
@@ -264,7 +264,7 @@ npx hatake advise order_entry.yaml --apply picks.json --write
 取り決めなので、綴りを間違えても画面は出る（誰にも見えないだけ）。
 
 ```bash uses:order_entry.yaml
-npx hatake explain order_entry.yaml --roles
+npx -p @hatake-fw/api hatake explain order_entry.yaml --roles
 ```
 
 ## 7. アプリに繋ぐ
@@ -272,7 +272,7 @@ npx hatake explain order_entry.yaml --roles
 定義が**外に何を要求しているか**を数える。
 
 ```bash uses:order_entry.yaml
-npx hatake refs order_entry.yaml --needs-registration
+npx -p @hatake-fw/api hatake refs order_entry.yaml --needs-registration
 ```
 
 ```
@@ -287,7 +287,7 @@ computedOps:
 出てこない）。次に、繋ぐコードの**下書き**を出す。
 
 ```bash
-npx hatake wire order_entry.yaml --base /api --out lib/wiring.dart
+npx -p @hatake-fw/api hatake wire order_entry.yaml --base /api --out lib/wiring.dart
 ```
 
 ```dart
@@ -325,7 +325,7 @@ computeds: ComputedRegistry({
 画面を1枚増やしたら、**作り直さずに足す**。
 
 ```bash
-npx hatake wire order_entry.yaml --merge lib/wiring.dart --write
+npx -p @hatake-fw/api hatake wire order_entry.yaml --merge lib/wiring.dart --write
 ```
 
 ```
@@ -338,7 +338,7 @@ npx hatake wire order_entry.yaml --merge lib/wiring.dart --write
 （前から TODO のまま・中身が空の所も同じ一覧に入る＝下の `refs --filled` の数と合う）。
 
 ```bash
-npx hatake wire order_entry.yaml --merge lib/wiring.dart --write --todo
+npx -p @hatake-fw/api hatake wire order_entry.yaml --merge lib/wiring.dart --write --todo
 ```
 
 ```
@@ -357,7 +357,7 @@ npx hatake wire order_entry.yaml --merge lib/wiring.dart --write --todo
 埋め忘れは**動かして初めて分かる**（押した人の所で落ちる）ので、出荷前に数える。
 
 ```bash
-npx hatake refs order_entry.yaml --filled --source lib/
+npx -p @hatake-fw/api hatake refs order_entry.yaml --filled --source lib/
 ```
 
 ```
@@ -388,7 +388,7 @@ TODO のまま（動かすと UnimplementedError で落ちます（hatake wire �
 API を繋いだら、**宣言どおり返っているか**を叩いて確かめる。
 
 ```bash
-npx hatake probe order_entry.yaml --base http://localhost:8080/api --token "$JWT"
+npx -p @hatake-fw/api hatake probe order_entry.yaml --base http://localhost:8080/api --token "$JWT"
 ```
 
 食い違いは静かに出る（来なかった項目は空欄、文字で来た金額は合計から漏れる）。
@@ -410,8 +410,8 @@ npx hatake probe order_entry.yaml --base http://localhost:8080/api --token "$JWT
 
 | 症状 | 見るもの |
 | --- | --- |
-| 書いたのに効いていない | `npx hatake validate`（知らないキーは弾かれる） |
-| 意図と違う画面になった | `npx hatake explain`（読み返す） |
-| どう書くのか分からない | `npx hatake examples <やりたいこと>` / `npx hatake reference <キー>` |
-| なぜか転ぶ | `npx hatake pitfalls` / `npx hatake failures`（実際に転んだ例） |
-| 押しても何も起きない | `npx hatake refs --needs-registration`（登録漏れ）／`--filled --source lib/`（TODO のまま） |
+| 書いたのに効いていない | `npx -p @hatake-fw/api hatake validate`（知らないキーは弾かれる） |
+| 意図と違う画面になった | `npx -p @hatake-fw/api hatake explain`（読み返す） |
+| どう書くのか分からない | `npx -p @hatake-fw/api hatake examples <やりたいこと>` / `npx -p @hatake-fw/api hatake reference <キー>` |
+| なぜか転ぶ | `npx -p @hatake-fw/api hatake pitfalls` / `npx -p @hatake-fw/api hatake failures`（実際に転んだ例） |
+| 押しても何も起きない | `npx -p @hatake-fw/api hatake refs --needs-registration`（登録漏れ）／`--filled --source lib/`（TODO のまま） |

@@ -41,7 +41,7 @@ export function agentsSection(
     AGENTS_BEGIN,
     "## この案件について",
     "",
-    `> ここは \`${from}\` から生成した節です（\`npx hatake project --agents\`）。`,
+    `> ここは \`${from}\` から生成した節です（\`npx -p @hatake-fw/api hatake project --agents\`）。`,
     "> **直すときは前書きを直して貼り直す**（同じことを2か所に書くと必ず食い違う）。",
     "",
     project.system.what,
@@ -110,7 +110,7 @@ export function agentsSection(
     "",
     "**定義を書くとき**",
     "",
-    `- 書けたら \`npx hatake advise <定義> --project ${from}\` にかける` +
+    `- 書けたら \`npx -p @hatake-fw/api hatake advise <定義> --project ${from}\` にかける` +
       "（上の名前と言葉の決めごととの食い違いが出る）",
     "- **上の「業務の前提」は機械が見ていない**（読むのはあなた）。前提に反する定義を" +
       "書いても、道具は何も言わない",

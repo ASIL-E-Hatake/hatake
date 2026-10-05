@@ -46,7 +46,7 @@ HatakeScope(validators: validators, /* ... */);
 > 無ければ灰色になり、理由（どのプラグインが無いか）が出ます。押してから「未登録です」と
 > 言うのは最後の砦で、登録は実行時に引けるのだから押す前に言えるはず、という考えです。
 > 開発中の抜けが見えなくなるのが心配なら、道具の側でも言っています
-> （`npx hatake validate --registry hatake-registry.json` の `unknown-plugin`）。
+> （`npx -p @hatake-fw/api hatake validate --registry hatake-registry.json` の `unknown-plugin`）。
 
 ```dart
 final actions = ActionRegistry({
@@ -142,18 +142,18 @@ File('hatake-registry.json').writeAsStringSync(registrySnapshotJson(scope));
 ```
 
 ```bash
-npx hatake validate page.yaml            # 隣の hatake-registry.json を黙って拾う
+npx -p @hatake-fw/api hatake validate page.yaml            # 隣の hatake-registry.json を黙って拾う
 ```
 
 出るのは**自分で足したものだけ**（組み込みは検証側が知っている）。ソースを読んで作る
-`npx hatake registry lib/main.dart` もあり、こちらはアプリを動かさずに済むが、
+`npx -p @hatake-fw/api hatake registry lib/main.dart` もあり、こちらはアプリを動かさずに済むが、
 **変数や関数から組み立てている登録は読めない**。動的に作っているなら `registrySnapshot` を使う。
 
 同じ一覧を**サーバ側でも**出せる（Java の `RegistrySnapshot`）。両方を突き合わせると、
 足した検証・計算・変換・集約が片側にしか無いことを機械が言える。
 
 ```bash
-npx hatake registry --compare 画面の一覧.json サーバの一覧.json
+npx -p @hatake-fw/api hatake registry --compare 画面の一覧.json サーバの一覧.json
 ```
 
 片側にしか無ければ**同じ定義でも答えが変わる**（画面では通るのに保存で弾かれる、その逆も）。

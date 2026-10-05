@@ -179,7 +179,7 @@ var api = OpenApiEmitter.toOpenApi(
 **サーバの API 一覧は結局手で書く**ことになります（見本1本目で実際にそうなりました）。
 
 ```bash uses:customer_master.yaml
-npx hatake openapi definitions/app.yaml --base-path /api > docs/api.json
+npx -p @hatake-fw/api hatake openapi definitions/app.yaml --base-path /api > docs/api.json
 ```
 
 app を渡したときだけ、上の関数を画面ごとに回して**1枚にまとめます**。ここでは
@@ -247,7 +247,7 @@ javac が通らなかった）。
 
 ```bash
 # サーバを起動してから
-npx hatake probe app.yaml --base http://localhost:8080/api --token "$JWT"
+npx -p @hatake-fw/api hatake probe app.yaml --base http://localhost:8080/api --token "$JWT"
 ```
 
 ```
@@ -268,7 +268,7 @@ npx hatake probe app.yaml --base http://localhost:8080/api --token "$JWT"
 その印から**直し方を引けます**（通信しないので、定義もサーバも要りません）。
 
 ```bash
-npx hatake probe --kinds type-mismatch
+npx -p @hatake-fw/api hatake probe --kinds type-mismatch
 ```
 
 ```
@@ -290,7 +290,7 @@ npx hatake probe --kinds type-mismatch
 書いても忘れられるので、試します。
 
 ```bash
-npx hatake attack app.yaml --role staff --base http://localhost:8080/api --token "$STAFF_JWT"
+npx -p @hatake-fw/api hatake attack app.yaml --role staff --base http://localhost:8080/api --token "$STAFF_JWT"
 ```
 
 ```
@@ -309,7 +309,7 @@ npx hatake attack app.yaml --role staff --base http://localhost:8080/api --token
 いないか**は、並べないと読めない話でもあります。
 
 ```bash
-npx hatake attack app.yaml --all-roles --accounts accounts.json --base http://localhost:8080/api
+npx -p @hatake-fw/api hatake attack app.yaml --all-roles --accounts accounts.json --base http://localhost:8080/api
 ```
 
 ```json
@@ -379,7 +379,7 @@ npx hatake attack app.yaml --all-roles --accounts accounts.json --base http://lo
 **資格が取れることだけを試せます。** CI に置く前と、落ちた晩の切り分けに。
 
 ```bash
-npx hatake probe --login login.json --check
+npx -p @hatake-fw/api hatake probe --login login.json --check
 ```
 
 ```
@@ -395,7 +395,7 @@ npx hatake probe --login login.json --check
 **前回と比べて、変わった所だけ出します。**
 
 ```bash
-npx hatake attack app.yaml --all-roles --login login.json --base "$BASE" \
+npx -p @hatake-fw/api hatake attack app.yaml --all-roles --login login.json --base "$BASE" \
   --since last.json --save last.json --fail-on new
 ```
 
@@ -433,7 +433,7 @@ jobs:
         continue-on-error: true        # 初回は前回が無い
       - run: |
           test -f last.json || echo '{"runs":[],"skipped":[],"pages":[]}' > last.json
-          npx hatake attack app.yaml --all-roles --login login.json \
+          npx -p @hatake-fw/api hatake attack app.yaml --all-roles --login login.json \
             --base "$BASE" --since last.json --save next.json --fail-on new
         env:
           BASE: https://staging.example.com/api

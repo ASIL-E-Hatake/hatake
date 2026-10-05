@@ -93,7 +93,7 @@
             "minLength": 1
           },
           "where": {
-            "description": "誰の担当か。`definition`＝画面の定義で表せる（条件で読み取り専用にする、など）／`plugin`＝アプリ側に登録して足す／`server`＝サーバの担当／`outside`＝枠組みの外（別のシステム・人が決める）。`npx hatake where <やりたいこと>` で引いた区分をそのまま書く。",
+            "description": "誰の担当か。`definition`＝画面の定義で表せる（条件で読み取り専用にする、など）／`plugin`＝アプリ側に登録して足す／`server`＝サーバの担当／`outside`＝枠組みの外（別のシステム・人が決める）。`npx -p @hatake-fw/api hatake where <やりたいこと>` で引いた区分をそのまま書く。",
             "enum": ["definition", "plugin", "server", "outside"]
           },
           "name": {
@@ -107,7 +107,7 @@
             "minLength": 1
           },
           "answers": {
-            "description": "この1行で答えた問いの印（`npx hatake ask` が出す印）。書くと次からその問いは出ない＝**答えたら消える**。知らない印や担当の食い違い（排他はサーバの担当なのに `where: definition`）は道具が落とす。印の一覧は `npx hatake ask --kinds`。",
+            "description": "この1行で答えた問いの印（`npx -p @hatake-fw/api hatake ask` が出す印）。書くと次からその問いは出ない＝**答えたら消える**。知らない印や担当の食い違い（排他はサーバの担当なのに `where: definition`）は道具が落とす。印の一覧は `npx -p @hatake-fw/api hatake ask --kinds`。",
             "type": "array",
             "items": { "type": "string", "minLength": 1 }
           }
@@ -135,7 +135,7 @@
       }
     },
     "questions": {
-      "description": "案件ごとの問い返し（`npx hatake ask`）。組み込みの問いは「業務システムで大抵決めていないこと」なので、この案件でしか出ない決めごとはここに足す。**読み手は組み込みと同じ**＝形を緩められない。",
+      "description": "案件ごとの問い返し（`npx -p @hatake-fw/api hatake ask`）。組み込みの問いは「業務システムで大抵決めていないこと」なので、この案件でしか出ない決めごとはここに足す。**読み手は組み込みと同じ**＝形を緩められない。",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -196,7 +196,7 @@
             "required": ["id", "why"],
             "properties": {
               "id": {
-                "description": "決めた問いの印（`npx hatake ask --kinds` で引ける字）。",
+                "description": "決めた問いの印（`npx -p @hatake-fw/api hatake ask --kinds` で引ける字）。",
                 "type": "string",
                 "minLength": 1
               },

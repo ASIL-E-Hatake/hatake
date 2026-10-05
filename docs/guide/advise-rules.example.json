@@ -1,5 +1,5 @@
 {
-  "$comment": "hatake advise --rules に渡す物差しの例（案件ごとの決めごと）。書けるのは3つだけ: off = 合わない規則を止める / options = 組み込みの規則の目盛りを変える / require = 「この場所には必ずこのキーを書く」を足す。知らないキー・知らない規則名はエラーになる（設定が黙って効かないのを防ぐため）。規則名とつまみの一覧は npx hatake advise --help、または typescript/src/adviseRules.ts の BUILTIN_RULES。",
+  "$comment": "hatake advise --rules に渡す物差しの例（案件ごとの決めごと）。書けるのは3つだけ: off = 合わない規則を止める / options = 組み込みの規則の目盛りを変える / require = 「この場所には必ずこのキーを書く」を足す。知らないキー・知らない規則名はエラーになる（設定が黙って効かないのを防ぐため）。規則名とつまみの一覧は npx -p @hatake-fw/api hatake advise --help、または typescript/src/adviseRules.ts の BUILTIN_RULES。",
 
   "off": ["money-without-format"],
 

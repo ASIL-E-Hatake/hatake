@@ -139,14 +139,14 @@ fields:
 - **値が無い行は、向きに関わらず後ろ**。「金額の大きい順」で金額の無い行が上に来ると、読む人は「これが上位」と読み違える
 - 同じ値なら**元の順**（並べ替えの実装は言語ごとに違うが、答えは3版で同じになる）
 - `limit` は**数を畳むときにも効く**（`op: sum` で「上位3件の合計」）
-- `overflow: ""` は「黙って切る」と決めたということ。**書いてあるので読み返せる**（`npx hatake explain` にも「切ったぶんは出さない」と出る）
+- `overflow: ""` は「黙って切る」と決めたということ。**書いてあるので読み返せる**（`npx -p @hatake-fw/api hatake explain` にも「切ったぶんは出さない」と出る）
 
 ## 依存は絵にできる
 
 順番の警告（`computed-order`）が出たとき、**どこを動かせばいいか**は依存を辿らないと分からない。定義から読めるので、絵にできる。
 
 ```bash
-npx hatake diagram order_entry.yaml --computed
+npx -p @hatake-fw/api hatake diagram order_entry.yaml --computed
 ```
 
 Mermaid で出る（PR の本文にそのまま貼れる。`--format dot` なら Graphviz）。明細の行から親への線も、畳む前の絞り込みが見ている行の項目も出る。**順番が逆の線は赤**なので、動かす所が色で分かる。

@@ -1,5 +1,5 @@
 {
-  "$comment": "食い違いの印（probe / attack が返す kind）から直し方を引く表。**印ごとの一般の話**をここに置き、1件ごとの具体（何件返った・どの項目か）は probe が finding の what / fix に書く＝同じことを2か所に書かない。印は closed な集合（typescript/src/probeShape.ts の PROBE_KINDS が正）で、表に無い印・表にあるのに無い印は試験が落とす。引く口は npx hatake probe --kinds [<印>]。いまは日本語だけ（英語は束『英語』の担当）。",
+  "$comment": "食い違いの印（probe / attack が返す kind）から直し方を引く表。**印ごとの一般の話**をここに置き、1件ごとの具体（何件返った・どの項目か）は probe が finding の what / fix に書く＝同じことを2か所に書かない。印は closed な集合（typescript/src/probeShape.ts の PROBE_KINDS が正）で、表に無い印・表にあるのに無い印は試験が落とす。引く口は npx -p @hatake-fw/api hatake probe --kinds [<印>]。いまは日本語だけ（英語は束『英語』の担当）。",
 
   "kinds": [
     {

@@ -13,7 +13,7 @@
 定義に書けることしか見ない）。ここだけが抜ける。
 
 ```bash
-npx hatake ask spec/pages/order_entry.yaml
+npx -p @hatake-fw/api hatake ask spec/pages/order_entry.yaml
 ```
 
 ```text
@@ -69,7 +69,7 @@ npx hatake ask spec/pages/order_entry.yaml
 表そのものは定義が無くても引ける。**書く前に、何を聞かれるか**が分かる。
 
 ```bash
-npx hatake ask --kinds
+npx -p @hatake-fw/api hatake ask --kinds
 ```
 
 ## 思いついたことは聞かない
@@ -166,7 +166,7 @@ questions:
 を辿る必要がある。定義が10枚を超えると人の頭では追えない。
 
 ```bash
-npx hatake ask spec/pages/order_entry.yaml --impact price
+npx -p @hatake-fw/api hatake ask spec/pages/order_entry.yaml --impact price
 ```
 
 ```text
@@ -204,7 +204,7 @@ npx hatake ask spec/pages/order_entry.yaml --impact price
 叩いたときだけ出るのでは、その席に届かない。
 
 ```bash
-npx hatake ask app.yaml --markdown
+npx -p @hatake-fw/api hatake ask app.yaml --markdown
 ```
 
 表と畳んだ塊（`<details>`）で出るので、そのまま PR のコメントに貼れる。**囲みの字は
@@ -227,7 +227,7 @@ npx hatake ask app.yaml --markdown
 写すと写した先が古くなるので、1枚を渡す。
 
 ```bash
-npx hatake ask app.yaml --questions team.json
+npx -p @hatake-fw/api hatake ask app.yaml --questions team.json
 ```
 
 中身は前書きの `questions.ask` と同じ形（`{ "kinds": [ … ] }`）。並びは
@@ -240,9 +240,9 @@ npx hatake ask app.yaml --questions team.json
 ない**ので、指示文からは事実が取れない）。実際はこう回す。
 
 ```bash
-npx hatake where --from 依頼.md          # 1. 仕分ける（枠組みの外が混ざっていたら先に言う）
-npx hatake new crud --out order.yaml     # 2. 書けるものを書く
-npx hatake ask order.yaml                # 3. 書けなかったことを人に聞く
+npx -p @hatake-fw/api hatake where --from 依頼.md          # 1. 仕分ける（枠組みの外が混ざっていたら先に言う）
+npx -p @hatake-fw/api hatake new crud --out order.yaml     # 2. 書けるものを書く
+npx -p @hatake-fw/api hatake ask order.yaml                # 3. 書けなかったことを人に聞く
 ```
 
 AI に投げるなら [MCP](mcp.ja.md) の `hatake_ask`。**返ってきた問いは人に投げること**＝

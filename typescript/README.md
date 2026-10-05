@@ -37,93 +37,95 @@ const spec = buildQuery(page.search, req.query); // { conditions, sort, page, pa
 
 定義を「書いた → すぐ検証」の1コマンドにするやつ。人にも AI にも同じ入口。
 
-**先に入れる**（入れておけば `npx hatake …` はローカルの bin を使う）:
+**先に入れる**（[Release](https://github.com/ASIL-E-Hatake/hatake/releases) の tarball を指す。
+registry には出していない → [リリースと入れ方](../docs/guide/release.ja.md)）:
 
 ```bash
-npm i -D @hatake-fw/api
+npm i -D https://github.com/ASIL-E-Hatake/hatake/releases/download/v<版>/hatake-fw-api-<版>.tgz
 ```
 
-何も入れずに1回だけ試すなら、パッケージを名指しする（bin が2つあるので、素の
-`npx @hatake-fw/api` ではどちらを動かすか決まらない）:
+> **`npx hatake` と名前だけで書かない。** 枠組みは npm の registry に出していないので、registry の `hatake`（**別の人の、名前が同じだけの道具**）が取られて走る。`npx -p @hatake-fw/api hatake …` なら、入れてあれば手元の物を使い、入っていなければ 404 で止まる（`@hatake-fw` の名前は押さえてあるので、別の人は出せない）。
+
+何も入れずに1回だけ試すなら、tarball を名指しする（bin が2つあるので、どちらを動かすかも書く）:
 
 ```bash
-npx --package @hatake-fw/api hatake validate page.yaml
+npx --package=https://github.com/ASIL-E-Hatake/hatake/releases/download/v<版>/hatake-fw-api-<版>.tgz hatake validate page.yaml
 ```
 
 ```bash
-npx hatake doctor                            # 案件の道具と版の足並み（固定した版・入っている版・定義・MCP）
-npx hatake check page.yaml                   # 1往復で1本（事実・読み返し・好み・人が決めること）
-npx hatake validate spec/examples/*.yaml     # 解析 + strict（既定）
-npx hatake new report --id sales_report --title 売上明細表 > page.yaml
-npx hatake types page.yaml --lang java --package io.example.api --out gen/
-npx hatake reference rowsPerPage             # このキー、どこに書くの？型は？既定値は？
-npx hatake examples 帳票                      # 近い例を探す
-npx hatake rules                             # 警告と助言の規則そのもの（定義は要らない）
-npx hatake rules groupby-without-sort        # 言われた規則名が何かを引く
-npx hatake refs page.yaml --needs-registration # アプリ側に何を登録すればいいか
-npx hatake wire app.yaml --base /api           # その配線（Flutter）の下書きを出す
-npx hatake wire app.yaml --merge lib/wiring.dart --write  # 2回目以降：足りない登録だけを足す
-npx hatake refs app.yaml --unused              # 逆向き：登録したのに誰も使っていないもの
-npx hatake paper report.yaml                   # 帳票を「刷ったらどう見えるか」に開く（文字で）
-npx hatake registry lib/main.dart --out hatake-registry.json  # 実装から「登録済み」の一覧を作る
-npx hatake registry --compare app.json server.json  # 足した登録が画面とサーバで同じか
-npx hatake registry --from-app snapshot.json --out hatake-registry.json  # 動いているアプリの申告を読む
-npx hatake run page.yaml --draft --out s.json   # 定義から下書きのシナリオを起こす
-npx hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所（cases が空なら「何も試していない」で 1）
-npx hatake run page.yaml --scenario s.json --cover --draft --out more.json  # 残った分岐から次の1件を起こす
-npx hatake same old.yaml new.yaml            # 書き方が違うだけか（意味は同じか）
-npx hatake run page.yaml --widget-draft --out page_test.dart  # 画面の試験（Dart）の下書き
-npx hatake trace --diff old.yaml new.yaml    # その変更はどの要求から来たか
-npx hatake gaps app.yaml                     # 繋がっていない所を1枚で（押す所ごとに1行）
-npx hatake advise --effect <前> <後>          # 助言の効き目（どの規則が実際に直されたか）
-npx hatake fixtures page.yaml                   # サーバ側の試験データ（通る形・弾く形）
-npx hatake probe --kinds type-mismatch           # 食い違いの印から直し方を引く（通信しない）
-npx hatake probe --login login.json --check      # 資格が取れることだけを試す（業務の口は叩かない）
-npx hatake where 締め処理                        # これはどこの担当？（定義 / 登録 / サーバ / 枠組みの外）
-npx hatake where --from 依頼.md                  # 依頼文を行ごとに仕分ける（外を先に言う）
-npx hatake ask page.yaml                        # 決めていないことを問い返す（定義に書けないものだけ）
-npx hatake ask --kinds                          # 何を聞かれるかを先に読む（12種類）
-npx hatake ask page.yaml --impact price         # その項目を触ると、どこが壊れるか
-npx hatake ask page.yaml --impact price:unitPrice # 名前を変えた下書き（当てるのは人）
-npx hatake ask app.yaml --markdown              # 決めていないことを PR に貼る形で
-npx hatake ask app.yaml --questions team.json   # 会社共通の問いも足して聞く
-npx hatake project                              # 案件の前書き（何のシステムか・用語・名前の決めごと）
-npx hatake project --coverage definitions/       # 前書きでいま何件言えているか（数えていない所も言う）
-npx hatake project --coverage definitions/ --since 前回.json # 前回からの移り変わり
-npx hatake project --drift definitions/         # 用語の揺れ（辞書は作らない・書き換えない）
-npx hatake project --drift definitions/ --draft # 揺れを glossary の下書きに（貼るのは人）
-npx hatake project --drift definitions/ --since 前回.json # 増えた揺れだけ
-npx hatake project --draft --from 要件メモ.md    # 資料から前書きの下書き（定義からは起こさない）
-npx hatake project --agents --merge AGENTS.md   # その前書きを AI の設定ファイルに貼る（印の中だけ）
-npx hatake project --agents --merge AGENTS.md --check  # 貼った節が古くないか（CI 用）
-npx hatake intent --draft --from 指示.md --definition page.yaml  # 指示文を意図の1枚に
-npx hatake trace page.yaml                      # 言ったこと（intent）と書いたものの突き合わせ
-npx hatake explain page.yaml                 # この定義、結局どういう画面？
-npx hatake explain page.yaml --brief         # 1行で（README や PR 本文に貼る用）
-npx hatake explain --diff old.yaml page.yaml # 何を変えたのか、画面の言葉で
-npx hatake explain page.yaml --review        # レビュー用の1枚（説明＋助言）
-npx hatake explain page.yaml --lang en       # 英語で（ラベルは業務の言葉なので訳さない）
-npx hatake harvest definitions/              # 繰り返し転んでいる所を実例カタログの候補に
-npx hatake harvest definitions/ --rules      # 既にある定義から案件の決めごと（物差し）を起こす
-npx hatake minimize page.yaml                # 既定値と同じ指定を落として短く（意味は変えない）
-npx hatake fix page.yaml                     # 直し方が一意な問題だけ直す（--write で上書き）
-npx hatake fix page.yaml --todo              # 直せなかった分を「次の1往復で渡す形」にする
-npx hatake advise page.yaml                  # 書き足したほうがいい所（助言。警告ではない）
-npx hatake advise page.yaml --rules team.json # 案件ごとの決めごとで見る
-npx hatake advise page.yaml --project hatake.project.yaml # 案件の名前・用語の決めごとで見る
-npx hatake advise app.yaml --project p.yaml --registry r.json # 宣言した担当がアプリに登録されているかも
-npx hatake advise app.yaml --project p.yaml --project-as-error # 案件が決めたときだけ落とす
+npx -p @hatake-fw/api hatake doctor                            # 案件の道具と版の足並み（固定した版・入っている版・定義・MCP）
+npx -p @hatake-fw/api hatake check page.yaml                   # 1往復で1本（事実・読み返し・好み・人が決めること）
+npx -p @hatake-fw/api hatake validate spec/examples/*.yaml     # 解析 + strict（既定）
+npx -p @hatake-fw/api hatake new report --id sales_report --title 売上明細表 > page.yaml
+npx -p @hatake-fw/api hatake types page.yaml --lang java --package io.example.api --out gen/
+npx -p @hatake-fw/api hatake reference rowsPerPage             # このキー、どこに書くの？型は？既定値は？
+npx -p @hatake-fw/api hatake examples 帳票                      # 近い例を探す
+npx -p @hatake-fw/api hatake rules                             # 警告と助言の規則そのもの（定義は要らない）
+npx -p @hatake-fw/api hatake rules groupby-without-sort        # 言われた規則名が何かを引く
+npx -p @hatake-fw/api hatake refs page.yaml --needs-registration # アプリ側に何を登録すればいいか
+npx -p @hatake-fw/api hatake wire app.yaml --base /api           # その配線（Flutter）の下書きを出す
+npx -p @hatake-fw/api hatake wire app.yaml --merge lib/wiring.dart --write  # 2回目以降：足りない登録だけを足す
+npx -p @hatake-fw/api hatake refs app.yaml --unused              # 逆向き：登録したのに誰も使っていないもの
+npx -p @hatake-fw/api hatake paper report.yaml                   # 帳票を「刷ったらどう見えるか」に開く（文字で）
+npx -p @hatake-fw/api hatake registry lib/main.dart --out hatake-registry.json  # 実装から「登録済み」の一覧を作る
+npx -p @hatake-fw/api hatake registry --compare app.json server.json  # 足した登録が画面とサーバで同じか
+npx -p @hatake-fw/api hatake registry --from-app snapshot.json --out hatake-registry.json  # 動いているアプリの申告を読む
+npx -p @hatake-fw/api hatake run page.yaml --draft --out s.json   # 定義から下書きのシナリオを起こす
+npx -p @hatake-fw/api hatake run page.yaml --scenario s.json --cover  # 動かして答えを見る＋まだ試していない所（cases が空なら「何も試していない」で 1）
+npx -p @hatake-fw/api hatake run page.yaml --scenario s.json --cover --draft --out more.json  # 残った分岐から次の1件を起こす
+npx -p @hatake-fw/api hatake same old.yaml new.yaml            # 書き方が違うだけか（意味は同じか）
+npx -p @hatake-fw/api hatake run page.yaml --widget-draft --out page_test.dart  # 画面の試験（Dart）の下書き
+npx -p @hatake-fw/api hatake trace --diff old.yaml new.yaml    # その変更はどの要求から来たか
+npx -p @hatake-fw/api hatake gaps app.yaml                     # 繋がっていない所を1枚で（押す所ごとに1行）
+npx -p @hatake-fw/api hatake advise --effect <前> <後>          # 助言の効き目（どの規則が実際に直されたか）
+npx -p @hatake-fw/api hatake fixtures page.yaml                   # サーバ側の試験データ（通る形・弾く形）
+npx -p @hatake-fw/api hatake probe --kinds type-mismatch           # 食い違いの印から直し方を引く（通信しない）
+npx -p @hatake-fw/api hatake probe --login login.json --check      # 資格が取れることだけを試す（業務の口は叩かない）
+npx -p @hatake-fw/api hatake where 締め処理                        # これはどこの担当？（定義 / 登録 / サーバ / 枠組みの外）
+npx -p @hatake-fw/api hatake where --from 依頼.md                  # 依頼文を行ごとに仕分ける（外を先に言う）
+npx -p @hatake-fw/api hatake ask page.yaml                        # 決めていないことを問い返す（定義に書けないものだけ）
+npx -p @hatake-fw/api hatake ask --kinds                          # 何を聞かれるかを先に読む（12種類）
+npx -p @hatake-fw/api hatake ask page.yaml --impact price         # その項目を触ると、どこが壊れるか
+npx -p @hatake-fw/api hatake ask page.yaml --impact price:unitPrice # 名前を変えた下書き（当てるのは人）
+npx -p @hatake-fw/api hatake ask app.yaml --markdown              # 決めていないことを PR に貼る形で
+npx -p @hatake-fw/api hatake ask app.yaml --questions team.json   # 会社共通の問いも足して聞く
+npx -p @hatake-fw/api hatake project                              # 案件の前書き（何のシステムか・用語・名前の決めごと）
+npx -p @hatake-fw/api hatake project --coverage definitions/       # 前書きでいま何件言えているか（数えていない所も言う）
+npx -p @hatake-fw/api hatake project --coverage definitions/ --since 前回.json # 前回からの移り変わり
+npx -p @hatake-fw/api hatake project --drift definitions/         # 用語の揺れ（辞書は作らない・書き換えない）
+npx -p @hatake-fw/api hatake project --drift definitions/ --draft # 揺れを glossary の下書きに（貼るのは人）
+npx -p @hatake-fw/api hatake project --drift definitions/ --since 前回.json # 増えた揺れだけ
+npx -p @hatake-fw/api hatake project --draft --from 要件メモ.md    # 資料から前書きの下書き（定義からは起こさない）
+npx -p @hatake-fw/api hatake project --agents --merge AGENTS.md   # その前書きを AI の設定ファイルに貼る（印の中だけ）
+npx -p @hatake-fw/api hatake project --agents --merge AGENTS.md --check  # 貼った節が古くないか（CI 用）
+npx -p @hatake-fw/api hatake intent --draft --from 指示.md --definition page.yaml  # 指示文を意図の1枚に
+npx -p @hatake-fw/api hatake trace page.yaml                      # 言ったこと（intent）と書いたものの突き合わせ
+npx -p @hatake-fw/api hatake explain page.yaml                 # この定義、結局どういう画面？
+npx -p @hatake-fw/api hatake explain page.yaml --brief         # 1行で（README や PR 本文に貼る用）
+npx -p @hatake-fw/api hatake explain --diff old.yaml page.yaml # 何を変えたのか、画面の言葉で
+npx -p @hatake-fw/api hatake explain page.yaml --review        # レビュー用の1枚（説明＋助言）
+npx -p @hatake-fw/api hatake explain page.yaml --lang en       # 英語で（ラベルは業務の言葉なので訳さない）
+npx -p @hatake-fw/api hatake harvest definitions/              # 繰り返し転んでいる所を実例カタログの候補に
+npx -p @hatake-fw/api hatake harvest definitions/ --rules      # 既にある定義から案件の決めごと（物差し）を起こす
+npx -p @hatake-fw/api hatake minimize page.yaml                # 既定値と同じ指定を落として短く（意味は変えない）
+npx -p @hatake-fw/api hatake fix page.yaml                     # 直し方が一意な問題だけ直す（--write で上書き）
+npx -p @hatake-fw/api hatake fix page.yaml --todo              # 直せなかった分を「次の1往復で渡す形」にする
+npx -p @hatake-fw/api hatake advise page.yaml                  # 書き足したほうがいい所（助言。警告ではない）
+npx -p @hatake-fw/api hatake advise page.yaml --rules team.json # 案件ごとの決めごとで見る
+npx -p @hatake-fw/api hatake advise page.yaml --project hatake.project.yaml # 案件の名前・用語の決めごとで見る
+npx -p @hatake-fw/api hatake advise app.yaml --project p.yaml --registry r.json # 宣言した担当がアプリに登録されているかも
+npx -p @hatake-fw/api hatake advise app.yaml --project p.yaml --project-as-error # 案件が決めたときだけ落とす
 # 定義の中に「# advise-off: <規則名>」を書くと、その画面だけ助言を止められる（理由も書ける）
-npx hatake design page.yaml --intent page.intent.yaml  # 設計書を1枚に刷る（レビューに出す紙）
-npx hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
-npx hatake index app.yaml --role staff       # その役割で開ける画面だけ（棚卸し）
-npx hatake explain app.yaml --roles --matrix # 役割を横に並べた○×の表
-npx hatake diagram app.yaml --out app.svg    # 画面とメニューと遷移の図（権限も重なる）
-npx hatake diagram app.yaml --role admin     # その役割で通れる道だけ
-npx hatake diagram app.yaml --computed --all # 計算の依存（画面ごとに囲んで1枚に）
-npx hatake diagram app.yaml --format mermaid --fenced  # Markdown の囲みごと（貼る用）
-npx hatake probe app.yaml --base http://localhost:8080/api   # 宣言どおり返ってくるか、叩いて見る
-npx hatake attack app.yaml --role staff --base http://localhost:8080/api  # 見えない口が本当に閉じているか
+npx -p @hatake-fw/api hatake design page.yaml --intent page.intent.yaml  # 設計書を1枚に刷る（レビューに出す紙）
+npx -p @hatake-fw/api hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
+npx -p @hatake-fw/api hatake index app.yaml --role staff       # その役割で開ける画面だけ（棚卸し）
+npx -p @hatake-fw/api hatake explain app.yaml --roles --matrix # 役割を横に並べた○×の表
+npx -p @hatake-fw/api hatake diagram app.yaml --out app.svg    # 画面とメニューと遷移の図（権限も重なる）
+npx -p @hatake-fw/api hatake diagram app.yaml --role admin     # その役割で通れる道だけ
+npx -p @hatake-fw/api hatake diagram app.yaml --computed --all # 計算の依存（画面ごとに囲んで1枚に）
+npx -p @hatake-fw/api hatake diagram app.yaml --format mermaid --fenced  # Markdown の囲みごと（貼る用）
+npx -p @hatake-fw/api hatake probe app.yaml --base http://localhost:8080/api   # 宣言どおり返ってくるか、叩いて見る
+npx -p @hatake-fw/api hatake attack app.yaml --role staff --base http://localhost:8080/api  # 見えない口が本当に閉じているか
 ```
 
 | コマンド | 何をするか |
@@ -215,7 +217,7 @@ px をそのまま持ってくると入らない。刷る側は溢れないよ�
 定義を直したら影響範囲を見る:
 
 ```
-$ npx hatake diff before.yaml after.yaml
+$ npx -p @hatake-fw/api hatake diff before.yaml after.yaml
 ✗ 破壊的 [api] page.CustomerMasterRequest.code: code の maxLength が 20 から 10 に変わりました。今まで通っていた値が弾かれます。
 ・安全  [api] page.CustomerMasterResponse.code: code の maxLength が 20 から 10 に変わりました。
 **後方互換を壊します**（既存の呼び出し側の修正が要ります）。
@@ -234,7 +236,7 @@ $ npx hatake diff before.yaml after.yaml
 **「要確認」を「破壊的」と混ぜないのが要点**。列を消すのは普通にやることなので、止める話ではなく気づかせる話。混ぜると全部無視されるようになる。
 
 ```
-$ npx hatake diff before.yaml after.yaml
+$ npx -p @hatake-fw/api hatake diff before.yaml after.yaml
 △ 要確認 [ui] page.form.fields.status.options: 項目「ステータス」の選択肢から "active" が消えました。その値を持っている既存データは、開いても選び直せません。
 △ 要確認 [app] app.menu.受注照会: メニューから「受注照会」が無くなりました。ページ order_search はメニューから開けません。
 後方互換ですが、**目で見て確かめてほしい変更**があります（上の「要確認」）。
@@ -247,8 +249,8 @@ $ npx hatake diff before.yaml after.yaml
 （登録済みの一覧を知らないので）。なので2段構えにした。
 
 ```bash
-$ npx hatake refs page.yaml --needs-registration --json > hatake-registry.json  # 何を登録すればいいか
-$ npx hatake validate page.yaml --registry hatake-registry.json                 # 名前が食い違っていないか
+$ npx -p @hatake-fw/api hatake refs page.yaml --needs-registration --json > hatake-registry.json  # 何を登録すればいいか
+$ npx -p @hatake-fw/api hatake validate page.yaml --registry hatake-registry.json                 # 名前が食い違っていないか
 ```
 
 `refs` は**判断せずに列挙する**（組み込みで足りているものには印を付けない）。`validate` は
@@ -258,8 +260,8 @@ $ npx hatake validate page.yaml --registry hatake-registry.json                 
 一覧は手で書かなくてよい。**実装から作れる。**
 
 ```bash
-$ npx hatake registry lib/main.dart --out hatake-registry.json
-$ npx hatake registry lib/            # 人が読む形（どこで登録しているかまで出る）
+$ npx -p @hatake-fw/api hatake registry lib/main.dart --out hatake-registry.json
+$ npx -p @hatake-fw/api hatake registry lib/            # 人が読む形（どこで登録しているかまで出る）
 repositories:
   customerRepository    lib/main.dart:82
   orderRepository       lib/main.dart:82
@@ -277,7 +279,7 @@ plugins:
 登録されていると、次に読む人は「まだどこかで使っている」と読む。
 
 ```bash
-$ npx hatake refs app.yaml --unused --registry hatake-registry.json
+$ npx -p @hatake-fw/api hatake refs app.yaml --unused --registry hatake-registry.json
 定義 1 件のどこからも使われていない登録:
 repositories:
   oldStockRepository
@@ -331,7 +333,7 @@ OK   sales_app.yaml (app: 8 ページ)
 文字に落とせば読める。
 
 ```
-$ npx hatake paper spec/examples/sales_report.yaml --columns 100
+$ npx -p @hatake-fw/api hatake paper spec/examples/sales_report.yaml --columns 100
 売上明細表: 595.28 x 841.89pt の紙 2 枚（100 桁に縮めて表示。位置関係はそのまま）
 
 --- 1 枚目 ---
@@ -368,7 +370,7 @@ strict もスキーマも警告も、**綴りと構造しか見ない**。「条
 項目を必須にした」は全部通る。だから最後に人の言葉で読み返す。
 
 ```
-$ npx hatake explain spec/examples/customer_form.yaml
+$ npx -p @hatake-fw/api hatake explain spec/examples/customer_form.yaml
 顧客入力（customer_form）— 1件を入力する画面（新規と編集の両方）
 
 ## 基本情報
@@ -392,7 +394,7 @@ $ npx hatake explain spec/examples/customer_form.yaml
 `app:` を渡すと、**画面ごとに「開けるのは誰か」も出す**。
 
 ```
-$ npx hatake explain docs/diagrams/roles-app.yaml
+$ npx -p @hatake-fw/api hatake explain docs/diagrams/roles-app.yaml
 ...
 ## 画面を開ける人
   ・受注照会（order_search） … 誰でも開ける
@@ -400,7 +402,7 @@ $ npx hatake explain docs/diagrams/roles-app.yaml
   ・顧客マスタ（customer_master） … admin だけ
   ・単価マスタ（price_master） … 誰も開けない（入口の権限が食い違っている）
 
-$ npx hatake explain docs/diagrams/roles-app.yaml --page price_master
+$ npx -p @hatake-fw/api hatake explain docs/diagrams/roles-app.yaml --page price_master
 ...
 ## この画面を開ける人
   ・開けるのは … 誰も開けない（入口はあるが、権限が食い違っている）
@@ -419,7 +421,7 @@ $ npx hatake explain docs/diagrams/roles-app.yaml --page price_master
 `--brief` は1行だけ。README・PR 本文・画面一覧に貼る形で、`app:` なら表になる。
 
 ```
-$ npx hatake explain spec/examples/sales_app.yaml --brief
+$ npx -p @hatake-fw/api hatake explain spec/examples/sales_app.yaml --brief
 販売管理（sales_admin）— 画面 8 枚
 
   sales_dashboard    売上ダッシュボード          数字とグラフ。条件 1、カード 7、ボタン 1、orderRepository から
@@ -433,7 +435,7 @@ $ npx hatake explain spec/examples/sales_app.yaml --brief
 壊れるかを CI で見るにはそれが正しいが、**人がレビューするときに読みたいもの**ではない。
 
 ```
-$ npx hatake explain --diff old.yaml new.yaml
+$ npx -p @hatake-fw/api hatake explain --diff old.yaml new.yaml
 顧客入力（customer_form）— 変わったところ
 
 ## 基本情報
@@ -458,7 +460,7 @@ $ npx hatake explain --diff old.yaml new.yaml
 直した入口の行しか動かないので気づけない。
 
 ```
-$ npx hatake explain --diff old.yaml new.yaml
+$ npx -p @hatake-fw/api hatake explain --diff old.yaml new.yaml
 ## 画面を開ける人
   ・「単価マスタ（price_master）」が変わりました
       前: 単価マスタ（price_master） … 誰も開けない（入口の権限が食い違っている）
@@ -471,10 +473,10 @@ $ npx hatake explain --diff old.yaml new.yaml
 持っているので、そこから読む。
 
 ```bash
-npx hatake explain --diff --git HEAD~1..HEAD spec/examples/customer_form.yaml
-npx hatake explain --diff --git main...HEAD  spec/examples/customer_form.yaml  # 枝分かれした所と比べる（PR の中身）
-npx hatake explain --diff --git HEAD         spec/examples/customer_form.yaml  # いまの作業中と比べる
-npx hatake diff          --git main...HEAD   spec/examples/customer_form.yaml  # 後方互換の判定も同じ書き方
+npx -p @hatake-fw/api hatake explain --diff --git HEAD~1..HEAD spec/examples/customer_form.yaml
+npx -p @hatake-fw/api hatake explain --diff --git main...HEAD  spec/examples/customer_form.yaml  # 枝分かれした所と比べる（PR の中身）
+npx -p @hatake-fw/api hatake explain --diff --git HEAD         spec/examples/customer_form.yaml  # いまの作業中と比べる
+npx -p @hatake-fw/api hatake diff          --git main...HEAD   spec/examples/customer_form.yaml  # 後方互換の判定も同じ書き方
 ```
 
 書ける範囲は3つだけ（`A..B` / `A...B` / `A`）。**リビジョンの指定を書くための言語にはしない。**
@@ -486,11 +488,11 @@ npx hatake diff          --git main...HEAD   spec/examples/customer_form.yaml  #
 読む場所が PR やチケットなら、貼れる形でないと結局貼られない＝説明が在っても読まれない。
 
 ```bash
-npx hatake explain page.yaml --markdown            # 説明
-npx hatake explain page.yaml --review --markdown   # レビュー1枚（説明＋助言）
-npx hatake explain app.yaml --brief --markdown     # 画面一覧（表）
-npx hatake explain --diff --git main...HEAD page.yaml --markdown   # PR に貼る変更点
-npx hatake diff --git main...HEAD page.yaml --markdown             # 何が壊れるかの表（終了コードは変わらない）
+npx -p @hatake-fw/api hatake explain page.yaml --markdown            # 説明
+npx -p @hatake-fw/api hatake explain page.yaml --review --markdown   # レビュー1枚（説明＋助言）
+npx -p @hatake-fw/api hatake explain app.yaml --brief --markdown     # 画面一覧（表）
+npx -p @hatake-fw/api hatake explain --diff --git main...HEAD page.yaml --markdown   # PR に貼る変更点
+npx -p @hatake-fw/api hatake diff --git main...HEAD page.yaml --markdown             # 何が壊れるかの表（終了コードは変わらない）
 ```
 
 見出しは h2 から（本文の題は PR の題）、長い節は `<details>` で折りたたむ（列が30本ある画面の
@@ -506,7 +508,7 @@ npx hatake diff --git main...HEAD page.yaml --markdown             # 何が壊�
 そこで落ちる）。
 
 ```
-$ npx hatake failures unknown-repository
+$ npx -p @hatake-fw/api hatake failures unknown-repository
 # Repository の名前を、それらしく短くして書いた
   なぜそう書くか: `orderRepository` を `orderRepo` と書く（あるいは逆）。定義だけ見れば筋が通っている…
   道具が言うこと: unknown-repository
@@ -523,7 +525,7 @@ $ npx hatake failures unknown-repository
 だけなのか**見分けが付かない**。そこで定義の山から拾う。
 
 ```
-$ npx hatake harvest definitions/
+$ npx -p @hatake-fw/api hatake harvest definitions/
 走査: 定義 24 本（定義でないファイル 2 件は飛ばした）
 
 候補 1 件（載せるかは人が決める。自動では足さない）:
@@ -578,7 +580,7 @@ AI は指摘されると**別の場所を直して壊す**ことがある。「`
 安全**なので、そこは道具に任せる。
 
 ```
-$ npx hatake fix page.yaml
+$ npx -p @hatake-fw/api hatake fix page.yaml
 2 件を直しました:
   page.table.columns[0].witdh のキー名を width に直しました
   page.table.rowActions[1] を "aprove" から "approve" に直しました
@@ -613,7 +615,7 @@ $ npx hatake fix page.yaml
 指摘を探し回ることになる。`--todo` はそこを1枚にする。
 
 ```
-$ npx hatake fix page.yaml --todo
+$ npx -p @hatake-fw/api hatake fix page.yaml --todo
 機械が 1 件を直しました（そこはもう見なくていい）。
 残りは 1 件です。どれも**意図が要る**ので、機械には決められません。
 
@@ -641,7 +643,7 @@ $ npx hatake fix page.yaml --todo
 `minimize` は**書きすぎ**を直す。しかし業務システムで多いのは書きすぎより**書き足りない**。
 
 ```
-$ npx hatake advise page.yaml
+$ npx -p @hatake-fw/api hatake advise page.yaml
 書き足すと良さそうな所が 2 件:
 
 # page.search [no-search-filter]
@@ -700,7 +702,7 @@ CI が確かめている（書けないキーを勧めるのは、間違いを�
 ```
 
 ```bash
-npx hatake advise page.yaml --rules team.json
+npx -p @hatake-fw/api hatake advise page.yaml --rules team.json
 ```
 
 * `off` … 合わない規則を止める（組み込み・案件の決めごとのどちらも）
@@ -729,7 +731,7 @@ npx hatake advise page.yaml --rules team.json
 どちらも**人がレビューするため**に在る。道具ごとに出力が散ると、片方しか読まれない。
 
 ```
-$ npx hatake explain page.yaml --review
+$ npx -p @hatake-fw/api hatake explain page.yaml --review
 受注一覧（order_list）— 検索して一覧に出し、その場で登録・修正・削除までできる画面
 
 ## データ
@@ -760,7 +762,7 @@ $ npx hatake explain page.yaml --review
 <!-- hatake:shipped-screen-count（tool/check-screen-count.mjs が見ている） -->
 
 ```
-$ npx hatake index definitions/ --by size
+$ npx -p @hatake-fw/api hatake index definitions/ --by size
 画面 24 枚（規模の大きい順）:
  15  customer_form      顧客入力      1件の入力                     definitions/customer_form.yaml
  15  customer_master    顧客マスタ    検索＋一覧＋登録・修正・削除  definitions/customer_master.yaml
@@ -810,9 +812,9 @@ System.out.println(ScreenIndex.render(index.search("顧客 マスタ"), true, fa
 ### 画面と遷移を図にする（`diagram`）
 
 ```bash
-npx hatake diagram app.yaml --out app.svg    # 画面とメニューと遷移
-npx hatake diagram app.yaml --json           # 元データだけ（手で直してから描ける）
-npx hatake diagram docs/diagrams/architecture.json --out architecture.svg
+npx -p @hatake-fw/api hatake diagram app.yaml --out app.svg    # 画面とメニューと遷移
+npx -p @hatake-fw/api hatake diagram app.yaml --json           # 元データだけ（手で直してから描ける）
+npx -p @hatake-fw/api hatake diagram docs/diagrams/architecture.json --out architecture.svg
 ```
 
 段は「メニューから開ける画面 → そこから `navigate` で開く画面 → …」。この並べ方にすると
@@ -847,7 +849,7 @@ npx hatake diagram docs/diagrams/architecture.json --out architecture.svg
 | **点線** | **誰も開けない画面** | 入口の権限が食い違っている（admin だけの画面に manager だけのボタンで繋いだ、など）。定義は通るし、画面を見ても気づけない |
 
 ```bash
-npx hatake diagram app.yaml --role admin --out admin.svg
+npx -p @hatake-fw/api hatake diagram app.yaml --role admin --out admin.svg
 ```
 
 `--role` を渡すと**その役割で通れる道**だけの図になる（開けない画面は点線、通れない扉は薄い
@@ -863,7 +865,7 @@ AI に書かせた定義は冗長になる（`type: text`、`required: false`、
 レビューが重くなり、次に AI が読むときのコンテキストも太る。
 
 ```
-$ npx hatake minimize spec/examples/customer_form.yaml > short.yaml
+$ npx -p @hatake-fw/api hatake minimize spec/examples/customer_form.yaml > short.yaml
 7 件の指定を落としました（66 行 から 64 行）:
   page.form.sections[0].fields[0].type = "text"   （既定値と同じ）
   page.key = "id"   （既定値と同じ）

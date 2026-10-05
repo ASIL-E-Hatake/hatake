@@ -63,7 +63,7 @@ function keyTable(keys) {
     '| --- | --- | --- | --- | --- | --- | --- |',
     ...rows,
     '',
-    `<small>この表は [\`spec/reference.json\`](${GITHUB_BLOB}/spec/reference.json) から生成している（JSON Schema が正）。手元では \`npx hatake reference <キー名>\` で同じものが引ける。</small>`,
+    `<small>この表は [\`spec/reference.json\`](${GITHUB_BLOB}/spec/reference.json) から生成している（JSON Schema が正）。手元では \`npx -p @hatake-fw/api hatake reference <キー名>\` で同じものが引ける。</small>`,
   ].join('\n');
 }
 
@@ -111,7 +111,7 @@ function pitfallList(keys) {
     '## よくある間違い',
     '',
     ...blocks.flatMap((b) => [b, '']),
-    `<small>[\`spec/pitfalls.json\`](${GITHUB_BLOB}/spec/pitfalls.json) から生成。各項目は CI で検証済み（間違いは本当に落ち、正しい方は本当に通る）。手元では \`npx hatake pitfalls <キー名>\`。</small>`,
+    `<small>[\`spec/pitfalls.json\`](${GITHUB_BLOB}/spec/pitfalls.json) から生成。各項目は CI で検証済み（間違いは本当に落ち、正しい方は本当に通る）。手元では \`npx -p @hatake-fw/api hatake pitfalls <キー名>\`。</small>`,
   ].join('\n');
 }
 
@@ -235,7 +235,7 @@ for (const a of assets) copyFileSync(join(repoRoot, a.from), join(publicDir, a.t
 
 // --- 図解（docs/diagrams/*.svg）---
 // 絵の正もリポジトリ側（元データから生成したもの）。ここでは複製するだけなので、
-// 絵を直すのは docs/diagrams/*.json → npx hatake diagram <元データ> --out <絵>。
+// 絵を直すのは docs/diagrams/*.json → npx -p @hatake-fw/api hatake diagram <元データ> --out <絵>。
 const diagramsFrom = join(repoRoot, 'docs', 'diagrams');
 const diagramsTo = join(publicDir, 'diagrams');
 mkdirSync(diagramsTo, { recursive: true });

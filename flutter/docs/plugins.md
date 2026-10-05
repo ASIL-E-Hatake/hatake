@@ -140,11 +140,11 @@ File('hatake-registry.json').writeAsStringSync(registrySnapshotJson(scope));
 ```
 
 ```bash
-npx hatake validate page.yaml   # picks up hatake-registry.json next to it
+npx -p @hatake-fw/api hatake validate page.yaml   # picks up hatake-registry.json next to it
 ```
 
 It reports **only what you added** (the checker knows the built-ins). There is also
-`npx hatake registry lib/main.dart`, which reads the code instead of running it — but it
+`npx -p @hatake-fw/api hatake registry lib/main.dart`, which reads the code instead of running it — but it
 cannot read a registry built from a variable or a function. Use the snapshot when the
 registrations are dynamic.
 
@@ -153,7 +153,7 @@ the two says whether a custom validator, computed, converter or aggregate exists
 only:
 
 ```bash
-npx hatake registry --compare app.json server.json
+npx -p @hatake-fw/api hatake registry --compare app.json server.json
 ```
 
 Present on one side only means **the same definition gives different answers** (it passes on

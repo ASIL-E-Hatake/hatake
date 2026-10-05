@@ -116,16 +116,18 @@ hatake は「定義を書く」フレームワークなので、AI に使わせ�
 ### Java / TypeScript（バックエンド）
 どちらも `core`（定義モデル + YAML/JSON パーサ）、`FormValidator`（サーバ側の検証）、`QueryBuilder`（検索フィルタ + params → フレームワーク非依存の `QuerySpec`。フィルタに無い項目は弾く許可リスト方式）、権限（画面・ボタン・見せる項目・受け取る項目）、API の形の生成（`DtoSpec` → JSON Schema / OpenAPI 3.1 / ネイティブ型）まで。ORM 依存は持たず、JPA/Prisma 等への変換は opt-in アダプタの領分。詳しくは [`java/README.md`](java/README.md) / [`typescript/README.md`](typescript/README.md)。
 
-### CLI（`npx hatake`）
+### CLI（`npx -p @hatake-fw/api hatake`）
 定義を「書いた → すぐ検証」にするやつ。TypeScript 版（`@hatake-fw/api`）に同梱。
 
+> **`npx hatake` と名前だけで書かない。** 枠組みは npm の registry に出していないので、registry の `hatake`（**別の人の、名前が同じだけの道具**）が取られて走る。`npx -p @hatake-fw/api hatake …` なら、入れてあれば手元の物を使い、入っていなければ 404 で止まる（`@hatake-fw` の名前は押さえてあるので、別の人は出せない）。
+
 ```bash
-npm i -D @hatake-fw/api                    # 入れておけば npx はローカルの bin を使う
-npx hatake doctor                          # 案件の道具と版の足並み（固定した版・入っている版・定義・MCP）
-npx hatake validate spec/examples/*.yaml   # strict（知らないキーを弾く）。問題があれば終了コード 1
-npx hatake new crud --id customer_master --title 顧客マスタ
-npx hatake reference rowsPerPage           # このキーどこに書くの？型は？既定値は？
-npx hatake examples 帳票                    # やりたいことから近い例を引く
+npm i -D https://github.com/ASIL-E-Hatake/hatake/releases/download/v<版>/hatake-fw-api-<版>.tgz   # 入れ方は docs/guide/release.ja.md
+npx -p @hatake-fw/api hatake doctor                          # 案件の道具と版の足並み（固定した版・入っている版・定義・MCP）
+npx -p @hatake-fw/api hatake validate spec/examples/*.yaml   # strict（知らないキーを弾く）。問題があれば終了コード 1
+npx -p @hatake-fw/api hatake new crud --id customer_master --title 顧客マスタ
+npx -p @hatake-fw/api hatake reference rowsPerPage           # このキーどこに書くの？型は？既定値は？
+npx -p @hatake-fw/api hatake examples 帳票                    # やりたいことから近い例を引く
 ```
 
 書き間違いは場所と直し方まで出る（`page.table.columns[0]: 知らないキー "witdh"（width の間違い？）`）。生成（`dto` / `schema` / `openapi` / `types`）も同じ CLI から。→ [使い方](typescript/README.md#cli)

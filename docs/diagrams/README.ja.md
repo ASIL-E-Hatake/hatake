@@ -38,9 +38,9 @@ done
 `orderRepo`）。これは目で見ても気づけないので機械に言わせる:
 
 ```bash
-npx hatake refs page.yaml --needs-registration      # 定義が要求しているもの
-npx hatake registry lib/main.dart --out hatake-registry.json  # アプリが登録しているもの
-npx hatake validate page.yaml --registry hatake-registry.json # 突き合わせる
+npx -p @hatake-fw/api hatake refs page.yaml --needs-registration      # 定義が要求しているもの
+npx -p @hatake-fw/api hatake registry lib/main.dart --out hatake-registry.json  # アプリが登録しているもの
+npx -p @hatake-fw/api hatake validate page.yaml --registry hatake-registry.json # 突き合わせる
 ```
 
 ## 3. 層の責務（どこに何を書くか）
@@ -51,7 +51,7 @@ npx hatake validate page.yaml --registry hatake-registry.json # 突き合わせ�
 （本体を直すと、次の版で全員のコードが壊れる）。
 
 → 判断に迷う所は [ページ種別の選び方](../guide/page-types.ja.md) と
-[よくある間違い](../../spec/pitfalls.json)（`npx hatake pitfalls <キー名>`）。
+[よくある間違い](../../spec/pitfalls.json)（`npx -p @hatake-fw/api hatake pitfalls <キー名>`）。
 
 ## 4. 定義から作った遷移図
 
@@ -62,8 +62,8 @@ npx hatake validate page.yaml --registry hatake-registry.json # 突き合わせ�
 生成物（CI が作り直して差分を見る）。
 
 ```bash
-npx hatake diagram spec/examples/sales_app.yaml --out docs/diagrams/sales-app-flow.svg
-npx hatake diagram app.yaml --json           # 元データだけ（手で直してから描ける）
+npx -p @hatake-fw/api hatake diagram spec/examples/sales_app.yaml --out docs/diagrams/sales-app-flow.svg
+npx -p @hatake-fw/api hatake diagram app.yaml --json           # 元データだけ（手で直してから描ける）
 ```
 
 段は「メニューから開ける画面 → そこから `navigate` で開く画面 → …」。**どこからも開けない
@@ -92,8 +92,8 @@ npx hatake diagram app.yaml --json           # 元データだけ（手で直し
 ![admin で通れる道](roles-app-admin.svg)
 
 ```bash
-npx hatake diagram docs/diagrams/roles-app.yaml --out docs/diagrams/roles-app-flow.svg
-npx hatake diagram docs/diagrams/roles-app.yaml --role admin   --out docs/diagrams/roles-app-admin.svg
+npx -p @hatake-fw/api hatake diagram docs/diagrams/roles-app.yaml --out docs/diagrams/roles-app-flow.svg
+npx -p @hatake-fw/api hatake diagram docs/diagrams/roles-app.yaml --role admin   --out docs/diagrams/roles-app-admin.svg
 ```
 
 ## 絵を直す・足す

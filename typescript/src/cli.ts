@@ -3353,7 +3353,7 @@ function agents(
     io.err(
       `${out} に貼った節が古いです（前書きのほうが新しい）。` +
         "AI はそこを読むので、古いままだと前書きを直した意味が消えます。" +
-        `直すには: npx hatake project --agents --merge ${out}`,
+        `直すには: npx -p @hatake-fw/api hatake project --agents --merge ${out}`,
     );
     return 1;
   }

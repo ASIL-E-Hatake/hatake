@@ -12,9 +12,9 @@
 | とりあえず動かす／自分のアプリに入れる | [getting-started](getting-started.ja.md) | 未公開なので git 依存の手順あり |
 | **定義の書き方をサッと知る**（AI に渡すならこれ1枚） | [AI チートシート](api-cheatsheet.ja.md) | 名前一覧＋最小例。実装は読まなくていい |
 | キーの意味・型・既定値を厳密に確認 | [DSL 仕様書](../spec/dsl-spec.ja.md) | 規範リファレンス |
-| **このキーどこに書くの？型は？既定値は？を1発で** | [DSL リファレンス](../spec/reference.json) | `npx hatake reference <キー名>`。スキーマから生成＝ズレない |
-| やりたいことに近い例を探す | [例のカタログ](../spec/examples/README.md) | `npx hatake examples <やりたいこと>` |
-| **書き方を間違えた / 間違えたくない** | [よくある間違い](../spec/pitfalls.json) | `npx hatake pitfalls <キー名>`。`validate` も自動で引く |
+| **このキーどこに書くの？型は？既定値は？を1発で** | [DSL リファレンス](../spec/reference.json) | `npx -p @hatake-fw/api hatake reference <キー名>`。スキーマから生成＝ズレない |
+| やりたいことに近い例を探す | [例のカタログ](../spec/examples/README.md) | `npx -p @hatake-fw/api hatake examples <やりたいこと>` |
+| **書き方を間違えた / 間違えたくない** | [よくある間違い](../spec/pitfalls.json) | `npx -p @hatake-fw/api hatake pitfalls <キー名>`。`validate` も自動で引く |
 | 英語で AI に読ませる | [AI cheat sheet](api-cheatsheet.md) / [llms-en.txt](../llms-en.txt) | 日本語版のみの文書には `(ja)` と明記 |
 | 定義が正しいか機械検証 | [JSON Schema](../spec/hatake-page.schema.json) | `python spec/tools/validate_schema.py <file>` |
 | 業務画面をまるごと写経したい | [cookbook](cookbook/) | 下記参照。実物は CI 検証済み |
@@ -24,9 +24,9 @@
 | 検証を足す／メッセージを変える | [入力検証](guide/validation.ja.md) | 独自ルール・i18n |
 | 独自の型/バリデータ/描画を足す | [Plugin ガイド](../flutter/docs/plugins.ja.md) | 本体を fork せず拡張する |
 | バックエンド（Java / TS）で使う | [バックエンド連携](guide/backend.ja.md) | 詳細は [java](../java/README.md) / [typescript](../typescript/README.md) |
-| **これは hatake で書けるのか知りたい** | [仕組みと責務分担](guide/concepts.ja.md#これはどっちの担当は引ける) | 定義 / 登録 / サーバ / **枠組みの外** の4区分。`npx hatake where <やりたいこと>` |
-| **この案件のことを AI に先に教えたい** | [案件の前書き](guide/project.ja.md) | 何のシステムか・できないこと・用語・名前の決めごとを1枚に。`npx hatake project` |
-| **決まっていないことを洗い出したい** | [決めていないことを問い返す](guide/ask.ja.md) | 定義に書けない決めごと（排他・採番・論理削除・端数）を人に聞く。`npx hatake ask <定義>` |
+| **これは hatake で書けるのか知りたい** | [仕組みと責務分担](guide/concepts.ja.md#これはどっちの担当は引ける) | 定義 / 登録 / サーバ / **枠組みの外** の4区分。`npx -p @hatake-fw/api hatake where <やりたいこと>` |
+| **この案件のことを AI に先に教えたい** | [案件の前書き](guide/project.ja.md) | 何のシステムか・できないこと・用語・名前の決めごとを1枚に。`npx -p @hatake-fw/api hatake project` |
+| **決まっていないことを洗い出したい** | [決めていないことを問い返す](guide/ask.ja.md) | 定義に書けない決めごと（排他・採番・論理削除・端数）を人に聞く。`npx -p @hatake-fw/api hatake ask <定義>` |
 | **AI エージェントに定義を書かせる** | [MCP サーバ](guide/mcp.ja.md) | 仕様の引き当て・例の取得・検証を道具として渡す |
 | 対応状況・今後の方針を知る | [ロードマップ](roadmap.ja.md) / [utils ロードマップ](roadmap-utils.ja.md) | 実装状況はここが正 |
 | **自分のアプリに入れたい／版を出したい** | [リリースと入れ方](guide/release.ja.md) | まだレジストリ未公開。git の tag から入れる（Flutter は `dependency_overrides` が要る） |
@@ -100,7 +100,7 @@
 - 飛ばした塊は**必ず一覧に出る**（見ていないことを見えなくしない）
 - **囲みの中に囲みの字を書かない。** 行頭でなくても（`echo` の中でも）、塊を抜き出す側は
   そこで切るので**載せたものが途中で終わる**。図を貼る断片なら
-  `npx hatake diagram … --fenced`＝**道具に囲みを付けさせる**（検査が落とす）
+  `npx -p @hatake-fw/api hatake diagram … --fenced`＝**道具に囲みを付けさせる**（検査が落とす）
 - **塊を取り出す側は、言語のうしろを読み飛ばす**（印が付くので）。CI がチュートリアルと
   PR コメントの断片を抜き出している所も、そう書いてある＝印を足したら塊が取れなくなる、
   を起こさないため
@@ -121,8 +121,8 @@
 繋がないときは、仕様書を全部読ませるのではなく**引かせる**:
 
 ```bash uses:customer_master.yaml
-npx hatake project                  # 案件の前書き（何のシステムか・用語・名前の決めごと）
-npx hatake reference rowsPerPage    # キー名から：型・既定値・書ける場所
-npx hatake examples 小計            # やりたいことから：近い例
-npx hatake validate page.yaml       # 書けたら検証（未知キーは直し方まで出る）
+npx -p @hatake-fw/api hatake project                  # 案件の前書き（何のシステムか・用語・名前の決めごと）
+npx -p @hatake-fw/api hatake reference rowsPerPage    # キー名から：型・既定値・書ける場所
+npx -p @hatake-fw/api hatake examples 小計            # やりたいことから：近い例
+npx -p @hatake-fw/api hatake validate page.yaml       # 書けたら検証（未知キーは直し方まで出る）
 ```

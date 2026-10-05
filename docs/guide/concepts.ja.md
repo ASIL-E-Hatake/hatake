@@ -43,8 +43,8 @@
 この境界は散文だけでなく、**機械が読める表**にもしてあります（[`spec/responsibility.json`](../../spec/responsibility.json)）。
 
 ```bash
-npx hatake where 締め処理        # これはどこの担当？
-npx hatake where --where outside # 持たないものの一覧
+npx -p @hatake-fw/api hatake where 締め処理        # これはどこの担当？
+npx -p @hatake-fw/api hatake where --where outside # 持たないものの一覧
 ```
 
 区分は4つだけ。
@@ -65,7 +65,7 @@ npx hatake where --where outside # 持たないものの一覧
 長い依頼文はまとめて仕分けられます（**外が混ざっていたら先に言う**）。
 
 ```bash
-npx hatake where --from 依頼.md
+npx -p @hatake-fw/api hatake where --from 依頼.md
 ```
 
 ## データの流れ

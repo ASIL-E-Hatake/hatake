@@ -184,7 +184,7 @@ function checkValidatorParams(raw: Dict, path: string, found: DefinitionWarning[
     `検証 "${type}" は ${missing.map((key) => `\`${key}\``).join(" と ")} を見ますが、` +
       `書かれていません${hint}。この検証は**一度も効きません**。`,
     `${missing.map((key) => `\`${key}\``).join(" と ")} を書いてください` +
-      `（引くなら npx hatake reference ${type}）。`,
+      `（引くなら npx -p @hatake-fw/api hatake reference ${type}）。`,
   );
 }
 
@@ -256,9 +256,9 @@ export function findWarnings(
       one.note !== undefined
         ? one.note
         : one.instead === undefined
-          ? `${one.wanted}で書き直してください（npx hatake reference ${one.key}）。`
+          ? `${one.wanted}で書き直してください（npx -p @hatake-fw/api hatake reference ${one.key}）。`
           : `Repository から引くなら \`${one.instead}\` です` +
-            `（npx hatake reference ${one.instead}）。`,
+            `（npx -p @hatake-fw/api hatake reference ${one.instead}）。`,
     );
   }
   // **語彙の指し間違い**。語彙を1か所にまとめると、今度は「指した先が無い」が

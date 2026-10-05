@@ -650,7 +650,7 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
       + "目で読んでもキー名は正しいので、いちばん気づきにくい種類です"
       + "（`optionsFrom:` に Repository を書いて、選択肢が空のまま出た例があります）。",
     fix:
-      "そのキーが取る形に直してください（`npx hatake reference <キー>` で引けます）。"
+      "そのキーが取る形に直してください（`npx -p @hatake-fw/api hatake reference <キー>` で引けます）。"
       + "書きたかったものが別のキーなら、そちらに移します"
       + "（Repository から選択肢を引くのは `optionsSource`）。",
   },
@@ -706,7 +706,7 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
       + "その画面を開いて選択肢を押すまで誰も気づきません。",
     fix:
       "`app.vocabularies` にその名前で語彙を足すか、名前の綴りを直してください"
-      + "（`npx hatake reference optionsOf`）。",
+      + "（`npx -p @hatake-fw/api hatake reference optionsOf`）。",
   },
   "vocabulary-shadowed": {
     what: "options と両方書いてある optionsOf",
@@ -732,7 +732,7 @@ export const WARNING_RULES: Record<string, RuleDoc> = {
       + "`pattern` は `pattern`）。名前が違うと**その検証は一度も効きません**。"
       + "解析もスキーマも通るので、書いた人は効いていると思い込みます。",
     fix:
-      "その検証が見るキーを書いてください（`npx hatake reference <検証の名前>` で引けます）。"
+      "その検証が見るキーを書いてください（`npx -p @hatake-fw/api hatake reference <検証の名前>` で引けます）。"
       + "組み込みは maxLength / minLength / min / max が `value`、pattern が `pattern`、"
       + "compare が `field` と `operator`、unique が `of` です。",
   },
