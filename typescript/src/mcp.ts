@@ -11,6 +11,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { hatakeTools, INSTRUCTIONS, type McpTool } from "./mcpTools.js";
 import { findSpecDir, SCHEMA_FILE } from "./specDir.js";
 import { TOOL_VERSION } from "./toolVersion.js";
+import { isEntryPoint } from "./entryPoint.js";
 
 /** 名乗るバージョン。新しい順。クライアントの希望がこの中にあればそれに合わせる。 */
 export const PROTOCOL_VERSIONS = [
@@ -211,8 +212,9 @@ export function runMcpServer(io: McpIo = nodeIo, specPath?: string): number {
   return 0;
 }
 
-// bin として呼ばれたときだけ走る（テストからは各関数を直接呼ぶ）。
-if (process.argv[1]?.endsWith("mcp.js")) {
+// bin として呼ばれたときだけ走る（テストからは各関数を直接呼ぶ）。`hatake-mcp` という
+// 名前のリンクから起動されるので、名前ではなく実体で見る（[isEntryPoint]）。
+if (isEntryPoint(import.meta.url)) {
   // クライアントが先に閉じたときに落ちない（終了はこちらから静かにやる）。
   process.stdout.on("error", (error: NodeJS.ErrnoException) => {
     if (error.code !== "EPIPE") throw error;
