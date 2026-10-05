@@ -5,13 +5,16 @@
 // 中で試すと `spec/` が上に見つかってしまい、**同梱できていなくても通る**（配ってから
 // 「引けません」と言われる形の事故）。だから展開先は OS の一時置き場にする。
 //
-// 見るのは3つ:
+// 見るのは4つ:
 //   1. 固めた中に `spec/` と `dist/` と LICENSE が入っている
 //   2. **spec を読む道具**が、その中の spec を見つけて答える（引けなければ落とす）
 //   3. 定義を1枚通す（配った形で普通に使える）
+//   4. **bin を名前で叩いて**答えが返る（`npx hatake` と同じ道。0.9.25 まで、bin から
+//      起動すると何も出さずに 0 で終わっていた。ここは `node dist/cli.js` で叩いていたので
+//      bin が張られていることしか見ておらず、気づけなかった）
 
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -99,7 +102,37 @@ try {
   const validated = call(["validate", page]);
   if (!validated.includes("OK")) fail("配った形で雛形が検証に通りません", validated);
 
-  console.log("入れた形のまま、spec を読む道具も定義の検証も動きました（bin も張られています）。");
+  // 5. **bin を名前で**叩く（使う人と同じ道）。答えが空なら落とす＝黙って 0 を通さない。
+  const binOf = (name) =>
+    join(work, "node_modules", ".bin", process.platform === "win32" ? `${name}.cmd` : name);
+  const viaBin = (name, args, input) =>
+    spawnSync(binOf(name), args, {
+      cwd: work,
+      encoding: "utf8",
+      input,
+      shell: process.platform === "win32",
+    });
+  const version = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version;
+  const said = viaBin("hatake", ["--version"]);
+  if (said.status !== 0 || said.stdout.trim() !== version) {
+    fail(
+      `bin の hatake が版を言いません（${JSON.stringify(said.stdout)}、終了コード ${said.status}）`,
+      said.stderr,
+    );
+  }
+  const checked = viaBin("hatake", ["validate", page]);
+  if (!checked.stdout.includes("OK")) {
+    fail("bin の hatake で雛形を検証しても、何も返りません", `${checked.stdout}${checked.stderr}`);
+  }
+  // MCP は標準入力が閉じれば終わる。起動したことは標準エラーの1行で分かる。
+  const served = viaBin("hatake-mcp", [], "");
+  if (!served.stderr.includes("hatake MCP サーバ")) {
+    fail("bin の hatake-mcp が起動しません", `${served.stdout}${served.stderr}`);
+  }
+
+  console.log(
+    "入れた形のまま、spec を読む道具も定義の検証も動きました（bin を名前で叩いても答えが返ります）。",
+  );
 } finally {
   rmSync(work, { recursive: true, force: true });
   rmSync(tarball, { force: true });

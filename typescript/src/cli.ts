@@ -12,6 +12,7 @@ import { dirname, join } from "node:path";
 import { parse as parseYamlText } from "yaml";
 import { doctor, doctorLines } from "./doctor.js";
 import { TOOL_VERSION } from "./toolVersion.js";
+import { isEntryPoint } from "./entryPoint.js";
 import { fetchSend, type HttpSend } from "./httpProbe.js";
 import { loginFetch, type LoginSend } from "./loginRun.js";
 import { type Args, collectionOverrides, str } from "./cliArgs.js";
@@ -4684,8 +4685,9 @@ function problem(error: unknown): Record<string, unknown> {
 const message = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
-// bin として呼ばれたときだけ走る（テストからは runCli を直接呼ぶ）。
-if (process.argv[1]?.endsWith("cli.js")) {
+// bin として呼ばれたときだけ走る（テストからは runCli を直接呼ぶ）。npm の bin は
+// `hatake` という名前のリンクから起動されるので、名前ではなく実体で見る（[isEntryPoint]）。
+if (isEntryPoint(import.meta.url)) {
   // `hatake reference | head` のように受け側が先に閉じても、スタックトレースを
   // 吐いて落ちない（JSON を出すコマンドなので、パイプで切るのは普通の使い方）。
   process.stdout.on("error", (error: NodeJS.ErrnoException) => {

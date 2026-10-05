@@ -3,7 +3,7 @@ description: >-
   Core definitions for hatake — a business-definition framework: screens,
   validation, permissions and API shapes from one definition. Pure Dart, no
   Flutter dependency.
-version: 0.9.25
+version: 0.9.26
 # TODO: replace the placeholder org with the real GitHub repository before publishing.
 repository: https://github.com/ASIL-E-Hatake/hatake
 homepage: https://github.com/ASIL-E-Hatake/hatake
