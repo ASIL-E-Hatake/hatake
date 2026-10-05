@@ -56,13 +56,27 @@ dependency_overrides:
 npm i -D https://github.com/ASIL-E-Hatake/hatake/releases/download/v0.9.2/hatake-fw-api-0.9.2.tgz
 ```
 
+### 入れたあとの叩き方（`npx -p @hatake-fw/api hatake`）
+
+手引きのコマンドは全部 `npx -p @hatake-fw/api hatake …` と書いてある。長いが、名前だけにしない
+（**registry の別物が走る**）:
+
+| 書き方 | 入れてあるとき | 入れていないとき |
+|---|---|---|
+| `npx hatake …` | 手元の物 | **registry の `hatake` を取って走らせる**（別の人の、シンボリックリンクを張る道具。名前が同じだけ） |
+| `npx -p @hatake-fw/api hatake …` | 手元の物 | **404 で止まる**（`@hatake-fw` の名前は押さえてあるので、別の人は出せない） |
+| `npx --no hatake …` | 手元の物 | 止まる。ただし `--version` / `--help` を npx 自身が食べるので使わない |
+
+registry に出すことになっても `npx -p @hatake-fw/api hatake …` のまま動く。手引きに名前だけの
+書き方が紛れ込むと、試験（`typescript/test/safeNpx.test.ts`）が落ちる。
+
 git の URL（`npm i github:…`）では入らない。**npm は subdir 指定に対応していない**
 ため（pnpm / yarn はできる）。0.9.16 で根に `package.json` を置いたが、あれは
 ワークスペースの根（`private: true`）で配るものではないので、この話は変わらない。
 tarball なら関係ないし、**`spec/` を同梱できる**のが大きい（CLI と MCP は実行時に
 `spec/` を読むので、同梱しないと `--spec` を毎回渡すことになる）。
 
-入れたあとは `npx hatake …` がそのまま効く（npx はレジストリより先にローカルの bin を見る）。
+入れたあとは `npx -p @hatake-fw/api hatake …` がそのまま効く（npx はレジストリより先にローカルの bin を見る）。
 
 ### ブラウザ側（`@hatake-fw/runtime` / `vue3` / `react19`）
 

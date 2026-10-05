@@ -63,7 +63,7 @@ python spec/tools/validate_schema.py path/to/def.yaml
 
 ## 自分の画面を探す（画面の索引）
 
-画面が増えると「どこに何の画面があるか」が分からなくなる。CLI（`npx hatake index`）と同じものが
+画面が増えると「どこに何の画面があるか」が分からなくなる。CLI（`npx -p @hatake-fw/api hatake index`）と同じものが
 `hatake_core` にも入っているので、**アプリの中から自分の画面を引ける**（画面選択・ジャンプ窓・
 管理者向けの画面一覧はこれで作る）。
 
@@ -105,7 +105,7 @@ CrudPage と SearchPage が動いてる。中身はこんな感じ。
 | Web の URL 同期（リンク・リロード・戻る） | ✅ 完了（`HatakeApp(syncUrl:)`。`/画面id?params`。URL は差し替え可能な口の裏なので、ブラウザ無しで試験できる） |
 | `hatake_http` REST Repository | ✅ 完了（`hatake openapi` が宣言する形と1対1。名前の一致は [`conformance/rest_query.json`](../spec/conformance/rest_query.json) が縛る） |
 | 独自の集約・計算を登録する口（`HatakeScope(aggregates:, computeds:)`） | ✅ 完了（**今まで口が無かった**＝`validate` が「登録してください」と言うのに登録できなかった） |
-| 配線の下書き（`npx hatake wire`） | ✅ 完了（生成物2枚を `hatake_example/tool/` に置き、`flutter analyze` で通ることを CI が見る） |
+| 配線の下書き（`npx -p @hatake-fw/api hatake wire`） | ✅ 完了（生成物2枚を `hatake_example/tool/` に置き、`flutter analyze` で通ることを CI が見る） |
 | フォーム（新規/編集/バリデーション・ダイアログ） | ✅ 完了（widget テスト済み） |
 | バリデーションエンジン（純Dart・Plugin拡張可） | ✅ 完了（ユニットテスト済み） |
 | `hatake_example` サンプルアプリ（YAML→描画） | ✅ 完了（widget テスト済み） |

@@ -73,7 +73,7 @@ search:
 | `$startOfYear` / `$endOfYear` | 今年の1月1日 / 12月31日 |
 | `$thisMonth` / `$thisYear` | 範囲（`between`）だけ。今月・今年のはじめからおわりまで |
 
-範囲は `[from, to]` でも書ける（`[$startOfMonth, $today]`、片方は `null` でよい）。形の合わない書き方（範囲の語を範囲でない条件に書いた、など）は**既定値が付かない**ので、`npx hatake validate` が言う。
+範囲は `[from, to]` でも書ける（`[$startOfMonth, $today]`、片方は `null` でよい）。形の合わない書き方（範囲の語を範囲でない条件に書いた、など）は**既定値が付かない**ので、`npx -p @hatake-fw/api hatake validate` が言う。
 
 ## 画面から外させない条件（fixed）
 

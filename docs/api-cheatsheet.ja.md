@@ -4,31 +4,31 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
 
 - 全仕様: [DSL 仕様書](../spec/dsl-spec.ja.md) / 機械検証: [JSON Schema](../spec/hatake-page.schema.json)
 - 拡張: [Plugin ガイド](../flutter/docs/plugins.ja.md)
-- 案件を触り始める前に: `npx hatake doctor`（固定した版がそろっているか・入っている版が固定した版と
+- 案件を触り始める前に: `npx -p @hatake-fw/api hatake doctor`（固定した版がそろっているか・入っている版が固定した版と
   同じか・定義の `dsl_version`・MCP の設定。`--json` で機械に渡せる。MCP は `hatake_doctor`）
-- ここに無いキーは**引く**: `npx hatake reference <キー名>`（[DSL リファレンス](../spec/reference.json)）／
-  近い例を探す: `npx hatake examples <やりたいこと>`（[例のカタログ](../spec/examples/README.md)）／
-  書けたら `npx hatake validate <file>`
-- アプリに組み込むとき: `npx hatake refs <file> --needs-registration`（Repository・プラグイン・
+- ここに無いキーは**引く**: `npx -p @hatake-fw/api hatake reference <キー名>`（[DSL リファレンス](../spec/reference.json)）／
+  近い例を探す: `npx -p @hatake-fw/api hatake examples <やりたいこと>`（[例のカタログ](../spec/examples/README.md)）／
+  書けたら `npx -p @hatake-fw/api hatake validate <file>`
+- アプリに組み込むとき: `npx -p @hatake-fw/api hatake refs <file> --needs-registration`（Repository・プラグイン・
   **出す口**（`exportSink` / `printSink`）＝何を登録すればいいか）／その一覧を
   `validate --registry <file>` に渡すと**名前の食い違い**と**繋いでいない口**も見る
   （一覧に `roles`＝アプリが配りうる役割の語彙が在れば、**定義にしか無い役割**＝誰にも
   見えない列やボタンも言う。Flutter 側は `HatakeScope(knownRoles: {...})` で宣言し、
   `registrySnapshot` がそれを申告する。いま配られている `roles:` はログイン状態なので
   突き合わせには使わない）／
-  `npx hatake wire <file> --base /api` で**その配線の下書き**（Flutter）が出る（中身は TODO）／
-  画面を増やしたあとは `npx hatake wire <file> --merge <配線.dart> --write`＝**足りない登録だけ**を足す
+  `npx -p @hatake-fw/api hatake wire <file> --base /api` で**その配線の下書き**（Flutter）が出る（中身は TODO）／
+  画面を増やしたあとは `npx -p @hatake-fw/api hatake wire <file> --merge <配線.dart> --write`＝**足りない登録だけ**を足す
   （手で埋めた中身は消えない。要らなくなった登録は言うだけで消さない）／`--todo` を付けると
   足した所を**次の1往復で渡す形**で出す（どこに・何を書くか・埋めるまで何が起きるか）
-- 埋まったかを数える: `npx hatake refs <file> --filled --source lib/`＝要求している登録が
+- 埋まったかを数える: `npx -p @hatake-fw/api hatake refs <file> --filled --source lib/`＝要求している登録が
   **埋まっている／TODO のまま／登録が無い／言えない**のどれか（「TODO のまま」は道具が置いた
   `UnimplementedError` が残っているもの＝動かすと落ちる）。**登録の外**に残った TODO も出す
   （REST の配線は登録だけ済んで通信する所が空いていることがある）。CI に置くなら
   `--pending-as-error`。逆向きの `--unused` に `--source` を渡すと、コードに名前が書いてある
   ものは消す候補から外す（`--unused-as-error` はそのときだけ置ける）
-- 繋いだあと（サーバが動いているとき）: `npx hatake probe <file> --base http://localhost:8080/api`
+- 繋いだあと（サーバが動いているとき）: `npx -p @hatake-fw/api hatake probe <file> --base http://localhost:8080/api`
   で**定義とサーバの食い違い**を実際に叩いて見る（足りない項目・型違い・`{items, totalCount}` で
-  ない・`pageSize` が効かない・行に鍵が無い）。権限は `npx hatake attack <app> --role staff --base …`（役割ぜんぶなら `--all-roles --accounts accounts.json`＝資格は役割ごとに要る）
+  ない・`pageSize` が効かない・行に鍵が無い）。権限は `npx -p @hatake-fw/api hatake attack <app> --role staff --base …`（役割ぜんぶなら `--all-roles --accounts accounts.json`＝資格は役割ごとに要る）
   ＝**画面から見えない口**を叩いて、API が実際に拒否するか見る。どちらも**読むだけ**（`POST` /
   `PUT` / `DELETE` は叩かない）で、`--dry-run` なら叩かずに「何を叩くか」だけ出る
 - 毎晩回すとき（人が横に居ない）: `--login login.json`（資格を**毎回取る**＝トークンの期限で
@@ -36,9 +36,9 @@ AI（や人）が hatake を使うための圧縮リファレンス。**実装�
   （`--save 次回.json` が次の晩の相手）／`--fail-on new` で**新しい分だけ**落とす。前回
   叩けていた相手を今回叩いていなければ、消えた穴は「直った」ではなく「叩いていないので
   分かりません」と出て、`--fail-on new` でも落ちる（何も見ていない晩に緑にならない）
-- 英語で読み返す: `npx hatake explain <file> --lang en`（節の見出しと言い回しだけ英語。
+- 英語で読み返す: `npx -p @hatake-fw/api hatake explain <file> --lang en`（節の見出しと言い回しだけ英語。
   **定義に書いたラベルは訳さない**＝業務の言葉なので、訳すと現場と違うものを指す）
-- 定義を直したとき: `npx hatake diff <前> <後>`（`✗ 破壊的`＝呼び出し側が壊れる／`△ 要確認`＝壊れないが
+- 定義を直したとき: `npx -p @hatake-fw/api hatake diff <前> <後>`（`✗ 破壊的`＝呼び出し側が壊れる／`△ 要確認`＝壊れないが
   確かめてほしい＝列・ボタン・選択肢が消えた・権限が変わった・ページが消えた）
 
 ## 最小の書き方（定義ファースト）
@@ -73,22 +73,22 @@ page:
 **CLI で検証する**（人も AI も同じ入口。問題があれば終了コード 1。**警告**＝解析は通るが意図どおり動かない書き方も既定で出る）:
 
 ```bash uses:customer_master.yaml
-npx hatake validate page.yaml          # 解析 + strict。--json で機械可読
-npx hatake new crud --id customer_master --title 顧客マスタ   # 雛形（8種別）
-npx hatake types page.yaml --lang java --out gen/            # ネイティブ型
+npx -p @hatake-fw/api hatake validate page.yaml          # 解析 + strict。--json で機械可読
+npx -p @hatake-fw/api hatake new crud --id customer_master --title 顧客マスタ   # 雛形（8種別）
+npx -p @hatake-fw/api hatake types page.yaml --lang java --out gen/            # ネイティブ型
 ```
 
-**書いた定義は動かして確かめられる**: `npx hatake run <定義> --scenario s.json`。1件は「この値を入れたら、こうなる」で、返るのは**検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン**（答えの作り方は画面と同じ順＝`normalize` → `computed` → 状態 → 検証）。期待は**書いた欄だけ**見る（全部書かなくてよい）。`--draft` で下書きを起こし、`--cover` で「まだ試していない分岐」を出す。**`cases` が空なら落とす**（「0 件すべて期待どおり」で通ったことにしない。`probe` / `attack` も1件も叩けなければ 1）。プラグインの計算・検証は CLI には無いので、値を作らずにそう言う（アプリ側は `ScenarioRunner` に登録を渡して同じシナリオを回す。**サーバ側（Java）にも同じ `ScenarioRunner` が在る**＝画面・道具・サーバの3つが同じ答えを出すことを案件のシナリオで確かめられる。ただし押せるボタンはサーバ側では答えない＝サーバの定義は `actions` を読まない）。
+**書いた定義は動かして確かめられる**: `npx -p @hatake-fw/api hatake run <定義> --scenario s.json`。1件は「この値を入れたら、こうなる」で、返るのは**検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン**（答えの作り方は画面と同じ順＝`normalize` → `computed` → 状態 → 検証）。期待は**書いた欄だけ**見る（全部書かなくてよい）。`--draft` で下書きを起こし、`--cover` で「まだ試していない分岐」を出す。**`cases` が空なら落とす**（「0 件すべて期待どおり」で通ったことにしない。`probe` / `attack` も1件も叩けなければ 1）。プラグインの計算・検証は CLI には無いので、値を作らずにそう言う（アプリ側は `ScenarioRunner` に登録を渡して同じシナリオを回す。**サーバ側（Java）にも同じ `ScenarioRunner` が在る**＝画面・道具・サーバの3つが同じ答えを出すことを案件のシナリオで確かめられる。ただし押せるボタンはサーバ側では答えない＝サーバの定義は `actions` を読まない）。
 
-**サーバ側の試験データ**: `npx hatake fixtures <定義>`＝通るはずの形と弾かれるはずの形を、定義の制約から作る（値の作り方は `run --draft` と同じ所＝画面とサーバが同じ境界で試される）。**言い切る前に自分で動かして確かめる**ので、「弾かれるはず」が実際には通る件は出さずに理由を残す。
+**サーバ側の試験データ**: `npx -p @hatake-fw/api hatake fixtures <定義>`＝通るはずの形と弾かれるはずの形を、定義の制約から作る（値の作り方は `run --draft` と同じ所＝画面とサーバが同じ境界で試される）。**言い切る前に自分で動かして確かめる**ので、「弾かれるはず」が実際には通る件は出さずに理由を残す。
 
-**足したものが3版で揃っているか**: `npx hatake registry --compare 画面の一覧.json サーバの一覧.json`＝独自の検証・計算・変換・集約が片側にしか無ければ落とす（画面では通るのに保存で弾かれる、が起きる）。一覧は `registrySnapshot`（Dart）/ `RegistrySnapshot`（Java）が書く。
+**足したものが3版で揃っているか**: `npx -p @hatake-fw/api hatake registry --compare 画面の一覧.json サーバの一覧.json`＝独自の検証・計算・変換・集約が片側にしか無ければ落とす（画面では通るのに保存で弾かれる、が起きる）。一覧は `registrySnapshot`（Dart）/ `RegistrySnapshot`（Java）が書く。
 
-**役割から引く（棚卸し）**: `npx hatake index app.yaml --role staff`＝その役割で開ける画面だけ（入口を辿った結果。定義に出てこない役割名はエラー）。`npx hatake explain app.yaml --roles --matrix`＝役割を横に並べた○×の表で、**誰でもない人（未ログイン）の列が必ず入る**。`--roles` の各行には「見えるのは何件・見えないのは何件」も出る（見えない側まで書かないと「この役割で何ができるか」は答えられない）。`--registry` を渡すと「アプリが配るのに定義が使っていない役割」も言う（消せとは言わない）。MCP は `hatake_explain` の `roles: true` ＋ `matrix: true`。
+**役割から引く（棚卸し）**: `npx -p @hatake-fw/api hatake index app.yaml --role staff`＝その役割で開ける画面だけ（入口を辿った結果。定義に出てこない役割名はエラー）。`npx -p @hatake-fw/api hatake explain app.yaml --roles --matrix`＝役割を横に並べた○×の表で、**誰でもない人（未ログイン）の列が必ず入る**。`--roles` の各行には「見えるのは何件・見えないのは何件」も出る（見えない側まで書かないと「この役割で何ができるか」は答えられない）。`--registry` を渡すと「アプリが配るのに定義が使っていない役割」も言う（消せとは言わない）。MCP は `hatake_explain` の `roles: true` ＋ `matrix: true`。
 
-**言ったことと書いたもの**: `<画面id>.intent.yaml`（意図の1枚）に**人が言ったまま**の要求・決めごと・**決まっていないこと**・終わりの判定を書き、`covers: [filter:orderNo, action:approve]` で定義のどこに落ちたかを指す。`npx hatake trace <定義>` が突き合わせて、**由来の無い項目・ボタン**（言っていないのに入っている）・言ったのに入っていない・未定なのに決まっている、を言う。**意図どおりかは言わない**（それは `explain` を人が読む）。要求を定義から生成してはいけない（生成すれば必ず一致して、突き合わせが無意味になる）。
+**言ったことと書いたもの**: `<画面id>.intent.yaml`（意図の1枚）に**人が言ったまま**の要求・決めごと・**決まっていないこと**・終わりの判定を書き、`covers: [filter:orderNo, action:approve]` で定義のどこに落ちたかを指す。`npx -p @hatake-fw/api hatake trace <定義>` が突き合わせて、**由来の無い項目・ボタン**（言っていないのに入っている）・言ったのに入っていない・未定なのに決まっている、を言う。**意図どおりかは言わない**（それは `explain` を人が読む）。要求を定義から生成してはいけない（生成すれば必ず一致して、突き合わせが無意味になる）。
 
-**指示文から意図を起こす**: `npx hatake intent --draft --from 指示.md --definition page.yaml`＝1行1件に開き、`text` は**その行のまま**・全部 `source: ai-draft`（人が読んで `confirmed: true` にするまで主張しない）。分類は見出しと合図の言葉だけ（推し量らない）、`covers` は**業務の言葉が一致した所だけ**。MCP は `hatake_intent`（`instruction` に指示文、`source` に定義）＝**定義を書く前と書いたあとの2回**呼ぶ。
+**指示文から意図を起こす**: `npx -p @hatake-fw/api hatake intent --draft --from 指示.md --definition page.yaml`＝1行1件に開き、`text` は**その行のまま**・全部 `source: ai-draft`（人が読んで `confirmed: true` にするまで主張しない）。分類は見出しと合図の言葉だけ（推し量らない）、`covers` は**業務の言葉が一致した所だけ**。MCP は `hatake_intent`（`instruction` に指示文、`source` に定義）＝**定義を書く前と書いたあとの2回**呼ぶ。
 
 **画面の試験**: `hatake_test` の `pumpPage(tester, 定義, rows: …)` で定義をそのまま画面に出し、`HatakeFind.field('code')` / `HatakeFind.action('approve')` で押す・入れる（キーの規約は `HatakeKeys`。Renderer との一致は CI が突き合わせる）。`FakeRepository` は**聞かれたことを覚えている**（`calls` / `queries`）ので「押したのに保存に行っていない」が言える。
 
@@ -146,7 +146,7 @@ DefinitionParser.parsePageYaml(source, true);     // Java
 
 ## Repository（データの口）
 
-REST に繋ぐなら opt-in の `hatake_http`。`npx hatake openapi` が定義から宣言する API と**同じ形**で話す（一覧は `{items, totalCount}`、1件は `<collection>/{key}`、404 は null、絞り込みは項目名そのまま・空と null は送らない・配列は同じ名前を2回）。
+REST に繋ぐなら opt-in の `hatake_http`。`npx -p @hatake-fw/api hatake openapi` が定義から宣言する API と**同じ形**で話す（一覧は `{items, totalCount}`、1件は `<collection>/{key}`、404 は null、絞り込みは項目名そのまま・空と null は送らない・配列は同じ名前を2回）。
 
 ```dart
 repositories: RepositoryRegistry(restRepositories(
@@ -433,7 +433,7 @@ sections:
 * 同じ `where` が**項目間の検証**でも使える（`compare` の `aggregate` + `of` + `where`）。計算が取消行を外すなら、検証も同じ条件で外す（片方だけだと必ず食い違う）
 * 畳めるのは**親と一緒に保存する明細**だけ。`source` を持つ明細はページ送りなので行が揃っていない（`validate` が言う）
 * 計算は**書いた順に1回**なので、`小計 → 消費税 → 合計` の順に並べる（後ろの項目は前の結果を使える。**逆に書くと空のまま計算される**ので `validate` が言う）。
-  依存が絡んだら `npx hatake diagram <file> --computed`＝**どの項目がどの項目から出るか**の図
+  依存が絡んだら `npx -p @hatake-fw/api hatake diagram <file> --computed`＝**どの項目がどの項目から出るか**の図
   （Mermaid。順番が逆の線は赤）。画面の図も `--format mermaid` / `--format dot` で貼れる形に出せる
 * `ComputedRegistry` で追加可。
 

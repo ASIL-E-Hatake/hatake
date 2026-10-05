@@ -117,7 +117,7 @@ node /path/to/hatake/typescript/dist/mcp.js /path/to/hatake/spec
    用語・名前の決めごと）。書いていなければ AI は書ける方に倒すので、ここが最初
 0.5 頼まれたことに**定義で書けないもの**が混ざっていたら hatake_where（締め処理・承認
    フロー・認証・DB…）。**枠組みの外と出たものは書き始めず、そう言う**。
-   依頼文が長いときは CLI の `npx hatake where --from 依頼.md` で行ごとにまとめて仕分ける
+   依頼文が長いときは CLI の `npx -p @hatake-fw/api hatake where --from 依頼.md` で行ごとにまとめて仕分ける
 1. 人から指示文をもらったら hatake_intent（言われたことを1枚にする。定義を書いたあと
    もう一度呼ぶと、**言われていないのに在るもの**が出る）
 2. hatake_examples で近い例を探す

@@ -379,7 +379,7 @@ function parseLogic(value: unknown): LogicRule[] {
     if (typeof where !== "string" || !WHERE_KINDS.includes(where as Where)) {
       bad(
         `${at}.where は ${WHERE_KINDS.join(" / ")} のどれかです` +
-          `（\`npx hatake where <やりたいこと>\` で引いた区分を書いてください）。`,
+          `（\`npx -p @hatake-fw/api hatake where <やりたいこと>\` で引いた区分を書いてください）。`,
       );
     }
     const rule: LogicRule = {

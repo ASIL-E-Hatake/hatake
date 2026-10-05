@@ -494,7 +494,7 @@ page:
 Framework が作り、Renderer はそれを用紙の比率で描く（プレビュー）。PDF 化や
 プリンタ送出は opt-in アダプタの領分（`QuerySpec` と同じ立ち位置）。実装は
 `hatake_print`（`reportPdf(page, rows)` で PDF のバイト列。純 Dart なので UI が
-無い所でも刷れる）。**刷る前に紙を見る**なら `npx hatake paper <file>`（紙の上の座標を
+無い所でも刷れる）。**刷る前に紙を見る**なら `npx -p @hatake-fw/api hatake paper <file>`（紙の上の座標を
 文字にして返す。MCP の `hatake_print_preview` も同じ）＝座標は刷る側と同じ計算で、
 [共有フィクスチャ](conformance/report_layout.json)が一致を縛っている。**定義は印刷のために1文字も変わらない**＝紙の体裁（余白・
 脚注・ページ番号）は業務ではなく印刷所の話なので、アダプタを呼ぶ側が渡す。
@@ -698,7 +698,7 @@ import { downloadCsv, downloadPdf } from "@hatake-fw/runtime";
 気づかない、を避ける。一覧をそのままファイルに持ち出したいだけなら
 [`export`](#exportcsv-出力)（CSV）で、そちらはどの画面でも動く。
 
-**刷る前に紙を読む**なら `npx hatake paper <file>`（紙の上の座標を文字にして返す。
+**刷る前に紙を読む**なら `npx -p @hatake-fw/api hatake paper <file>`（紙の上の座標を文字にして返す。
 座標は刷る側と同じ計算で、[共有フィクスチャ](conformance/report_layout.json)が一致を
 縛っている）。
 
@@ -1773,10 +1773,10 @@ Flutter ではハンドラが `ActionContext.input` で受け取る（キーは�
 仕様とズレない（ズレたら CI が落ちる）。
 
 ```bash
-npx hatake reference                      # 全部（JSON）
-npx hatake reference rowsPerPage          # キー名で引く（どのノードに書けるか＋型・既定値）
-npx hatake reference report               # ノード名・ページ種別でも引ける（当たったもの全部）
-npx hatake reference --page-kind report   # その画面で使える所だけに絞る
+npx -p @hatake-fw/api hatake reference                      # 全部（JSON）
+npx -p @hatake-fw/api hatake reference rowsPerPage          # キー名で引く（どのノードに書けるか＋型・既定値）
+npx -p @hatake-fw/api hatake reference report               # ノード名・ページ種別でも引ける（当たったもの全部）
+npx -p @hatake-fw/api hatake reference --page-kind report   # その画面で使える所だけに絞る
 ```
 
 中身:
@@ -1801,9 +1801,9 @@ strict は「知らないキー」を、スキーマは「型と必須」を見�
 動かない**定義がまだ書けるので、そこは警告として言う。
 
 ```bash
-npx hatake validate page.yaml                    # 既定で警告も出す（終了コードは変えない）
-npx hatake validate page.yaml --warn-as-error    # CI で落としたいとき
-npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
+npx -p @hatake-fw/api hatake validate page.yaml                    # 既定で警告も出す（終了コードは変えない）
+npx -p @hatake-fw/api hatake validate page.yaml --warn-as-error    # CI で落としたいとき
+npx -p @hatake-fw/api hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 ```
 
 | 規則 | 何が起きるか |
@@ -1874,9 +1874,9 @@ npx hatake validate page.yaml --no-warn --json   # 黙らせる / 機械可読
 strict もスキーマもここは見られない（**登録済みの一覧を知らない**ので）。なので2つに分けた。
 
 ```bash
-npx hatake refs page.yaml --needs-registration    # 定義が外に要求しているものを列挙する
-npx hatake registry lib/main.dart --out reg.json  # 実装から「登録済み」の一覧を作る
-npx hatake validate page.yaml --registry reg.json # 突き合わせる
+npx -p @hatake-fw/api hatake refs page.yaml --needs-registration    # 定義が外に要求しているものを列挙する
+npx -p @hatake-fw/api hatake registry lib/main.dart --out reg.json  # 実装から「登録済み」の一覧を作る
+npx -p @hatake-fw/api hatake validate page.yaml --registry reg.json # 突き合わせる
 ```
 
 `refs` は判断せずに列挙し、`validate` は**渡されたカテゴリだけ**を突き合わせる。一覧を
@@ -1886,7 +1886,7 @@ npx hatake validate page.yaml --registry reg.json # 突き合わせる
 **その登録を書く所まで**を下書きできる。
 
 ```bash
-npx hatake wire app.yaml --base /api --out lib/wiring.dart
+npx -p @hatake-fw/api hatake wire app.yaml --base /api --out lib/wiring.dart
 ```
 
 定義が要求している登録（Repository・プラグイン・出す口・独自の検証 / 正規化 / 見せ方 /
@@ -1987,8 +1987,8 @@ File('hatake-registry.json').writeAsStringSync(registrySnapshotJson(scope));
 [`pitfalls.json`](pitfalls.json) に置いてある。
 
 ```bash
-npx hatake pitfalls groupBy        # 間違い → なぜ駄目か → 正しい書き方（--lang en で英語）
-npx hatake validate page.yaml      # 未知キーからも自動で引いてヒントを出す
+npx -p @hatake-fw/api hatake pitfalls groupBy        # 間違い → なぜ駄目か → 正しい書き方（--lang en で英語）
+npx -p @hatake-fw/api hatake validate page.yaml      # 未知キーからも自動で引いてヒントを出す
 ```
 
 各項目は「間違いの例は本当に strict で落ち、正しい例は本当に通る」ことを CI で確認して
@@ -2001,8 +2001,8 @@ npx hatake validate page.yaml      # 未知キーからも自動で引いてヒ�
 **動かさないと分からない**。
 
 ```bash
-npx hatake run order_entry.yaml --draft --out order.scenario.json   # 下書きを起こす
-npx hatake run order_entry.yaml --scenario order.scenario.json --cover
+npx -p @hatake-fw/api hatake run order_entry.yaml --draft --out order.scenario.json   # 下書きを起こす
+npx -p @hatake-fw/api hatake run order_entry.yaml --scenario order.scenario.json --cover
 ```
 
 シナリオ1件は「この値を入れたら、こうなる」。
@@ -2071,7 +2071,7 @@ npx hatake run order_entry.yaml --scenario order.scenario.json --cover
 作っていた。境界は定義に書いてあるので機械が作れる。
 
 ```bash
-npx hatake fixtures order_entry.yaml --out fixtures.json
+npx -p @hatake-fw/api hatake fixtures order_entry.yaml --out fixtures.json
 ```
 
 ```json
@@ -2106,7 +2106,7 @@ DSL の約束は「同じ定義なら同じ答え」。組み込みが3版で同
 縛ってあるが、**利用者が足したもの**は縛られていない。
 
 ```bash
-npx hatake registry --compare 画面の一覧.json サーバの一覧.json
+npx -p @hatake-fw/api hatake registry --compare 画面の一覧.json サーバの一覧.json
 ```
 
 一覧を書くのは**動いているアプリ／サーバ**（`registrySnapshot`（Dart）/ `RegistrySnapshot`
@@ -2160,9 +2160,9 @@ expect(page.repository.calls, contains('update(1)'));
 聞かれるのは逆向き（「この役割で何ができるか」）なので、道具に聞く。
 
 ```bash
-npx hatake index app.yaml --role staff          # その役割で開ける画面だけ
-npx hatake explain app.yaml --roles             # 役割ごとに、どこに書いてあるか＋見え方
-npx hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×の表
+npx -p @hatake-fw/api hatake index app.yaml --role staff          # その役割で開ける画面だけ
+npx -p @hatake-fw/api hatake explain app.yaml --roles             # 役割ごとに、どこに書いてあるか＋見え方
+npx -p @hatake-fw/api hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×の表
 ```
 
 ```
@@ -2199,9 +2199,9 @@ npx hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×�
 聞かれるのは逆向き（「この役割で何ができるか」）なので、道具に聞く。
 
 ```bash
-npx hatake index app.yaml --role staff          # その役割で開ける画面だけ
-npx hatake explain app.yaml --roles             # 役割ごとに、どこに書いてあるか＋見え方
-npx hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×の表
+npx -p @hatake-fw/api hatake index app.yaml --role staff          # その役割で開ける画面だけ
+npx -p @hatake-fw/api hatake explain app.yaml --roles             # 役割ごとに、どこに書いてあるか＋見え方
+npx -p @hatake-fw/api hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×の表
 ```
 
 ```
@@ -2274,8 +2274,8 @@ acceptance:                             # 終わりの判定（回せる形で�
 ```
 
 ```bash
-npx hatake trace order_search.yaml            # 隣の order_search.intent.yaml を拾う
-npx hatake trace order_search.yaml --require-intent   # CI に置くとき
+npx -p @hatake-fw/api hatake trace order_search.yaml            # 隣の order_search.intent.yaml を拾う
+npx -p @hatake-fw/api hatake trace order_search.yaml --require-intent   # CI に置くとき
 ```
 
 言えるのは4つ。値打ちの順に:
@@ -2313,7 +2313,7 @@ npx hatake trace order_search.yaml --require-intent   # CI に置くとき
 最初の1枚を人が書くのは手間なので、そこは機械にやらせる（指示文はもう在る）。
 
 ```bash
-npx hatake intent --draft --from 指示.md --definition order_search.yaml \
+npx -p @hatake-fw/api hatake intent --draft --from 指示.md --definition order_search.yaml \
   --out order_search.intent.yaml
 ```
 
@@ -2349,7 +2349,7 @@ npx hatake intent --draft --from 指示.md --definition order_search.yaml \
 [`failures.json`](failures.json) に分けてある。
 
 ```bash
-npx hatake failures unknown-repository   # こう書いた → こう言われた → こう直した
+npx -p @hatake-fw/api hatake failures unknown-repository   # こう書いた → こう言われた → こう直した
 ```
 
 対照表との違いは**出どころ**と、**なぜそう書いてしまうか**を持っていること。各件は
@@ -2362,7 +2362,7 @@ npx hatake failures unknown-repository   # こう書いた → こう言われ�
 実例は手で書くと増えないので、定義の山から候補を拾う道もある。
 
 ```bash
-npx hatake harvest definitions/          # 繰り返し出ている診断を候補として出す
+npx -p @hatake-fw/api hatake harvest definitions/          # 繰り返し出ている診断を候補として出す
 ```
 
 候補は**人が書く欄を空のまま**出す（「なぜそう書いてしまうか」は機械には書けないし、そこが
@@ -2377,7 +2377,7 @@ npx hatake harvest definitions/          # 繰り返し出ている診断を候�
 ## 直し方が一意な問題を直す
 
 ```bash
-npx hatake fix page.yaml            # 既定は出すだけ。--write で上書き
+npx -p @hatake-fw/api hatake fix page.yaml            # 既定は出すだけ。--write で上書き
 ```
 
 直すのは**綴り違い**（キー名・Repository / プラグイン / 型 / ページ id / アクション id / 連動の親）と、
@@ -2392,7 +2392,7 @@ npx hatake fix page.yaml            # 既定は出すだけ。--write で上書�
 ## 書き足したほうがいい所
 
 ```bash
-npx hatake advise page.yaml
+npx -p @hatake-fw/api hatake advise page.yaml
 ```
 
 並べ替えできる列が無い・絞り込みが無い・キーが一覧に出ていない・必須が1つも無い・消せる/持ち出せる
@@ -2436,7 +2436,7 @@ npx hatake advise page.yaml
 ## 画面の索引
 
 ```bash
-npx hatake index definitions/ --find "顧客 検索"
+npx -p @hatake-fw/api hatake index definitions/ --find "顧客 検索"
 ```
 
 1行の要約（`explain --brief`）を集めて、「どこに何の画面があるか」に答える表を作る。探すための語
@@ -2448,7 +2448,7 @@ npx hatake index definitions/ --find "顧客 検索"
 
 | エディション | 入口 |
 |---|---|
-| TypeScript | `npx hatake index <path...>` / `buildIndex` |
+| TypeScript | `npx -p @hatake-fw/api hatake index <path...>` / `buildIndex` |
 | Dart | `ScreenIndex.ofApp(app)`（解析済み）/ `buildScreenIndex([IndexInput(...)])`（文字列から） |
 | Java | `ScreenIndex.build(List.of(new ScreenIndex.Source(file, text)))` |
 
@@ -2459,7 +2459,7 @@ npx hatake index definitions/ --find "顧客 検索"
 ## 画面と遷移の図
 
 ```bash
-npx hatake diagram app.yaml --out app.svg
+npx -p @hatake-fw/api hatake diagram app.yaml --out app.svg
 ```
 
 `app:` の定義から「画面とメニューと遷移」の図（SVG）を作る。段は「メニューから開ける画面 →
@@ -2493,7 +2493,7 @@ npx hatake diagram app.yaml --out app.svg
 AI に書かせた定義は冗長になる（既定値をわざわざ書く・空の配列を置く）。
 
 ```bash
-npx hatake minimize page.yaml > short.yaml   # 落としたものは標準エラーに出る
+npx -p @hatake-fw/api hatake minimize page.yaml > short.yaml   # 落としたものは標準エラーに出る
 ```
 
 落とす候補は「スキーマの既定値と同じ値」と「空の配列・空のオブジェクト」だけで、必須キーと
@@ -2508,10 +2508,10 @@ strict もスキーマも警告も、綴りと構造しか見ない。「条件�
 必須にした」は全部通るので、**最後は人が読んで確かめる**。そのための出力が `explain`。
 
 ```bash
-npx hatake explain page.yaml               # この画面は何をするか（日本語）
-npx hatake explain app.yaml --page <id>    # app の中の1枚を詳しく
-npx hatake explain page.yaml --brief       # 1行だけ（app なら画面一覧の表）
-npx hatake explain --diff old.yaml new.yaml # 何を変えたのか、画面の言葉で
+npx -p @hatake-fw/api hatake explain page.yaml               # この画面は何をするか（日本語）
+npx -p @hatake-fw/api hatake explain app.yaml --page <id>    # app の中の1枚を詳しく
+npx -p @hatake-fw/api hatake explain page.yaml --brief       # 1行だけ（app なら画面一覧の表）
+npx -p @hatake-fw/api hatake explain --diff old.yaml new.yaml # 何を変えたのか、画面の言葉で
 ```
 
 出すのは画面単位の説明で、**キーの名前は出さない**（読み手は DSL を知らなくてよい）。条件は
@@ -2529,7 +2529,7 @@ AI に書かせたものを人がレビューする道であり、AI が**自分
 ## 完全な例
 
 用途から引く索引は [`examples/README.md`](examples/README.md)（機械可読版は
-[`examples/index.json`](examples/index.json)、CLI は `npx hatake examples <やりたいこと>`）。
+[`examples/index.json`](examples/index.json)、CLI は `npx -p @hatake-fw/api hatake examples <やりたいこと>`）。
 
 [`examples/customer_master.yaml`](examples/customer_master.yaml) を見て。
 アプリ丸ごと（メニュー＋複数ページ）は [`examples/sales_app.yaml`](examples/sales_app.yaml)、

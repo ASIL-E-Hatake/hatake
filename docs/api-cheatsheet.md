@@ -5,15 +5,15 @@ A compressed reference for writing hatake definitions — **you do not need to r
 Japanese is the primary language of this project; this sheet is the English condensate. When in doubt, look things up rather than guess:
 
 ```bash uses:customer_master.yaml
-npx hatake reference <key>      # type, default, allowed values, where it may be written
-npx hatake examples <task>      # nearest example to copy
-npx hatake pitfalls <key>       # common mistake → correct form
-npx hatake validate page.yaml   # exit code 1 if anything is wrong
-npx hatake refs page.yaml --needs-registration   # what the application must register
-npx hatake diff old.yaml new.yaml                # what a change breaks / what to confirm
-npx hatake explain page.yaml --lang en                       # read the definition back in English
-npx hatake diagram app.yaml --format mermaid                 # the screen map, pasteable into a PR (or --format dot)
-npx hatake diagram page.yaml --computed                      # which field comes from which (red = declared out of order)
+npx -p @hatake-fw/api hatake reference <key>      # type, default, allowed values, where it may be written
+npx -p @hatake-fw/api hatake examples <task>      # nearest example to copy
+npx -p @hatake-fw/api hatake pitfalls <key>       # common mistake → correct form
+npx -p @hatake-fw/api hatake validate page.yaml   # exit code 1 if anything is wrong
+npx -p @hatake-fw/api hatake refs page.yaml --needs-registration   # what the application must register
+npx -p @hatake-fw/api hatake diff old.yaml new.yaml                # what a change breaks / what to confirm
+npx -p @hatake-fw/api hatake explain page.yaml --lang en                       # read the definition back in English
+npx -p @hatake-fw/api hatake diagram app.yaml --format mermaid                 # the screen map, pasteable into a PR (or --format dot)
+npx -p @hatake-fw/api hatake diagram page.yaml --computed                      # which field comes from which (red = declared out of order)
 ```
 
 After a bulk run, **what is left over can leave the screen**: the notification and the
@@ -31,7 +31,7 @@ rest", so what was sent has run and the report counts it separately (`{skipped}`
 stopped run is not a success, so `onSuccess` does not run, and the **unfinished rows stay
 checked** so pressing again continues where it stopped.
 
-A definition can be **run**: `npx hatake run <def> --scenario s.json` answers, as text, what
+A definition can be **run**: `npx -p @hatake-fw/api hatake run <def> --scenario s.json` answers, as text, what
 the screen would do — validation errors, computed values, hidden fields, currently required
 fields, which buttons are pressable — in the same order the screen uses (`normalize` →
 `computed` → state → validate). Expectations are matched **only for the keys you wrote**.
@@ -44,21 +44,21 @@ says so instead of inventing a value (the app replays the same file through
 the same `ScenarioRunner`, except that it does not answer which buttons are pressable,
 because a server definition does not read `actions`).
 
-The **data to test a server with** comes from the definition too: `npx hatake fixtures <def>`
+The **data to test a server with** comes from the definition too: `npx -p @hatake-fw/api hatake fixtures <def>`
 emits records that should be accepted and records that should be rejected, built from the
 same boundaries as `run --draft` so the screen and the server are tested at the same edge.
 Nothing is claimed before it is run — a record meant to be rejected that actually passes is
 dropped, with the reason recorded.
 
 What a *user adds* can drift between the client and the server:
-`npx hatake registry --compare app.json server.json` fails when a custom validator,
+`npx -p @hatake-fw/api hatake registry --compare app.json server.json` fails when a custom validator,
 computed, converter or aggregate exists on one side only (that is how "it passes on the
 screen and is rejected on save" happens). Both lists are written by the running app
 (`registrySnapshot`) or server (`RegistrySnapshot`).
 
-Permissions read the other way round too: `npx hatake index app.yaml --role staff` lists only
+Permissions read the other way round too: `npx -p @hatake-fw/api hatake index app.yaml --role staff` lists only
 the screens that role can open (following the entries — a page cannot carry `roles`), and
-`npx hatake explain app.yaml --roles --matrix` puts the roles side by side as a table of
+`npx -p @hatake-fw/api hatake explain app.yaml --roles --matrix` puts the roles side by side as a table of
 marks, with **nobody (not signed in) always as one of the columns**. Each role's line also
 says how many gated things it sees and how many it does not. Over MCP: `hatake_explain` with
 `roles: true` and `matrix: true`.
@@ -66,13 +66,13 @@ says how many gated things it sees and how many it does not. Over MCP: `hatake_e
 What a definition cannot tell you is **what was asked**. An intent document
 (`<page id>.intent.yaml`) holds the requirements verbatim, the business rules with their
 reasons, **what is still undecided**, and the definition of done; `covers:` links each one
-to the definition (`filter:orderNo`, `action:approve`). `npx hatake trace <def>` then reports
+to the definition (`filter:orderNo`, `action:approve`). `npx -p @hatake-fw/api hatake trace <def>` then reports
 what nobody asked for (a field or button with no requirement behind it), what was asked for
 but is missing, and what was called undecided yet is decided in the definition. It never
 claims the definition matches the *intent* — that is for a human reading `explain` back.
 
 The first draft of that document comes from the instruction itself:
-`npx hatake intent --draft --from ask.md --definition page.yaml` opens one line into one
+`npx -p @hatake-fw/api hatake intent --draft --from ask.md --definition page.yaml` opens one line into one
 requirement — it never summarizes, reorders or merges — marks every entry `source: ai-draft`
 (no claim until a human confirms it), classifies only by headings and fixed cue words, and
 fills `covers` only where the business wording actually matches. Over MCP the same thing is
@@ -104,13 +104,13 @@ disabled button stays visible, greyed out, with what it depends on shown — nam
 screen's label.
 
 ```bash
-npx hatake wire app.yaml --merge lib/wiring.dart --write     # add only the missing registrations (keeps your code)
-npx hatake wire app.yaml --merge lib/wiring.dart --write --todo   # ...and hand over the work list: what was added, what is still TODO, what is an empty body
-npx hatake refs app.yaml --filled --source lib/             # are those registrations actually filled in? (TODO / missing / cannot tell)
-npx hatake probe app.yaml --base http://localhost:8080/api   # does the server answer what the definition declares?
-npx hatake attack app.yaml --role staff --base http://localhost:8080/api  # does the API refuse what the screen hides?
-npx hatake attack app.yaml --all-roles --accounts accounts.json --base …   # every role + nobody, in one table (one credential per role)
-npx hatake attack app.yaml --all-roles --login login.json --base … --since last.json --save last.json --fail-on new   # nightly: only what changed
+npx -p @hatake-fw/api hatake wire app.yaml --merge lib/wiring.dart --write     # add only the missing registrations (keeps your code)
+npx -p @hatake-fw/api hatake wire app.yaml --merge lib/wiring.dart --write --todo   # ...and hand over the work list: what was added, what is still TODO, what is an empty body
+npx -p @hatake-fw/api hatake refs app.yaml --filled --source lib/             # are those registrations actually filled in? (TODO / missing / cannot tell)
+npx -p @hatake-fw/api hatake probe app.yaml --base http://localhost:8080/api   # does the server answer what the definition declares?
+npx -p @hatake-fw/api hatake attack app.yaml --role staff --base http://localhost:8080/api  # does the API refuse what the screen hides?
+npx -p @hatake-fw/api hatake attack app.yaml --all-roles --accounts accounts.json --base …   # every role + nobody, in one table (one credential per role)
+npx -p @hatake-fw/api hatake attack app.yaml --all-roles --login login.json --base … --since last.json --save last.json --fail-on new   # nightly: only what changed
 ```
 
 `probe` and `attack` are **read-only** (they never send `POST` / `PUT` / `DELETE`); pass

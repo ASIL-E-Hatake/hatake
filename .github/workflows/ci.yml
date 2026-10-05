@@ -2763,7 +2763,7 @@ jobs:
           # 引けない手引き（試験用）
 
           ```bash
-          npx hatake rules no-such-rule
+          npx -p @hatake-fw/api hatake rules no-such-rule
           ```
           MD
           if node tool/check-docs.mjs /tmp/rotten/lookup.md > /tmp/lookup.log 2>&1; then
@@ -2852,8 +2852,8 @@ jobs:
           ```
 
           ```bash
-          npx hatake explain page.yaml --rolez
-          npx hatake explane page.yaml
+          npx -p @hatake-fw/api hatake explain page.yaml --rolez
+          npx -p @hatake-fw/api hatake explane page.yaml
           ```
           MD
           if node tool/check-docs.mjs /tmp/rotten/stale.md > /tmp/rotten.log 2>&1; then
@@ -3983,8 +3983,8 @@ jobs:
           git add -A && git commit -qm after
           export PATH="$GITHUB_WORKSPACE/typescript/node_modules/.bin:$PATH"
           alias npx=true
-          # 断片の中の `npx hatake` を、いまビルドした CLI に向ける。
-          sed "s#npx hatake#node $GITHUB_WORKSPACE/typescript/dist/cli.js#g" /tmp/snippet.sh > run.sh
+          # 断片の中の `npx -p @hatake-fw/api hatake` を、いまビルドした CLI に向ける。
+          sed "s#npx -p @hatake-fw/api hatake#node $GITHUB_WORKSPACE/typescript/dist/cli.js#g" /tmp/snippet.sh > run.sh
           BASE="$BASE" DEFS=definitions GITHUB_OUTPUT=/tmp/out.txt bash run.sh
           grep -q 'changed=true' /tmp/out.txt
           grep -q 'definitions/order.yaml' body.md

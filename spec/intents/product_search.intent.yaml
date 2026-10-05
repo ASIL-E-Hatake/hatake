@@ -2,7 +2,7 @@
 # hatake — 意図の1枚の例。対になる定義は spec/examples/product_search.yaml。
 #
 # 「言ったこと」をここに置き、定義との対応を `hatake trace` が突き合わせる。
-#   npx hatake trace spec/examples/product_search.yaml \
+#   npx -p @hatake-fw/api hatake trace spec/examples/product_search.yaml \
 #     --intent spec/intents/product_search.intent.yaml
 #
 # text は**人が言ったまま**（要約すると読んだ側の解釈が混ざる）。日付は引用符付きで

@@ -343,7 +343,7 @@ export function doctor(io: DoctorIo, root: string, tool: DoctorReport["tool"]): 
       ? { level: "ok", message: "MCP（hatake）が設定にあります。" }
       : {
           level: "warn",
-          message: "MCP（hatake）が設定に見つかりません。AI に引かせるなら `claude mcp add hatake -- npx hatake-mcp` など。",
+          message: "MCP（hatake）が設定に見つかりません。AI に引かせるなら `claude mcp add hatake -- npx -p @hatake-fw/api hatake-mcp` など。",
         },
   );
 

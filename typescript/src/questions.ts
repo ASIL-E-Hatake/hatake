@@ -336,7 +336,7 @@ export function answeredBy(
       if (kind === undefined) {
         problems.push(
           `logic[${index}].answers: "${id}" という問いはありません` +
-            "（`npx hatake ask --kinds` で引けます）。",
+            "（`npx -p @hatake-fw/api hatake ask --kinds` で引けます）。",
         );
         continue;
       }
@@ -357,7 +357,7 @@ export function answeredBy(
     if (!byId.has(one.id)) {
       problems.push(
         `questions.decided[${index}]: "${one.id}" という問いはありません` +
-          "（`npx hatake ask --kinds` で引けます）。",
+          "（`npx -p @hatake-fw/api hatake ask --kinds` で引けます）。",
       );
       continue;
     }

@@ -60,7 +60,7 @@ prompt:
 
 一括（`scope: selection`）でも**聞くのは1回**で、選んだ行に同じ理由が付く。行ごとに聞かれたら誰も使わない。
 
-受け取れるのは `type: plugin` だけ。ほかの型は聞いた値の行き先が無いので、`npx hatake validate` が警告する。
+受け取れるのは `type: plugin` だけ。ほかの型は聞いた値の行き先が無いので、`npx -p @hatake-fw/api hatake validate` が警告する。
 
 ## 失敗したときの文言は onError
 
@@ -73,15 +73,15 @@ onError:
 
 **`onError` に遷移先は書けない。** `onSuccess` は書けるのに無いのは意図的で、失敗した画面から離れると、何が起きたか読めなくなり、直すべき行も視界から消える。
 
-`{error}` は失敗の理由。ほかに `{count}` / `{failed}` / `{total}`（件数）と `{failedKeys}`（失敗した行のキー）、`{skipped}`（送っていない件数）が書けるが、**埋まるのは一括（`scope: selection`）のときだけ**。埋まらない差し込みは文字のまま出てしまうので、`npx hatake validate` が押す前に言う（`placeholder-not-filled`）。
+`{error}` は失敗の理由。ほかに `{count}` / `{failed}` / `{total}`（件数）と `{failedKeys}`（失敗した行のキー）、`{skipped}`（送っていない件数）が書けるが、**埋まるのは一括（`scope: selection`）のときだけ**。埋まらない差し込みは文字のまま出てしまうので、`npx -p @hatake-fw/api hatake validate` が押す前に言う（`placeholder-not-filled`）。
 
 差し込みは**閉じた集合**。`{orderNo}` のように項目名を書いても埋まらず、そのまま文字で出る（レコードの値は文言に渡っていない）。開いた形なのは遷移のパラメータ（`$row.<項目名>`）だけで、そこと混同しやすい。書ける全部と「いつ埋まるか」は引ける。
 
 ```bash
-npx hatake reference --placeholders
+npx -p @hatake-fw/api hatake reference --placeholders
 ```
 
-`onError` を**書かなかった**ときは、失敗の理由がそのまま画面に出る（業務の言葉ではない）。書き忘れても動くので、`npx hatake explain` が「失敗したら理由がそのまま出る」と読み返しに出す。
+`onError` を**書かなかった**ときは、失敗の理由がそのまま画面に出る（業務の言葉ではない）。書き忘れても動くので、`npx -p @hatake-fw/api hatake explain` が「失敗したら理由がそのまま出る」と読み返しに出す。
 
 ## 一括は「一部だけ失敗」が普通
 

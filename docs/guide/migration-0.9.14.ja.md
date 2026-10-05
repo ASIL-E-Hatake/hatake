@@ -244,7 +244,7 @@ flutter pub get      # Flutter
 npm install          # TypeScript
 ./gradlew build      # Java
 # 3. まず検証にかける（**動かす前にここで出る**）
-npx hatake check definitions/app.yaml
+npx -p @hatake-fw/api hatake check definitions/app.yaml
 ```
 
 `check` が言うことは、**直さないと動かないもの**（事実）と

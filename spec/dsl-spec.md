@@ -423,7 +423,7 @@ report document; the renderer draws it at the paper's shape (a preview). Turning
 it into PDF or sending it to a printer is an opt-in adapter's job — the same
 position `QuerySpec` holds. `hatake_print` is that adapter (`reportPdf(page,
 rows)` returns PDF bytes; pure Dart, so a batch with no UI can print too). To read
-the paper before printing it, `npx hatake paper <file>` renders the same layout as
+the paper before printing it, `npx -p @hatake-fw/api hatake paper <file>` renders the same layout as
 text (so does the MCP tool `hatake_print_preview`); the coordinates come from the
 same computation, pinned by a [shared fixture](conformance/report_layout.json).
 **A definition needs no change to be printed** — margins, footers and page
@@ -631,7 +631,7 @@ quietly, and `print` on a page without a `report` is a warning
 (`print-without-report`) so you do not discover it by pressing. To take a list away
 as a file, use [`export`](#export-csv) instead — that works on any page.
 
-To read the paper before printing it, `npx hatake paper <file>` renders the same
+To read the paper before printing it, `npx -p @hatake-fw/api hatake paper <file>` renders the same
 coordinates as text; a [shared fixture](conformance/report_layout.json) pins them
 to what the printer produces.
 
@@ -1653,10 +1653,10 @@ This document is prose. To look up *what may be written here*, use
 drift from the spec (CI fails if it does).
 
 ```bash
-npx hatake reference                      # everything, as JSON
-npx hatake reference rowsPerPage          # by key name: which nodes take it, type, default
-npx hatake reference report               # node name / page kind too (every match)
-npx hatake reference --page-kind report   # only what that page kind can reach
+npx -p @hatake-fw/api hatake reference                      # everything, as JSON
+npx -p @hatake-fw/api hatake reference rowsPerPage          # by key name: which nodes take it, type, default
+npx -p @hatake-fw/api hatake reference report               # node name / page kind too (every match)
+npx -p @hatake-fw/api hatake reference --page-kind report   # only what that page kind can reach
 ```
 
 | Field | Contents |
@@ -1678,9 +1678,9 @@ fields — yet a definition can pass both and still not do what it says. Those a
 reported as warnings.
 
 ```bash
-npx hatake validate page.yaml                    # warnings are shown by default
-npx hatake validate page.yaml --warn-as-error    # fail CI on them
-npx hatake validate page.yaml --no-warn --json
+npx -p @hatake-fw/api hatake validate page.yaml                    # warnings are shown by default
+npx -p @hatake-fw/api hatake validate page.yaml --warn-as-error    # fail CI on them
+npx -p @hatake-fw/api hatake validate page.yaml --no-warn --json
 ```
 
 | Rule | What happens |
@@ -1756,9 +1756,9 @@ Neither strict parsing nor the schema can see this, because **neither knows what
 is registered**. So it is split in two:
 
 ```bash
-npx hatake refs page.yaml --needs-registration    # list what the definition demands
-npx hatake registry lib/main.dart --out reg.json  # read what the application registers
-npx hatake validate page.yaml --registry reg.json # compare the two
+npx -p @hatake-fw/api hatake refs page.yaml --needs-registration    # list what the definition demands
+npx -p @hatake-fw/api hatake registry lib/main.dart --out reg.json  # read what the application registers
+npx -p @hatake-fw/api hatake validate page.yaml --registry reg.json # compare the two
 ```
 
 `refs` lists without judging; `validate` compares **only the categories you
@@ -1768,7 +1768,7 @@ automatically, so the list only needs what you registered yourself.
 The place where those registrations are written can be **drafted**:
 
 ```bash
-npx hatake wire app.yaml --base /api --out lib/wiring.dart
+npx -p @hatake-fw/api hatake wire app.yaml --base /api --out lib/wiring.dart
 ```
 
 It emits a Dart `HatakeScope` listing every registration the definition demands
@@ -1878,8 +1878,8 @@ place** (`columns` directly on the page, `fields` directly under `form`) nor
 Those live in [`pitfalls.json`](pitfalls.json), in Japanese and English.
 
 ```bash
-npx hatake pitfalls groupBy --lang en   # wrong form → why → correct form
-npx hatake validate page.yaml           # unknown keys pull the matching fix in automatically
+npx -p @hatake-fw/api hatake pitfalls groupBy --lang en   # wrong form → why → correct form
+npx -p @hatake-fw/api hatake validate page.yaml           # unknown keys pull the matching fix in automatically
 ```
 
 Every entry is verified in CI: the wrong form really fails strict parsing and the
@@ -1892,8 +1892,8 @@ What a value adds up to, which fields become required in that state, whether a b
 pressed — none of that is knowable **without running it**.
 
 ```bash
-npx hatake run order_entry.yaml --draft --out order.scenario.json
-npx hatake run order_entry.yaml --scenario order.scenario.json --cover
+npx -p @hatake-fw/api hatake run order_entry.yaml --draft --out order.scenario.json
+npx -p @hatake-fw/api hatake run order_entry.yaml --scenario order.scenario.json --cover
 ```
 
 One case is "put these values in, and this is what happens".
@@ -1967,7 +1967,7 @@ test with** was still written by hand. The boundaries are in the definition, so 
 can build them.
 
 ```bash
-npx hatake fixtures order_entry.yaml --out fixtures.json
+npx -p @hatake-fw/api hatake fixtures order_entry.yaml --out fixtures.json
 ```
 
 ```json
@@ -2003,7 +2003,7 @@ The DSL's promise is "same definition, same answer". That the built-ins agree ac
 three editions is pinned by the conformance fixtures; **what a user adds** is not.
 
 ```bash
-npx hatake registry --compare app.json server.json
+npx -p @hatake-fw/api hatake registry --compare app.json server.json
 ```
 
 Both lists are written by the running app / server (`registrySnapshot` in Dart,
@@ -2062,9 +2062,9 @@ the whole definition. That question — the one an inventory review actually ask
 other way, so ask the tools.
 
 ```bash
-npx hatake index app.yaml --role staff          # only the screens that role can open
-npx hatake explain app.yaml --roles             # per role: where it is written, and what it sees
-npx hatake explain app.yaml --roles --matrix    # roles side by side, as a table
+npx -p @hatake-fw/api hatake index app.yaml --role staff          # only the screens that role can open
+npx -p @hatake-fw/api hatake explain app.yaml --roles             # per role: where it is written, and what it sees
+npx -p @hatake-fw/api hatake explain app.yaml --roles --matrix    # roles side by side, as a table
 ```
 
 ```
@@ -2103,9 +2103,9 @@ the whole definition. That question — the one an inventory review actually ask
 other way, so ask the tools.
 
 ```bash
-npx hatake index app.yaml --role staff          # only the screens that role can open
-npx hatake explain app.yaml --roles             # per role: where it is written, and what it sees
-npx hatake explain app.yaml --roles --matrix    # roles side by side, as a table
+npx -p @hatake-fw/api hatake index app.yaml --role staff          # only the screens that role can open
+npx -p @hatake-fw/api hatake explain app.yaml --roles             # per role: where it is written, and what it sees
+npx -p @hatake-fw/api hatake explain app.yaml --roles --matrix    # roles side by side, as a table
 ```
 
 ```
@@ -2177,8 +2177,8 @@ acceptance:                             # definition of done, in runnable form
 ```
 
 ```bash
-npx hatake trace order_search.yaml          # picks up order_search.intent.yaml next to it
-npx hatake trace order_search.yaml --require-intent
+npx -p @hatake-fw/api hatake trace order_search.yaml          # picks up order_search.intent.yaml next to it
+npx -p @hatake-fw/api hatake trace order_search.yaml --require-intent
 ```
 
 Four things get said, most valuable first:
@@ -2219,7 +2219,7 @@ Writing the first document by hand is friction, and the instruction already exis
 machine opens it up.
 
 ```bash
-npx hatake intent --draft --from ask.md --definition order_search.yaml \
+npx -p @hatake-fw/api hatake intent --draft --from ask.md --definition order_search.yaml \
   --out order_search.intent.yaml
 ```
 
@@ -2257,7 +2257,7 @@ the same as where an agent actually trips. Observed incidents live separately in
 [`failures.json`](failures.json).
 
 ```bash
-npx hatake failures unknown-repository   # what was written → what the tools said → the fix
+npx -p @hatake-fw/api hatake failures unknown-repository   # what was written → what the tools said → the fix
 ```
 
 What sets it apart is provenance, plus a field the pitfalls table has no room for:
@@ -2274,7 +2274,7 @@ A hand-written catalogue does not grow, so candidates can be harvested from a co
 of definitions instead.
 
 ```bash
-npx hatake harvest definitions/          # diagnoses that keep coming back, as candidates
+npx -p @hatake-fw/api hatake harvest definitions/          # diagnoses that keep coming back, as candidates
 ```
 
 Candidates are printed **with the human-written fields left empty** — "why someone
@@ -2291,7 +2291,7 @@ identifiers stay — so this form does carry definition text, and is off by defa
 ## Repairing what is uniquely repairable
 
 ```bash
-npx hatake fix page.yaml            # prints by default; --write overwrites
+npx -p @hatake-fw/api hatake fix page.yaml            # prints by default; --write overwrites
 ```
 
 Two kinds of repair only: **misspellings** (key names, repository / plugin / type names, page ids,
@@ -2308,7 +2308,7 @@ operator a condition cannot understand are left alone — with the reason printe
 ## Suggesting what is worth adding
 
 ```bash
-npx hatake advise page.yaml
+npx -p @hatake-fw/api hatake advise page.yaml
 ```
 
 Reports a list with no sortable column, a list with no filters, a key that is not in the list, a
@@ -2357,7 +2357,7 @@ word, and no word is left for a value the DSL no longer has.
 ## An index of screens
 
 ```bash
-npx hatake index definitions/ --find "customer search"
+npx -p @hatake-fw/api hatake index definitions/ --find "customer search"
 ```
 
 Collects the one-line summaries (`explain --brief`) into a table that answers "which screen is
@@ -2370,7 +2370,7 @@ lives, so a CLI-only index cannot answer "which of my screens does this?" from i
 
 | Edition | Entry point |
 |---|---|
-| TypeScript | `npx hatake index <path...>` / `buildIndex` |
+| TypeScript | `npx -p @hatake-fw/api hatake index <path...>` / `buildIndex` |
 | Dart | `ScreenIndex.ofApp(app)` (parsed) / `buildScreenIndex([IndexInput(...)])` (from text) |
 | Java | `ScreenIndex.build(List.of(new ScreenIndex.Source(file, text)))` |
 
@@ -2383,7 +2383,7 @@ them and buttons are not searchable there.
 ## Screens and navigation as a picture
 
 ```bash
-npx hatake diagram app.yaml --out app.svg
+npx -p @hatake-fw/api hatake diagram app.yaml --out app.svg
 ```
 
 Derives a picture (SVG) of screens, menu and navigation from an `app:` definition. Rows are
@@ -2420,7 +2420,7 @@ everything". A group's `roles` apply to its children. See
 Generated definitions get verbose (a default written out, an empty list left behind).
 
 ```bash
-npx hatake minimize page.yaml > short.yaml   # what was dropped goes to stderr
+npx -p @hatake-fw/api hatake minimize page.yaml > short.yaml   # what was dropped goes to stderr
 ```
 
 Only two kinds of specification are candidates: a value **equal to the schema default**,
@@ -2439,10 +2439,10 @@ A condition pointing the wrong way, or the wrong field made required, passes all
 them — so the last check is a human reading it. That is what `explain` prints.
 
 ```bash
-npx hatake explain page.yaml               # what this screen does (Japanese)
-npx hatake explain app.yaml --page <id>    # one page of an app, in detail
-npx hatake explain page.yaml --brief       # one line (a table of screens for an app)
-npx hatake explain --diff old.yaml new.yaml # what changed, in the screen's own words
+npx -p @hatake-fw/api hatake explain page.yaml               # what this screen does (Japanese)
+npx -p @hatake-fw/api hatake explain app.yaml --page <id>    # one page of an app, in detail
+npx -p @hatake-fw/api hatake explain page.yaml --brief       # one line (a table of screens for an app)
+npx -p @hatake-fw/api hatake explain --diff old.yaml new.yaml # what changed, in the screen's own words
 ```
 
 It describes the screen, **never naming DSL keys** — the reader does not need to know
@@ -2462,7 +2462,7 @@ The output is JA-only, like the warnings: it is prose about a business screen.
 
 An index by task lives in [`examples/README.md`](examples/README.md) (machine
 readable: [`examples/index.json`](examples/index.json); from the CLI:
-`npx hatake examples <what you want to do>`).
+`npx -p @hatake-fw/api hatake examples <what you want to do>`).
 
 See [`examples/customer_master.yaml`](examples/customer_master.yaml). For a whole
 application (menu + several pages) see

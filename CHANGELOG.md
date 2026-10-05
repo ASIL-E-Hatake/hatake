@@ -16,6 +16,27 @@
 
 DSL の版（`dsl_version`）はパッケージの版とは別に動く。DSL が上がった版にはその旨を書く。
 
+## 0.9.27 — 2026-10-05
+
+**手引きの `npx hatake …` を `npx -p @hatake-fw/api hatake …` に書き直した。** 枠組みは npm の
+registry に出していない（Release の tarball で配っている）。registry には `hatake` という
+**別の人の、名前が同じだけの道具**（シンボリックリンクを張る道具）が在るので、手元に入って
+いない場所で名前だけの `npx hatake …` を打つと、**それを取ってきて、こちらの引数で走らせて
+いた**。0.9.25 までは bin の不具合で何も出ずに終わっていたので表に出ず、0.9.26 で bin が
+動くようになって危なさが増した。
+
+- 修正（文書）: README・`llms.txt`（日英）・DSL 仕様（日英）・手引き・チュートリアル・サイトの散文・
+  `spec` の例と説明、のべ 64 ファイル 537 か所を `npx -p @hatake-fw/api hatake …`（MCP は
+  `… hatake-mcp`）に。入れてあれば手元の物を使い、入っていなければ **404 で止まる**（何も走らない。
+  `@hatake-fw` の名前は押さえてあるので別の人は出せない）。registry に出すことになっても同じ書き方で動く。
+- 修正（道具の文）: 道具が出す案内（警告・問い・`project --agents` が AGENTS.md / CLAUDE.md に
+  貼る断片・`doctor` の MCP の入れ方）も同じ書き方に。**AI が読んでそのまま叩く**所なので、文書より先に効く。
+- 修正（文書）: README と TypeScript 版の README が `npm i -D @hatake-fw/api`（registry から入れる）と
+  書いていた（404 になる）。Release の tarball を指す形にした。`npx --no hatake` は `--version` /
+  `--help` を npx 自身が食べるので採らなかった（[リリースと入れ方](docs/guide/release.ja.md)に表）。
+- 内部: 試験 `safeNpx.test.ts`＝手引き・道具の文に名前だけの `npx hatake` が紛れ込むと落ちる
+  （危なさを説明している行と履歴は除く）。直す前の文書に当てると 491 行で落ちることを確かめてある。
+
 ## 0.9.26 — 2026-10-05
 
 **`npx hatake …` が何も出さずに 0 で終わっていたのを直した。** 手引き・README・`llms.txt` に書いて

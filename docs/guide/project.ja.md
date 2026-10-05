@@ -53,8 +53,8 @@ naming:
 読み返しはこれ。
 
 ```bash
-npx hatake project                     # 隣の hatake.project.yaml を読む
-npx hatake project team/wholesale.project.yaml --json
+npx -p @hatake-fw/api hatake project                     # 隣の hatake.project.yaml を読む
+npx -p @hatake-fw/api hatake project team/wholesale.project.yaml --json
 ```
 
 ## 何を機械が見て、何を見ていないか
@@ -72,7 +72,7 @@ npx hatake project team/wholesale.project.yaml --json
 ## 名前と言葉を突き合わせる
 
 ```bash
-npx hatake advise page.yaml --project hatake.project.yaml
+npx -p @hatake-fw/api hatake advise page.yaml --project hatake.project.yaml
 ```
 
 `project-` で始まる助言が出る。
@@ -103,7 +103,7 @@ npx hatake advise page.yaml --project hatake.project.yaml
 レビュー用の1枚（`explain --review`）にも同じものが載る。
 
 ```bash
-npx hatake explain page.yaml --review --markdown
+npx -p @hatake-fw/api hatake explain page.yaml --review --markdown
 ```
 
 `advise` では出るのに `--review` では出ないと、1枚を読んだ人は「言われていない」と読むので、
@@ -112,7 +112,7 @@ npx hatake explain page.yaml --review --markdown
 ## 雛形を案件の形で出す
 
 ```bash
-npx hatake new crud --id order_entry --title 受注入力 --project hatake.project.yaml
+npx -p @hatake-fw/api hatake new crud --id order_entry --title 受注入力 --project hatake.project.yaml
 ```
 
 雛形が出す**業務の名前**が決めごとの形になる（DSL のキーは触らない＝`pageSize` は枠組みが決めた字なので、案件の決めごとの外）。
@@ -125,7 +125,7 @@ npx hatake new crud --id order_entry --title 受注入力 --project hatake.proje
 画面が 30 枚になっても用語が3語のまま）。数えられる。
 
 ```bash
-npx hatake project hatake.project.yaml --coverage definitions/
+npx -p @hatake-fw/api hatake project hatake.project.yaml --coverage definitions/
 ```
 
 ```text
@@ -153,8 +153,8 @@ npx hatake project hatake.project.yaml --coverage definitions/
 前回の棚卸し（`--json` の出力）を渡すと、移り変わりが出る。
 
 ```bash
-npx hatake project hatake.project.yaml --coverage definitions/ --json > .hatake/coverage.json
-npx hatake project hatake.project.yaml --coverage definitions/ --since .hatake/coverage.json
+npx -p @hatake-fw/api hatake project hatake.project.yaml --coverage definitions/ --json > .hatake/coverage.json
+npx -p @hatake-fw/api hatake project hatake.project.yaml --coverage definitions/ --since .hatake/coverage.json
 ```
 
 ```text
@@ -180,7 +180,7 @@ npx hatake project hatake.project.yaml --coverage definitions/ --since .hatake/c
 白紙から書くのが重いなら、**もう在る資料**（提案書・要件メモ）から起こせる。
 
 ```bash
-npx hatake project --draft --from docs/要件メモ.md --out hatake.project.yaml
+npx -p @hatake-fw/api hatake project --draft --from docs/要件メモ.md --out hatake.project.yaml
 ```
 
 拾うのは**見出しのある所だけ**で、書いてある字のまま（要約しない・言い換えない）。
@@ -205,7 +205,7 @@ npx hatake project --draft --from docs/要件メモ.md --out hatake.project.yaml
 けれど**揺れているかどうか**は数えられる。
 
 ```bash
-npx hatake project hatake.project.yaml --drift definitions/
+npx -p @hatake-fw/api hatake project hatake.project.yaml --drift definitions/
 ```
 
 ```text
@@ -231,7 +231,7 @@ npx hatake project hatake.project.yaml --drift definitions/
 出る。貼ったあとはこうなる。
 
 ```bash
-npx hatake project hatake.project.yaml --drift definitions/ --draft
+npx -p @hatake-fw/api hatake project hatake.project.yaml --drift definitions/ --draft
 ```
 
 ```yaml
@@ -255,8 +255,8 @@ glossary:
 揺れは案件の途中で**新しい画面を足した回**に入る。そこで決めるのがいちばん軽い。
 
 ```bash
-npx hatake project hatake.project.yaml --drift definitions/ --json > .hatake/drift.json
-npx hatake project hatake.project.yaml --drift definitions/ --since .hatake/drift.json
+npx -p @hatake-fw/api hatake project hatake.project.yaml --drift definitions/ --json > .hatake/drift.json
+npx -p @hatake-fw/api hatake project hatake.project.yaml --drift definitions/ --since .hatake/drift.json
 ```
 
 **消えた揺れは「直した」とは限らない**（その画面を消しただけかもしれない）ので、
@@ -293,7 +293,7 @@ DSL になり、枠組みが業務を持つことになる＝[CLAUDE.md](../../C
 / `plugin` / `server` / `outside`）。迷ったら引く。
 
 ```bash
-npx hatake where 締め処理
+npx -p @hatake-fw/api hatake where 締め処理
 ```
 
 縛りは2つだけ。どちらも後から効かせるため。
@@ -319,7 +319,7 @@ npx hatake where 締め処理
 「命名の揺れは直す」と決めたなら、その案件では落としてよい。
 
 ```bash
-npx hatake advise app.yaml --project hatake.project.yaml --project-as-error
+npx -p @hatake-fw/api hatake advise app.yaml --project hatake.project.yaml --project-as-error
 ```
 
 `project-` で始まる助言が1件でも残っていれば 1 を返す（CI に置く用）。**組み込みの
@@ -328,7 +328,7 @@ npx hatake advise app.yaml --project hatake.project.yaml --project-as-error
 
 ### 決めていないことの答えを、ここに書く
 
-`logic` は**問い返しの答えの置き場所**でもある。`npx hatake ask <定義>` が出す問い
+`logic` は**問い返しの答えの置き場所**でもある。`npx -p @hatake-fw/api hatake ask <定義>` が出す問い
 （排他・採番・論理削除・端数…＝定義に書けないもの）に答えたら、その1行に印を付ける。
 
 ```yaml
@@ -351,7 +351,7 @@ logic:
 登録済みの一覧を渡すと、そこまで突き合わせる。
 
 ```bash
-npx hatake advise app.yaml --project hatake.project.yaml --registry hatake-registry.json
+npx -p @hatake-fw/api hatake advise app.yaml --project hatake.project.yaml --registry hatake-registry.json
 ```
 
 | 言うこと | いつ |
@@ -362,7 +362,7 @@ npx hatake advise app.yaml --project hatake.project.yaml --registry hatake-regis
 いない側は `project-logic-unused` の担当（2つの別の穴を1つの規則にしない）。逆は言わない
 ＝登録が在るのに前書きに宣言が無いのは普通のこと（アプリには前書きに書かない登録もある）。
 
-一覧は `npx hatake registry <path...>` でアプリの実装から作れる。
+一覧は `npx -p @hatake-fw/api hatake registry <path...>` でアプリの実装から作れる。
 
 ### 言われた規則が、誰かの担当になったか
 
@@ -386,7 +386,7 @@ asked:
 
 MCP を繋いでいれば `hatake_project` が同じ1枚を読む。道具の順番は**これが最初**で、次が「言われたことを1枚にする」（`hatake_intent`）。
 
-繋いでいないなら、最初の1往復で `npx hatake project` の出力をそのまま貼るのでも効く（読み返しの形は人にも AI にも同じものを渡している）。
+繋いでいないなら、最初の1往復で `npx -p @hatake-fw/api hatake project` の出力をそのまま貼るのでも効く（読み返しの形は人にも AI にも同じものを渡している）。
 
 ## AI の設定ファイルに貼る
 
@@ -395,9 +395,9 @@ MCP を繋がない使い方（Copilot・Cursor・ふつうのチャット）だ
 直したのに設定ファイルが古い**が必ず起きる。なので**1枚を正にして、貼る側を生成する**。
 
 ```bash
-npx hatake project --agents                      # 貼る断片（印つきの Markdown）
-npx hatake project --agents --merge AGENTS.md    # 2回目以降：印の中だけを差し替える
-npx hatake project --agents --merge AGENTS.md --check   # CI：貼った節が古くないか
+npx -p @hatake-fw/api hatake project --agents                      # 貼る断片（印つきの Markdown）
+npx -p @hatake-fw/api hatake project --agents --merge AGENTS.md    # 2回目以降：印の中だけを差し替える
+npx -p @hatake-fw/api hatake project --agents --merge AGENTS.md --check   # CI：貼った節が古くないか
 ```
 
 出るのはこういう形。
@@ -406,7 +406,7 @@ npx hatake project --agents --merge AGENTS.md --check   # CI：貼った節が�
 <!-- hatake:project:begin -->
 ## この案件について
 
-> ここは `hatake.project.yaml` から生成した節です（`npx hatake project --agents`）。
+> ここは `hatake.project.yaml` から生成した節です（`npx -p @hatake-fw/api hatake project --agents`）。
 > **直すときは前書きを直して貼り直す**（同じことを2か所に書くと必ず食い違う）。
 
 卸売の受注。営業が電話で受けた注文を入れて、出荷指示まで出す。

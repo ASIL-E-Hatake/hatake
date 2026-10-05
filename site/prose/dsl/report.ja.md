@@ -126,14 +126,14 @@ import { downloadCsv, downloadPdf } from "@hatake-fw/runtime";
 
 `column.width` は紙の上ではポイント（1pt = 1/72 inch）として使われ、指定の無い列が残りを分ける。全部足して紙幅を超えたら全体を同じ率で縮めるので、**紙から溢れることはない**（`rowsPerPage` が多いときは行の高さと文字も縮む）。
 
-ただし「縮めて収める」は、刷ってから読めないと分かるということでもある。`npx hatake validate` が**刷る前に**言う。
+ただし「縮めて収める」は、刷ってから読めないと分かるということでもある。`npx -p @hatake-fw/api hatake validate` が**刷る前に**言う。
 
 ```
 警告 page.table.columns: A4 縦の紙幅 595.28pt に対して、列は最低 600pt 要ります
      （幅の指定がある 3 列で 600pt）。刷ると全体が縮められて、どの列も読めなくなります。
 ```
 
-刷る前に紙そのものを見るなら `npx hatake paper <file>`。列の並び・小計の位置・右寄せ・切れた文字が文字で読める（行を渡さなければ見本の行を作る）。
+刷る前に紙そのものを見るなら `npx -p @hatake-fw/api hatake paper <file>`。列の並び・小計の位置・右寄せ・切れた文字が文字で読める（行を渡さなければ見本の行を作る）。
 
 画面の `width` をそのまま持ってくると（px のつもりで 200 を3列）これに当たる。用紙の実寸は [`spec/papers.json`](https://github.com/ASIL-E-Hatake/hatake/blob/main/spec/papers.json) が正で、刷る側と警告が同じ数を見ている。
 

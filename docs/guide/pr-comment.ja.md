@@ -66,7 +66,7 @@ jobs:
           for file in $CHANGED; do
             # --if-changed: 見え方が変わっていなければ**何も出さない**
             # （キーの並べ替え・既定値の明示だけの変更でコメントを増やさない）。
-            npx hatake explain --diff --git "$BASE...HEAD" "$file" \
+            npx -p @hatake-fw/api hatake explain --diff --git "$BASE...HEAD" "$file" \
               --markdown --if-changed > one.md || continue
             [ -s one.md ] || continue
             # **計算を触った回だけ**依存の図を足す（毎回貼ると読まれない）。
@@ -76,7 +76,7 @@ jobs:
             if git diff --unified=0 "$BASE"...HEAD -- "$file" | grep -q 'computed'; then
               # --fenced が Markdown の囲みごと出す（囲みを手で書くと、この手引き自身の
               # 囲みが入れ子になって、載せた断片を抜き出す側が途中で切れる）。
-              npx hatake diagram "$file" --computed --all \
+              npx -p @hatake-fw/api hatake diagram "$file" --computed --all \
                 --format mermaid --fenced > g.md
               {
                 echo "<details><summary>計算の依存（この画面）</summary>"
@@ -96,7 +96,7 @@ jobs:
                      | grep '^-' | grep -oE 'field: [A-Za-z0-9_]+' \
                      | sed 's/field: //' | sort -u || true)
             for name in $GONE; do
-              npx hatake ask "$file" --impact "$name" > gone.txt 2>/dev/null || continue
+              npx -p @hatake-fw/api hatake ask "$file" --impact "$name" > gone.txt 2>/dev/null || continue
               {
                 echo "<details><summary>\"$name\" はまだ使われています</summary>"
                 echo
@@ -171,10 +171,10 @@ jobs:
 
 ```yaml no-check:GitHub Actions のワークフロー（手順の断片）
       - name: 壊す変更なら落とす
-        run: npx hatake diff --git "$BASE...HEAD" "$file" --caution-as-error
+        run: npx -p @hatake-fw/api hatake diff --git "$BASE...HEAD" "$file" --caution-as-error
 
       - name: 書いたのに効かない指定があれば落とす
-        run: npx hatake validate --warn-as-error "$file"
+        run: npx -p @hatake-fw/api hatake validate --warn-as-error "$file"
 ```
 
 | 道具 | 役割 | 終了コード |
@@ -190,7 +190,7 @@ jobs:
 英語のレビューが要る PR では、変化の言い直しではなく**変更後の説明**を貼る。
 
 ```bash
-npx hatake explain "$file" --lang en --markdown > body.md
+npx -p @hatake-fw/api hatake explain "$file" --lang en --markdown > body.md
 ```
 
 ## 貼れない環境（fork からの PR）

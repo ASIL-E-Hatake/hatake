@@ -5,8 +5,8 @@
 機械可読版は [`index.json`](index.json)。CLI からも引ける:
 
 ```bash
-npx hatake examples 帳票      # やりたいこと・機能名・業務用語で絞り込み
-npx hatake examples --json    # ツール向け
+npx -p @hatake-fw/api hatake examples 帳票      # やりたいこと・機能名・業務用語で絞り込み
+npx -p @hatake-fw/api hatake examples --json    # ツール向け
 ```
 
 全部 strict パース＋JSON Schema 検証を CI で通しているので、**そのまま真似して大丈夫**。
@@ -51,10 +51,10 @@ npx hatake examples --json    # ツール向け
 ## 書いたら検証する
 
 ```bash
-npx hatake validate spec/examples/*.yaml
+npx -p @hatake-fw/api hatake validate spec/examples/*.yaml
 ```
 
-キーの意味・型・既定値・取れる値は [DSL リファレンス](../reference.json)（`npx hatake reference <キー名>`）で引ける。間違えたときは [よくある間違い](../pitfalls.json)（`npx hatake pitfalls <キー名>`）。仕様の読み物版は [DSL 仕様](../dsl-spec.ja.md)。
+キーの意味・型・既定値・取れる値は [DSL リファレンス](../reference.json)（`npx -p @hatake-fw/api hatake reference <キー名>`）で引ける。間違えたときは [よくある間違い](../pitfalls.json)（`npx -p @hatake-fw/api hatake pitfalls <キー名>`）。仕様の読み物版は [DSL 仕様](../dsl-spec.ja.md)。
 
 ## 例を足すとき
 

@@ -41,25 +41,25 @@ actions:
 1枚の定義を読んでも出ない値なので、道具に聞く。
 
 ```
-$ npx hatake explain app.yaml
+$ npx -p @hatake-fw/api hatake explain app.yaml
 ## 画面を開ける人
   ・受注照会（order_search） … 誰でも開ける
   ・顧客マスタ（customer_master） … admin だけ
   ・単価マスタ（price_master） … 誰も開けない（入口の権限が食い違っている）
 ```
 
-最後の行のような**誰も開けない画面**は、定義としては通るし、画面を見ても気づけない（staff の画面に admin 限定のボタンでだけ繋がっている、など）。`npx hatake validate` が警告で言い、`npx hatake diagram --roles` が図に重ね、`explain` が文で言う。3つとも同じ計算を使っているので、答えは食い違わない。
+最後の行のような**誰も開けない画面**は、定義としては通るし、画面を見ても気づけない（staff の画面に admin 限定のボタンでだけ繋がっている、など）。`npx -p @hatake-fw/api hatake validate` が警告で言い、`npx -p @hatake-fw/api hatake diagram --roles` が図に重ね、`explain` が文で言う。3つとも同じ計算を使っているので、答えは食い違わない。
 
 `--page <id>` を付けると、その画面の入口まで出る。直す場所は入口なので、これが無いと「食い違っている」と言われても動けない。
 
 ```
-$ npx hatake explain app.yaml --page price_master
+$ npx -p @hatake-fw/api hatake explain app.yaml --page price_master
 ## この画面を開ける人
   ・開けるのは … 誰も開けない（入口はあるが、権限が食い違っている）
   ・入口「単価」（customer_master から） … manager だけが通れる
 ```
 
-入口の権限を1つ直すと、**遠くの画面**が開けなくなることがある。定義を直したときは `npx hatake explain --diff --git main...HEAD app.yaml` で読み返すと、その画面の「開ける人」が変わったことが出る。
+入口の権限を1つ直すと、**遠くの画面**が開けなくなることがある。定義を直したときは `npx -p @hatake-fw/api hatake explain --diff --git main...HEAD app.yaml` で読み返すと、その画面の「開ける人」が変わったことが出る。
 
 ## CSV にも効く
 
@@ -100,7 +100,7 @@ const { accepted, dropped } = acceptRecordIn(definition, "employee_master", req.
 書いてあることは読まれないので、**機械に試させる**のが確実。
 
 ```bash
-npx hatake attack app.yaml --all-roles --accounts accounts.json --base http://localhost:8080/api
+npx -p @hatake-fw/api hatake attack app.yaml --all-roles --accounts accounts.json --base http://localhost:8080/api
 ```
 
 ```
@@ -116,7 +116,7 @@ npx hatake attack app.yaml --all-roles --accounts accounts.json --base http://lo
 手で叩く道具は、忘れられたら手書きと同じ。CI に置くには2つ足りない。**トークンは期限で落ちる**（`--token` では続かない）し、**出力は毎晩同じ**（人は同じ表を読み続けられない）。
 
 ```bash
-npx hatake attack app.yaml --all-roles --login login.json --base "$BASE" \
+npx -p @hatake-fw/api hatake attack app.yaml --all-roles --login login.json --base "$BASE" \
   --since last.json --save last.json --fail-on new
 ```
 
@@ -150,10 +150,10 @@ HatakeScope(
 
 | | どうなるか |
 | --- | --- |
-| 定義側の綴り違い | `npx hatake validate --registry` が「役割 "managr" はアプリが配る役割の中にありません」と言う（近い名前も出す）。`roles:` に書いたものだけでなく、`maxRows.byRole` / `batchSize.byRole` に書いた役割も見る |
+| 定義側の綴り違い | `npx -p @hatake-fw/api hatake validate --registry` が「役割 "managr" はアプリが配る役割の中にありません」と言う（近い名前も出す）。`roles:` に書いたものだけでなく、`maxRows.byRole` / `batchSize.byRole` に書いた役割も見る |
 | アプリ側の綴り違い | 配った役割が語彙に無ければ、**開発中に気づける**（`assert`）。`manager` を `manger` で配っている、が画面を見ずに分かる |
 
-一覧の作り方は登録済み一覧と同じ2通り（`npx hatake registry <path>` でソースを読む／`registrySnapshot(scope)` で動いているアプリに聞く）。ソースを読む側は `knownRoles:` に**その場で並んでいる名前**（同じファイルの変数なら1回だけ辿る）を読み、読めなければ**読めないと言う**（空の一覧として扱うと「アプリは役割を1つも配っていない」という嘘になる）。
+一覧の作り方は登録済み一覧と同じ2通り（`npx -p @hatake-fw/api hatake registry <path>` でソースを読む／`registrySnapshot(scope)` で動いているアプリに聞く）。ソースを読む側は `knownRoles:` に**その場で並んでいる名前**（同じファイルの変数なら1回だけ辿る）を読み、読めなければ**読めないと言う**（空の一覧として扱うと「アプリは役割を1つも配っていない」という嘘になる）。
 
 役割は**消す相手ではない**ので、逆向きの棚卸し（`refs --unused`）には出さない。定義が使っていないからといって、アプリの認可から消す話にはならないので。
 
@@ -164,7 +164,7 @@ HatakeScope(
 書く前・直したあとに、定義に出てくる役割を数える。
 
 ```bash uses:roles_app.yaml
-npx hatake explain app.yaml --roles
+npx -p @hatake-fw/api hatake explain app.yaml --roles
 ```
 
 ```
@@ -215,8 +215,8 @@ manager … 2 か所に書いてある
 5か所に散って書けるということは、**役割から引くには定義を全部開く**ということでもある。人事異動のたびに聞かれるのは逆向き（「この役割で何ができるか」）なので、道具に聞く。
 
 ```bash uses:roles_app.yaml
-npx hatake index app.yaml --role staff          # その役割で開ける画面だけ
-npx hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×の表
+npx -p @hatake-fw/api hatake index app.yaml --role staff          # その役割で開ける画面だけ
+npx -p @hatake-fw/api hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×の表
 ```
 
 ```
@@ -254,8 +254,8 @@ npx hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×�
 5か所に散って書けるということは、**役割から引くには定義を全部開く**ということでもある。人事異動のたびに聞かれるのは逆向き（「この役割で何ができるか」）なので、道具に聞く。
 
 ```bash uses:roles_app.yaml
-npx hatake index app.yaml --role staff          # その役割で開ける画面だけ
-npx hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×の表
+npx -p @hatake-fw/api hatake index app.yaml --role staff          # その役割で開ける画面だけ
+npx -p @hatake-fw/api hatake explain app.yaml --roles --matrix    # 役割を横に並べた○×の表
 ```
 
 ```
@@ -302,7 +302,7 @@ app:
 ```
 
 ```
-$ npx hatake validate app.yaml
+$ npx -p @hatake-fw/api hatake validate app.yaml
 警告 app.pages[1].table.columns[3].roles: 役割 "mgr" はアプリが配る役割の中にありません。
      その役割で出し分けている所は**誰にも見えません**（列もボタンも出ません）。
      → もしかして "manager" ですか。

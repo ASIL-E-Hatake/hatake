@@ -1,5 +1,5 @@
 {
-  "$comment": "担当の割り振り（機械可読）。『これは hatake で書けるのか、それとも自分で書くのか』を引くための表。区分は4つだけ＝definition（定義で書ける）/ plugin（アプリ側に登録して足す）/ server（サーバの担当）/ outside（枠組みの外＝人が決める・別のシステム）。**判断表であって実装ではない**（ワークフローエンジンを作る話ではない）。notProvided は CLAUDE.md の Scope『Framework が提供しないもの』の写しで、そこに書いてある字が CLAUDE.md に無くなったら試験が落ちる＝散文と表が食い違えない。いまは日本語だけ（英語は束『英語』の担当）。引く口は npx hatake where <やりたいこと> と MCP の hatake_where。",
+  "$comment": "担当の割り振り（機械可読）。『これは hatake で書けるのか、それとも自分で書くのか』を引くための表。区分は4つだけ＝definition（定義で書ける）/ plugin（アプリ側に登録して足す）/ server（サーバの担当）/ outside（枠組みの外＝人が決める・別のシステム）。**判断表であって実装ではない**（ワークフローエンジンを作る話ではない）。notProvided は CLAUDE.md の Scope『Framework が提供しないもの』の写しで、そこに書いてある字が CLAUDE.md に無くなったら試験が落ちる＝散文と表が食い違えない。いまは日本語だけ（英語は束『英語』の担当）。引く口は npx -p @hatake-fw/api hatake where <やりたいこと> と MCP の hatake_where。",
 
   "notProvided": [
     { "id": "business-logic", "claudeMd": "Business Logic" },
