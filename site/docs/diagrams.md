@@ -25,7 +25,7 @@ CI が作り直して差分を見ているので「言葉を直したのに絵�
 `orderRepo`）。目で見ても気づけないので機械に言わせる。
 
 ```bash
-npx hatake refs page.yaml --needs-registration      # 定義が要求しているもの
+npx -p @hatake-fw/api hatake refs page.yaml --needs-registration      # 定義が要求しているもの
 npx hatake registry lib/main.dart --out hatake-registry.json  # アプリが登録しているもの
 npx hatake validate page.yaml --registry hatake-registry.json # 突き合わせる
 ```
@@ -45,7 +45,7 @@ npx hatake validate page.yaml --registry hatake-registry.json # 突き合わせ�
 ![受注アプリの画面と遷移](/diagrams/sales-app-flow.svg)
 
 ```bash
-npx hatake diagram app.yaml --out app.svg
+npx -p @hatake-fw/api hatake diagram app.yaml --out app.svg
 ```
 
 段は「メニューから開ける画面 → そこから遷移で開く画面 → …」。この並べ方にすると**どこからも開けない画面**（メニューにも遷移先にも無い）が自然に落ちてくる。画面が増えたときに一覧では気づけないやつが、図だと目に入る。
@@ -68,7 +68,7 @@ npx hatake diagram app.yaml --out app.svg
 ![admin で通れる道](/diagrams/roles-app-admin.svg)
 
 ```bash
-npx hatake diagram app.yaml --role admin --out admin.svg
+npx -p @hatake-fw/api hatake diagram app.yaml --role admin --out admin.svg
 ```
 
 知らない役割名はエラーにする。綴り違いを黙って通すと「全部開ける」に見えて、一番まずい読み違えになるので。
@@ -80,9 +80,9 @@ npx hatake diagram app.yaml --role admin --out admin.svg
 **どこを動かせばいいか**は表を目で追うことになるので、絵にする。
 
 ```bash
-npx hatake diagram spec/examples/order_entry.yaml --computed
-npx hatake diagram app.yaml --computed --all    # 画面ぜんぶを1枚に（画面ごとに囲む）
-npx hatake diagram app.yaml --computed --all --format mermaid --fenced  # 囲みごと（貼る用）
+npx -p @hatake-fw/api hatake diagram spec/examples/order_entry.yaml --computed
+npx -p @hatake-fw/api hatake diagram app.yaml --computed --all    # 画面ぜんぶを1枚に（画面ごとに囲む）
+npx -p @hatake-fw/api hatake diagram app.yaml --computed --all --format mermaid --fenced  # 囲みごと（貼る用）
 ```
 
 箱の中には**計算の中身**が出る（`op`・何を畳むか・**どの行に絞るか**）。線は「どこから
@@ -142,8 +142,8 @@ flowchart LR
 画面の図も同じ口を通る。
 
 ```bash
-npx hatake diagram app.yaml --format mermaid   # PR の本文にそのまま貼れる
-npx hatake diagram app.yaml --format dot       # Graphviz に渡す
+npx -p @hatake-fw/api hatake diagram app.yaml --format mermaid   # PR の本文にそのまま貼れる
+npx -p @hatake-fw/api hatake diagram app.yaml --format dot       # Graphviz に渡す
 ```
 
 箱の中身（誰が開けるか）も一緒に運ぶ。見出しだけの箱が並んだ図は、貼っても読めないので。

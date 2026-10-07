@@ -69,7 +69,7 @@ naming:
 読み返すのはこれ。
 
 ```bash
-npx hatake project
+npx -p @hatake-fw/api hatake project
 ```
 
 置いておけば、道具は**渡さなくても読む**（定義の隣にあれば拾う）。
@@ -79,7 +79,7 @@ npx hatake project
 概要を紙で持っているだけなら「読んでね」で終わる。1枚に落とすと、**そのうち一部は機械が突き合わせられる**。
 
 ```bash
-npx hatake advise page.yaml --project hatake.project.yaml
+npx -p @hatake-fw/api hatake advise page.yaml --project hatake.project.yaml
 ```
 
 ```
@@ -97,12 +97,12 @@ npx hatake advise page.yaml --project hatake.project.yaml
 雛形も決めごとの形で出る。
 
 ```bash
-npx hatake new crud --id order_entry --title 受注入力 --project hatake.project.yaml
+npx -p @hatake-fw/api hatake new crud --id order_entry --title 受注入力 --project hatake.project.yaml
 ```
 
 ## 縛れているものと、縛れていないもの
 
-ここは正直に分けて見ておいたほうがいい。読み返し（`npx hatake project`）は毎回これを言う。
+ここは正直に分けて見ておいたほうがいい。読み返し（`npx -p @hatake-fw/api hatake project`）は毎回これを言う。
 
 | 書いたもの | 誰が見るか |
 | --- | --- |
@@ -118,9 +118,9 @@ MCP を繋いでいれば、最初に読む道具がこれになる（`hatake_pr
 繋がない使い方（Copilot・Cursor・ふつうのチャット）なら、`AGENTS.md` や `CLAUDE.md` に貼る断片を出せる。
 
 ```bash
-npx hatake project --agents                      # 貼る断片（印つき）
-npx hatake project --agents --merge AGENTS.md    # 2回目以降：印の中だけを差し替える
-npx hatake project --agents --merge AGENTS.md --check   # CI：貼った節が古くないか
+npx -p @hatake-fw/api hatake project --agents                      # 貼る断片（印つき）
+npx -p @hatake-fw/api hatake project --agents --merge AGENTS.md    # 2回目以降：印の中だけを差し替える
+npx -p @hatake-fw/api hatake project --agents --merge AGENTS.md --check   # CI：貼った節が古くないか
 ```
 
 同じことを2か所に手で書くと、**前書きを直したのに設定ファイルが古い**が必ず起きる。だから1枚を正にして、貼る側は生成する。ブランチ名やコミット規約は前書きが持たない（定義に現れないものは機械が突き合わせられない）ので、そこは印の外に手で書いておけば、貼り直しても消えない。
@@ -134,10 +134,10 @@ npx hatake project --agents --merge AGENTS.md --check   # CI：貼った節が�
 引ける表になっている。
 
 ```bash
-npx hatake where 締め処理        # → 枠組みの外（なぜ持たないか＋画面側でできること）
-npx hatake where 承認            # → 枠組みの外（画面は状態を見せるだけ）
-npx hatake where 一覧の並べ替え   # → 定義で書ける（書くキーと次に引く道具）
-npx hatake where --where outside # 持たないものの一覧
+npx -p @hatake-fw/api hatake where 締め処理        # → 枠組みの外（なぜ持たないか＋画面側でできること）
+npx -p @hatake-fw/api hatake where 承認            # → 枠組みの外（画面は状態を見せるだけ）
+npx -p @hatake-fw/api hatake where 一覧の並べ替え   # → 定義で書ける（書くキーと次に引く道具）
+npx -p @hatake-fw/api hatake where --where outside # 持たないものの一覧
 ```
 
 区分は4つ。`definition`（定義で書ける）／`plugin`（アプリ側に登録して足す）／`server`（サーバの担当）／**`outside`（枠組みの外）**。
@@ -145,7 +145,7 @@ npx hatake where --where outside # 持たないものの一覧
 長い依頼文なら、まとめて仕分けられる（**外が混ざっていたら先に言う**）。
 
 ```bash
-npx hatake where --from 依頼.md
+npx -p @hatake-fw/api hatake where --from 依頼.md
 ```
 
 ```
@@ -175,7 +175,7 @@ logic:
 書くのは**名前と担当と理由だけ**（規則の中身は書かない）。こうしておくと2つ効く。
 
 - AI が最初に読む1枚に「これは外」が入る（`--agents` の断片にも載る）
-- **外の担当と書いたのに画面から呼んでいたら、道具が言う**（`npx hatake advise --project`）
+- **外の担当と書いたのに画面から呼んでいたら、道具が言う**（`npx -p @hatake-fw/api hatake advise --project`）
 - 言われた規則に担当が付いたかを突き合わせられる（意図の1枚から `covers: [logic:orderCloseGuard]` で指す → [言ったことを残す](/design)）
 
 AI に「締め処理も作って」と頼むと、外だと言えないまま Dart を書き始める。これは**この Framework でいちばんやってほしくないこと**なので、道具の側でも止めるようにしてある（MCP なら `hatake_where`）。
@@ -190,7 +190,7 @@ AI に「締め処理も作って」と頼むと、外だと言えないまま D
 画面を1枚書いたら、聞かせる。
 
 ```bash
-npx hatake ask order_entry.yaml
+npx -p @hatake-fw/api hatake ask order_entry.yaml
 ```
 
 返る問いには**誰の担当か**（サーバ／枠組みの外）と、**この定義で聞いた理由**
@@ -213,7 +213,7 @@ logic:
 はよくある。育ち具合は数えられる。
 
 ```bash
-npx hatake project hatake.project.yaml --coverage definitions/
+npx -p @hatake-fw/api hatake project hatake.project.yaml --coverage definitions/
 ```
 
 ```text
@@ -237,7 +237,7 @@ npx hatake project hatake.project.yaml --coverage definitions/
 前回の棚卸しを渡すと、移り変わりが出る。
 
 ```bash
-npx hatake project hatake.project.yaml --coverage definitions/ --since 前回.json
+npx -p @hatake-fw/api hatake project hatake.project.yaml --coverage definitions/ --since 前回.json
 ```
 
 「画面だけ増えて用語が3語のまま」は事実として出る。ただし**増えていない＝悪い、とは
@@ -248,7 +248,7 @@ npx hatake project hatake.project.yaml --coverage definitions/ --since 前回.js
 白紙から書くのが重いなら、もう在る資料（提案書・要件メモ）から起こせる。
 
 ```bash
-npx hatake project --draft --from 要件メモ.md --out hatake.project.yaml
+npx -p @hatake-fw/api hatake project --draft --from 要件メモ.md --out hatake.project.yaml
 ```
 
 拾うのは**見出しのある所だけ**で、書いてある字のまま。拾えなかった行は捨てずに出るし、
@@ -262,7 +262,7 @@ npx hatake project --draft --from 要件メモ.md --out hatake.project.yaml
 途中から前書きを入れるなら、辞書を白紙から書かなくていい。**揺れている所**は数えられる。
 
 ```bash
-npx hatake project hatake.project.yaml --drift definitions/
+npx -p @hatake-fw/api hatake project hatake.project.yaml --drift definitions/
 ```
 
 ```text
@@ -290,7 +290,7 @@ npx hatake project hatake.project.yaml --drift definitions/
 決めたなら、CI で落とせる。
 
 ```bash
-npx hatake advise app.yaml --project hatake.project.yaml --project-as-error
+npx -p @hatake-fw/api hatake advise app.yaml --project hatake.project.yaml --project-as-error
 ```
 
 落ちるのは案件の決めごとだけ（組み込みの助言では落ちない）。旗を渡さなければ絶対に
@@ -321,11 +321,11 @@ npx hatake advise app.yaml --project hatake.project.yaml --registry hatake-regis
 ## 作る順番
 
 1. **プロジェクト概要を決める**（このページ。1時間）
-2. **`hatake.project.yaml` に落とす**（`npx hatake project` で読み返す）
+2. **`hatake.project.yaml` に落とす**（`npx -p @hatake-fw/api hatake project` で読み返す）
 3. AI に渡す（MCP、または `--agents` で `AGENTS.md` に貼る）
 4. 画面ごとに頼む（[頼み方のテンプレ](/asking)）→ 言われたことを残す（[意図の1枚](/design)）
 5. 定義を書く・書かせる（[機能別の書き方](/dsl/)）→ 検証して読み返す（[AI に書かせる](/ai)）
-6. 決めごとと突き合わせる（`npx hatake advise --project`）
+6. 決めごとと突き合わせる（`npx -p @hatake-fw/api hatake advise --project`）
 
 ## よくある失敗
 

@@ -11,8 +11,8 @@ jdk:
   - openjdk21
 install:
   # 中身は java/jitpack-install.sh（`sh gradlew publishToMavenLocal -x test`）。
-  # wrapper の jar を JitPack がときどき開けない（v0.9.26 / v0.9.28）ので、そのときは
-  # 同じ版の Gradle を直接取ってきて組む逃げ道をそこに持たせた。
+  # JitPack の箱で、ときどき Java が jar を開けずに落ちる（v0.9.26 / v0.9.28 / v0.9.29）ので、
+  # 落ちたら少し待って組み直し（最大3回）、落ちた回の箱の様子をログに残す。
   # `./…` ではなく `sh …` で呼ぶのは、git に実行ビットが入っていないと `Permission denied`
   # で落ちるため（実際 v0.9.0 の JitPack がこれで落ちた。Windows で clone すると落ちる）。
   - sh java/jitpack-install.sh
