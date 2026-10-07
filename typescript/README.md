@@ -895,7 +895,7 @@ npm run build
 claude mcp add hatake -- node "$PWD/dist/mcp.js"      # Claude Code の場合
 ```
 
-道具は23個（一覧といつ使うかは [MCP ガイド](../docs/guide/mcp.ja.md)。案件の版のずれを診る `hatake_doctor`・1回で4欄を返す `hatake_check`・規則と転ぶ定義を引く `hatake_rules` など）で、CLI と同じ関数を呼んでいる（＝同じ答えになる）。名乗る版（`serverInfo.version`）は配っている `@hatake-fw/api` の版。**`probe` / `attack` は道具にしていない**（叩く相手・資格・タイミングを決めるのは人の仕事で、エージェントが自分の判断で他人のサーバに要求を飛ばせる口は作らない）。`hatake_explain` は `before` を渡せば変更の言い直し、`brief: true` なら1行（道具を増やすより、同じ道具の引数で足りる）。**知らない引数は断る**（黙って捨てると、渡したつもりの条件が効かないまま答えが返る）。定義を受け取る道具は `file`（起動したフォルダからの道）でも受け取る。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
+道具は23個（一覧といつ使うかは [MCP ガイド](../docs/guide/mcp.ja.md)。案件の版のずれを診る `hatake_doctor`・1回で4欄を返す `hatake_check`・規則と転ぶ定義を引く `hatake_rules` など）で、CLI と同じ関数を呼んでいる（＝同じ答えになる）。名乗る版（`serverInfo.version`）は配っている `@hatake-fw/api` の版。**`probe` / `attack` は道具にしていない**（叩く相手・資格・タイミングを決めるのは人の仕事で、エージェントが自分の判断で他人のサーバに要求を飛ばせる口は作らない）。`hatake_explain` は `before` を渡せば変更の言い直し、`brief: true` なら1行（道具を増やすより、同じ道具の引数で足りる）。**知らない引数は断る**（黙って捨てると、渡したつもりの条件が効かないまま答えが返る）。定義を受け取る道具は `file_path`（起動したフォルダからの道）でも受け取る。入れ方と使う順番は [MCP ガイド](../docs/guide/mcp.ja.md)。
 
 ## 開発（Docker）
 

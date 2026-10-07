@@ -215,7 +215,7 @@
       "why": "枠組みは HTTP もメールの送り先も知らない（Repository の契約だけを知る）。SMTP・Slack・社内の通知基盤のどれに送るかは案件ごとに違う。画面から送ると、保存に失敗したのに知らせが飛ぶ。",
       "keys": [],
       "tool": "hatake refs page.yaml --needs-registration",
-      "words": ["メール", "通知", "知らせ", "連絡", "Slack", "Teams", "プッシュ", "email", "mail", "notification"]
+      "words": ["メールで", "メール送信", "メールを送", "メール通知", "通知", "知らせ", "Slack", "Teams", "プッシュ", "notification", "notify", "send mail", "send email"]
     },
     {
       "id": "business-logic",

@@ -26,6 +26,7 @@ export interface ExampleCatalog {
 /**
  * query で絞る。ファイル名・種別・画面名・やりたいこと・キー・キーワードの
  * どこかに含まれていれば当たり（大文字小文字は無視）。空 query は全件。
+ * 丸ごとで当たらず、言葉が2つ以上なら、言葉ごとに数えていちばん多く当たった例。
  */
 export function filterExamples(
   catalog: ExampleCatalog,
@@ -33,10 +34,20 @@ export function filterExamples(
 ): ExampleEntry[] {
   const needle = query?.trim().toLowerCase();
   if (needle === undefined || needle === "") return catalog.examples;
-  return catalog.examples.filter((e) =>
-    [e.file, e.kind, e.title, e.task, ...e.keys, ...e.keywords]
-      .join("\n")
-      .toLowerCase()
-      .includes(needle),
-  );
+  const haystack = (e: ExampleEntry): string =>
+    [e.file, e.kind, e.title, e.task, ...e.keys, ...e.keywords].join("\n").toLowerCase();
+  const whole = catalog.examples.filter((e) => haystack(e).includes(needle));
+  if (whole.length > 0) return whole;
+
+  // 丸ごとで当たらなければ、言葉に分けて**いちばん多く当たった例**を返す（同点は全部、
+  // カタログの順で）。AI は「マスタ 検索 削除確認」のように言葉を並べて引くので、丸ごと
+  // だけで探すと0件になっていた（0.9.28 の初見試験で6回中4回・のべ5回）。
+  const terms = [...new Set(needle.split(/[\s　、,，]+/).filter((one) => one !== ""))];
+  if (terms.length < 2) return [];
+  const scored = catalog.examples.map((e) => {
+    const text = haystack(e);
+    return { e, score: terms.filter((term) => text.includes(term)).length };
+  });
+  const best = Math.max(...scored.map((one) => one.score));
+  return best === 0 ? [] : scored.filter((one) => one.score === best).map((one) => one.e);
 }

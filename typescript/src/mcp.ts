@@ -13,6 +13,7 @@ import { hatakeTools, INSTRUCTIONS, type McpTool } from "./mcpTools.js";
 import { findSpecDir, SCHEMA_FILE } from "./specDir.js";
 import { TOOL_VERSION } from "./toolVersion.js";
 import { isEntryPoint } from "./entryPoint.js";
+import { closestKey } from "./strictKeys.js";
 
 /** 名乗るバージョン。新しい順。クライアントの希望がこの中にあればそれに合わせる。 */
 export const PROTOCOL_VERSIONS = [
@@ -50,17 +51,24 @@ const fail = (
 ): JsonRpcMessage => ({ jsonrpc: "2.0", id, error: { code, message } });
 
 /**
- * 定義を**ファイルで**渡す口（`file`）。本文（`source`）を受け取る道具にだけ足す。
+ * 定義を**ファイルで**渡す口（`file_path`）。本文（`source`）を受け取る道具にだけ足す。
  *
  * 0.9.27 の初見試験で、AI は定義をファイルに書いたあと MCP の `hatake_check` ではなく
  * CLI の `check`（道を渡せる）に流れ、registry の別物を走らせうる名前だけの npx を打っていた（6回中5回）。
  * 本文しか受け取らない口だと、ファイルに書いた定義をもう一度貼り直すことになるので。
  * 道具の中ではなくここで扱う＝道具は今までどおり本文だけを知る（約束の試験もそのまま効く）。
+ *
+ * 名前は 0.9.28 では `file` だった。0.9.28 の初見試験で、AI が Claude Code 自身の `Write` に
+ * `file` を渡して断られていた（6回中3回。`Read` / `Write` の引数は `file_path`）。手元の道具と
+ * 同じ名前にして、覚える名前を1つにする（0.9.29）。
  */
 export interface McpFiles {
   /** 起動したフォルダからの相対の道を読む。外に出る道・無いファイルは理由つきで投げる。 */
   read(path: string): string;
 }
+
+/** ファイルの道を受け取る引数の名前（Claude Code の `Read` / `Write` と同じ）。 */
+export const FILE_ARG = "file_path";
 
 const FILE_PROPERTY = {
   type: "string",
@@ -72,20 +80,34 @@ const FILE_PROPERTY = {
 const propertiesOf = (tool: McpTool): Record<string, unknown> =>
   (tool.inputSchema.properties ?? {}) as Record<string, unknown>;
 
-/** `file` を足す道具（本文を受け取り、`file` を自分の意味で使っていないもの）。 */
+/** `file_path` を足す道具（本文を受け取り、同じ名前を自分の意味で使っていないもの）。 */
 const takesSource = (tool: McpTool): boolean =>
-  "source" in propertiesOf(tool) && !("file" in propertiesOf(tool));
+  "source" in propertiesOf(tool) && !(FILE_ARG in propertiesOf(tool));
 
-/** 外に見せる引数の形（本文を受け取る道具には `file` を足し、`source` を必須から外す）。 */
+/** 外に見せる引数の形（本文を受け取る道具には `file_path` を足し、`source` を必須から外す）。 */
 export function advertisedSchema(tool: McpTool): Record<string, unknown> {
   if (!takesSource(tool)) return tool.inputSchema;
   const { required: given, ...rest } = tool.inputSchema;
   const required = ((given ?? []) as string[]).filter((one) => one !== "source");
   return {
     ...rest,
-    properties: { ...propertiesOf(tool), file: FILE_PROPERTY },
+    properties: { ...propertiesOf(tool), [FILE_ARG]: FILE_PROPERTY },
     ...(required.length > 0 ? { required } : {}),
   };
+}
+
+/**
+ * 推し量って書かれた引数名に近い、受け取る名前（無ければ null）。綴りの近さ（2文字まで）と、
+ * 片方がもう片方を含む形（`file` → `file_path`・`path` → `file_path`）を見る。
+ */
+export function nearArg(given: string, accepted: string[]): string | null {
+  const spelled = closestKey(given, accepted);
+  if (spelled !== null) return spelled;
+  const lower = given.toLowerCase();
+  const containing = accepted.filter(
+    (one) => lower.length >= 3 && (one.toLowerCase().includes(lower) || lower.includes(one.toLowerCase())),
+  );
+  return containing.length === 1 ? containing[0] : null;
 }
 
 /**
@@ -100,31 +122,37 @@ export function prepareArgs(
   args: Record<string, unknown>,
   files: McpFiles | undefined,
 ): { args: Record<string, unknown> } | { refusal: string } {
-  const accepted = [...Object.keys(propertiesOf(tool)), ...(takesSource(tool) ? ["file"] : [])];
+  const accepted = [...Object.keys(propertiesOf(tool)), ...(takesSource(tool) ? [FILE_ARG] : [])];
   const unknown = Object.keys(args).filter((one) => !accepted.includes(one));
   if (unknown.length > 0) {
+    const hints = unknown
+      .map((one) => [one, nearArg(one, accepted)] as const)
+      .filter(([, near]) => near !== null)
+      .map(([one, near]) => `"${one}" → "${near}"`);
     return {
       refusal:
         `知らない引数 ${unknown.map((one) => `"${one}"`).join(" / ")} です（黙って捨てると、` +
         `渡したつもりの条件が効かないまま答えが返るので止めました）。\n` +
+        (hints.length > 0 ? `近い名前: ${hints.join(" / ")}\n` : "") +
         `${tool.name} が受け取るのは: ${accepted.length > 0 ? accepted.join(" / ") : "（引数なし）"}\n` +
         `呼び方の例: ${JSON.stringify(tool.example)}`,
     };
   }
-  // `file` を自分で宣言している道具（hatake_examples）は、そのまま渡す。
-  if (!takesSource(tool) || !("file" in args)) return { args };
+  // 同じ名前を自分で宣言している道具は、そのまま渡す。
+  if (!takesSource(tool) || !(FILE_ARG in args)) return { args };
   if ("source" in args) {
-    return { refusal: "source と file はどちらか1つにしてください（どちらを読めばいいか決められません）。" };
+    return { refusal: `source と ${FILE_ARG} はどちらか1つにしてください（どちらを読めばいいか決められません）。` };
   }
-  if (typeof args.file !== "string" || args.file.trim() === "") {
-    return { refusal: "file には定義ファイルの道を文字で渡してください（例: definitions/app.yaml）。" };
+  const path = args[FILE_ARG];
+  if (typeof path !== "string" || path.trim() === "") {
+    return { refusal: `${FILE_ARG} には定義ファイルの道を文字で渡してください（例: definitions/app.yaml）。` };
   }
   if (files === undefined) {
     return { refusal: "この入口ではファイルを読めません。source に定義の中身を渡してください。" };
   }
-  const { file, ...rest } = args;
+  const { [FILE_ARG]: _path, ...rest } = args;
   try {
-    return { args: { ...rest, source: files.read(file) } };
+    return { args: { ...rest, source: files.read(path) } };
   } catch (error) {
     return { refusal: error instanceof Error ? error.message : String(error) };
   }

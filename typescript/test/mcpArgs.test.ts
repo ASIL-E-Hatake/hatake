@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { advertisedSchema, handleMessage, rootedFiles, type McpFiles } from "../src/mcp.js";
+import { advertisedSchema, handleMessage, nearArg, rootedFiles, type McpFiles } from "../src/mcp.js";
 import { INSTRUCTIONS } from "../src/mcpTools.js";
 import { hatakeTools } from "../src/tools.js";
 
@@ -66,30 +66,31 @@ describe("知らない引数は断る", () => {
   });
 });
 
-describe("定義をファイルで渡す（file）", () => {
-  it("本文を受け取る道具には file が見え、source は必須から外れる", () => {
+describe("定義をファイルで渡す（file_path）", () => {
+  it("本文を受け取る道具には file_path が見え、source は必須から外れる", () => {
     const check = tools.find((one) => one.name === "hatake_check")!;
     const schema = advertisedSchema(check) as { properties: Record<string, unknown>; required?: string[] };
-    expect(Object.keys(schema.properties)).toContain("file");
+    expect(Object.keys(schema.properties)).toContain("file_path");
+    expect(Object.keys(schema.properties)).not.toContain("file");
     expect(schema.required ?? []).not.toContain("source");
     // 本文を受け取らない道具には足さない。
     const rules = tools.find((one) => one.name === "hatake_rules")!;
-    expect(Object.keys((advertisedSchema(rules) as { properties: object }).properties)).not.toContain("file");
+    expect(Object.keys((advertisedSchema(rules) as { properties: object }).properties)).not.toContain("file_path");
   });
 
-  it("file で渡すと source で渡したのと同じ答えになる", () => {
+  it("file_path で渡すと source で渡したのと同じ答えになる", () => {
     const files = memoryFiles({ "definitions/app.yaml": CRUD });
-    const byFile = call("hatake_check", { file: "definitions/app.yaml" }, files);
+    const byFile = call("hatake_check", { file_path: "definitions/app.yaml" }, files);
     const bySource = call("hatake_check", { source: CRUD });
     expect(byFile.isError).toBe(false);
     expect(byFile.text).toBe(bySource.text);
   });
 
-  it("source と file を両方渡す・読む口が無い・無いファイル、は理由つきで断る", () => {
+  it("source と file_path を両方渡す・読む口が無い・無いファイル、は理由つきで断る", () => {
     const files = memoryFiles({ "a.yaml": CRUD });
-    expect(call("hatake_check", { file: "a.yaml", source: CRUD }, files).text).toContain("どちらか1つ");
-    expect(call("hatake_check", { file: "a.yaml" }).text).toContain("この入口ではファイルを読めません");
-    const missing = call("hatake_check", { file: "b.yaml" }, files);
+    expect(call("hatake_check", { file_path: "a.yaml", source: CRUD }, files).text).toContain("どちらか1つ");
+    expect(call("hatake_check", { file_path: "a.yaml" }).text).toContain("この入口ではファイルを読めません");
+    const missing = call("hatake_check", { file_path: "b.yaml" }, files);
     expect(missing.isError).toBe(true);
     expect(missing.text).toContain("b.yaml");
   });
@@ -107,9 +108,32 @@ describe("定義をファイルで渡す（file）", () => {
 });
 
 describe("CLI の書き方を AI に渡す", () => {
-  it("instructions は npx -p @hatake-fw/api hatake で書き、file と知らない引数のことも言う", () => {
+  it("instructions は npx -p @hatake-fw/api hatake で書き、file_path と知らない引数のことも言う", () => {
     expect(INSTRUCTIONS).toContain("npx -p @hatake-fw/api hatake check");
-    expect(INSTRUCTIONS).toContain("file");
+    expect(INSTRUCTIONS).toContain("file_path");
     expect(INSTRUCTIONS).toContain("知らない引数は断る");
+  });
+});
+
+describe("近い名前を添える（0.9.29）", () => {
+  // 0.9.28 の初見試験で、AI は Claude Code の Write に file を渡して断られていた。
+  // 名前を file_path に揃えたので、0.9.28 の名前で渡されたら近い名前を言う。
+  it("0.9.28 の file には file_path を、綴り違いには正しい綴りを添える", () => {
+    const files = memoryFiles({ "a.yaml": CRUD });
+    const old = call("hatake_check", { file: "a.yaml" }, files);
+    expect(old.isError).toBe(true);
+    expect(old.text).toContain('"file" → "file_path"');
+    expect(call("hatake_reference", { pagekind: "crud" }).text).toContain('"pagekind" → "pageKind"');
+  });
+
+  it("近い名前が無ければ添えない（推し量って当てない）", () => {
+    const got = call("hatake_reference", { key: "readOnlyWhen" });
+    expect(got.text).not.toContain("近い名前");
+  });
+
+  it("nearArg は一意に決まるときだけ返す", () => {
+    expect(nearArg("file", ["source", "file_path", "page"])).toBe("file_path");
+    expect(nearArg("path", ["source", "file_path"])).toBe("file_path");
+    expect(nearArg("xyz", ["source", "page"])).toBeNull();
   });
 });

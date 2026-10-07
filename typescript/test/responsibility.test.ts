@@ -175,6 +175,18 @@ describe("引く", () => {
     expect(hit("毎日の売上を一覧で見たい")).not.toContain("business-logic");
   });
 
+  it("項目の名前（メール・連絡先・email）は「知らせる」に当てない（0.9.29）", () => {
+    // 0.9.28 は「メール」で当てていたので、見本のマスタメンテの**項目の並び**が
+    // 「知らせる（サーバの担当）」に当たっていた。知らせる言い方（メールで・メール送信）だけで当てる。
+    const hit = (query: string) => filterAreas(catalog(), query).map((one) => one.id);
+    expect(hit("社員番号・氏名・カナ・所属部署・役職・入社日・退職日・メール・内線・在籍区分。")).not.toContain("notification");
+    expect(hit("連絡先とメールアドレスを入れる")).not.toContain("notification");
+    expect(hit("email と電話番号を一覧に出す")).not.toContain("notification");
+    // 知らせる頼みは今までどおり当たる（初見試験の頼む文から写した）。
+    expect(hit("顧客を登録したら、営業部にメールで知らせてほしい。")).toContain("notification");
+    expect(hit("承認されたらメール送信")).toContain("notification");
+  });
+
   it("枠組みの外を先に出す（下に置くと読まれない）", () => {
     const found = filterAreas(catalog(), "権限");
     expect(found.length).toBeGreaterThan(1);

@@ -2,7 +2,7 @@ name: hatake_example
 description: >-
   Example app demonstrating hatake — a YAML-defined CrudPage rendered with
   Material 3, backed by an in-memory repository.
-version: 0.9.28
+version: 0.9.29
 publish_to: none
 
 environment:
