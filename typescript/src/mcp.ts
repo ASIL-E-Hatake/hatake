@@ -8,6 +8,7 @@
 // 道具の中身は mcpTools.ts、プロトコルはここ。
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { isAbsolute, relative, resolve } from "node:path";
 import { hatakeTools, INSTRUCTIONS, type McpTool } from "./mcpTools.js";
 import { findSpecDir, SCHEMA_FILE } from "./specDir.js";
 import { TOOL_VERSION } from "./toolVersion.js";
@@ -49,13 +50,96 @@ const fail = (
 ): JsonRpcMessage => ({ jsonrpc: "2.0", id, error: { code, message } });
 
 /**
+ * 定義を**ファイルで**渡す口（`file`）。本文（`source`）を受け取る道具にだけ足す。
+ *
+ * 0.9.27 の初見試験で、AI は定義をファイルに書いたあと MCP の `hatake_check` ではなく
+ * CLI の `check`（道を渡せる）に流れ、registry の別物を走らせうる名前だけの npx を打っていた（6回中5回）。
+ * 本文しか受け取らない口だと、ファイルに書いた定義をもう一度貼り直すことになるので。
+ * 道具の中ではなくここで扱う＝道具は今までどおり本文だけを知る（約束の試験もそのまま効く）。
+ */
+export interface McpFiles {
+  /** 起動したフォルダからの相対の道を読む。外に出る道・無いファイルは理由つきで投げる。 */
+  read(path: string): string;
+}
+
+const FILE_PROPERTY = {
+  type: "string",
+  description:
+    "定義ファイルの道（MCP サーバを起動したフォルダからの相対。例: definitions/app.yaml）。" +
+    "source の代わりに渡せる＝ファイルに書いた定義を貼り直さなくてよい。",
+} as const;
+
+const propertiesOf = (tool: McpTool): Record<string, unknown> =>
+  (tool.inputSchema.properties ?? {}) as Record<string, unknown>;
+
+/** `file` を足す道具（本文を受け取り、`file` を自分の意味で使っていないもの）。 */
+const takesSource = (tool: McpTool): boolean =>
+  "source" in propertiesOf(tool) && !("file" in propertiesOf(tool));
+
+/** 外に見せる引数の形（本文を受け取る道具には `file` を足し、`source` を必須から外す）。 */
+export function advertisedSchema(tool: McpTool): Record<string, unknown> {
+  if (!takesSource(tool)) return tool.inputSchema;
+  const { required: given, ...rest } = tool.inputSchema;
+  const required = ((given ?? []) as string[]).filter((one) => one !== "source");
+  return {
+    ...rest,
+    properties: { ...propertiesOf(tool), file: FILE_PROPERTY },
+    ...(required.length > 0 ? { required } : {}),
+  };
+}
+
+/**
+ * 渡された引数を道具に渡せる形にする。だめなら**理由の文**を返す（道具は呼ばない）。
+ *
+ * **知らない引数は黙って捨てない。** 0.9.27 まで捨てていたので、`hatake_reference` に
+ * `{ key: "readOnlyWhen" }` と渡すと名前を省いた扱いになり、全体（約10万字）が返っていた
+ * （初見試験の6回中4回）。AI は引数名を推し量って書くので、受け取る名前と例を返す。
+ */
+export function prepareArgs(
+  tool: McpTool,
+  args: Record<string, unknown>,
+  files: McpFiles | undefined,
+): { args: Record<string, unknown> } | { refusal: string } {
+  const accepted = [...Object.keys(propertiesOf(tool)), ...(takesSource(tool) ? ["file"] : [])];
+  const unknown = Object.keys(args).filter((one) => !accepted.includes(one));
+  if (unknown.length > 0) {
+    return {
+      refusal:
+        `知らない引数 ${unknown.map((one) => `"${one}"`).join(" / ")} です（黙って捨てると、` +
+        `渡したつもりの条件が効かないまま答えが返るので止めました）。\n` +
+        `${tool.name} が受け取るのは: ${accepted.length > 0 ? accepted.join(" / ") : "（引数なし）"}\n` +
+        `呼び方の例: ${JSON.stringify(tool.example)}`,
+    };
+  }
+  // `file` を自分で宣言している道具（hatake_examples）は、そのまま渡す。
+  if (!takesSource(tool) || !("file" in args)) return { args };
+  if ("source" in args) {
+    return { refusal: "source と file はどちらか1つにしてください（どちらを読めばいいか決められません）。" };
+  }
+  if (typeof args.file !== "string" || args.file.trim() === "") {
+    return { refusal: "file には定義ファイルの道を文字で渡してください（例: definitions/app.yaml）。" };
+  }
+  if (files === undefined) {
+    return { refusal: "この入口ではファイルを読めません。source に定義の中身を渡してください。" };
+  }
+  const { file, ...rest } = args;
+  try {
+    return { args: { ...rest, source: files.read(file) } };
+  } catch (error) {
+    return { refusal: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+/**
  * メッセージ1つを処理する。通知（id なし）には返事をしないので null を返す。
  *
  * 純関数にしてあるのでテストから普通に呼べる（stdio は [runMcpServer] の仕事）。
+ * ファイルを読む口（`files`）は渡されたときだけ使う（渡さなければ `file` は断る）。
  */
 export function handleMessage(
   message: JsonRpcMessage,
   tools: McpTool[],
+  files?: McpFiles,
 ): JsonRpcMessage | null {
   const { id, method, params = {} } = message;
   const isNotification = id === undefined;
@@ -90,7 +174,7 @@ export function handleMessage(
           description: `${tool.description}
 
 呼び方の例（そのまま渡せます）: ${JSON.stringify(tool.example)}`,
-          inputSchema: tool.inputSchema,
+          inputSchema: advertisedSchema(tool),
         })),
       });
     case "tools/call": {
@@ -104,13 +188,17 @@ export function handleMessage(
           `知らない道具 "${String(name)}" です（tools/list を見てください）。`,
         );
       }
-      const args =
+      const given =
         typeof params.arguments === "object" && params.arguments !== null
           ? (params.arguments as Record<string, unknown>)
           : {};
+      const prepared = prepareArgs(tool, given, files);
+      if ("refusal" in prepared) {
+        return ok(id, { content: [{ type: "text", text: prepared.refusal }], isError: true });
+      }
       try {
         return ok(id, {
-          content: [{ type: "text", text: tool.run(args) }],
+          content: [{ type: "text", text: tool.run(prepared.args) }],
           isError: false,
         });
       } catch (error) {
@@ -162,6 +250,7 @@ export interface McpIo {
 export function createDispatcher(
   tools: McpTool[],
   io: McpIo,
+  files?: McpFiles,
 ): (line: string) => void {
   return (line) => {
     let message: JsonRpcMessage;
@@ -171,8 +260,28 @@ export function createDispatcher(
       io.send(JSON.stringify(fail(null, PARSE_ERROR, "JSON として読めません。")));
       return;
     }
-    const response = handleMessage(message, tools);
+    const response = handleMessage(message, tools, files);
     if (response !== null) io.send(JSON.stringify(response));
+  };
+}
+
+/**
+ * 起動したフォルダ（案件の根）の中だけを読む口。外へ出る道（`../` や絶対の道で別の場所）は
+ * 断る＝定義を読ませる口であって、手元のファイルを何でも読ませる口ではない。
+ */
+export function rootedFiles(root: string): McpFiles {
+  return {
+    read(path) {
+      const full = resolve(root, path);
+      const inside = relative(root, full);
+      if (inside === "" || inside.startsWith("..") || isAbsolute(inside)) {
+        throw new Error(`"${path}" は起動したフォルダ（${root}）の外です。案件の中の道を渡してください。`);
+      }
+      if (!existsSync(full) || !statSync(full).isFile()) {
+        throw new Error(`"${path}" というファイルはありません（起動したフォルダ ${root} からの相対で探しました）。`);
+      }
+      return readFileSync(full, "utf8");
+    },
   };
 }
 
@@ -205,7 +314,7 @@ export function runMcpServer(io: McpIo = nodeIo, specPath?: string): number {
   });
   io.log(`hatake MCP サーバ: spec=${specDir} 道具=${tools.length}`);
 
-  const read = createLineReader(createDispatcher(tools, io));
+  const read = createLineReader(createDispatcher(tools, io, rootedFiles(process.cwd())));
   process.stdin.setEncoding("utf8");
   process.stdin.on("data", read);
   process.stdin.on("end", () => process.exit(0));

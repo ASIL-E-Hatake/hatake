@@ -163,6 +163,18 @@ describe("引く", () => {
     expect(found.map((one) => one.id)).toContain("business-logic");
   });
 
+  it("初見試験で AI が実際に引いた言葉で当たる（0.9.27 は全部「載っていない」だった）", () => {
+    // 見本の evals/ の記録から写した。AI はこの形（言葉を空白で並べる）で引く。
+    const hit = (query: string) => filterAreas(catalog(), query).map((one) => one.id);
+    for (const query of ["メール 通知", "メール通知"]) expect(hit(query), query).toContain("notification");
+    for (const query of ["月末 バッチ 自動", "月次バッチ 自動", "毎月末に、その月に取引の無かった顧客を自動で休眠にしてほしい"]) {
+      expect(hit(query), query).toContain("business-logic");
+    }
+    // 定義で書ける頼みを「外」にしない（「自動で」「毎日」は時刻に動く処理の印にしない）。
+    expect(hit("合計を自動で計算する")).not.toContain("business-logic");
+    expect(hit("毎日の売上を一覧で見たい")).not.toContain("business-logic");
+  });
+
   it("枠組みの外を先に出す（下に置くと読まれない）", () => {
     const found = filterAreas(catalog(), "権限");
     expect(found.length).toBeGreaterThan(1);

@@ -118,9 +118,10 @@ describe("MCP プロトコル", () => {
       expect(tool.description.length, tool.name).toBeGreaterThan(80);
       expect(tool.inputSchema.type, tool.name).toBe("object");
     }
-    expect(
-      list.find((t: any) => t.name === "hatake_validate").inputSchema.required,
-    ).toEqual(["source"]);
+    // 本文は source でも file（定義ファイルの道）でも渡せる＝どちらも必須にはしない（0.9.28）。
+    const validate = list.find((t: any) => t.name === "hatake_validate").inputSchema;
+    expect(validate.required).toBeUndefined();
+    expect(Object.keys(validate.properties)).toEqual(expect.arrayContaining(["source", "file"]));
   });
 });
 
@@ -137,10 +138,18 @@ describe("hatake_reference", () => {
     expect(Object.keys(only.nodes)).not.toContain("wizardStep");
   });
 
-  it("名前を省くと全体が返る", () => {
-    const all = json(call("hatake_reference").text);
-    expect(all.pageKinds).toHaveLength(8);
-    expect(all.keyIndex.pageSize).toEqual(["pagination", "subTableSource"]);
+  it("名前を省くと目次が返る（全体は all: true のときだけ）", () => {
+    const index = call("hatake_reference").text;
+    const parsed = json(index);
+    expect(parsed.pageKinds).toHaveLength(8);
+    expect(parsed.keyIndex.pageSize).toEqual(["pagination", "subTableSource"]);
+    // 目次は1回の答えに収まる大きさ（全体は約10万字で、道具の側でファイルに逃がされる）。
+    expect(index.length).toBeLessThan(12_000);
+    expect(parsed.note).toContain("name");
+
+    const all = call("hatake_reference", { all: true }).text;
+    expect(all.length).toBeGreaterThan(index.length * 5);
+    expect(json(all).nodes.pagination.keys.length).toBeGreaterThan(0);
   });
 
   it("無い名前・無いページ種別は道具の失敗として返す", () => {
