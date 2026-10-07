@@ -118,10 +118,10 @@ describe("MCP プロトコル", () => {
       expect(tool.description.length, tool.name).toBeGreaterThan(80);
       expect(tool.inputSchema.type, tool.name).toBe("object");
     }
-    // 本文は source でも file（定義ファイルの道）でも渡せる＝どちらも必須にはしない（0.9.28）。
+    // 本文は source でも file_path（定義ファイルの道）でも渡せる＝どちらも必須にはしない（0.9.28）。
     const validate = list.find((t: any) => t.name === "hatake_validate").inputSchema;
     expect(validate.required).toBeUndefined();
-    expect(Object.keys(validate.properties)).toEqual(expect.arrayContaining(["source", "file"]));
+    expect(Object.keys(validate.properties)).toEqual(expect.arrayContaining(["source", "file_path"]));
   });
 });
 

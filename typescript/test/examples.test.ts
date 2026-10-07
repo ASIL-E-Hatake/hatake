@@ -95,6 +95,18 @@ describe("カタログの引き方", () => {
     expect(filterExamples(catalog, "ブロックチェーン")).toEqual([]);
   });
 
+  it("言葉を並べて引いても当たる（0.9.28 の初見試験で AI が実際に引いて0件だった言葉）", () => {
+    const files = (query: string) => filterExamples(catalog, query).map((e) => e.file);
+    expect(files("マスタ 検索 削除確認")).toEqual(["customer_master.yaml"]);
+    expect(files("マスタ 検索 登録 削除")).toEqual(["customer_master.yaml"]);
+    expect(files("マスタ 顧客 区分 検索")).toEqual(["customer_master.yaml"]);
+    expect(files("app メニュー 複数画面")).toEqual(["sales_app.yaml"]);
+    expect(files("app 複数画面 メニュー")).toEqual(["sales_app.yaml"]);
+    // 1語で当たらないものは、分けようがないので0件のまま（推し量って当てない）。
+    expect(files("ブロックチェーン")).toEqual([]);
+    expect(files("ブロックチェーン 量子")).toEqual([]);
+  });
+
   it("8種別すべてに例がある", () => {
     const kinds = new Set(catalog.examples.map((e) => e.kind));
     for (const pageKind of reference.pageKinds) {

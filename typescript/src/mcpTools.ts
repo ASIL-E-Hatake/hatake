@@ -300,9 +300,9 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
    好み（助言）・人が決めること を1回で回して、**欄を分けたまま**返す。4本を別々に
    呼んだのと同じ結果なので、順番を覚えなくてよい。前書きが在れば project も渡す
    （案件の名前の決めごと・用語辞書との食い違いも同じ紙に出る）。
-   **定義をファイルに書いたなら source ではなく file に道を渡す**（例: file:
+   **定義をファイルに書いたなら source ではなく file_path に道を渡す**（例: file_path:
    definitions/app.yaml。起動したフォルダからの相対）＝貼り直さなくてよい。source を
-   受け取る道具はどれも file でも受け取る
+   受け取る道具はどれも file_path でも受け取る（Claude Code の Read / Write と同じ名前）
    **欄ごとに次の相手が違う**:
    ・事実（書いたのに効かない）→ hatake_fix に通す（綴り違いのような**一意な直し**は
      自分で書き直さない。別の所を壊す）
@@ -352,7 +352,7 @@ CLI を叩くとき: **必ず npx -p @hatake-fw/api hatake <命令>** と書く�
 npx -p @hatake-fw/api hatake check definitions/app.yaml）。名前だけの書き方（npx の
 すぐ後ろに hatake）は、手元に入っていない所では npm の registry に在る**別の人の、
 名前が同じだけの道具**を取ってきて走らせる。MCP の道具で足りることは MCP で済ませる
-（ファイルは file で渡せる）。
+（ファイルは file_path で渡せる）。
 
 引数は道具ごとに決まっている（tools/list の inputSchema）。**知らない引数は断る**
 （黙って捨てると、渡したつもりの条件が効かないまま答えが返るので）。`;
@@ -852,6 +852,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "「やりたいこと」から近い定義例を探す。定義を書き始める前に必ずこれを引く" +
         "（1から組み立てるより、近い例を直すほうが速くて正確）。" +
         "query は日本語でよく、やりたいこと・機能名・業務用語で当たる（例: 帳票 / 小計 / 親子 / ダッシュボード / ステップ入力 / CSV出力）。" +
+        "言葉を空白で並べてもよい（丸ごとで当たらなければ、いちばん多くの言葉が当たった例を返す）。" +
         "file にカタログの file 名を渡すと、その例の YAML 全文を返す。",
       inputSchema: {
         type: "object",

@@ -137,6 +137,14 @@ dependencies {
 > **v0.9.1 から直っています。** 座標は <https://jitpack.io/#ASIL-E-Hatake/hatake> で
 > 実物を見て確かめてください（JitPack は最初の1回だけビルドに数分かかります）。
 
+JitPack が組むときの手順は [`java/jitpack-install.sh`](../../java/jitpack-install.sh)
+（`jitpack.yml` から呼ぶ）。JitPack は**ときどき wrapper の jar を開けずに落ちる**
+（`An unexpected error occurred while trying to open file …/gradle-wrapper.jar`。v0.9.26 と
+v0.9.28 で踏んだ。jar の中身は正しく、同じ jar で通る版もある）ので、そのときは
+`gradle-wrapper.properties` と同じ版の Gradle を直接取ってきて組む。それでも落ちた版は、
+JitPack の画面で失敗したビルドを消して頼み直す（JitPack は失敗も覚えているので、消さないと
+同じ結果を返し続ける）。
+
 ---
 
 ## 出す手順（人がやること）
