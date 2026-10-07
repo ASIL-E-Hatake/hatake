@@ -62,7 +62,7 @@ acceptance:                             # 終わりの判定
 ## 突き合わせる
 
 ```bash
-npx hatake trace order_search.yaml
+npx -p @hatake-fw/api hatake trace order_search.yaml
 ```
 
 ```
@@ -95,7 +95,7 @@ order_search: 要求 6 件 / 定義の相手 12 件
 意図の器は在っても、**書き始めるのが手間**では続かない。指示文はもう在るので、そこは機械にやらせる。
 
 ```bash
-npx hatake intent --draft --from 指示.md --definition order_search.yaml \
+npx -p @hatake-fw/api hatake intent --draft --from 指示.md --definition order_search.yaml \
   --out order_search.intent.yaml
 ```
 
@@ -149,7 +149,7 @@ MCP を繋いでいれば `hatake_intent` がそのまま渡る（`instruction` 
 突き合わせの結果は読めるようになったが、**人に渡す紙**にはなっていなかった。レビューに出すのは1枚がいいので、1枚に刷る。
 
 ```bash
-npx hatake design order_search.yaml --intent order_search.intent.yaml \
+npx -p @hatake-fw/api hatake design order_search.yaml --intent order_search.intent.yaml \
   --out 設計書.md
 ```
 

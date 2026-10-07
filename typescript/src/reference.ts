@@ -273,6 +273,12 @@ export interface ReferenceLookup {
   pageKind?: ReferencePageKind;
   /** そのキーを書けるノードごとの定義。 */
   keys?: { node: string; key: ReferenceKey }[];
+  /**
+   * その名前を**値**に取るキー（`maxLength` → `validator.type`）。`open` が true なら組み込みの
+   * 一覧（プラグインで足せる）、false なら閉じた値。0.9.29 まではキー名とノード名しか見て
+   * いなかったので、初見試験で AI が `maxLength` を引くと「DSL に無い名前」と返っていた。
+   */
+  values?: { node: string; key: string; open: boolean }[];
 }
 
 /**
@@ -297,7 +303,14 @@ export function lookupReference(
   });
   if (keys.length > 0) result.keys = keys;
 
-  return result.node || result.pageKind || result.keys ? result : null;
+  const values = Object.entries(reference.nodes).flatMap(([holder, node]) =>
+    node.keys
+      .filter((key) => (key.values ?? []).includes(name))
+      .map((key) => ({ node: holder, key: key.key, open: key.open === true })),
+  );
+  if (values.length > 0) result.values = values;
+
+  return result.node || result.pageKind || result.keys || result.values ? result : null;
 }
 
 /**

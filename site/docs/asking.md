@@ -49,10 +49,10 @@ naming:
   role: snake_case
 ```
 
-読み返しは `npx hatake project`。MCP を繋いでいれば `hatake_project` が最初に読む。
+読み返しは `npx -p @hatake-fw/api hatake project`。MCP を繋いでいれば `hatake_project` が最初に読む。
 
 ここで大事なのは、**縛れているものと縛れていないものを分けて見ること**。用語と名前は
-機械が定義と突き合わせられる（`npx hatake advise page.yaml --project hatake.project.yaml`
+機械が定義と突き合わせられる（`npx -p @hatake-fw/api hatake advise page.yaml --project hatake.project.yaml`
 が「ラベル『顧客コード』に『顧客』が入っています」と言う）。けれど**業務の前提は
 誰も突き合わせていない** ── 人と AI が読むだけだ。読み返しはそれを毎回言う。
 「前提を書いたから守られる」ではなく、「前提を渡したから読まれる」まで。
@@ -127,7 +127,7 @@ naming:
 そこは書いた定義から出せる。
 
 ```bash
-npx hatake ask order_entry.yaml
+npx -p @hatake-fw/api hatake ask order_entry.yaml
 ```
 
 ```text
@@ -156,7 +156,7 @@ npx hatake ask order_entry.yaml
 | 端数をどう扱うか | 平均や掛け算で計算している |
 | その状態は誰が動かすか | 条件で出し分けている |
 
-全部で12種類。定義が無くても `npx hatake ask --kinds` で読めるので、**書く前に**
+全部で12種類。定義が無くても `npx -p @hatake-fw/api hatake ask --kinds` で読めるので、**書く前に**
 何を聞かれるか分かる。
 
 ### 問いは人に返る（AI が埋めない）
@@ -222,7 +222,7 @@ questions:
 「この項目もう要らないんだけど、消していい？」も同じ形で聞ける。
 
 ```bash
-npx hatake ask order_entry.yaml --impact price
+npx -p @hatake-fw/api hatake ask order_entry.yaml --impact price
 ```
 
 ```text
@@ -247,7 +247,7 @@ npx hatake ask order_entry.yaml --impact price
 手で書き換えていた ── 1つ忘れると、画面は出るのにそこだけ空になる（しかも落ちない）。
 
 ```bash
-npx hatake ask order_entry.yaml --impact qty:orderedQty --out draft.yaml
+npx -p @hatake-fw/api hatake ask order_entry.yaml --impact qty:orderedQty --out draft.yaml
 ```
 
 ```text
@@ -277,7 +277,7 @@ npx hatake ask order_entry.yaml --impact qty:orderedQty --out draft.yaml
 決めていないことは、**レビューの席でこそ**答えが出る（その場に業務の人が居る）。
 
 ```bash
-npx hatake ask app.yaml --markdown
+npx -p @hatake-fw/api hatake ask app.yaml --markdown
 ```
 
 表と `<details>` で出るので、そのまま PR のコメントに貼れる。答えが前書きに入れば
@@ -375,7 +375,7 @@ hatake の原則は**本体を直すよりプラグイン**。頼むときにそ
 AI が書いた YAML を1行ずつ読む必要はない（読めるように作ってあるが、読むのは大変だ）。**読み返し**を読む。
 
 ```bash
-npx hatake explain order_search.yaml
+npx -p @hatake-fw/api hatake explain order_search.yaml
 ```
 
 「この画面は何ができて、何ができないか」が業務の言葉で出る。**そこに書いてあることが意図と違えば、定義が違う。** 逆に言えば、頼むときの文とこの出力を見比べられるように頼めばよい ── それが「終わりの判定」を書く意味だ。

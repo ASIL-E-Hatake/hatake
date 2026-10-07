@@ -138,12 +138,14 @@ dependencies {
 > 実物を見て確かめてください（JitPack は最初の1回だけビルドに数分かかります）。
 
 JitPack が組むときの手順は [`java/jitpack-install.sh`](../../java/jitpack-install.sh)
-（`jitpack.yml` から呼ぶ）。JitPack は**ときどき wrapper の jar を開けずに落ちる**
-（`An unexpected error occurred while trying to open file …/gradle-wrapper.jar`。v0.9.26 と
-v0.9.28 で踏んだ。jar の中身は正しく、同じ jar で通る版もある）ので、そのときは
-`gradle-wrapper.properties` と同じ版の Gradle を直接取ってきて組む。それでも落ちた版は、
-JitPack の画面で失敗したビルドを消して頼み直す（JitPack は失敗も覚えているので、消さないと
-同じ結果を返し続ける）。
+（`jitpack.yml` から呼ぶ）。JitPack は**ときどき Java が jar を開けずに落ちる**
+（`An unexpected error occurred while trying to open file …/gradle-wrapper.jar`。v0.9.26 /
+v0.9.28 / v0.9.29 で踏んだ）。jar の中身は正しく、JitPack と同じ JDK（OpenJDK 21.0.2）でも
+手元では通る。0.9.29 で入れた「同じ版の Gradle を直接取ってきて組む」逃げ道も、取ってきた
+Gradle の jar が同じように読めずに落ちた＝**その回の箱の揺れ**で、こちらの手順では避けられない。
+なので、落ちたら少し待って組み直し（最大3回）、落ちた回は箱の様子（メモリ・開けるファイルの
+数・ディスク）をログに出す。それでも落ちた版は、JitPack の画面で失敗したビルドを消して
+頼み直す（JitPack は失敗も覚えているので、消さないと同じ結果を返し続ける）。
 
 ---
 

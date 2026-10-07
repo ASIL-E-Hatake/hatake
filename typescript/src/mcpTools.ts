@@ -517,7 +517,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
             type: "string",
             description:
               "やりたいこと（日本語でよい。「締め処理」「承認フロー」「一覧の並べ替え」）。" +
-              "省略すると全件。",
+              "省略すると目次（担当の id・区分・題名）。",
           },
           where: {
             type: "string",
@@ -534,6 +534,17 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           throw new Error(`where は ${WHERE_KINDS.join(" / ")} のどれかです。`);
         }
         const found = filterAreas(responsibility(), query, only as Where | undefined);
+        // 何も渡さなければ**目次**（全件の中身と読み物を重ねると約2万字。0.9.30 で答えの
+        // 大きさを見張り始めて見つかった）。中身は query か where で引く。
+        if (query === undefined && only === undefined) {
+          return pretty({
+            note: RESPONSIBILITY_NOTE,
+            index: found.map((one) => ({ id: one.id, where: one.where, title: one.title })),
+            next:
+              "これは目次です。やりたいことを query に渡すと、どう書くか（how）・なぜ（why）・" +
+              "書くキーが返ります。where に区分（outside など）を渡すと、その区分の中身が全部返ります。",
+          });
+        }
         if (found.length === 0) {
           throw new Error(
             `"${query}" に当てはまる担当は表に載っていません。` +
@@ -780,6 +791,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "ページ種別（crud）のどれを渡してもよく、当たったものを全部返す。" +
         "name を省くと**目次**（ページ種別・ノード名・キーの索引。約1万字）＝そこから name で引く。" +
         "全体（約10万字）が要るときだけ all を true にする。" +
+        "**値でも引ける**（maxLength → validator の type に書く値。values に、その名前を取るキーが返る）。" +
         "values は取れる値で、open が true なら組み込みの一覧＝プラグインで足せる、false なら enum。" +
         "closed が false のノードは中身が自由（config など）。" +
         "**placeholders を true にすると、文言に書ける差し込みの一覧**" +
@@ -1369,7 +1381,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         properties: {
           rule: {
             type: "string",
-            description: "規則名（groupby-without-sort）。省略で全部。",
+            description: "規則名（groupby-without-sort）。省略で目次（規則名と、何を見ているか）。",
           },
           kind: {
             type: "string",
@@ -1393,11 +1405,18 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
                 cases: readJson(RULE_CASES_FILE) as RuleCaseCatalog,
                 failures: readJson(FAILURES_FILE) as FailureCatalog,
               });
+        // 名前を省いたら**目次**（規則名と、何を見ているか）。全件を中身ごと返すと約3.4万字で、
+        // 答えがファイルに逃がされる（0.9.30 で答えの大きさを見張り始めて見つかった）。
+        const shown = (list: typeof catalog.warnings) =>
+          rule === undefined ? list.map((one) => ({ rule: one.rule, what: one.what })) : list;
         return pretty({
-          warnings: kind === "advice" ? [] : catalog.warnings,
-          advice: kind === "warning" ? [] : catalog.advice,
+          warnings: kind === "advice" ? [] : shown(catalog.warnings),
+          advice: kind === "warning" ? [] : shown(catalog.advice),
           ...(one === undefined ? {} : { case: one }),
-          note: RULES_NOTE,
+          note:
+            rule === undefined
+              ? `${RULES_NOTE}\nこれは目次です。規則名を rule に渡すと、何が起きるか（happens）・直し方（fix）・転ぶ定義（case）が返ります。`
+              : RULES_NOTE,
         });
       },
     },

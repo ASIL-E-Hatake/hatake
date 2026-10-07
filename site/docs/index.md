@@ -47,7 +47,7 @@ features:
 書いたら推測で終わらせずに検証する。知らないキーは黙って捨てられるので、「書いた気になって効いていない」を防ぐのはこれ。
 
 ```bash
-npx hatake validate dept_master.yaml
+npx -p @hatake-fw/api hatake validate dept_master.yaml
 ```
 
 ## 何がどこまでやるのか
@@ -86,8 +86,8 @@ npx hatake validate dept_master.yaml
 この境界は散文ではなく**引ける表**にしてある。「これは定義で書けるのか、自分で書くのか」を1発で。
 
 ```bash
-npx hatake where 締め処理        # → 枠組みの外（なぜ持たないか＋画面側でできること）
-npx hatake where 一覧の並べ替え   # → 定義で書ける（書くキーと次に引く道具）
+npx -p @hatake-fw/api hatake where 締め処理        # → 枠組みの外（なぜ持たないか＋画面側でできること）
+npx -p @hatake-fw/api hatake where 一覧の並べ替え   # → 定義で書ける（書くキーと次に引く道具）
 ```
 
 AI に「締め処理も作って」と頼むと、外だと言えないまま Dart を書き始める。それを止めるための表で、MCP なら `hatake_where` として渡る。詳しくは [先に決めること](/project) と [仕組みと責務分担](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/concepts.ja.md)。

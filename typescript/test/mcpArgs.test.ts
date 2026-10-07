@@ -126,9 +126,25 @@ describe("近い名前を添える（0.9.29）", () => {
     expect(call("hatake_reference", { pagekind: "crud" }).text).toContain('"pagekind" → "pageKind"');
   });
 
+  it("推し量られやすい言い換えにも添える（0.9.29 の初見試験で AI が渡した名前・0.9.30）", () => {
+    expect(call("hatake_reference", { key: "readOnlyWhen" }).text).toContain('"key" → "name"');
+    expect(call("hatake_reference", { query: "readOnlyWhen" }).text).toContain('"query" → "name"');
+    expect(call("hatake_new_page", { type: "crud", id: "x" }).text).toContain('"type" → "kind"');
+  });
+
   it("近い名前が無ければ添えない（推し量って当てない）", () => {
-    const got = call("hatake_reference", { key: "readOnlyWhen" });
+    // `app` は new_page の引数のどれにも当たらない（言い換えの表にも無い）。
+    const got = call("hatake_new_page", { kind: "crud", id: "x", app: true });
+    expect(got.isError).toBe(true);
     expect(got.text).not.toContain("近い名前");
+  });
+
+  it("言い換えの先は、その道具が受け取る名前にだけ当てる", () => {
+    // examples は query を受け取るので、keyword → query（name ではない）。
+    expect(nearArg("keyword", ["query", "file"])).toBe("query");
+    expect(nearArg("keyword", ["name", "pageKind"])).toBe("name");
+    // 受け取る名前に候補が無ければ当てない。
+    expect(nearArg("type", ["source", "page"])).toBeNull();
   });
 
   it("nearArg は一意に決まるときだけ返す", () => {

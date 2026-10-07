@@ -152,6 +152,12 @@ describe("hatake_reference", () => {
     expect(json(all).nodes.pagination.keys.length).toBeGreaterThan(0);
   });
 
+  it("値の名前でも引ける（maxLength → validator.type。0.9.30）", () => {
+    // 0.9.29 の初見試験で AI が maxLength を引いて「DSL に無い名前」と返っていた。
+    const found = json(call("hatake_reference", { name: "maxLength" }).text);
+    expect(found.values).toEqual([{ node: "validator", key: "type", open: true }]);
+  });
+
   it("無い名前・無いページ種別は道具の失敗として返す", () => {
     const typo = call("hatake_reference", { name: "witdh" });
     expect(typo.isError).toBe(true);

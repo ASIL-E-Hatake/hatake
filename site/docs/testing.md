@@ -20,7 +20,7 @@ description: 定義を動かして「その値でいくらになるか・何が�
 ## まず下書きを作る
 
 ```bash
-npx hatake run order_entry.yaml --draft --out order.scenario.json
+npx -p @hatake-fw/api hatake run order_entry.yaml --draft --out order.scenario.json
 ```
 
 定義の制約から、確かめるべき形が起きる ── 必須を1つずつ空にした形・文字数の境界（ぴったりと1文字超）・同じ値の行を2つ（`unique`）・条件が成立した形（`requiredWhen` / `visibleWhen`）・明細の行の必須を空にした形。
@@ -46,7 +46,7 @@ npx hatake run order_entry.yaml --draft --out order.scenario.json
 ## 動かす
 
 ```bash
-npx hatake run order_entry.yaml --scenario order.scenario.json
+npx -p @hatake-fw/api hatake run order_entry.yaml --scenario order.scenario.json
 ```
 
 ```
@@ -132,7 +132,7 @@ for (var one : cases) {
 契約（`schema` / `openapi`）は出せるようになったが、**試すデータ**はサーバを書く人が手で作っていた。境界は定義に書いてあるので、これも機械が作れる。
 
 ```bash
-npx hatake fixtures order_entry.yaml --out fixtures.json
+npx -p @hatake-fw/api hatake fixtures order_entry.yaml --out fixtures.json
 ```
 
 ```
@@ -152,7 +152,7 @@ OrderEntryRequest に入れる形（7 件）:
 ## まだ試していない所を数える
 
 ```bash
-npx hatake run order_entry.yaml --scenario order.scenario.json --cover
+npx -p @hatake-fw/api hatake run order_entry.yaml --scenario order.scenario.json --cover
 ```
 
 ```

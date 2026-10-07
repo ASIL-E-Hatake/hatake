@@ -51,14 +51,14 @@ claude mcp add hatake -- node <repo>/typescript/dist/mcp.js
 | `hatake_intent` | **人からの指示文を1枚にする**（言われたまま・1行1件・全部 `source: ai-draft`）。定義も渡すと `covers` が当たり、**言われていないのに在るもの**が出る。定義を書く前と書いたあとに呼ぶ → [言ったことを残す](/design) |
 | `hatake_examples` | やりたいことに近い例を取る（まずこれ。写して直すのが最速） |
 | `hatake_new_page` | 新規なら雛形を出す |
-| `hatake_reference` | キーの型・既定値・書ける場所を引く（仕様書を読まなくていい）。名前を省くと**目次**（全体は `all: true`） |
+| `hatake_reference` | キーの型・既定値・書ける場所を引く（仕様書を読まなくていい）。名前を省くと**目次**（全体は `all: true`）。`maxLength` のような**値**でも引ける |
 | `hatake_check` | **書けたらまずこれ**。検証・読み返し・助言・人が決めることを1回で、欄を分けたまま返す |
 | `hatake_validate` | 書いた定義を検証する。**必ず通す** |
 | `hatake_run` | 定義を**動かして**答えを見る（検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン）。`draft: true` で下書きのシナリオを作り、`cover: true` で「まだ試していない分岐」も出る。→ [試す](/testing) |
 | `hatake_advise` | 検証を通したあと、**書いていない**から不便かもしれない所を挙げる（並べ替えできない一覧・誰でも消せる画面・確認の無い一括）。好みなので直すかは業務の判断。**書く値の下書きも付く** |
 | `hatake_apply_advice` | 当てると決めた助言を、その場に書き込む（**書く値は渡す側が決め、書く場所は機械が決める**） |
 | `hatake_pitfalls` | よくある間違いと直し方 |
-| `hatake_rules` | 言われた規則（警告・助言）が何か、どう直すかを引く |
+| `hatake_rules` | 言われた規則（警告・助言）が何か、どう直すかを引く（規則名を省くと目次） |
 | `hatake_api_shape` | バックエンドが返すべき JSON の形（`format: fixtures` で**サーバ側の試験データ**も。通る形と弾く形を定義の制約から作る → [試す](/testing)） |
 | `hatake_print_preview` | 帳票を刷ったらどう見えるか（列の並び・小計の位置・切れた文字）を文字で返す |
 | `hatake_diff` | 既存の定義を直したとき、契約を壊していないか・**確かめてほしい変化**（消えた列・ボタン・選択肢、権限の変化）はないか |
@@ -84,7 +84,7 @@ hatake という宣言型フレームワークで業務画面を作る。
 - Flutter / Dart のコードは書かない。書くのは定義（YAML）だけ。
 - 定義に無い機能は、実装で回避せずプラグインでの拡張を提案する。
 - 近い例があれば例を写して直す。ゼロから書かない。
-- 書いたら npx hatake validate にかけ、警告が出たら直す（警告は「落ちないが意図どおり動かない」書き方）。
+- 書いたら npx -p @hatake-fw/api hatake validate にかけ、警告が出たら直す（警告は「落ちないが意図どおり動かない」書き方）。
 - 知らないキーを想像で書かない。迷ったら reference.json を引く。
 ```
 
@@ -112,32 +112,32 @@ https://asil-e-hatake.github.io/hatake/dsl/table-columns.md  ← AI 向け（中
 AI に書かせるにしても、最後は機械で確かめる。エージェントが `validate` を通す前提で作られているので、CI でも同じものを使う。
 
 ```bash
-npx hatake check page.yaml             # 1往復で1本（事実・読み返し・好み・人が決めること）
-npx hatake validate page.yaml          # 検証。--json で機械可読、--warn-as-error で CI を落とせる
-npx hatake new crud --id customer --title 顧客マスタ
-npx hatake reference rowsPerPage       # そのキーの型・既定値・書ける場所
-npx hatake reference --placeholders    # 文言に書ける差し込みと、いつ埋まるか
-npx hatake examples 帳票               # 近い例
-npx hatake pitfalls groupBy            # 間違い → 正しい書き方
-npx hatake failures unknown-repository # 実際に転んだ実例（なぜそう書くか付き）
-npx hatake explain page.yaml           # この定義、結局どういう画面？
-npx hatake explain page.yaml --brief   # 1行の要約（app なら画面一覧の表）
-npx hatake explain --diff before.yaml page.yaml  # 何を変えたのか、画面の言葉で
-npx hatake harvest definitions/        # 繰り返し転んでいる所を実例カタログの候補に
-npx hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
-npx hatake diagram app.yaml --out app.svg  # 画面とメニューと遷移の図
-npx hatake diagram app.yaml --format mermaid  # PR に貼れる形（--format dot も）
-npx hatake diagram page.yaml --computed    # 計算の依存（箱の中に計算の中身・順番が逆の線は赤）
-npx hatake diagram app.yaml --computed --all  # 画面ぜんぶを1枚に（画面ごとに囲む）
-npx hatake minimize page.yaml          # 既定値と同じ指定を落として短く（意味は変えない）
-npx hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権限・アプリ構成）
-npx hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか
+npx -p @hatake-fw/api hatake check page.yaml             # 1往復で1本（事実・読み返し・好み・人が決めること）
+npx -p @hatake-fw/api hatake validate page.yaml          # 検証。--json で機械可読、--warn-as-error で CI を落とせる
+npx -p @hatake-fw/api hatake new crud --id customer --title 顧客マスタ
+npx -p @hatake-fw/api hatake reference rowsPerPage       # そのキーの型・既定値・書ける場所
+npx -p @hatake-fw/api hatake reference --placeholders    # 文言に書ける差し込みと、いつ埋まるか
+npx -p @hatake-fw/api hatake examples 帳票               # 近い例
+npx -p @hatake-fw/api hatake pitfalls groupBy            # 間違い → 正しい書き方
+npx -p @hatake-fw/api hatake failures unknown-repository # 実際に転んだ実例（なぜそう書くか付き）
+npx -p @hatake-fw/api hatake explain page.yaml           # この定義、結局どういう画面？
+npx -p @hatake-fw/api hatake explain page.yaml --brief   # 1行の要約（app なら画面一覧の表）
+npx -p @hatake-fw/api hatake explain --diff before.yaml page.yaml  # 何を変えたのか、画面の言葉で
+npx -p @hatake-fw/api hatake harvest definitions/        # 繰り返し転んでいる所を実例カタログの候補に
+npx -p @hatake-fw/api hatake index definitions/ --find "顧客 検索"  # どこに何の画面があるか
+npx -p @hatake-fw/api hatake diagram app.yaml --out app.svg  # 画面とメニューと遷移の図
+npx -p @hatake-fw/api hatake diagram app.yaml --format mermaid  # PR に貼れる形（--format dot も）
+npx -p @hatake-fw/api hatake diagram page.yaml --computed    # 計算の依存（箱の中に計算の中身・順番が逆の線は赤）
+npx -p @hatake-fw/api hatake diagram app.yaml --computed --all  # 画面ぜんぶを1枚に（画面ごとに囲む）
+npx -p @hatake-fw/api hatake minimize page.yaml          # 既定値と同じ指定を落として短く（意味は変えない）
+npx -p @hatake-fw/api hatake diff before.yaml after.yaml # 変更の影響（契約・画面・権限・アプリ構成）
+npx -p @hatake-fw/api hatake refs page.yaml --needs-registration  # アプリ側に何を登録すればいいか
 npx hatake registry lib/main.dart              # アプリが登録しているものを実装から読む
-npx hatake refs page.yaml --filled --source lib/  # その登録が本当に埋まったか（TODO のまま・中身が無いを数える）
-npx hatake gaps app.yaml               # 繋がっていない所を1枚で（押す所ごとに1行＋画面ごとの残り）
-npx hatake advise --effect before.yaml after.yaml  # 助言の効き目（どの規則が実際に直されたか）
-npx hatake attack app.yaml --all-roles --accounts accounts.json --base …  # 役割ぜんぶ＋誰でもない人で権限の穴を突く
-npx hatake attack app.yaml --all-roles --login login.json --since last.json --fail-on new
+npx -p @hatake-fw/api hatake refs page.yaml --filled --source lib/  # その登録が本当に埋まったか（TODO のまま・中身が無いを数える）
+npx -p @hatake-fw/api hatake gaps app.yaml               # 繋がっていない所を1枚で（押す所ごとに1行＋画面ごとの残り）
+npx -p @hatake-fw/api hatake advise --effect before.yaml after.yaml  # 助言の効き目（どの規則が実際に直されたか）
+npx -p @hatake-fw/api hatake attack app.yaml --all-roles --accounts accounts.json --base …  # 役割ぜんぶ＋誰でもない人で権限の穴を突く
+npx -p @hatake-fw/api hatake attack app.yaml --all-roles --login login.json --since last.json --fail-on new
                                        # 毎晩回す形（資格は毎回取る・変わった所だけ出す）
 ```
 
@@ -148,7 +148,7 @@ npx hatake attack app.yaml --all-roles --login login.json --since last.json --fa
 定義を書いたあとにやることは4つあって、それぞれ相手が違う ── **事実**（書いたのに効かない）、**読み返し**（そう書いてある）、**好み**（書いていないと不便かも）、**人が決めること**（定義に書けない）。AI にやらせると、この4つを別々に呼ぶので往復も文脈も4回ぶん食う。しかも順番は説明が渡しているだけなので、`validate` だけかけて「通りました」と言うエージェントが実際に居る。
 
 ```bash
-npx hatake check page.yaml
+npx -p @hatake-fw/api hatake check page.yaml
 ```
 
 ```
@@ -189,7 +189,7 @@ page.yaml（crud）を1回で見ました。
 `validate` が見るのは綴りと構造だけ。**条件の向きを間違えた・意図と違う項目を必須にした**は全部通る。AI に書かせるなら、最後に人の言葉で読み返すのが要る。
 
 ```bash
-npx hatake explain page.yaml
+npx -p @hatake-fw/api hatake explain page.yaml
 ```
 
 ```
@@ -216,7 +216,7 @@ npx hatake explain page.yaml
 `diff` は機械の言葉で言う（`ui / column-format-changed / …columns.amount.format`）。壊れるかを CI で見るにはそれが正しいが、**人がレビューするときに読みたいもの**ではない。
 
 ```bash
-npx hatake explain --diff before.yaml after.yaml
+npx -p @hatake-fw/api hatake explain --diff before.yaml after.yaml
 ```
 
 ```
@@ -241,7 +241,7 @@ npx hatake explain --diff before.yaml after.yaml
 対照表（`pitfalls`）は人が考えた間違いの集合で、AI が転ぶ所とはズレる。実例は別に溜めてある。
 
 ```bash
-npx hatake failures            # 全件（こう書いた → こう言われた → こう直した）
+npx -p @hatake-fw/api hatake failures            # 全件（こう書いた → こう言われた → こう直した）
 ```
 
 各件は**本当に道具にかけ直して**、記録した診断と一致することを CI で確認している。**機械では拾えない件も載っている**（載せないと「道具が万全」という嘘になる）ので、そこには「レビューでどこを見るか」が書いてある。
@@ -249,7 +249,7 @@ npx hatake failures            # 全件（こう書いた → こう言われた
 実例は手で書くと増えない。増えないカタログは、道具が良くなったのか拾っていないだけなのか見分けが付かないので、定義の山から候補を拾う。
 
 ```bash
-npx hatake harvest definitions/    # 繰り返し出ている診断を候補として出す（既定は2回以上）
+npx -p @hatake-fw/api hatake harvest definitions/    # 繰り返し出ている診断を候補として出す（既定は2回以上）
 ```
 
 候補は**人が書く欄を空のまま**出る。「なぜそう書いてしまうか」は機械には書けないし、そこがこのカタログの価値なので、自動で追加はしない。定義そのものも持ち出さない（ラベルや列名に客先の語彙が入るので、出すのはファイル名・場所・回数だけ）。
@@ -261,7 +261,7 @@ npx hatake harvest definitions/    # 繰り返し出ている診断を候補と�
 AI は指摘されると**別の場所を直して壊す**ことがある。「`witdh` は知らないキーです」と言われて列ごと書き換える、というような直し方をする。綴り違いのような一意な直しは、機械のほうが速くて安全。
 
 ```bash
-npx hatake fix page.yaml            # 既定は出すだけ。--write で上書き
+npx -p @hatake-fw/api hatake fix page.yaml            # 既定は出すだけ。--write で上書き
 ```
 
 ```
@@ -282,7 +282,7 @@ npx hatake fix page.yaml            # 既定は出すだけ。--write で上書�
 短くする（`minimize`）の逆。業務システムで多いのは書きすぎより**書き足りない**（並べ替えできない一覧・絞り込みの無い一覧・誰でも消せる画面）。書いていないものは警告にもスキーマにも出ないので、別の物差しで見る。
 
 ```bash
-npx hatake advise page.yaml
+npx -p @hatake-fw/api hatake advise page.yaml
 ```
 
 ```
@@ -296,7 +296,7 @@ npx hatake advise page.yaml
 助言は好みなので、**物差しは案件ごとに差し替えられる**。
 
 ```bash
-npx hatake advise page.yaml --rules team.json
+npx -p @hatake-fw/api hatake advise page.yaml --rules team.json
 ```
 
 `team.json` に書けるのは3つだけ。合わない規則を止める（`off`）、組み込みの規則の目盛りを変える（`options`）、案件の決めごとを「**この場所には必ずこのキーを書く**」の形で足す（`require`）。条件式は書けない — 書けるようにすると設定ファイルが小さなプログラムになるので。知らないキーや知らない規則名はエラーにする（設定が黙って効かないのが一番まずい）。
@@ -327,7 +327,7 @@ page:
 案件の決めごとは、たいてい**もう定義に書いてある**（誰も明文化していないだけ）。手で物差しを書くのは最初の一歩が重いので、既にある定義から起こす。
 
 ```bash
-npx hatake harvest definitions/ --rules
+npx -p @hatake-fw/api hatake harvest definitions/ --rules
 ```
 
 ```
@@ -346,7 +346,7 @@ npx hatake harvest definitions/ --rules
 助言は 22 個まで増えた。増やす根拠は毎回あったが、**減らす根拠はどこにも無い**。鳴るだけで誰も直さない規則が混ざっていると、読む側は全部を流し読みするようになり、AI は「全部直す」をやって余計な差分を作る。騒音は規則の数ではなく**直されない規則の数**で決まるので、そこを数える。
 
 ```bash
-npx hatake advise --effect --git main...HEAD definitions/*.yaml
+npx -p @hatake-fw/api hatake advise --effect --git main...HEAD definitions/*.yaml
 ```
 
 ```
@@ -390,7 +390,7 @@ bulk-without-confirm … 効いている
 助言を読んで YAML を手で書き足すのは、AI がいちばん転ぶ所である（字下げを間違える・隣のキーを巻き込む・配列の何番目かを取り違える）。**場所は機械のほうが正確**なので、そこだけ機械に渡す。
 
 ```bash
-npx hatake advise page.yaml --apply picks.json   # 既定は出すだけ。--write で上書き
+npx -p @hatake-fw/api hatake advise page.yaml --apply picks.json   # 既定は出すだけ。--write で上書き
 ```
 
 ```json
@@ -429,7 +429,7 @@ npx hatake advise page.yaml --apply picks.json   # 既定は出すだけ。--wri
 `roles` は5か所に書けるので、役割名は定義のあちこちに散る。**綴りを間違えても画面は出る**（そのボタンが誰にも見えないだけ）ので、書く前に一覧を引く。
 
 ```bash
-npx hatake explain app.yaml --roles
+npx -p @hatake-fw/api hatake explain app.yaml --roles
 ```
 
 ```
@@ -447,7 +447,7 @@ manaher … 1 か所
 
 出てくる回数の多い順なので、**1か所しか出てこない役割が下に落ちてくる**。上の `manaher` がそれ。役割ごとに「その役割だから開ける画面」も出る（空なら、その役割は列や項目にしか効いていない）。MCP なら `hatake_explain` に `roles: true`。
 
-書き方の見本は [`spec/examples/roles_app.yaml`](https://github.com/ASIL-E-Hatake/hatake/blob/main/spec/examples/roles_app.yaml)（`roles` を書ける5か所ぜんぶと、役割ごとの一括上限）。`npx hatake examples 権限` で引ける。
+書き方の見本は [`spec/examples/roles_app.yaml`](https://github.com/ASIL-E-Hatake/hatake/blob/main/spec/examples/roles_app.yaml)（`roles` を書ける5か所ぜんぶと、役割ごとの一括上限）。`npx -p @hatake-fw/api hatake examples 権限` で引ける。
 
 出るのは**定義に書いてある名前**だけで、アプリ側の権限判定と合っているかは見られない（それは Framework の外の話）。「誰がどの画面を開けるか」は入口を辿った別の答えで、`explain` の「開ける人」に出る。
 
@@ -456,8 +456,8 @@ manaher … 1 か所
 説明の「この画面でできないこと」と助言の「書き足したほうがいい所」は隣の話。レビューする人が見る紙は1枚がいいので、まとめて出せる。
 
 ```bash
-npx hatake explain page.yaml --review
-npx hatake explain app.yaml --review --page order_search   # 助言もその画面だけに絞る
+npx -p @hatake-fw/api hatake explain page.yaml --review
+npx -p @hatake-fw/api hatake explain app.yaml --review --page order_search   # 助言もその画面だけに絞る
 ```
 
 助言は最後の節にまとめ、**警告ではない**と毎回書く。1枚にしても終了コードは変わらない。
@@ -469,7 +469,7 @@ npx hatake explain app.yaml --review --page order_search   # 助言もその画�
 AI に書かせた定義は冗長になる（`type: text`、`required: false`、`validators: []`）。冗長な定義はレビューが重くなり、次に AI が読むときのコンテキストも太る。
 
 ```bash
-npx hatake minimize page.yaml > short.yaml   # 落としたものは標準エラーに出る
+npx -p @hatake-fw/api hatake minimize page.yaml > short.yaml   # 落としたものは標準エラーに出る
 ```
 
 落とすのは「既定値と同じ指定」と「空の指定」だけ。**1つ落とすたびに解析後のモデルが1バイトも変わらないことを確かめ、変わったら戻す**ので、意味は変わらない。出力は落とす所だけを切るので、コメントも書き方も改行コードもそのまま（差分が「消えた行」だけになる）。書き間違いのある定義は最小化しない — 未知キーを黙って消す道具になってはいけないので。
@@ -479,9 +479,9 @@ npx hatake minimize page.yaml > short.yaml   # 落としたものは標準エラ
 画面が10枚を超えると「どこに何があるか」が分からなくなる。grep では「その画面が何をするか」が出てこないので、1行の要約を集めた索引を作る。
 
 ```bash
-npx hatake index definitions/ --find "顧客 検索"
-npx hatake index definitions/ --by size      # 規模の大きい画面から
-npx hatake index definitions/ --json         # AI に渡す（近い画面を探させる入口）
+npx -p @hatake-fw/api hatake index definitions/ --find "顧客 検索"
+npx -p @hatake-fw/api hatake index definitions/ --by size      # 規模の大きい画面から
+npx -p @hatake-fw/api hatake index definitions/ --json         # AI に渡す（近い画面を探させる入口）
 ```
 
 探せるのは**現場の言葉と実装の言葉の両方**（ラベルの「得意先」でも、項目名の `customer` でも当たる）。`--find` は語の AND なので、文ではなく語を並べる。
@@ -498,7 +498,7 @@ for (final screen in index.search('顧客 検索')) print(screen.brief);
 ### 画面と遷移を図にする
 
 ```bash
-npx hatake diagram app.yaml --out app.svg
+npx -p @hatake-fw/api hatake diagram app.yaml --out app.svg
 ```
 
 段は「メニューから開ける画面 → そこから遷移で開く画面 → …」。この並べ方にすると**どこからも開けない画面**（メニューにも遷移先にも無い）が自然に落ちてくる。画面が増えると一覧では気づけないやつ。
@@ -514,7 +514,7 @@ npx hatake diagram app.yaml --out app.svg
 AI に直させると差分は爆発する（キーの並びが変わる・既定値が明示される・囲みの書き方が変わる）。けれど**意味は変わっていない**ことが多い。いまの律速は AI の速さではなく人のレビューなので、ここは**AI を使うほど効く**。
 
 ```bash
-npx hatake same before.yaml after.yaml
+npx -p @hatake-fw/api hatake same before.yaml after.yaml
 ```
 
 見ているのは**解析後のモデル**。だから並べ替えと既定値の明示は差にならないし、逆に**意味が変わっていれば1件でも必ず言う** ── 違うときは、どこが違うかを道つきで出す（同じか違うかだけでは、レビューには使えない）。
@@ -536,7 +536,7 @@ npx hatake same before.yaml after.yaml
 シナリオ（値の話）は下書きから「まだ試していない所」まで閉じた。残っていたのは**画面の試験** ── 押せるか・出ているか・保存に行ったかは、画面を出さないと分からない。道具（`hatake_test`）は配ったが、最初の1本を書くのは今も人だった。
 
 ```bash
-npx hatake run page.yaml --widget-draft --assets assets/page.yaml --out page_test.dart
+npx -p @hatake-fw/api hatake run page.yaml --widget-draft --assets assets/page.yaml --out page_test.dart
 ```
 
 ```dart
@@ -566,7 +566,7 @@ testWidgets('行から編集を開いて保存できる', (tester) async {
 `diff` は「何が変わったか」しか言えない。**なぜ変わったか**は人が PR 本文に書くしかなく、書き忘れると半年後に誰も理由を思い出せない。[意図の1枚](/design)と定義の差を組めば、そこは機械が言える。
 
 ```bash
-npx hatake trace --diff before.yaml after.yaml --intent order_search.intent.yaml
+npx -p @hatake-fw/api hatake trace --diff before.yaml after.yaml --intent order_search.intent.yaml
 ```
 
 ```
@@ -587,7 +587,7 @@ npx hatake trace --diff before.yaml after.yaml --intent order_search.intent.yaml
 `--cover` は「まだ試していない分岐」を挙げる所まで来たが、そこから**書くのは人**だった。判断を投げられた AI は止まるか、勝手に決める（後者のほうが悪い）。
 
 ```bash
-npx hatake run page.yaml --scenario s.json --cover --draft --out more.json
+npx -p @hatake-fw/api hatake run page.yaml --scenario s.json --cover --draft --out more.json
 ```
 
 ```
@@ -605,7 +605,7 @@ npx hatake run page.yaml --scenario s.json --cover --draft --out more.json
 `validate` に `groupby-without-sort` と言われたとき、それが何かを引く先が無かった。仕様書を全文読ませるか、その警告を出す定義をもう一度作って転ばせるしかない。だから**規則そのもの**を引ける形にした（`reference` と同じ立ち位置）。
 
 ```bash
-npx hatake rules groupby-without-sort
+npx -p @hatake-fw/api hatake rules groupby-without-sort
 ```
 
 ```
@@ -663,7 +663,7 @@ npx hatake registry --from-app hatake-registry.json --out hatake-registry.json
 定義は自分だけでは動かない。`repository: orderRepository` と書いても、アプリ側がその名前で登録していなければ**画面は出るがデータが来ない**。名前の食い違いは画面を見ても気づけないので、機械に言わせる。
 
 ```bash
-npx hatake refs page.yaml --needs-registration   # 定義が要求しているもの
+npx -p @hatake-fw/api hatake refs page.yaml --needs-registration   # 定義が要求しているもの
 npx hatake registry lib/main.dart --out hatake-registry.json  # アプリが登録しているもの
 npx hatake validate page.yaml --registry hatake-registry.json # 突き合わせる
 ```
@@ -716,7 +716,7 @@ npx hatake gaps app.yaml --registry hatake-registry.json
 まま」から「埋まっている」に変わる＝**数を良くするために中身を消せる**。
 
 ```bash
-npx hatake refs page.yaml --filled --source lib/
+npx -p @hatake-fw/api hatake refs page.yaml --filled --source lib/
 ```
 
 ```text
@@ -771,7 +771,7 @@ CI を緑にできてしまう。
 ### 直した影響を見る
 
 ```bash
-npx hatake diff before.yaml after.yaml
+npx -p @hatake-fw/api hatake diff before.yaml after.yaml
 ```
 
 3段で返る。`✗ 破壊的` は呼び出し側が壊れる（必須項目を足した・返す形から消した・型を変えた）。`△ 要確認` は壊れないが人に確かめてほしい（列やボタンや選択肢が消えた・権限が狭まった／広がった・ページやメニューが消えた）。`・安全` は増えただけ。

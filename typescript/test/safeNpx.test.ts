@@ -23,8 +23,12 @@ const TEXT = /\.(md|txt|ts|tsx|mjs|js|json|ya?ml|dart|java|sh)$/;
 const HISTORY = new Set(["CHANGELOG.md"]);
 // この試験自身（危なさを説明するために書いている）。
 const HISTORY_PATHS = new Set(["docs/roadmap.ja.md", "typescript/test/safeNpx.test.ts"]);
-/** 生成物（作り直せば直る）。 */
-const GENERATED = ["site/docs/", "typescript/spec/"];
+/**
+ * 生成物（作り直せば直る）。サイトは**生成するフォルダだけ**（docs/site/protocol.ja.md）。
+ * 0.9.29 まで `site/docs/` を丸ごと外していたので、手書きの `ai.md` / `index.md` ほか7枚に
+ * 名前だけの書き方が 70 行近く残っていた（サイトの AI 向けのページそのもの）。
+ */
+const GENERATED = ["site/docs/dsl/", "site/docs/partials/", "site/docs/public/", "typescript/spec/"];
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {

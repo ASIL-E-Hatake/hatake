@@ -97,13 +97,41 @@ export function advertisedSchema(tool: McpTool): Record<string, unknown> {
 }
 
 /**
- * 推し量って書かれた引数名に近い、受け取る名前（無ければ null）。綴りの近さ（2文字まで）と、
- * 片方がもう片方を含む形（`file` → `file_path`・`path` → `file_path`）を見る。
+ * 推し量られやすい言い換え（書かれた名前 → 受け取る名前の候補。前にあるほど先に当てる）。
+ *
+ * 綴りが近くないので [closestKey] では見つからないもの。0.9.29 の初見試験で、AI は
+ * `hatake_reference` に `key`、`hatake_new_page` に `type` を渡していた（どちらも断られて
+ * 呼び直せたが、1往復損した）。候補はその道具が**受け取る名前に当たるときだけ**添える。
+ */
+export const ARG_GUESSES: Readonly<Record<string, readonly string[]>> = {
+  key: ["name"],
+  keyname: ["name"],
+  query: ["name"],
+  keyword: ["query", "name"],
+  q: ["query", "name"],
+  term: ["query", "name"],
+  type: ["kind"],
+  pagetype: ["kind"],
+  pagekind: ["kind", "pageKind"],
+  definition: ["source"],
+  yaml: ["source"],
+  content: ["source"],
+  text: ["source"],
+  path: ["file_path"],
+  filename: ["file_path"],
+};
+
+/**
+ * 推し量って書かれた引数名に近い、受け取る名前（無ければ null）。順に見る:
+ * 綴りの近さ（2文字まで）→ 言い換えの表（[ARG_GUESSES]）→ 片方がもう片方を含む形
+ * （`file` → `file_path`）。どれも**一意に決まるときだけ**返す。
  */
 export function nearArg(given: string, accepted: string[]): string | null {
   const spelled = closestKey(given, accepted);
   if (spelled !== null) return spelled;
   const lower = given.toLowerCase();
+  const guessed = (ARG_GUESSES[lower] ?? []).find((one) => accepted.includes(one));
+  if (guessed !== undefined) return guessed;
   const containing = accepted.filter(
     (one) => lower.length >= 3 && (one.toLowerCase().includes(lower) || lower.includes(one.toLowerCase())),
   );
