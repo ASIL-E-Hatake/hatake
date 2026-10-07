@@ -322,3 +322,36 @@ export function filterByPageKind(
   );
   return { ...reference, pageKinds: [pageKind], nodes, keyIndex };
 }
+
+/** 目次（名前を省いて引いたときの答え）。中身は持たず、**次に何の名前で引くか**だけ。 */
+export interface ReferenceIndex {
+  dslVersion: string;
+  /** ページ種別と、その画面の根になるノード。 */
+  pageKinds: { type: string; node: string; description?: string }[];
+  /** ノード名と、そのノードに書けるキーの数。 */
+  nodes: Record<string, number>;
+  /** キー名 → 書けるノード（`lookupReference` と同じ索引）。 */
+  keyIndex: Record<string, string[]>;
+  note: string;
+}
+
+/**
+ * 全体（約10万字）の代わりに渡す目次。AI の1回の答えに収まる大きさ（約1万字）にして、
+ * そこから `name` で引かせる。全体を丸ごと渡すと、答えが道具の側でファイルに逃がされ、
+ * AI は拾い読みになる（0.9.27 の初見試験で4回）。
+ */
+export function referenceIndex(reference: DslReference): ReferenceIndex {
+  return {
+    dslVersion: reference.dslVersion,
+    pageKinds: reference.pageKinds.map((one) => ({
+      type: one.type,
+      node: one.node,
+      ...(one.description === undefined ? {} : { description: one.description }),
+    })),
+    nodes: Object.fromEntries(Object.entries(reference.nodes).map(([name, node]) => [name, node.keys.length])),
+    keyIndex: reference.keyIndex,
+    note:
+      "これは目次です。キー名・ノード名・ページ種別を name に渡すと、型・既定値・取れる値が引けます" +
+      "（例: name: readOnlyWhen）。全体が要るときだけ all: true（約10万字）。",
+  };
+}

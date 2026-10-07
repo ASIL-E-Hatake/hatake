@@ -100,6 +100,7 @@ import {
   buildReference,
   filterByPageKind,
   lookupReference,
+  referenceIndex,
 } from "./reference.js";
 import {
   describePitfall,
@@ -299,6 +300,9 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
    好み（助言）・人が決めること を1回で回して、**欄を分けたまま**返す。4本を別々に
    呼んだのと同じ結果なので、順番を覚えなくてよい。前書きが在れば project も渡す
    （案件の名前の決めごと・用語辞書との食い違いも同じ紙に出る）。
+   **定義をファイルに書いたなら source ではなく file に道を渡す**（例: file:
+   definitions/app.yaml。起動したフォルダからの相対）＝貼り直さなくてよい。source を
+   受け取る道具はどれも file でも受け取る
    **欄ごとに次の相手が違う**:
    ・事実（書いたのに効かない）→ hatake_fix に通す（綴り違いのような**一意な直し**は
      自分で書き直さない。別の所を壊す）
@@ -342,7 +346,16 @@ export const INSTRUCTIONS = `hatake は業務画面を「定義（YAML）」で�
 
 原則: Flutter の Widget や API のコードを手で書かず、定義を書く。定義に無い機能は
 DSL の拡張（プラグイン）で足す。**枠組みの外のこと（業務ロジック・ワークフロー・
-DB・認証・認可・API 本体）は書かずに、外だと言う**（hatake_where で引ける）。`;
+DB・認証・認可・API 本体）は書かずに、外だと言う**（hatake_where で引ける）。
+
+CLI を叩くとき: **必ず npx -p @hatake-fw/api hatake <命令>** と書く（例:
+npx -p @hatake-fw/api hatake check definitions/app.yaml）。名前だけの書き方（npx の
+すぐ後ろに hatake）は、手元に入っていない所では npm の registry に在る**別の人の、
+名前が同じだけの道具**を取ってきて走らせる。MCP の道具で足りることは MCP で済ませる
+（ファイルは file で渡せる）。
+
+引数は道具ごとに決まっている（tools/list の inputSchema）。**知らない引数は断る**
+（黙って捨てると、渡したつもりの条件が効かないまま答えが返るので）。`;
 
 const str = (args: Record<string, unknown>, key: string): string | undefined =>
   typeof args[key] === "string" ? (args[key] as string) : undefined;
@@ -765,7 +778,8 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         "「このキーはどこに書くのか」「型と既定値は」「他に何が書けるのか」で迷ったら" +
         "仕様書を読まずにこれを使う。name にキー名（rowsPerPage）・ノード名（report / column）・" +
         "ページ種別（crud）のどれを渡してもよく、当たったものを全部返す。" +
-        "name を省くと全体（大きいので pageKind での絞り込みを推奨）。" +
+        "name を省くと**目次**（ページ種別・ノード名・キーの索引。約1万字）＝そこから name で引く。" +
+        "全体（約10万字）が要るときだけ all を true にする。" +
         "values は取れる値で、open が true なら組み込みの一覧＝プラグインで足せる、false なら enum。" +
         "closed が false のノードは中身が自由（config など）。" +
         "**placeholders を true にすると、文言に書ける差し込みの一覧**" +
@@ -778,7 +792,13 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         properties: {
           name: {
             type: "string",
-            description: "キー名 / ノード名 / ページ種別。省略で全体。",
+            description: "キー名 / ノード名 / ページ種別。省略で目次（全体は all）。",
+          },
+          all: {
+            type: "boolean",
+            description:
+              "name を省いたときに目次ではなく全体を返す（既定 false。約10万字あり、" +
+              "AI の1回の答えとしては大きすぎる＝ふつうは目次から name で引く）。",
           },
           pageKind: {
             type: "string",
@@ -813,11 +833,13 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           ref = only;
         }
         const name = str(args, "name");
-        if (name === undefined) return pretty(ref);
+        // 名前を省いたら**目次**。全体は約10万字で、0.9.27 の初見試験では返した4回とも
+        // 答えがファイルに逃がされ、AI は grep で拾い読みしていた（読み落とす）。
+        if (name === undefined) return pretty(args.all === true ? ref : referenceIndex(ref));
         const found = lookupReference(ref, name);
         if (found === null) {
           throw new Error(
-            `"${name}" は DSL に無い名前です。キー名の一覧は name を省いて keyIndex を見てください。`,
+            `"${name}" は DSL に無い名前です。キー名の一覧は name を省いて（目次の）keyIndex を見てください。`,
           );
         }
         return pretty(found);
