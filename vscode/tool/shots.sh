@@ -46,6 +46,16 @@ page:
     - { id: cancel, type: delete, label: 取消 }
 YAML
 sed 's/  table:/  tabel:/' "$WORK/project/definitions/order_cancel.yaml" > "$WORK/project/definitions/typo.yaml"
+# 前書き（定義の隣）。答えた問い（concurrency）は「人が決めること」に出なくなる。
+cat > "$WORK/project/definitions/hatake.project.yaml" <<'YAML'
+project_version: "1.0"
+system:
+  what: 手引きの画像を撮るための作業場
+logic:
+  - what: 同時に直したら、後から保存した人に「もう直されています」と出して読み直させる
+    where: server
+    answers: [concurrency]
+YAML
 : > "$WORK/project/definitions/new_page.yaml"
 echo "v$VERSION" > "$WORK/project/hatake.version"
 cp "$VSIX" "$WORK/ext/hatake.vsix"

@@ -2,18 +2,14 @@
 //
 // 定義かどうかは中身で決める（先頭の階層に page: か app:）。ファイル名では決めない。
 // 画面ごとの AI と同じ紙（hatake_check）もここで1回だけ作る（ツリーの印と「確認」タブが
-// 同じ答えを使う＝言うことが食い違わない）。
+// 同じ答えを使う＝言うことが食い違わない）。前書きは定義の隣のもの（sheets.ts）。
 
 import * as vscode from "vscode";
 
 import { outlineOf, type Outline } from "./outline";
+import { projectNear, sheetsOf, type Sheet } from "./sheets";
 
-export interface Sheet {
-  ok?: boolean;
-  facts?: { warnings?: { rule: string; path?: string; message: string; fix?: string }[] };
-  preferences?: { advice?: { rule: string; where?: string; says: string; add?: string }[] };
-  questions?: { list?: { kind: { id: string; ask: string; why?: string } }[] };
-}
+export type { Sheet } from "./sheets";
 
 export interface Definition {
   uri: vscode.Uri;
@@ -25,6 +21,8 @@ export interface Definition {
   error?: string;
   /** 画面 id → その画面に絞った紙。 */
   sheets: Map<string, Sheet>;
+  /** 隣の前書き（作業場からの道）。無ければ undefined。 */
+  project?: string;
 }
 
 export const isDefinitionText = (text: string): boolean => /^(page|app)\s*:/m.test(text);
@@ -57,15 +55,19 @@ export class Project {
       one.error = error instanceof Error ? error.message : String(error);
       return one;
     }
-    for (const page of one.outline.pages) {
-      try {
-        const args = one.outline.kind === "app" ? { source, page: page.id, explain: false } : { source, explain: false };
-        one.sheets.set(page.id, JSON.parse(this.call("hatake_check", args)) as Sheet);
-      } catch (error) {
-        one.sheets.set(page.id, { ok: false });
-        one.error = error instanceof Error ? error.message : String(error);
+    let project: string | undefined;
+    try {
+      const near = projectNear(uri.fsPath);
+      if (near !== undefined) {
+        one.project = vscode.workspace.asRelativePath(near.path);
+        project = near.source;
       }
+    } catch {
+      // 読めない前書きは渡さない（紙のほうで「前書きなし」と分かる）。
     }
+    one.sheets = sheetsOf(this.call, one.outline, source, project);
+    const broken = [...one.sheets.values()].find((sheet) => sheet.ok === false && sheet.message !== undefined);
+    if (broken !== undefined) one.error = broken.message;
     return one;
   }
 

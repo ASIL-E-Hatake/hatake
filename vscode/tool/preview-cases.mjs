@@ -21,7 +21,8 @@ const SPEC = resolve(HERE, "..", "spec");
 const compiled = join(HERE, "dist", ".preview-data.mjs");
 await build({
   stdin: {
-    contents: 'export * from "./src/previewData"; export * from "./src/outline"; export * from "./src/viewModel";',
+    contents:
+      'export * from "./src/previewData"; export * from "./src/outline"; export * from "./src/viewModel"; export * from "./src/sheets";',
     resolveDir: HERE,
     loader: "ts",
   },
@@ -32,7 +33,7 @@ await build({
   outfile: compiled,
   logLevel: "warning",
 });
-const { previewModel, outlineOf, viewTables, tabFor } = await import(pathToFileURL(compiled).href);
+const { previewModel, outlineOf, viewTables, tabFor, sheetsOf } = await import(pathToFileURL(compiled).href);
 
 const tools = hatakeTools({ specDir: SPEC, readFile: (path) => readFileSync(path, "utf8") });
 const refs = tools.find((one) => one.name === "hatake_refs");
@@ -63,9 +64,10 @@ const cases = CASES.map((one) => {
 
 writeFileSync(join(HERE, "dist", "preview-cases.json"), `${JSON.stringify(cases, null, 2)}\n`);
 
-// ツリーから開く画面（タブ付き）。view.ts と同じ作り方: 画面の作り物・その画面に絞った紙・読み返し。
+// ツリーから開く画面（タブ付き）。view.ts と同じ作り方: 画面の作り物・その画面に絞った紙
+// （project.ts と同じ sheetsOf。前書きがあれば渡す）・読み返し。
 const explain = tools.find((one) => one.name === "hatake_explain");
-const check = tools.find((one) => one.name === "hatake_check");
+const call = (name, args) => tools.find((one) => one.name === name).run(args);
 const VIEW_CASES = [
   { name: "1画面を選ぶ（既定の画面のタブ）", file: "examples/customer_master.yaml", expect: { tab: "screen", rows: true } },
   {
@@ -91,6 +93,14 @@ const VIEW_CASES = [
     key: "concurrency",
     expect: { tab: "check", hit: "view-note:question:concurrency" },
   },
+  {
+    // 前書きで答えた問いは出さない（0.9.31 は前書きを渡しておらず、答えた問いがもう一度出ていた）。
+    name: "前書きのある定義（答えた問いは出ない）",
+    file: "examples/customer_master.yaml",
+    project: "projects/wholesale.project.yaml",
+    tab: "check",
+    expect: { tab: "check", project: "projects/wholesale.project.yaml", gone: "view-note:question:concurrency" },
+  },
 ];
 const views = VIEW_CASES.map((one) => {
   const source = readFileSync(join(SPEC, one.file), "utf8");
@@ -99,7 +109,8 @@ const views = VIEW_CASES.map((one) => {
   const isApp = outline.kind === "app";
   const names = JSON.parse(refs.run({ source })).all?.repositories ?? [];
   const screen = previewModel(source, names);
-  const sheet = JSON.parse(check.run(isApp ? { source, page: page.id, explain: false } : { source, explain: false }));
+  const project = one.project === undefined ? undefined : readFileSync(join(SPEC, one.project), "utf8");
+  const sheet = sheetsOf(call, outline, source, project).get(page.id) ?? {};
   const readback = explain.run(isApp ? { source, page: page.id } : { source });
   return {
     name: one.name,
@@ -114,7 +125,7 @@ const views = VIEW_CASES.map((one) => {
       ...(isApp ? { page: page.id } : {}),
       tab: one.tab ?? tabFor(one.kind, "screen"),
       ...(one.key === undefined ? {} : { highlight: { kind: one.kind, key: one.key } }),
-      tables: viewTables(outline, page, screen.roles, sheet, readback),
+      tables: viewTables(outline, page, screen.roles, sheet, readback, one.project),
     },
     expect: one.expect,
   };

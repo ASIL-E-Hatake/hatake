@@ -1,0 +1,96 @@
+{
+  "$comment": "意味で引かれる名前の表。AI はキーの名前を知らないとき、やりたいことの意味から名前を推し量って引く（初見試験で「作ったあとは変えられない」を書こうとして immutable / editable / editOnly を引き、どれも DSL に無い名前だった。正しいのは readOnlyWhen）。綴りの近さ（closestKey）でも値（reference の values）でも当たらないので、この表で添える。words は推し量られやすい名前と日本語の言い方、keys は本当のキー（spec/reference.json に在るもの）、says は何をするキーか、example は書き方の1行。**本物のキー名・ノード名・値は words に書かない**（引けば当たるので、表に載せても届かない）。突き合わせは typescript/test/keyMeanings.test.ts。",
+  "meanings": [
+    {
+      "id": "read-only",
+      "words": ["readonly", "read_only", "immutable", "editable", "editOnly", "noEdit", "locked", "uneditable", "writeOnce", "createOnly", "変更不可", "編集不可", "読み取り専用", "書き換え不可", "変えられない", "直せない"],
+      "keys": ["readOnlyWhen", "readOnly"],
+      "says": "直せないようにする（値は読ませる。見た目は変えない）。いつもなら readOnly: true、条件つきなら readOnlyWhen。「作ったあとは変えられない」は、編集のときだけ読み取り専用にする。",
+      "example": "readOnlyWhen: { mode: edit }"
+    },
+    {
+      "id": "disabled",
+      "words": ["disabled", "disable", "disabledWhen", "enabledIf", "grayOut", "greyOut", "inactive", "非活性", "押せない", "無効化"],
+      "keys": ["enabledWhen"],
+      "says": "条件が真のあいだだけ押せる・入れられる（偽ならグレー）。値を読ませたいなら readOnlyWhen。",
+      "example": "enabledWhen: { field: status, value: draft }"
+    },
+    {
+      "id": "hidden",
+      "words": ["hidden", "hide", "hiddenWhen", "show", "showWhen", "showIf", "visible", "visibleIf", "displayWhen", "非表示", "表示条件", "隠す"],
+      "keys": ["visibleWhen"],
+      "says": "条件が真のあいだだけ出す（隠れている項目は検証しない）。役割で見せ分けるなら roles。",
+      "example": "visibleWhen: { field: kind, value: corp }"
+    },
+    {
+      "id": "required-when",
+      "words": ["mandatory", "mandatoryWhen", "requiredIf", "conditionalRequired", "条件付き必須"],
+      "keys": ["required", "requiredWhen"],
+      "says": "いつも必須なら required: true、条件で必須が変わるなら requiredWhen。",
+      "example": "requiredWhen: { field: kind, value: corp }"
+    },
+    {
+      "id": "validation",
+      "words": ["validation", "validate", "validations", "constraint", "constraints", "rules", "検証", "入力チェック", "桁数"],
+      "keys": ["validators"],
+      "says": "入力の検証を並べる（文字数・形式・範囲・項目どうしの比較）。種類は validators の type に書く。",
+      "example": "validators: [{ type: maxLength, value: 20 }]"
+    },
+    {
+      "id": "choices",
+      "words": ["choices", "enum", "enums", "selectOptions", "dropdown", "pulldown", "codeTable", "選択肢", "プルダウン", "コード表"],
+      "keys": ["options", "optionsOf", "optionsFrom"],
+      "says": "選択肢。その場で並べるなら options、app の vocabularies を名前で指すなら optionsOf、Repository から引くなら optionsFrom。",
+      "example": "optionsOf: orderStatus"
+    },
+    {
+      "id": "default-value",
+      "words": ["initial", "initialValue", "defaultVal", "defaults", "初期値", "既定値"],
+      "keys": ["defaultValue"],
+      "says": "新規のときの初期値（$today などの差し込みも書ける）。",
+      "example": "defaultValue: $today"
+    },
+    {
+      "id": "computed",
+      "words": ["formula", "calc", "calculate", "calculated", "expression", "derived", "計算式", "自動計算"],
+      "keys": ["computed"],
+      "says": "画面の中で計算する項目（合計・差・掛け算）。計算した値は入力させない。",
+      "example": "computed: { op: product, fields: [quantity, unitPrice] }"
+    },
+    {
+      "id": "permission",
+      "words": ["permission", "permissions", "role", "authority", "authorities", "allowedRoles", "visibleTo", "権限", "役割"],
+      "keys": ["roles"],
+      "says": "その役割の人にだけ出す（見せ方の出し分けだけ。本当の遮断はサーバの仕事）。",
+      "example": "roles: [manager]"
+    },
+    {
+      "id": "confirmation",
+      "words": ["confirmation", "confirmMessage", "confirmText", "areYouSure", "確認ダイアログ"],
+      "keys": ["confirm"],
+      "says": "押したときに確認を出す（文言・はい／いいえの字）。",
+      "example": "confirm: { message: 削除しますか？ }"
+    },
+    {
+      "id": "sorting",
+      "words": ["orderBy", "sortBy", "sortKey", "sortOrder", "並べ替え", "並び順"],
+      "keys": ["sortable", "sort"],
+      "says": "一覧の列を並べ替えられるようにするなら列に sortable: true。帳票・カードの並びは sort。",
+      "example": "sortable: true"
+    },
+    {
+      "id": "paging",
+      "words": ["perPage", "paging", "paginate", "pager", "ページング", "ページ送り"],
+      "keys": ["pagination", "pageSize"],
+      "says": "一覧のページ送り（1ページの件数は pagination の pageSize）。",
+      "example": "pagination: { pageSize: 50 }"
+    },
+    {
+      "id": "display-format",
+      "words": ["displayFormat", "numberFormat", "dateFormat", "formatter", "書式", "表示形式"],
+      "keys": ["format"],
+      "says": "見せ方（金額・和暦・マスク）。値の種類は format に書く。",
+      "example": "format: currency"
+    }
+  ]
+}

@@ -26,6 +26,7 @@ import {
   PITFALLS_FILE,
   QUESTION_KINDS_FILE,
   RESPONSIBILITY_FILE,
+  KEY_MEANINGS_FILE,
   RULE_CASES_FILE,
   SCHEMA_FILE,
 } from "./specDir.js";
@@ -49,6 +50,13 @@ import {
   type Where,
   WHERE_KINDS,
 } from "./responsibility.js";
+import {
+  type KeyMeaningTable,
+  meaningHint,
+  meaningsOf,
+  parseKeyMeanings,
+  referenceMiss,
+} from "./keyMeanings.js";
 import {
   describePitfall,
   filterPitfalls,
@@ -227,7 +235,6 @@ import {
   describeUnknownScenarioKey,
   findUnknownScenarioKeys,
 } from "./scenarioKeys.js";
-import { closestKey } from "./strictKeys.js";
 import { scaffold, scaffoldKinds } from "./scaffold.js";
 import {
   type RegistryScan,
@@ -4214,17 +4221,16 @@ function reference(
 
   const found = lookupReference(ref, name);
   if (found === null) {
-    const suggestion = closestKey(name, [
-      ...Object.keys(ref.nodes),
-      ...Object.keys(ref.keyIndex),
-    ]);
-    io.err(
-      `"${name}" はリファレンスにありません` +
-        `${suggestion === null ? "" : `（${suggestion} の間違い？）`}。`,
-    );
+    // 綴りの近い名前と、意味の近いキー（`immutable` → `readOnlyWhen`）を添える。
+    io.err(referenceMiss(ref, name, keyMeanings(flags, io), "cli"));
     return 1;
   }
   return output(JSON.stringify(found, null, 2), flags, io);
+}
+
+/** 意味で引かれる名前の表（無い spec では空＝添えないだけ）。 */
+function keyMeanings(flags: Args["flags"], io: CliIo): KeyMeaningTable {
+  return parseKeyMeanings(optionalSpec(flags, io, KEY_MEANINGS_FILE));
 }
 
 /** 例のカタログ。「やりたいこと」で引いて、近い例をコピーしてもらう。 */
@@ -4360,7 +4366,8 @@ function whereCommand(
     io.err(
       `"${query}" に当てはまる担当は表に載っていません。` +
         "載っていないことは「枠組みの外」とは違います（表がまだ足りないのかも" +
-        "しれません）。やりたいことを別の言葉で引いてみてください。",
+        "しれません）。やりたいことを別の言葉で引いてみてください。" +
+        meaningHint(meaningsOf(keyMeanings(flags, io), query ?? ""), "cli"),
     );
     return 1;
   }

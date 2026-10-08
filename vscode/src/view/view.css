@@ -134,3 +134,6 @@ tr.hatake-view-hit td {
 .hatake-view-note {
   color: var(--vscode-descriptionForeground, #666);
 }
+.hatake-view-project {
+  margin: 0 0 12px;
+}

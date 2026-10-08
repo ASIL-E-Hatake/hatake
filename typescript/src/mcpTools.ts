@@ -73,6 +73,7 @@ import {
   type Where,
   WHERE_KINDS,
 } from "./responsibility.js";
+import { meaningHint, meaningsOf, parseKeyMeanings, referenceMiss } from "./keyMeanings.js";
 import { findProjectAdvice } from "./projectAdvise.js";
 import { projectLines } from "./projectExplain.js";
 import { type AdvicePick, applyAdvice } from "./adviseApply.js";
@@ -116,6 +117,7 @@ import {
   PITFALLS_FILE,
   QUESTION_KINDS_FILE,
   RESPONSIBILITY_FILE,
+  KEY_MEANINGS_FILE,
   RULE_CASES_FILE,
   SCHEMA_FILE,
 } from "./specDir.js";
@@ -427,6 +429,7 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
   const catalog = () => readJson(...CATALOG_PATH) as ExampleCatalog;
   const pitfalls = () => readJson(PITFALLS_FILE) as PitfallCatalog;
   const responsibility = () => parseResponsibility(readJson(RESPONSIBILITY_FILE));
+  const meanings = () => parseKeyMeanings(readJson(KEY_MEANINGS_FILE));
 
   return [
     {
@@ -549,7 +552,8 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
           throw new Error(
             `"${query}" に当てはまる担当は表に載っていません。` +
               "**載っていないことは「枠組みの外」とは違います**（表が足りないのかも" +
-              "しれない）。別の言葉で引くか、人に聞いてください。",
+              "しれない）。別の言葉で引くか、人に聞いてください。" +
+              meaningHint(meaningsOf(meanings(), query ?? ""), "mcp"),
           );
         }
         return pretty({
@@ -849,11 +853,9 @@ export function hatakeTools(options: McpToolOptions): McpTool[] {
         // 答えがファイルに逃がされ、AI は grep で拾い読みしていた（読み落とす）。
         if (name === undefined) return pretty(args.all === true ? ref : referenceIndex(ref));
         const found = lookupReference(ref, name);
-        if (found === null) {
-          throw new Error(
-            `"${name}" は DSL に無い名前です。キー名の一覧は name を省いて（目次の）keyIndex を見てください。`,
-          );
-        }
+        // 空振りには綴りの近い名前と**意味の近いキー**を添える（初見試験で immutable /
+        // editable / editOnly を引いて空振りした＝意味で引かれている）。
+        if (found === null) throw new Error(referenceMiss(ref, name, meanings(), "mcp"));
         return pretty(found);
       },
     },

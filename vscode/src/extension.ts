@@ -21,6 +21,7 @@ import { placedRows } from "./placed";
 import { previewHtml } from "./preview/html";
 import { previewModel, type PreviewModel } from "./previewData";
 import { Project } from "./project";
+import { checkArgs, projectNear } from "./sheets";
 import { versionStatus } from "./status";
 import { DefinitionTree, QuestionTree, type Target } from "./tree";
 import { ViewPanel } from "./view";
@@ -100,13 +101,17 @@ const SEVERITY: Record<Severity, vscode.DiagnosticSeverity> = {
   question: vscode.DiagnosticSeverity.Information,
 };
 
-/** AI と同じ紙（hatake_check）を回して、問題の一覧に出す。読めない定義は1件の誤りにする。 */
+/**
+ * AI と同じ紙（hatake_check）を回して、問題の一覧に出す。読めない定義は1件の誤りにする。
+ * 定義の隣に前書きがあれば渡す（ツリーと同じ紙＝答えた問いは出ない）。
+ */
 function check(document: vscode.TextDocument, problems: vscode.DiagnosticCollection): void {
   if (!isDefinition(document)) return;
   const source = document.getText();
   let sheet: { ok?: boolean; message?: string; hints?: string[] } & Record<string, unknown>;
   try {
-    sheet = JSON.parse(callTool("hatake_check", { source }));
+    const project = document.uri.scheme === "file" ? projectNear(document.uri.fsPath)?.source : undefined;
+    sheet = JSON.parse(callTool("hatake_check", checkArgs(source, { project })));
   } catch (error) {
     sheet = { ok: false, message: error instanceof Error ? error.message : String(error) };
   }

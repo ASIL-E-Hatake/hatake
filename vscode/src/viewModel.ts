@@ -5,6 +5,7 @@
 // 道具を呼ぶのは呼ぶ側（extension.ts）＝ここは渡された答えを並べ直すだけ。
 
 import { ACTION_WORDS, optionsText, rolesTable, rulesText, type Outline, type OutlinePage } from "./outline";
+import type { Sheet } from "./sheets";
 
 type Loose = Record<string, unknown>;
 
@@ -46,7 +47,14 @@ export interface ViewTables {
   cards: ItemRow[];
   actions: ActionRow[];
   roles: { roles: string[]; rows: { label: string; where: string; cells: boolean[] }[] };
-  check: { readback: string; facts: Note[]; preferences: Note[]; questions: Note[] };
+  check: {
+    readback: string;
+    facts: Note[];
+    preferences: Note[];
+    questions: Note[];
+    /** 紙に渡した前書き（作業場からの道）と、前書きで答え済みの問いの数。前書きが無ければ file は null。 */
+    project: { file: string | null; answered: number };
+  };
 }
 
 /** 紙の字は Markdown の太字（`**…**`）を含むことがある。ここは素の字で出すので印を外す。 */
@@ -86,14 +94,11 @@ function actionRows(page: OutlinePage): ActionRow[] {
   });
 }
 
-interface Sheet {
-  facts?: { warnings?: { rule: string; path?: string; message: string; fix?: string }[] };
-  preferences?: { advice?: { rule: string; where?: string; says: string; add?: string }[] };
-  questions?: { list?: { kind: { id: string; ask: string; why?: string } }[] };
-}
-
-/** タブの中身。`sheet` は hatake_check（その画面に絞ったもの）、`readback` は hatake_explain の文。 */
-export function viewTables(outline: Outline, page: OutlinePage, allRoles: string[], sheet: Sheet, readback: string): ViewTables {
+/**
+ * タブの中身。`sheet` は hatake_check（その画面に絞ったもの）、`readback` は hatake_explain の文、
+ * `project` は紙に渡した前書きの道（sheets.ts の projectNear。無ければ省く）。
+ */
+export function viewTables(outline: Outline, page: OutlinePage, allRoles: string[], sheet: Sheet, readback: string, project?: string): ViewTables {
   return {
     filters: itemRows(page, "filter", outline),
     columns: itemRows(page, "column", outline),
@@ -106,6 +111,7 @@ export function viewTables(outline: Outline, page: OutlinePage, allRoles: string
       facts: (sheet.facts?.warnings ?? []).map((one) => ({ rule: one.rule, text: plain(one.message), more: plain(one.fix ?? ""), path: one.path })),
       preferences: (sheet.preferences?.advice ?? []).map((one) => ({ rule: one.rule, text: plain(one.says), more: plain(one.add ?? ""), path: one.where })),
       questions: (sheet.questions?.list ?? []).map((one) => ({ rule: one.kind.id, text: plain(one.kind.ask), more: plain(one.kind.why ?? "") })),
+      project: { file: project ?? null, answered: project === undefined ? 0 : (sheet.questions?.answered ?? []).length },
     },
   };
 }

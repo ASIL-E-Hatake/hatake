@@ -61,6 +61,15 @@ try {
       const cells = await page.$$eval(".hatake-view-matrix td", (all) => all.map((td) => td.textContent));
       check(cells.includes("○") && cells.includes("－"), `${one.name}: 見える・見えないの表が出る`);
     }
+    // どの前書きで見た紙かを言う（前書きが無ければ、無いと言う）。
+    const said = await page.$eval('[data-hatake="view-project"]', (el) => el.textContent ?? "");
+    check(
+      one.expect.project === undefined ? said.includes("ありません") : said.includes(one.expect.project) && said.includes("答え済み"),
+      `${one.name}: 前書きの行（${said.slice(0, 50)}）`,
+    );
+    if (one.expect.gone !== undefined) {
+      check((await page.$(`[data-hatake="${one.expect.gone}"]`)) === null, `${one.name}: 前書きで答えた問いは出ない（${one.expect.gone}）`);
+    }
     // どのタブにも数が付き、確認のタブは AI と同じ紙の数。
     const tabs = await page.$$eval(".hatake-view-tabs button", (all) => all.map((b) => b.textContent));
     check(tabs.length === 5 && tabs.some((t) => t.startsWith("確認 ⚠")), `${one.name}: 5つのタブ（${tabs.join(" / ")}）`);
