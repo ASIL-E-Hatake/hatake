@@ -1,0 +1,13 @@
+# .vsix に入れないもの（入れるのは dist・snippets・package.json・README・LICENSE だけ）。
+src/**
+test/**
+tool/**
+node_modules/**
+tsconfig.json
+vitest.config.ts
+*.vsix
+dist/preview-harness.html
+dist/.preview-data.mjs
+dist/preview-cases.json
+dist/view-harness.html
+dist/view-cases.json

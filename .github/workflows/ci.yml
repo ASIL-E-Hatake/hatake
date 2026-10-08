@@ -5000,6 +5000,45 @@ jobs:
       - name: Web の側が Node 専用のものを引いていない
         run: node web/tool/check-browser-safe.mjs
 
+  vscode:
+    name: VS Code extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install
+        run: npm install
+      # プレビューは Vue 版の Renderer ごと固めるので、組む順番が要る（api → runtime → vue3）。
+      - name: Build in order (api → runtime → vue3)
+        run: |
+          set -e
+          npm run build --workspace @hatake-fw/api
+          npm run build --workspace @hatake-fw/runtime
+          npm run build --workspace @hatake-fw/vue3
+      - name: Typecheck & test
+        working-directory: vscode
+        run: |
+          set -e
+          npx tsc -p .
+          npx vitest run
+      # スニペットは hatake new の雛形から作る（手で直したら・雛形が変わったら落ちる）。
+      # 固めて中身を確かめる（package.mjs が組む・スニペット・.vsix の中身まで見る）。
+      - name: Snippets are current & the .vsix is complete
+        working-directory: vscode
+        run: node tool/package.mjs
+      # プレビューと、ツリーから開く画面（タブ・光らせる行・権限の表・確認のカード）を
+      # 本物のブラウザで描く（Webview と同じ器・同じ口）。
+      - name: Preview & view draw in a real browser
+        run: |
+          set -e
+          (cd vscode && node tool/preview-cases.mjs)
+          for t in preview view; do
+            docker run --rm -v "$PWD/vscode:/x" ghcr.io/puppeteer/puppeteer:latest \
+              sh -c "cp /x/test/$t.e2e.mjs . && node $t.e2e.mjs /x/dist"
+          done
+
   java:
     name: Java edition
     runs-on: ubuntu-latest

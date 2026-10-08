@@ -1,0 +1,4 @@
+dist/
+*.vsix
+# tool/package.mjs が固める間だけ根から写す（2枚持たない）。
+LICENSE

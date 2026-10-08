@@ -1,0 +1,136 @@
+/* ツリーから開く画面（タブ付き）。VS Code の色に寄せる（無ければ明るい既定）。 */
+body {
+  font: 13px/1.6 var(--vscode-font-family, sans-serif);
+  color: var(--vscode-foreground, #222);
+}
+.hatake-view-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px 6px;
+}
+.hatake-view-head h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+.hatake-view-sub {
+  color: var(--vscode-descriptionForeground, #666);
+  font-size: 12px;
+}
+.hatake-view-head button,
+.hatake-view-jump button,
+.hatake-view-note-foot button {
+  font: inherit;
+  cursor: pointer;
+  color: var(--vscode-textLink-foreground, #0b62c4);
+  background: none;
+  border: 1px solid var(--vscode-panel-border, #ccd);
+  border-radius: 4px;
+  padding: 2px 10px;
+}
+.hatake-view-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--vscode-panel-border, #ddd);
+}
+.hatake-view-tabs button {
+  font: inherit;
+  padding: 8px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--vscode-descriptionForeground, #555);
+  cursor: pointer;
+}
+.hatake-view-tabs button.is-active {
+  color: var(--vscode-foreground, #111);
+  border-bottom-color: var(--vscode-focusBorder, #3f51b5);
+  font-weight: 600;
+}
+.hatake-view-pane {
+  padding: 0 20px 24px;
+}
+#pane-screen {
+  padding: 0;
+}
+.hatake-view-block h2 {
+  font-size: 14px;
+  margin: 18px 0 8px;
+}
+.hatake-view-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.hatake-view-table th,
+.hatake-view-table td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border, #e4e4e4);
+  vertical-align: top;
+}
+.hatake-view-table th {
+  font-weight: 600;
+  color: var(--vscode-descriptionForeground, #555);
+  font-size: 12px;
+}
+.hatake-view-matrix td.hatake-view-yes {
+  color: #2e7d32;
+  font-weight: 600;
+  text-align: center;
+}
+.hatake-view-matrix td.hatake-view-no {
+  color: #b0b0b0;
+  text-align: center;
+}
+.hatake-view-jump {
+  width: 1%;
+  white-space: nowrap;
+}
+.hatake-view-hit,
+tr.hatake-view-hit td {
+  background: rgba(255, 213, 79, 0.35) !important;
+  outline: 2px solid #f9a825;
+  outline-offset: -2px;
+}
+.hatake-view-note-card {
+  border: 1px solid var(--vscode-panel-border, #e0e0e0);
+  border-left-width: 4px;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+.hatake-view-fact .hatake-view-note-card {
+  border-left-color: #e0a100;
+}
+.hatake-view-question .hatake-view-note-card {
+  border-left-color: #6a4bc4;
+}
+.hatake-view-preference .hatake-view-note-card {
+  border-left-color: #3f7fd8;
+}
+.hatake-view-note-more {
+  color: var(--vscode-descriptionForeground, #555);
+  margin-top: 2px;
+}
+.hatake-view-note-foot {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.hatake-view-readback {
+  white-space: pre-wrap;
+  font: inherit;
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--vscode-textBlockQuote-background, #f6f6f6);
+  border-radius: 4px;
+}
+.hatake-view-empty,
+.hatake-view-note {
+  color: var(--vscode-descriptionForeground, #666);
+}

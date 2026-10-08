@@ -1,0 +1,246 @@
+{
+  "hatake: crud": {
+    "prefix": [
+      "hatake-crud",
+      "hatake crud"
+    ],
+    "description": "hatake の crud 画面の雛形（hatake new crud と同じもの）",
+    "body": [
+      "dsl_version: \"1.0\"",
+      "page:",
+      "  type: crud",
+      "  id: ${1:my_page}",
+      "  title: ${2:画面名}",
+      "  repository: myRepository   # RepositoryRegistry に登録するキー",
+      "  key: id                  # レコードの主キー項目名",
+      "  search:",
+      "    layout: { columns: 2 }",
+      "    filters:",
+      "      - { field: name, label: 名称, type: text, operator: contains }",
+      "  table:",
+      "    pagination: { pageSize: 50 }",
+      "    rowActions: [edit, delete]",
+      "    columns:",
+      "      - { field: id, label: ID, width: 80 }",
+      "      - { field: code, label: コード, width: 140, sortable: true }",
+      "      - { field: name, label: 名称 }",
+      "  form:",
+      "    sections:",
+      "      - title: 基本情報",
+      "        layout: { columns: 2 }",
+      "        fields:",
+      "          - { field: code, label: コード, type: text, required: true, normalize: [toHankaku, trim] }",
+      "          - { field: name, label: 名称, type: text, required: true }",
+      "  actions:",
+      "    - { id: create, type: create, label: 新規登録 }",
+      "    - { id: csv, type: export, label: CSV出力, roles: [TODO_role] }"
+    ]
+  },
+  "hatake: search": {
+    "prefix": [
+      "hatake-search",
+      "hatake search"
+    ],
+    "description": "hatake の search 画面の雛形（hatake new search と同じもの）",
+    "body": [
+      "dsl_version: \"1.0\"",
+      "page:",
+      "  type: search",
+      "  id: ${1:my_page}",
+      "  title: ${2:画面名}",
+      "  repository: myRepository   # RepositoryRegistry に登録するキー",
+      "  key: id                  # レコードの主キー項目名",
+      "  search:",
+      "    layout: { columns: 2 }",
+      "    filters:",
+      "      - { field: name, label: 名称, type: text, operator: contains }",
+      "  table:",
+      "    pagination: { pageSize: 50 }",
+      "    rowActions: [detail]",
+      "    columns:",
+      "      - { field: id, label: ID, width: 80 }",
+      "      - { field: code, label: コード, width: 140, sortable: true }",
+      "      - { field: name, label: 名称 }",
+      "  actions:",
+      "    # 行から詳細へ。遷移先は app: の pages に置く",
+      "    - { id: detail, type: navigate, label: 詳細, page: TODO_detail_page, params: { id: \"\\$row.id\" } }",
+      "    - { id: csv, type: export, label: CSV出力, roles: [TODO_role] }"
+    ]
+  },
+  "hatake: master": {
+    "prefix": [
+      "hatake-master",
+      "hatake master"
+    ],
+    "description": "hatake の master 画面の雛形（hatake new master と同じもの）",
+    "body": [
+      "dsl_version: \"1.0\"",
+      "page:",
+      "  type: master",
+      "  id: ${1:my_page}",
+      "  title: ${2:画面名}",
+      "  repository: myRepository   # RepositoryRegistry に登録するキー",
+      "  key: id                  # レコードの主キー項目名",
+      "  search:",
+      "    layout: { columns: 2 }",
+      "    filters:",
+      "      - { field: name, label: 名称, type: text, operator: contains }",
+      "  table:",
+      "    pagination: { pageSize: 50 }",
+      "    rowActions: [edit, delete]",
+      "    columns:",
+      "      - { field: id, label: ID, width: 80 }",
+      "      - { field: code, label: コード, width: 140, sortable: true }",
+      "      - { field: name, label: 名称 }",
+      "  form:",
+      "    sections:",
+      "      - title: 基本情報",
+      "        layout: { columns: 2 }",
+      "        fields:",
+      "          - { field: code, label: コード, type: text, required: true, normalize: [toHankaku, trim] }",
+      "          - { field: name, label: 名称, type: text, required: true }",
+      "  actions:",
+      "    - { id: create, type: create, label: 新規登録 }",
+      "    - { id: csv, type: export, label: CSV出力, roles: [TODO_role] }"
+    ]
+  },
+  "hatake: detail": {
+    "prefix": [
+      "hatake-detail",
+      "hatake detail"
+    ],
+    "description": "hatake の detail 画面の雛形（hatake new detail と同じもの）",
+    "body": [
+      "dsl_version: \"1.0\"",
+      "page:",
+      "  type: detail",
+      "  id: ${1:my_page}",
+      "  title: ${2:画面名}",
+      "  repository: myRepository   # RepositoryRegistry に登録するキー",
+      "  key: id                  # レコードの主キー項目名",
+      "  form:",
+      "    sections:",
+      "      - title: 基本情報",
+      "        fields:",
+      "          - { field: code, label: コード }",
+      "          - { field: name, label: 名称 }"
+    ]
+  },
+  "hatake: form": {
+    "prefix": [
+      "hatake-form",
+      "hatake form"
+    ],
+    "description": "hatake の form 画面の雛形（hatake new form と同じもの）",
+    "body": [
+      "dsl_version: \"1.0\"",
+      "page:",
+      "  type: form",
+      "  id: ${1:my_page}",
+      "  title: ${2:画面名}",
+      "  repository: myRepository   # RepositoryRegistry に登録するキー",
+      "  key: id                  # レコードの主キー項目名",
+      "  form:",
+      "    sections:",
+      "      - title: 基本情報",
+      "        layout: { columns: 2 }",
+      "        fields:",
+      "          - { field: code, label: コード, type: text, required: true, normalize: [toHankaku, trim] }",
+      "          - { field: name, label: 名称, type: text, required: true }"
+    ]
+  },
+  "hatake: wizard": {
+    "prefix": [
+      "hatake-wizard",
+      "hatake wizard"
+    ],
+    "description": "hatake の wizard 画面の雛形（hatake new wizard と同じもの）",
+    "body": [
+      "dsl_version: \"1.0\"",
+      "page:",
+      "  type: wizard",
+      "  id: ${1:my_page}",
+      "  title: ${2:画面名}",
+      "  repository: myRepository   # RepositoryRegistry に登録するキー",
+      "  key: id                  # レコードの主キー項目名",
+      "  steps:",
+      "    # 「次へ」はそのステップの項目だけを検証する",
+      "    - id: basic",
+      "      title: 基本情報",
+      "      layout: { columns: 2 }",
+      "      fields:",
+      "        - { field: code, label: コード, required: true, normalize: [toHankaku, trim] }",
+      "        - { field: name, label: 名称, required: true }",
+      "    - id: confirm",
+      "      title: 確認",
+      "      fields:",
+      "        # 前のステップの入力を computed で見せる（読み取り表示）",
+      "        - { field: summary, label: 内容, computed: { op: concat, fields: [code, name], separator: \" / \" } }"
+    ]
+  },
+  "hatake: dashboard": {
+    "prefix": [
+      "hatake-dashboard",
+      "hatake dashboard"
+    ],
+    "description": "hatake の dashboard 画面の雛形（hatake new dashboard と同じもの）",
+    "body": [
+      "dsl_version: \"1.0\"",
+      "page:",
+      "  type: dashboard",
+      "  id: ${1:my_page}",
+      "  title: ${2:画面名}",
+      "  repository: myRepository   # カードが repository を省いたときの既定",
+      "  layout: { columns: 4 }",
+      "  items:",
+      "    # value 省略時は count（件数）。集計は Repository が返した行の畳み込み",
+      "    - { id: total, title: 件数 }",
+      "    - id: amount",
+      "      title: 金額",
+      "      value: { aggregate: sum, field: amount }",
+      "      format: currency",
+      "      config: { symbol: \"¥\" }",
+      "    - id: byGroup",
+      "      type: chart",
+      "      title: 内訳",
+      "      span: 2",
+      "      chart: { kind: bar, labelField: TODO_group_field, valueField: amount, aggregate: sum }"
+    ]
+  },
+  "hatake: report": {
+    "prefix": [
+      "hatake-report",
+      "hatake report"
+    ],
+    "description": "hatake の report 画面の雛形（hatake new report と同じもの）",
+    "body": [
+      "dsl_version: \"1.0\"",
+      "page:",
+      "  type: report",
+      "  id: ${1:my_page}",
+      "  title: ${2:画面名}",
+      "  repository: myRepository   # RepositoryRegistry に登録するキー",
+      "  search:",
+      "    layout: { columns: 2 }",
+      "    filters:",
+      "      - { field: name, label: 名称, type: text, operator: contains }",
+      "  table:",
+      "    pagination: { pageSize: 50 }",
+      "    columns:",
+      "      - { field: code, label: コード, width: 140, sortable: true }",
+      "      - { field: name, label: 名称 }",
+      "      - { field: amount, label: 金額, type: number, format: currency }",
+      "  report:",
+      "    paper: { size: A4, orientation: portrait }",
+      "    rowsPerPage: 30          # 見出し・小計も1行として数える",
+      "    sort: { field: TODO_group_field }   # groupBy はこの並びに依存する",
+      "    groupBy:",
+      "      - { field: TODO_group_field, label: 見出し }",
+      "    totals:",
+      "      - { field: amount, aggregate: sum }",
+      "  actions:",
+      "    - { id: csv, type: export, label: CSV出力, config: { bom: true }, roles: [TODO_role] }",
+      "    - { id: printPdf, type: print, label: 印刷, roles: [TODO_role] }"
+    ]
+  }
+}

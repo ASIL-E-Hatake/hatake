@@ -110,6 +110,16 @@ Renderer は `peerDependencies` でホストを要求するだけなので、案
 入っていれば足りる（こちらは持ち込まない）。見た目は `@hatake-fw/runtime/hatake.css` を
 読み込む。
 
+### VS Code 拡張
+
+`hatake-vscode-<版>.vsix` を Release に貼っている（Marketplace には出していない）。
+落として `code --install-extension hatake-vscode-<版>.vsix`。版は枠組みと同じ番号で、
+**案件が固定している版と同じもの**を入れる（違えば状態バーが黄色になる）。使い方は
+[VS Code 拡張の手引き](vscode.ja.md)。
+
+固めるのは `node vscode/tool/package.mjs`（組む → スニペットが雛形と同じか → 固める →
+`check-vsix.mjs` が中身と版を見る）。Release のワークフローも同じものを回して貼る。
+
 ### Java
 
 [JitPack](https://jitpack.io/) が tag を見てビルドする（`jitpack.yml` がモノレポのどこを
