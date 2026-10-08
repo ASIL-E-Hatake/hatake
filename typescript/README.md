@@ -59,6 +59,7 @@ npx -p @hatake-fw/api hatake validate spec/examples/*.yaml     # 解析 + strict
 npx -p @hatake-fw/api hatake new report --id sales_report --title 売上明細表 > page.yaml
 npx -p @hatake-fw/api hatake types page.yaml --lang java --package io.example.api --out gen/
 npx -p @hatake-fw/api hatake reference rowsPerPage             # このキー、どこに書くの？型は？既定値は？
+npx -p @hatake-fw/api hatake reference immutable               # 無い名前なら、綴りの近い名前と意味の近いキー（→ readOnlyWhen）を添える
 npx -p @hatake-fw/api hatake examples 帳票                      # 近い例を探す
 npx -p @hatake-fw/api hatake rules                             # 警告と助言の規則そのもの（定義は要らない）
 npx -p @hatake-fw/api hatake rules groupby-without-sort        # 言われた規則名が何かを引く

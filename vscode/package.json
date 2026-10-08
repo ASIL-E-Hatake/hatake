@@ -2,7 +2,7 @@
   "name": "hatake-vscode",
   "displayName": "hatake（業務定義）",
   "description": "hatake の定義を VS Code で見る。AI が書いた定義を、人が画面のイメージと「AI と同じ紙」で判断するための拡張機能。",
-  "version": "0.9.31",
+  "version": "0.9.32",
   "publisher": "asil-e-hatake",
   "license": "Apache-2.0",
   "private": true,
@@ -160,9 +160,9 @@
     "check-preview": "node tool/preview-cases.mjs"
   },
   "devDependencies": {
-    "@hatake-fw/api": "0.9.31",
-    "@hatake-fw/runtime": "0.9.31",
-    "@hatake-fw/vue3": "0.9.31",
+    "@hatake-fw/api": "0.9.32",
+    "@hatake-fw/runtime": "0.9.32",
+    "@hatake-fw/vue3": "0.9.32",
     "@types/node": "^22.0.0",
     "@types/vscode": "~1.90.0",
     "@vscode/vsce": "^3.2.0",

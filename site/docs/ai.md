@@ -51,7 +51,7 @@ claude mcp add hatake -- node <repo>/typescript/dist/mcp.js
 | `hatake_intent` | **人からの指示文を1枚にする**（言われたまま・1行1件・全部 `source: ai-draft`）。定義も渡すと `covers` が当たり、**言われていないのに在るもの**が出る。定義を書く前と書いたあとに呼ぶ → [言ったことを残す](/design) |
 | `hatake_examples` | やりたいことに近い例を取る（まずこれ。写して直すのが最速） |
 | `hatake_new_page` | 新規なら雛形を出す |
-| `hatake_reference` | キーの型・既定値・書ける場所を引く（仕様書を読まなくていい）。名前を省くと**目次**（全体は `all: true`）。`maxLength` のような**値**でも引ける |
+| `hatake_reference` | キーの型・既定値・書ける場所を引く（仕様書を読まなくていい）。名前を省くと**目次**（全体は `all: true`）。`maxLength` のような**値**でも引ける。無い名前なら**意味の近いキー**を書き方つきで添える（`immutable` → `readOnlyWhen: { mode: edit }`） |
 | `hatake_check` | **書けたらまずこれ**。検証・読み返し・助言・人が決めることを1回で、欄を分けたまま返す |
 | `hatake_validate` | 書いた定義を検証する。**必ず通す** |
 | `hatake_run` | 定義を**動かして**答えを見る（検証エラー・計算した値・隠れている項目・いま必須の項目・押せるボタン）。`draft: true` で下書きのシナリオを作り、`cover: true` で「まだ試していない分岐」も出る。→ [試す](/testing) |

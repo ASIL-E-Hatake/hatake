@@ -34,6 +34,9 @@ export const RULE_CASES_FILE = "rule-cases.json";
 /** 担当の割り振り（どこまでを枠組みが持つか）。 */
 export const RESPONSIBILITY_FILE = "responsibility.json";
 
+/** 意味で引かれる名前の表（`immutable` → `readOnlyWhen`）。reference と where の空振りに添える。 */
+export const KEY_MEANINGS_FILE = "key-meanings.json";
+
 /** 食い違いの印から直し方を引く表（probe / attack の kind）。 */
 export const PROBE_KINDS_FILE = "probe-kinds.json";
 

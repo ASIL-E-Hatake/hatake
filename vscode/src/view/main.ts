@@ -165,7 +165,18 @@ function checkPane(tables: ViewTables): void {
   const pane = byId("pane-check");
   const read = el("div", undefined, "hatake-view-block");
   read.append(el("h2", "読み返し（この定義はこういう画面です）"), el("pre", tables.check.readback, "hatake-view-readback"));
+  // どの前書きで見た紙か（答えた問いが出ないのは、ここに答えが書いてあるから）。
+  const { file, answered } = tables.check.project;
+  const project = el(
+    "p",
+    file === null
+      ? "前書き（hatake.project.yaml）が定義の隣にありません。前書きで答える問いも、全部ここに出ます。"
+      : `前書き: ${file}（答え済みの問い ${answered} 件はここに出しません）`,
+    "hatake-view-note hatake-view-project",
+  );
+  project.setAttribute("data-hatake", "view-project");
   pane.replaceChildren(
+    project,
     notes("事実（書いたのに効かない）", "fact", "⚠", tables.check.facts, "直し方"),
     notes("人が決めること（定義に書けない）", "question", "？", tables.check.questions, "なぜ"),
     notes("好み（書いていないと不便かも）", "preference", "ⓘ", tables.check.preferences, "足すなら"),

@@ -79,10 +79,10 @@
       "id": "conditional",
       "where": "definition",
       "title": "条件で出し分ける（見せる・必須にする・押せる）",
-      "how": "`visibleWhen` / `requiredWhen` / `readOnlyWhen` / `enabledWhen` に条件を書く。**画面の中の値**で判断する話に限る。",
+      "how": "`visibleWhen` / `requiredWhen` / `readOnlyWhen` / `enabledWhen` に条件を書く。**画面の中の値**で判断する話に限る。「作ったあとは変えられない」は `readOnlyWhen: { mode: edit }`（新規のときだけ入れられる）。",
       "keys": ["visibleWhen", "requiredWhen", "readOnlyWhen", "enabledWhen"],
       "tool": "hatake reference visibleWhen",
-      "words": ["条件", "出し分け", "非表示", "読み取り専用", "押せない", "activate", "when"]
+      "words": ["条件", "出し分け", "非表示", "読み取り専用", "押せない", "変更不可", "編集不可", "変えられない", "書き換え不可", "activate", "when"]
     },
     {
       "id": "navigation",

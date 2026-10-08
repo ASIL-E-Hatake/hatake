@@ -172,6 +172,10 @@ try {
   }
   view = await frameWith('[data-hatake="view-tabs"]');
   check(view !== null && (await view.$(".hatake-view-question .hatake-view-hit")) !== null, "人が決めることを選ぶと、確認のタブで光る");
+  // 定義の隣の前書きを紙に渡している（前書きで答えた concurrency は出ない）。
+  const projectLine = view === null ? "" : await view.$eval('[data-hatake="view-project"]', (el) => el.textContent ?? "").catch(() => "");
+  check(projectLine.includes("hatake.project.yaml") && projectLine.includes("答え済み"), `確認のタブに前書きの行（${projectLine.slice(0, 60)}）`);
+  check(view !== null && (await view.$('[data-hatake="view-note:question:concurrency"]')) === null, "前書きで答えた問い（concurrency）は出ない");
   await shot("05-確認のタブ");
 
   // 6. app の根を選ぶ → app ぜんぶ（メニューつき）。役割を切り替える

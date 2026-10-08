@@ -117,7 +117,7 @@ export class ViewPanel {
       ...(whole || !isApp ? {} : { page: page.id }),
       tab: tabFor(target.kind, fallback),
       ...(target.key === undefined || target.kind === undefined ? {} : { highlight: { kind: target.kind, key: target.key } }),
-      tables: viewTables(outline, page, screen.roles, def.sheets.get(page.id) ?? {}, readback),
+      tables: viewTables(outline, page, screen.roles, def.sheets.get(page.id) ?? {}, readback, def.project),
     });
   }
 }
