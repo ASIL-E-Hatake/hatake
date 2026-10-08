@@ -1,0 +1,41 @@
+/* プレビューの帯（画面そのものの見た目は @hatake-fw/runtime/hatake.css が持つ）。 */
+body {
+  margin: 0;
+  background: var(--vscode-editor-background, #fff);
+}
+.hatake-preview-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 6px 12px;
+  font: 12px/1.6 var(--vscode-font-family, sans-serif);
+  color: var(--vscode-descriptionForeground, #555);
+  background: var(--vscode-sideBar-background, #f3f3f3);
+  border-bottom: 1px solid var(--vscode-panel-border, #ddd);
+}
+.hatake-preview-bar strong {
+  color: var(--vscode-foreground, #222);
+}
+.hatake-preview-bar select {
+  font: inherit;
+}
+.hatake-preview-note {
+  margin-left: auto;
+}
+#app {
+  background: #fff;
+  min-height: calc(100vh - 34px);
+}
+.hatake-preview-error {
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  padding: 12px;
+  margin: 16px;
+  border-left: 4px solid #c62828;
+  background: #fff5f5;
+}

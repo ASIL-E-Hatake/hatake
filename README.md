@@ -143,6 +143,11 @@ claude mcp add hatake -- node /path/to/hatake/typescript/dist/mcp.js
 
 → [MCP ガイド](docs/guide/mcp.ja.md)
 
+### VS Code 拡張（AI が書いた定義を、人が見る）
+**YAML を読まなくても確かめられる**。左の欄に定義が業務の言葉（画面名・項目のラベル）で並び、選ぶとエディタ領域にその画面がタブ付きで開く（**画面**＝作り物のデータで動く・役割を切り替えられる／**項目・操作・権限**の表／**確認**＝AI が MCP で見ているのと同じ紙）。「人が決めること」は全部の定義から集めて左の欄に。YAML の横のプレビュー・問題の一覧・キーの説明・スニペット・版のずれも。0.9.31 は見るだけ（書き換えない）。Release の `hatake-vscode-<版>.vsix` を `code --install-extension` で入れる。
+
+→ [VS Code 拡張の手引き](docs/guide/vscode.ja.md)（画像つき）
+
 読み物としては [紹介記事（全体）](docs/blog/introducing-hatake.md) と [Flutter 版の使い方](docs/blog/introducing-hatake-flutter.md) がある。
 
 ## ロードマップ

@@ -41,7 +41,7 @@ jobs:
           # tag と package.json がズレたまま配ると、入れた人が「どっちが本当か」を
           # 判断できなくなる。**貼る前**に落とす。配るもの全部を見る。
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          for pkg in typescript web/runtime web/http web/vue3 web/react19; do
+          for pkg in typescript web/runtime web/http web/vue3 web/react19 vscode; do
             HAVE="v$(node -p "require('./$pkg/package.json').version")"
             if [ "$TAG" != "$HAVE" ]; then
               echo "tag ($TAG) と $pkg ($HAVE) が違います"; exit 1
@@ -77,6 +77,16 @@ jobs:
           # 組み忘れたまま固めても npm は何も言わないので、中身を見てから貼る。
           node web/tool/check-tarballs.mjs "${TAG#v}"
 
+      # VS Code 拡張（.vsix）。Vue 版の Renderer ごと固めるので、組む順番の最後に置く。
+      # 固めたあと中身（extension.js・preview.js・spec・スキーマ・スニペット）と版を見てから貼る。
+      - name: 固める（VS Code 拡張）
+        run: |
+          set -e
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          npm run build --workspace @hatake-fw/vue3
+          (cd vscode && node tool/package.mjs)
+          node vscode/tool/check-vsix.mjs "vscode/hatake-vscode-${TAG#v}.vsix" "$TAG"
+
       - name: Release に貼る
         uses: softprops/action-gh-release@v2
         with:
@@ -87,6 +97,7 @@ jobs:
             web/http/*.tgz
             web/vue3/*.tgz
             web/react19/*.tgz
+            vscode/*.vsix
           fail_on_unmatched_files: true
           generate_release_notes: true
           body: |
@@ -97,5 +108,6 @@ jobs:
               （見た目は `@hatake-fw/runtime/hatake.css` を読み込む）
             - **Flutter / Dart** … この tag を `git:` で指す（`dependency_overrides` が要ります）
             - **Java** … JitPack がこの tag をビルドします
+            - **VS Code 拡張** … 下の `hatake-vscode-*.vsix` を落として `code --install-extension <ファイル>`（使い方は [VS Code 拡張の手引き](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/vscode.ja.md)）
 
             レジストリ（npm / pub.dev / Maven Central）にはまだ出していません。

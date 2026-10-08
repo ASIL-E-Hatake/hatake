@@ -1,0 +1,175 @@
+{
+  "name": "hatake-vscode",
+  "displayName": "hatake（業務定義）",
+  "description": "hatake の定義を VS Code で見る。AI が書いた定義を、人が画面のイメージと「AI と同じ紙」で判断するための拡張機能。",
+  "version": "0.9.31",
+  "publisher": "asil-e-hatake",
+  "license": "Apache-2.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ASIL-E-Hatake/hatake.git",
+    "directory": "vscode"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:yaml",
+    "onView:hatake.definitions",
+    "workspaceContains:**/definitions/**/*.yaml"
+  ],
+  "contributes": {
+    "yamlValidation": [
+      {
+        "fileMatch": [
+          "**/definitions/**/*.yaml",
+          "*.hatake.yaml"
+        ],
+        "url": "./dist/schema/hatake-page.schema.json"
+      },
+      {
+        "fileMatch": [
+          "**/hatake.project.yaml"
+        ],
+        "url": "./dist/schema/hatake-project.schema.json"
+      },
+      {
+        "fileMatch": [
+          "*.intent.yaml"
+        ],
+        "url": "./dist/schema/hatake-intent.schema.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "yaml",
+        "path": "./snippets/hatake.code-snippets"
+      }
+    ],
+    "commands": [
+      {
+        "command": "hatake.openPreview",
+        "title": "hatake: プレビューを開く（YAML の横）",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "hatake.openReadback",
+        "title": "hatake: 読み返しを開く（AI と同じ文）"
+      },
+      {
+        "command": "hatake.refresh",
+        "title": "hatake: 定義を読み直す",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "hatake.showView",
+        "title": "hatake: 画面を開く"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "hatake.openPreview",
+          "when": "resourceLangId == yaml",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "hatake.refresh",
+          "when": "view == hatake.definitions",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "hatake.showView",
+          "when": "false"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "hatake",
+          "title": "hatake",
+          "icon": "media/hatake.svg"
+        }
+      ]
+    },
+    "views": {
+      "hatake": [
+        {
+          "id": "hatake.definitions",
+          "name": "定義"
+        },
+        {
+          "id": "hatake.questions",
+          "name": "人が決めること"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "hatake.definitions",
+        "contents": "hatake の定義（page: か app: で始まる YAML）が作業場に見つかりません。\n定義のあるフォルダを開いてください。"
+      }
+    ],
+    "configuration": {
+      "title": "hatake",
+      "properties": {
+        "hatake.view.defaultTab": {
+          "type": "string",
+          "default": "screen",
+          "enum": [
+            "screen",
+            "fields",
+            "actions",
+            "roles",
+            "check"
+          ],
+          "enumDescriptions": [
+            "画面（動く画面。作り物のデータ）",
+            "項目（入力欄・一覧の列・検索条件を表で）",
+            "操作（ボタンごとに、何をする・確認・押せる人）",
+            "権限（役割ごとに見える・押せる）",
+            "確認（AI と同じ紙：事実・人が決めること・好み・読み返し）"
+          ],
+          "markdownDescription": "ツリーで画面を選んだときに最初に開くタブ。項目や操作を選んだときは、その表のタブが開きます。",
+          "enumItemLabels": [
+            "画面",
+            "項目",
+            "操作",
+            "権限",
+            "確認"
+          ]
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node tool/build.mjs",
+    "snippets": "node tool/snippets.mjs",
+    "test": "vitest run",
+    "package": "node tool/package.mjs",
+    "check-preview": "node tool/preview-cases.mjs"
+  },
+  "devDependencies": {
+    "@hatake-fw/api": "0.9.31",
+    "@hatake-fw/runtime": "0.9.31",
+    "@hatake-fw/vue3": "0.9.31",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "~1.90.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "vue": "^3.4.0",
+    "yaml": "^2.5.0"
+  }
+}

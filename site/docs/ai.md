@@ -105,6 +105,8 @@ https://asil-e-hatake.github.io/hatake/dsl/table-columns     ← 人間向け
 https://asil-e-hatake.github.io/hatake/dsl/table-columns.md  ← AI 向け（中身は同じ）
 ```
 
+AI が書いた定義を**人が**見るときは、VS Code 拡張が使える（左のツリーに定義を業務の言葉で並べ、選ぶと画面・項目・操作・権限・確認のタブで開く。YAML を読まなくてよい）。中身は MCP と同じ道具の束なので、人と AI が同じ答えを見る → [VS Code 拡張の手引き](https://github.com/ASIL-E-Hatake/hatake/blob/main/docs/guide/vscode.ja.md)。
+
 人間向けと AI 向けで文書を書き分けてはいない。**同じ1つの中身を、2つの形で出しているだけ**である。書き分けると必ず片方が古くなるので、そうしない。
 
 ## 経路3: CLI

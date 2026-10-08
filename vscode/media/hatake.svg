@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+  <!-- 畠（区切った畑）＋芽 -->
+  <rect x="3" y="11" width="18" height="10" rx="1.5"/>
+  <path d="M12 11v10M3 16h18"/>
+  <path d="M12 11V6"/>
+  <path d="M12 7c0-2 1.6-3.5 4-3.5 0 2.2-1.7 3.5-4 3.5z"/>
+  <path d="M12 8.5C12 6.8 10.6 5.5 8.5 5.5c0 1.8 1.4 3 3.5 3z"/>
+</svg>
